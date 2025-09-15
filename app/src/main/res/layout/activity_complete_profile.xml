@@ -10,7 +10,7 @@
 		android:id="@+id/scroll"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:background="#FFFFFF"
+		android:background="?attr/colorSurface"
 		android:scrollbars="none">
 		<LinearLayout
 			android:id="@+id/body"
@@ -18,41 +18,14 @@
 			android:layout_height="wrap_content"
 			android:padding="16dp"
 			android:orientation="vertical">
-			<LinearLayout
-				android:id="@+id/top"
+			<com.google.android.material.appbar.MaterialToolbar
+				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:layout_marginBottom="8dp"
-				android:orientation="horizontal">
-				<ImageView
-					android:id="@+id/back"
-					android:layout_width="48dp"
-					android:layout_height="48dp"
-					android:padding="12dp"
-					android:src="@drawable/icon_arrow_back_ios_round"
-					android:scaleType="fitCenter" />
-				<LinearLayout
-					android:id="@+id/topMiddle"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:padding="8dp"
-					android:orientation="vertical"
-					android:layout_weight="1" />
-				<ImageView
-					android:id="@+id/cancelCreateAccount"
-					android:layout_width="48dp"
-					android:layout_height="48dp"
-					android:padding="10dp"
-					android:src="@drawable/ic_delete_48px"
-					android:scaleType="fitCenter" />
-				<ProgressBar
-					android:id="@+id/cancel_create_account_progress"
-					android:layout_width="48dp"
-					android:layout_height="48dp"
-					android:padding="12dp"
-					android:indeterminate="false"
-					style="?android:progressBarStyle" />
-			</LinearLayout>
+				android:layout_marginStart="-16dp"
+				android:layout_marginEnd="-16dp"
+				app:navigationIcon="@drawable/ic_arrow_back_ios_new_48px"
+				app:menu="@menu/complete_profile_menu" />
 			<TextView
 				android:id="@+id/title"
 				android:layout_width="wrap_content"
@@ -61,7 +34,7 @@
 				android:text="Complete your account"
 				android:textSize="30sp"
 				android:textStyle="bold"
-				android:textColor="#000000" />
+				android:textColor="?attr/colorOnSurface" />
 			<TextView
 				android:id="@+id/subtitle"
 				android:layout_width="wrap_content"
@@ -69,7 +42,7 @@
 				android:layout_marginBottom="24dp"
 				android:text="Kindly complete your profile to finalize the account creation process. Alternatively, you may choose to skip this step by utilizing the designated skip button.\n\n**First, upload your profile picture**"
 				android:textSize="14sp"
-				android:textColor="#757575" />
+				android:textColor="?attr/colorOnSurfaceVariant" />
 			<androidx.cardview.widget.CardView
 				android:id="@+id/profile_image_card"
 				android:layout_width="wrap_content"
@@ -90,12 +63,12 @@
 				android:layout_height="wrap_content"
 				android:layout_marginBottom="24dp"
 				android:padding="16dp"
-				android:background="#FFFFFF"
+				android:background="?attr/colorSurface"
 				android:text="Handle"
 				android:textSize="18sp"
-				android:textColor="#000000"
+				android:textColor="?attr/colorOnSurface"
 				android:hint="Username"
-				android:textColorHint="#757575"
+				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:singleLine="true"
 				android:imeOptions="actionNext" />
 			<com.synapse.social.studioasinc.FadeEditText
@@ -104,11 +77,11 @@
 				android:layout_height="wrap_content"
 				android:layout_marginBottom="24dp"
 				android:padding="16dp"
-				android:background="#FFFFFF"
+				android:background="?attr/colorSurface"
 				android:textSize="18sp"
-				android:textColor="#000000"
+				android:textColor="?attr/colorOnSurface"
 				android:hint="Username"
-				android:textColorHint="#757575"
+				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:singleLine="true"
 				android:imeOptions="actionNext" />
 			<com.synapse.social.studioasinc.FadeEditText
@@ -116,10 +89,10 @@
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:padding="16dp"
-				android:background="#FFFFFF"
+				android:background="?attr/colorSurface"
 				android:textSize="18sp"
-				android:textColor="#000000"
-				android:textColorHint="#757575"
+				android:textColor="?attr/colorOnSurface"
+				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:imeOptions="actionDone"
 				android:maxHeight="150dp"
 				tools:replace="android:hint"
@@ -131,7 +104,7 @@
 				android:layout_marginTop="16dp"
 				android:layout_marginBottom="24dp"
 				android:padding="14dp"
-				android:background="#FFFFFF"
+				android:background="?attr/colorSurface"
 				android:orientation="vertical">
 				<TextView
 					android:id="@+id/email_verification_title"
@@ -140,7 +113,7 @@
 					android:layout_marginBottom="4dp"
 					android:textSize="20sp"
 					android:textStyle="bold"
-					android:textColor="#000000"
+					android:textColor="?attr/colorOnSurface"
 					tools:replace="android:text"
 					android:text="@string/email_verification_title" />
 				<TextView
@@ -150,7 +123,7 @@
 					android:layout_marginBottom="18dp"
 					android:text="Verify the email address through the link we have sent in your mail box."
 					android:textSize="14sp"
-					android:textColor="#757575" />
+					android:textColor="?attr/colorOnSurfaceVariant" />
 				<LinearLayout
 					android:id="@+id/email_verification_middle"
 					android:layout_width="match_parent"
@@ -179,7 +152,7 @@
 						android:layout_height="wrap_content"
 						android:text="Email not verified"
 						android:textSize="18sp"
-						android:textColor="#F44336"
+						android:textColor="?attr/colorError"
 						android:layout_weight="1" />
 					<ImageView
 						android:id="@+id/email_verification_status_refresh"
@@ -198,10 +171,10 @@
 					android:paddingTop="10dp"
 					android:paddingRight="20dp"
 					android:paddingBottom="10dp"
-					android:background="#2196F3"
+					android:background="?attr/colorPrimary"
 					android:gravity="center_horizontal|center_vertical"
 					android:textSize="16sp"
-					android:textColor="#FFFFFF"
+					android:textColor="?attr/colorOnPrimary"
 					android:layout_gravity="right"
 					tools:replace="android:text"
 					android:text="@string/send" />
@@ -211,48 +184,21 @@
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:orientation="horizontal">
-				<TextView
+				<com.google.android.material.button.MaterialButton
 					android:id="@+id/skip_button"
-					android:layout_width="match_parent"
+					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_marginRight="8dp"
-					android:paddingLeft="8dp"
-					android:paddingTop="12dp"
-					android:paddingRight="8dp"
-					android:paddingBottom="12dp"
-					android:background="#FFFFFF"
-					android:gravity="center_horizontal|center_vertical"
-					android:textSize="18sp"
-					android:textColor="#757575"
+					android:layout_marginEnd="8dp"
 					android:layout_weight="1"
-					tools:replace="android:text"
-					android:text="@string/skip_button" />
-				<LinearLayout
+					android:text="@string/skip_button"
+					style="@style/Widget.Material3.Button.TextButton" />
+				<com.google.android.material.button.MaterialButton
 					android:id="@+id/complete_button"
-					android:layout_width="match_parent"
+					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_marginLeft="8dp"
-					android:paddingTop="12dp"
-					android:paddingBottom="12dp"
-					android:background="#2962FF"
-					android:gravity="center_horizontal|center_vertical"
-					android:orientation="horizontal"
-					android:layout_weight="1">
-					<TextView
-						android:id="@+id/complete_button_title"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:textSize="18sp"
-						android:textColor="#FFFFFF"
-						tools:replace="android:text"
-						android:text="@string/continue_button" />
-					<ProgressBar
-						android:id="@+id/complete_button_loader_bar"
-						android:layout_width="22dp"
-						android:layout_height="22dp"
-						android:indeterminate="false"
-						style="?android:progressBarStyle" />
-				</LinearLayout>
+					android:layout_marginStart="8dp"
+					android:layout_weight="1"
+					android:text="@string/continue_button" />
 			</LinearLayout>
 		</LinearLayout>
 	</ScrollView>
