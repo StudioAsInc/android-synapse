@@ -352,55 +352,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			}
 		});
 		
-		back.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				onBackPressed();
-			}
-		});
 		
-		cancelCreateAccount.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				{
-					final AlertDialog NewCustomDialog = new AlertDialog.Builder(CompleteProfileActivity.this).create();
-					LayoutInflater NewCustomDialogLI = getLayoutInflater();
-					View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
-					NewCustomDialog.setView(NewCustomDialogCV);
-					NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-					
-					final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
-					final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
-					final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
-					final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
-					dialog_yes_button.setTextColor(0xFFF44336);
-					_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
-					dialog_no_button.setTextColor(0xFF2196F3);
-					_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
-					dialog_title.setText(getResources().getString(R.string.info));
-					dialog_message.setText(getResources().getString(R.string.cancel_create_account_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_create_account_warn2))));
-					dialog_yes_button.setText(getResources().getString(R.string.yes));
-					dialog_no_button.setText(getResources().getString(R.string.no));
-					dialog_yes_button.setOnClickListener(new View.OnClickListener() {
-						@Override
-						public void onClick(View _view) {
-							cancelCreateAccount.setVisibility(View.GONE);
-							cancel_create_account_progress.setVisibility(View.VISIBLE);
-							FirebaseAuth.getInstance().getCurrentUser().delete().addOnCompleteListener(auth_deleteUserListener);
-							NewCustomDialog.dismiss();
-						}
-					});
-					dialog_no_button.setOnClickListener(new View.OnClickListener() {
-						@Override
-						public void onClick(View _view) {
-							NewCustomDialog.dismiss();
-						}
-					});
-					NewCustomDialog.setCancelable(true);
-					NewCustomDialog.show();
-				}
-			}
-		});
 		
 		email_verification_send.setOnClickListener(new View.OnClickListener() {
 			@Override
