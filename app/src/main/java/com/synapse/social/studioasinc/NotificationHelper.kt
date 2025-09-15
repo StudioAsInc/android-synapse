@@ -22,7 +22,7 @@ object NotificationHelper {
     private const val TAG = "NotificationHelper"
     
     private val JSON = "application/json; charset=utf-8".toMediaType()
-    private const val ONESIGNAL_API_URL = "https://onesignal.com/api/v1/notifications"
+    private const val ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
     
     /**
      * Sends a notification to a user.
@@ -243,7 +243,7 @@ object NotificationHelper {
         val body = jsonBody.toString().toRequestBody(JSON)
         val request = Request.Builder()
             .url(ONESIGNAL_API_URL)
-            .addHeader("Authorization", "Basic ${NotificationConfig.ONESIGNAL_REST_API_KEY}")
+            .addHeader("Authorization", "Key ${NotificationConfig.ONESIGNAL_REST_API_KEY}")
             .addHeader("Content-Type", "application/json")
             .post(body)
             .build()
