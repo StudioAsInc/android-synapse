@@ -1,0 +1,20 @@
+# Keystores & credentials
+*.keystore
+keystore.properties
+*.jks
+
+# Local properties
+local.properties
+app/local.properties
+
+# Build directory
+app/build/
+
+# Gemini CLI config
+.gemini/
+
+# Root build folder
+/build/
+
+# Documentation
+/Docs/

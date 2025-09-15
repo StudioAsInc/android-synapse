@@ -1,0 +1,34 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical"
+	android:gravity="center"
+	android:background="#121212"
+	android:id="@+id/_main">
+
+	<TextView
+		android:id="@+id/welcome_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Welcome to Synapse"
+		android:textSize="32sp"
+		android:textColor="#FFFFFF"
+		android:layout_marginBottom="32dp"/>
+
+	<Button
+		android:id="@+id/get_started_button"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Get Started"
+		android:paddingLeft="32dp"
+		android:paddingRight="32dp"
+		android:paddingTop="16dp"
+		android:paddingBottom="16dp"
+		android:textSize="18sp"
+		android:textColor="#FFFFFF"
+		android:backgroundTint="#007AFF"/>
+
+</LinearLayout>

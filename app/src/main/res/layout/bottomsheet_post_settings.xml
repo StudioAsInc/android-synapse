@@ -1,0 +1,292 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:background="@drawable/bottom_sheet_background"
+	android:padding="16dp">
+
+	<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+		android:id="@+id/drag_handle"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"/>
+
+	<TextView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:text="Post Settings"
+		android:textAppearance="?attr/textAppearanceTitleLarge"
+		android:layout_marginBottom="16dp"/>
+
+	<com.google.android.material.card.MaterialCardView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		app:cardElevation="0dp"
+		app:strokeWidth="1dp"
+		app:strokeColor="?attr/colorOutline">
+
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical"
+			android:padding="16dp">
+
+			<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Statistics Settings"
+				android:textAppearance="?attr/textAppearanceTitleMedium"
+				android:layout_marginBottom="16dp"/>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/hideViewsSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/hide_the_number_of_views"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="If enabled, the views count won't be shown on this post"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/hideViewsSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/hideLikesSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/hide_the_number_of_likes"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="If enabled, Likes count won't be shown on this post"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/hideLikesSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/hideCommentsSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/hide_the_number_of_comments"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="If enabled, the number of comments won't be shown on this post"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/hideCommentsSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+
+		</LinearLayout>
+	</com.google.android.material.card.MaterialCardView>
+
+	<com.google.android.material.card.MaterialCardView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="16dp"
+		app:cardElevation="0dp"
+		app:strokeWidth="1dp"
+		app:strokeColor="?attr/colorOutline">
+
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical"
+			android:padding="16dp">
+
+			<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Privacy Settings"
+				android:textAppearance="?attr/textAppearanceTitleMedium"
+				android:layout_marginBottom="16dp"/>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/hidePostSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/hide_post_from_everyone"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Only you can see the post"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/hidePostSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/disableSaveSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/disable_saving_to_favorites"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/disable_saving_to_favorites_subtitle"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/disableSaveSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content">
+
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_alignParentStart="true"
+					android:layout_toStartOf="@+id/disableCommentsSwitch">
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/disable_comments"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textStyle="bold"/>
+
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/disable_comments_subtitle"
+						android:textAppearance="?attr/textAppearanceBodyMedium"
+						android:textColor="?attr/colorOnSurfaceVariant"/>
+
+				</LinearLayout>
+
+				<com.google.android.material.materialswitch.MaterialSwitch
+					android:id="@+id/disableCommentsSwitch"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"/>
+			</RelativeLayout>
+		</LinearLayout>
+	</com.google.android.material.card.MaterialCardView>
+
+	<Button
+		android:id="@+id/doneButton"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="end"
+		android:layout_marginTop="16dp"
+		android:text="Done"
+		style="@style/Widget.Material3.Button.TextButton"/>
+
+</LinearLayout>
