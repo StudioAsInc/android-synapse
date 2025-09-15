@@ -81,7 +81,7 @@ export default {
       };
 
       // Send notification to OneSignal
-      const oneSignalResponse = await fetch('https://api.onesignal.com/notifications', {
+      const oneSignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
