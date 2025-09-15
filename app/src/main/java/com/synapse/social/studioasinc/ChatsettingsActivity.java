@@ -422,13 +422,6 @@ public class ChatsettingsActivity extends AppCompatActivity {
 			}
 		});
 		
-		premiumFeaturesMainOption.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), LabsActivity.class);
-				startActivity(intent);
-			}
-		});
 		
 		_mainDb_child_listener = new ChildEventListener() {
 			@Override

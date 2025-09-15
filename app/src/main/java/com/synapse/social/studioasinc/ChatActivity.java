@@ -338,13 +338,12 @@ public class ChatActivity extends AppCompatActivity {
 			}
 		});
 
-		View.OnClickListener profileClickListener = v -> startActivityWithUid(Chat2ndUserMoreSettingsActivity.class);
+		View.OnClickListener profileClickListener = v -> startActivityWithUid(ConversationSettingsActivity.class);
 		topProfileLayout.setOnClickListener(profileClickListener);
 		ic_more.setOnClickListener(profileClickListener);
 
-		View.OnClickListener callClickListener = v -> startActivityWithUid(CallActivity.class);
-		ic_video_call.setOnClickListener(callClickListener);
-		ic_audio_call.setOnClickListener(callClickListener);
+		ic_video_call.setVisibility(View.GONE);
+		ic_audio_call.setVisibility(View.GONE);
 
 		mMessageReplyLayoutBodyCancel.setOnClickListener(new View.OnClickListener() {
 			@Override
