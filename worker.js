@@ -63,7 +63,7 @@ export default {
       // Prepare the notification payload for OneSignal
       const notificationPayload = {
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: [recipientUserId],
+        include_subscription_ids: [recipientUserId],
         contents: {
           en: notificationMessage
         },
@@ -81,11 +81,11 @@ export default {
       };
 
       // Send notification to OneSignal
-      const oneSignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {
+      const oneSignalResponse = await fetch('https://api.onesignal.com/notifications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`,
+          'Authorization': `Key ${ONESIGNAL_REST_API_KEY}`,
         },
         body: JSON.stringify(notificationPayload),
       });
