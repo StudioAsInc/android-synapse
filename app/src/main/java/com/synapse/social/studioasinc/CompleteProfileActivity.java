@@ -36,6 +36,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.*;
 import androidx.appcompat.app.AppCompatActivity;
+import android.view.Menu;
+import android.view.MenuItem;
 import androidx.browser.*;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
@@ -109,7 +111,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	
 	private ScrollView scroll;
 	private LinearLayout body;
-	private LinearLayout top;
+	private com.google.android.material.appbar.MaterialToolbar toolbar;
 	private TextView title;
 	private TextView subtitle;
 	private CardView profile_image_card;
@@ -118,10 +120,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private FadeEditText biography_input;
 	private LinearLayout email_verification;
 	private LinearLayout buttons;
-	private ImageView back;
-	private LinearLayout topMiddle;
-	private ImageView cancelCreateAccount;
-	private ProgressBar cancel_create_account_progress;
 	private ImageView profile_image;
 	private TextView email_verification_title;
 	private TextView email_verification_subtitle;
@@ -131,10 +129,8 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private ImageView email_verification_verified_ic;
 	private TextView email_verification_status;
 	private ImageView email_verification_status_refresh;
-	private TextView skip_button;
-	private LinearLayout complete_button;
-	private TextView complete_button_title;
-	private ProgressBar complete_button_loader_bar;
+	private com.google.android.material.button.MaterialButton skip_button;
+	private com.google.android.material.button.MaterialButton complete_button;
 	
 	private Vibrator vbr;
 	private FirebaseAuth auth;
@@ -190,7 +186,16 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private void initialize(Bundle _savedInstanceState) {
 		scroll = findViewById(R.id.scroll);
 		body = findViewById(R.id.body);
-		top = findViewById(R.id.top);
+		toolbar = findViewById(R.id.toolbar);
+		setSupportActionBar(toolbar);
+		if (getSupportActionBar() != null) {
+			getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+			getSupportActionBar().setDisplayShowHomeEnabled(true);
+			getSupportActionBar().setTitle("");
+		}
+		toolbar.setNavigationOnClickListener(v -> {
+			onBackPressed();
+		});
 		title = findViewById(R.id.title);
 		subtitle = findViewById(R.id.subtitle);
 		profile_image_card = findViewById(R.id.profile_image_card);
@@ -199,10 +204,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		biography_input = findViewById(R.id.biography_input);
 		email_verification = findViewById(R.id.email_verification);
 		buttons = findViewById(R.id.buttons);
-		back = findViewById(R.id.back);
-		topMiddle = findViewById(R.id.topMiddle);
-		cancelCreateAccount = findViewById(R.id.cancelCreateAccount);
-		cancel_create_account_progress = findViewById(R.id.cancel_create_account_progress);
 		profile_image = findViewById(R.id.profile_image);
 		email_verification_title = findViewById(R.id.email_verification_title);
 		email_verification_subtitle = findViewById(R.id.email_verification_subtitle);
@@ -214,8 +215,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		email_verification_status_refresh = findViewById(R.id.email_verification_status_refresh);
 		skip_button = findViewById(R.id.skip_button);
 		complete_button = findViewById(R.id.complete_button);
-		complete_button_title = findViewById(R.id.complete_button_title);
-		complete_button_loader_bar = findViewById(R.id.complete_button_loader_bar);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		auth = FirebaseAuth.getInstance();
 		SelectAvatar.setType("image/*");
@@ -800,9 +799,8 @@ username_input.setEnabled(false);
 					finish();
 				} else {
 					SketchwareUtil.showMessage(getApplicationContext(), _errorMessage);
+					invalidateOptionsMenu();
 				}
-				cancelCreateAccount.setVisibility(View.VISIBLE);
-				cancel_create_account_progress.setVisibility(View.GONE);
 			}
 		};
 		
@@ -868,22 +866,14 @@ username_input.setEnabled(false);
 		avatarUri = "null";
 		thedpurl = "null";
 		userNameErr = true;
-		_viewGraphics(back, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
-		_viewGraphics(cancelCreateAccount, 0xFFFFFFFF, 0xFFFFCDD2, 300, 0, Color.TRANSPARENT);
 		_ImageColor(email_verification_error_ic, 0xFFF44336);
 		_ImageColor(email_verification_verified_ic, 0xFF4CAF50);
 		profile_image_card.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
 		email_verification.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		complete_button_loader_bar.setVisibility(View.GONE);
-		cancel_create_account_progress.setVisibility(View.GONE);
 		username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 		nickname_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 		biography_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		_progressBarColor(complete_button_loader_bar, 0xFFFFFFFF);
-		_progressBarColor(cancel_create_account_progress, 0xFF000000);
 		_viewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
-		_viewGraphics(skip_button, 0xFFFFFFFF, 0xFFEEEEEE, 300, 3, 0xFFEEEEEE);
-		_viewGraphics(complete_button, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
 		if (getIntent().hasExtra("findedUsername")) {
 			username_input.setText(getIntent().getStringExtra("findedUsername"));
 		} else {
@@ -1134,6 +1124,56 @@ username_input.setEnabled(false);
 	}
 	
 	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.complete_profile_menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		if (item.getItemId() == R.id.cancel) {
+			{
+				final AlertDialog NewCustomDialog = new AlertDialog.Builder(CompleteProfileActivity.this).create();
+				LayoutInflater NewCustomDialogLI = getLayoutInflater();
+				View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
+				NewCustomDialog.setView(NewCustomDialogCV);
+				NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+				final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
+				final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
+				final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
+				final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
+				dialog_yes_button.setTextColor(0xFFF44336);
+				_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+				dialog_no_button.setTextColor(0xFF2196F3);
+				_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+				dialog_title.setText(getResources().getString(R.string.info));
+				dialog_message.setText(getResources().getString(R.string.cancel_create_account_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_create_account_warn2))));
+				dialog_yes_button.setText(getResources().getString(R.string.yes));
+				dialog_no_button.setText(getResources().getString(R.string.no));
+				dialog_yes_button.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View _view) {
+						item.setEnabled(false);
+						FirebaseAuth.getInstance().getCurrentUser().delete().addOnCompleteListener(auth_deleteUserListener);
+						NewCustomDialog.dismiss();
+					}
+				});
+				dialog_no_button.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View _view) {
+						NewCustomDialog.dismiss();
+					}
+				});
+				NewCustomDialog.setCancelable(true);
+				NewCustomDialog.show();
+			}
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
 	public void _font() {
 		title.setTypeface(Typeface.DEFAULT, 1);
 	}
@@ -1154,6 +1194,9 @@ username_input.setEnabled(false);
 			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
 			vbr.vibrate((long)(48));
 		} else {
+			complete_button.setEnabled(false);
+			complete_button.setText("Loading...");
+			username_input.setEnabled(false);
 			if (thedpurl.equals("null")) {
 				getJoinTime = Calendar.getInstance();
 				createUserMap = new HashMap<>();
@@ -1202,14 +1245,17 @@ username_input.setEnabled(false);
 							startActivity(intent);
 							finish();
 						} else {
+							username_input.setEnabled(true);
+							complete_button.setEnabled(true);
+							try {
+								complete_button.setText(R.string.continue_button);
+							} catch (Exception e) {
+								complete_button.setText("Continue");
+							}
 							if (databaseError.getMessage().equals("Permission denied")) {
-								complete_button_title.setVisibility(View.VISIBLE);
-								complete_button_loader_bar.setVisibility(View.GONE);
-								username_input.setEnabled(true);
 								SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
 							} else {
 								SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-								username_input.setEnabled(true);
 							}
 						}
 					}
@@ -1269,14 +1315,17 @@ username_input.setEnabled(false);
 							startActivity(intent);
 							finish();
 						} else {
+							username_input.setEnabled(true);
+							complete_button.setEnabled(true);
+							try {
+								complete_button.setText(R.string.continue_button);
+							} catch (Exception e) {
+								complete_button.setText("Continue");
+							}
 							if (databaseError.getMessage().equals("Permission denied")) {
-								complete_button_title.setVisibility(View.VISIBLE);
-								complete_button_loader_bar.setVisibility(View.GONE);
-								username_input.setEnabled(true);
 								SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
 							} else {
 								SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-								username_input.setEnabled(true);
 							}
 						}
 					}
@@ -1289,9 +1338,6 @@ username_input.setEnabled(false);
 				pushusername.child(username_input.getText().toString()).updateChildren(map);
 				map.clear();
 			}
-			complete_button_title.setVisibility(View.GONE);
-			complete_button_loader_bar.setVisibility(View.VISIBLE);
-			username_input.setEnabled(false);
 		}
 	}
 	
