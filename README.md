@@ -9,12 +9,12 @@
 
   [![Website](https://img.shields.io/badge/Website-Visit-blue)](https://dl-synapse.pages.dev)
 [![Docs](https://img.shields.io/badge/Docs-Read-green)](https://dl-synapse.pages.dev/docs)
-[![Report Bug](https://img.shields.io/badge/Report_Bug-Here-red)](https://github.com/StudioAsInc/synapse-android/issues/new?template=bug_report.md)
-[![Request Feature](https://img.shields.io/badge/Request_Feature-Here-yellow)](https://github.com/StudioAsInc/synapse-android/issues/new?template=feature_request.md)
-[![GitHub contributors](https://img.shields.io/github/contributors/StudioAsInc/synapse-android)](https://github.com/StudioAsInc/synapse-android/graphs/contributors)
-[![GitHub last commit](https://img.shields.io/github/last-commit/StudioAsInc/synapse-android)](https://github.com/StudioAsInc/synapse-android/commits/)
-[![Total downloads](https://img.shields.io/github/downloads/StudioAsInc/synapse-android/total)](https://github.com/StudioAsInc/synapse-android/releases)
-[![Repository Size](https://img.shields.io/github/repo-size/StudioAsInc/synapse-android)](https://github.com/StudioAsInc/synapse-android)
+[![Report Bug](https://img.shields.io/badge/Report_Bug-Here-red)](https://github.com/StudioAsInc/android-synapse/issues/new?template=bug_report.md)
+[![Request Feature](https://img.shields.io/badge/Request_Feature-Here-yellow)](https://github.com/StudioAsInc/android-synapse/issues/new?template=feature_request.md)
+[![GitHub contributors](https://img.shields.io/github/contributors/StudioAsInc/android-synapse)](https://github.com/StudioAsInc/android-synapse/graphs/contributors)
+[![GitHub last commit](https://img.shields.io/github/last-commit/StudioAsInc/android-synapse)](https://github.com/StudioAsInc/android-synapse/commits/)
+[![Total downloads](https://img.shields.io/github/downloads/StudioAsInc/android-synapse/total)](https://github.com/StudioAsInc/android-synapse/releases)
+[![Repository Size](https://img.shields.io/github/repo-size/StudioAsInc/android-synapse)](https://github.com/StudioAsInc/android-synapse)
 </div>
 
 </div>
@@ -50,9 +50,9 @@ Synapse uses a [custom open-source license](Docs/LICENSE.md) designed to:
 ## 💬 Community & Support  
 | Channel | Purpose |
 |---------|---------|
-| [GitHub Issues](https://github.com/StudioAsInc/synapse-android/issues) | Report bugs & request features |
-| [Discussions](https://github.com/StudioAsInc/synapse-android/discussions) | Q&A and community talks |
-| [Wiki](https://github.com/StudioAsInc/synapse-android/wiki) | Setup guides & documentation |
+| [GitHub Issues](https://github.com/StudioAsInc/android-synapse/issues) | Report bugs & request features |
+| [Discussions](https://github.com/StudioAsInc/android-synapse/discussions) | Q&A and community talks |
+| [Wiki](https://github.com/StudioAsInc/android-synapse/wiki) | Setup guides & documentation |
 
 ---
 
@@ -84,4 +84,4 @@ Special thanks to:
   **A Project by [StudioAs Inc.](https://studioas.dev)**  
   *"Empowering connections through transparency"*
 
-  [⭐ Star on GitHub](https://github.com/StudioAsInc/synapse-android) • [Join Our Community](https://web-synapse.pages.dev) • [Contact](mailto:mashikahamed0@gmail.com)
+  [⭐ Star on GitHub](https://github.com/StudioAsInc/android-synapse) • [Join Our Community](https://web-synapse.pages.dev) • [Contact](mailto:mashikahamed0@gmail.com)
