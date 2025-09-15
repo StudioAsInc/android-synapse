@@ -1,0 +1,45 @@
+# Keystores & credentials
+*.keystore
+keystore.properties
+
+# Build artifacts
+build/
+app/build/
+.gradle/
+*.apk
+*.aab
+*.dex
+*.class
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Local configuration
+local.properties
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Android SDK (should never be committed)
+android-sdk/
