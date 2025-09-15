@@ -85,6 +85,10 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         OneSignal.getDebug().setLogLevel(LogLevel.VERBOSE);
         OneSignal.initWithContext(this, ONESIGNAL_APP_ID);
 
+        // Prompt for push notifications
+        // Recommended for testing purposes. For production, use an in-app message.
+        OneSignal.getNotifications().requestPermission(true);
+
         // Set up notification click handler for in-app navigation
         OneSignal.getNotifications().addClickListener(new NotificationClickHandler());
 

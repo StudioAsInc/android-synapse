@@ -207,7 +207,7 @@ object NotificationHelper {
         
         try {
             jsonBody.put("app_id", NotificationConfig.ONESIGNAL_APP_ID)
-            jsonBody.put("include_player_ids", arrayOf(recipientPlayerId))
+            jsonBody.put("include_subscription_ids", arrayOf(recipientPlayerId))
             jsonBody.put("contents", JSONObject().put("en", message))
             jsonBody.put("headings", JSONObject().put("en", NotificationConfig.getTitleForNotificationType(notificationType)))
             jsonBody.put("subtitle", JSONObject().put("en", NotificationConfig.NOTIFICATION_SUBTITLE))

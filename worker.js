@@ -63,7 +63,7 @@ export default {
       // Prepare the notification payload for OneSignal
       const notificationPayload = {
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: [recipientUserId],
+        include_subscription_ids: [recipientUserId],
         contents: {
           en: notificationMessage
         },
