@@ -89,13 +89,13 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Recommended for testing purposes. For production, use an in-app message.
         OneSignal.getNotifications().requestPermission(true, new kotlin.coroutines.Continuation<Boolean>() {
             @Override
-            public void resume(Boolean aBoolean) {
-                Log.i("OneSignal", "Notification permission request successful with result: " + aBoolean);
-            }
-
-            @Override
-            public void resumeWithException(@NonNull Throwable throwable) {
-                Log.e("OneSignal", "Notification permission request failed with error: " + throwable.getMessage());
+            public void resumeWith(@NonNull Object result) {
+                if (result instanceof kotlin.Result.Failure) {
+                    Throwable exception = ((kotlin.Result.Failure) result).getException();
+                    Log.e("OneSignal", "Notification permission request failed with error: " + exception.getMessage());
+                } else {
+                    Log.i("OneSignal", "Notification permission request successful.");
+                }
             }
 
             @NonNull
