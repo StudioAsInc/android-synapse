@@ -22,7 +22,7 @@ object NotificationHelper {
     private const val TAG = "NotificationHelper"
     
     private val JSON = "application/json; charset=utf-8".toMediaType()
-    private const val ONESIGNAL_API_URL = "https://onesignal.com/api/v1/notifications"
+    private const val ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
     
     /**
      * Sends a notification to a user.
