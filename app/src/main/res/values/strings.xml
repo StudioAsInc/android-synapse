@@ -317,4 +317,5 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="chat_settings_buy_credits_title">Buy Credits</string>
     <string name="chat_settings_ai_settings_title">AI Settings</string>
     <string name="chat_settings_ai_settings_summary">Setup your artificial intelligence settings</string>
+    <string name="cancel">Cancel</string>
 </resources>
