@@ -87,7 +87,23 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
 
         // Prompt for push notifications
         // Recommended for testing purposes. For production, use an in-app message.
-        OneSignal.getNotifications().requestPermission(true);
+        OneSignal.getNotifications().requestPermission(true, new kotlin.coroutines.Continuation<Boolean>() {
+            @Override
+            public void resume(Boolean aBoolean) {
+                Log.i("OneSignal", "Notification permission request successful with result: " + aBoolean);
+            }
+
+            @Override
+            public void resumeWithException(@NonNull Throwable throwable) {
+                Log.e("OneSignal", "Notification permission request failed with error: " + throwable.getMessage());
+            }
+
+            @NonNull
+            @Override
+            public kotlin.coroutines.CoroutineContext getContext() {
+                return kotlin.coroutines.EmptyCoroutineContext.INSTANCE;
+            }
+        });
 
         // Set up notification click handler for in-app navigation
         OneSignal.getNotifications().addClickListener(new NotificationClickHandler());
