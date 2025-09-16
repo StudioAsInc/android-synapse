@@ -53,15 +53,13 @@
 				android:layout_height="match_parent"
 				android:src="@drawable/ic_call_48px"
 				android:scaleType="fitCenter" />
-			<LinearLayout
-				android:id="@+id/devider_mic_camera"
+					<View
+						android:id="@+id/divider_mic_camera"
 				android:layout_width="1dp"
 				android:layout_height="20dp"
 				android:layout_marginLeft="18dp"
 				android:layout_marginRight="18dp"
-						android:padding="@dimen/spacing_normal"
-						android:background="@color/md_theme_outlineVariant"
-				android:orientation="horizontal" />
+						android:background="@color/md_theme_outlineVariant" />
 			<ImageView
 				android:id="@+id/galleryBtn"
 				android:layout_width="20dp"

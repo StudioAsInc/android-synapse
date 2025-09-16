@@ -219,7 +219,7 @@ public class ChatActivity extends AppCompatActivity {
 	private LinearLayout toolContainer;
 	private ImageView btn_voice_message;
 	private ImageView close_attachments_btn;
-	private LinearLayout devider_mic_camera;
+	private View divider_mic_camera;
 	private ImageView galleryBtn;
 
 	private String audioFilePath = "";
@@ -303,7 +303,7 @@ public class ChatActivity extends AppCompatActivity {
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
-		devider_mic_camera = findViewById(R.id.devider_mic_camera);
+		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
