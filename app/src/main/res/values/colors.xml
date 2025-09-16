@@ -162,4 +162,6 @@
     <color name="white">#FFFFFF</color>
     <color name="bars_colors">@color/md_theme_surfaceContainerLow</color>
     <color name="semi_trans">#80FFFFFF</color>
+    <color name="reply_text_color">#445E91</color>
+    <color name="hint_text_color">#607D8B</color>
 </resources>

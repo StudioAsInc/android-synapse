@@ -219,7 +219,7 @@ public class ChatActivity extends AppCompatActivity {
 	private LinearLayout toolContainer;
 	private ImageView btn_voice_message;
 	private ImageView close_attachments_btn;
-	private LinearLayout devider_mic_camera;
+	private View divider_mic_camera;
 	private ImageView galleryBtn;
 
 	private String audioFilePath = "";
@@ -303,7 +303,7 @@ public class ChatActivity extends AppCompatActivity {
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
-		devider_mic_camera = findViewById(R.id.devider_mic_camera);
+		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
@@ -432,7 +432,7 @@ public class ChatActivity extends AppCompatActivity {
 				DatabaseReference typingRef = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF);
 				if (_charSeq.length() == 0) {
 					typingRef.removeValue();
-					_TransitionManager(message_input_overall_container, 125);
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.GONE);
 					toolContainer.setVisibility(View.VISIBLE);
 				} else {
@@ -440,7 +440,7 @@ public class ChatActivity extends AppCompatActivity {
 					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
 					typingSnd.put("typingMessageStatus", "true");
 					typingRef.updateChildren(typingSnd);
-					_TransitionManager(message_input_overall_container, 125);
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.VISIBLE);
 					toolContainer.setVisibility(View.GONE);
 				}
@@ -604,11 +604,11 @@ public class ChatActivity extends AppCompatActivity {
 		_getUserReference();
 		message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 		if (message_et.getText().toString().trim().equals("")) {
-			_TransitionManager(message_input_overall_container, 250);
+			_TransitionManager(message_input_overall_container, 100);
 			message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 
 		} else {
-			_TransitionManager(message_input_overall_container, 250);
+			_TransitionManager(message_input_overall_container, 100);
 			message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
 
 		}
