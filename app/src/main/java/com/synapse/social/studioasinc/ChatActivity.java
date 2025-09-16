@@ -432,7 +432,7 @@ public class ChatActivity extends AppCompatActivity {
 				DatabaseReference typingRef = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF);
 				if (_charSeq.length() == 0) {
 					typingRef.removeValue();
-					_TransitionManager(message_input_overall_container, 125);
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.GONE);
 					toolContainer.setVisibility(View.VISIBLE);
 				} else {
@@ -440,7 +440,7 @@ public class ChatActivity extends AppCompatActivity {
 					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
 					typingSnd.put("typingMessageStatus", "true");
 					typingRef.updateChildren(typingSnd);
-					_TransitionManager(message_input_overall_container, 125);
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.VISIBLE);
 					toolContainer.setVisibility(View.GONE);
 				}
@@ -604,11 +604,11 @@ public class ChatActivity extends AppCompatActivity {
 		_getUserReference();
 		message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 		if (message_et.getText().toString().trim().equals("")) {
-			_TransitionManager(message_input_overall_container, 250);
+			_TransitionManager(message_input_overall_container, 100);
 			message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 
 		} else {
-			_TransitionManager(message_input_overall_container, 250);
+			_TransitionManager(message_input_overall_container, 100);
 			message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
 
 		}
