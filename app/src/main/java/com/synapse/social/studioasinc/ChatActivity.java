@@ -175,6 +175,7 @@ public class ChatActivity extends AppCompatActivity {
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
+	private java.util.Set<String> locallyDeletedMessages = new java.util.HashSet<>();
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
 	private ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
@@ -1368,6 +1369,10 @@ public class ChatActivity extends AppCompatActivity {
 					if (snapshot.exists()) {
 						String removedKey = snapshot.getKey();
 						if (removedKey != null) {
+							if (locallyDeletedMessages.contains(removedKey)) {
+								locallyDeletedMessages.remove(removedKey);
+								return;
+							}
 							// Find and remove the message by key (not by position)
 							for (int i = 0; i < ChatMessagesList.size(); i++) {
 								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
@@ -1775,6 +1780,9 @@ public class ChatActivity extends AppCompatActivity {
 			public void onClick(DialogInterface _dialog, int _which) {
 				// Get the key before the item is removed
 				String messageKey = _data.get((int)_position).get(KEY_KEY).toString();
+
+				// Add to locally deleted set to prevent race condition with listener
+				locallyDeletedMessages.add(messageKey);
 
 				// Remove from Firebase
 				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).child(messageKey).removeValue();
