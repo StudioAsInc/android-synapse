@@ -2088,6 +2088,10 @@ public class ChatActivity extends AppCompatActivity {
 				Log.d("ChatActivity", "Added message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 				// Use more granular insertion notification for smooth updates
 				chatAdapter.notifyItemInserted(newPosition);
+				// CRITICAL FIX: Notify the previous item to update its bubble shape
+				if (newPosition > 0) {
+					chatAdapter.notifyItemChanged(newPosition - 1);
+				}
 				
 				// Scroll to the new message immediately
 				ChatMessagesListRecycler.post(() -> {
@@ -2168,6 +2172,10 @@ public class ChatActivity extends AppCompatActivity {
 			int newPosition = ChatMessagesList.size() - 1;
 			Log.d("ChatActivity", "Added text message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 			chatAdapter.notifyItemInserted(newPosition);
+			// CRITICAL FIX: Notify the previous item to update its bubble shape
+			if (newPosition > 0) {
+				chatAdapter.notifyItemChanged(newPosition - 1);
+			}
 			
 			// Scroll to the new message immediately
 			ChatMessagesListRecycler.post(() -> {
