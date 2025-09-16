@@ -175,6 +175,7 @@ public class ChatActivity extends AppCompatActivity {
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
+	private java.util.Set<String> locallyDeletedMessages = new java.util.HashSet<>();
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
 	private ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
@@ -1368,6 +1369,10 @@ public class ChatActivity extends AppCompatActivity {
 					if (snapshot.exists()) {
 						String removedKey = snapshot.getKey();
 						if (removedKey != null) {
+							if (locallyDeletedMessages.contains(removedKey)) {
+								locallyDeletedMessages.remove(removedKey);
+								return;
+							}
 							// Find and remove the message by key (not by position)
 							for (int i = 0; i < ChatMessagesList.size(); i++) {
 								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
@@ -1776,6 +1781,9 @@ public class ChatActivity extends AppCompatActivity {
 				// Get the key before the item is removed
 				String messageKey = _data.get((int)_position).get(KEY_KEY).toString();
 
+				// Add to locally deleted set to prevent race condition with listener
+				locallyDeletedMessages.add(messageKey);
+
 				// Remove from Firebase
 				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).child(messageKey).removeValue();
 				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(messageKey).removeValue();
@@ -2088,11 +2096,20 @@ public class ChatActivity extends AppCompatActivity {
 				Log.d("ChatActivity", "Added message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 				// Use more granular insertion notification for smooth updates
 				chatAdapter.notifyItemInserted(newPosition);
+				if (newPosition > 0) {
+					chatAdapter.notifyItemChanged(newPosition - 1);
+				}
 				
 				// Scroll to the new message immediately
 				ChatMessagesListRecycler.post(() -> {
 					scrollToBottom();
 				});
+
+				if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
+					ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
+					singleMessageList.add(ChatSendMap);
+					_fetchRepliedMessages(singleMessageList);
+				}
 
 				String lastMessage = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
 
@@ -2168,11 +2185,20 @@ public class ChatActivity extends AppCompatActivity {
 			int newPosition = ChatMessagesList.size() - 1;
 			Log.d("ChatActivity", "Added text message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 			chatAdapter.notifyItemInserted(newPosition);
+			if (newPosition > 0) {
+				chatAdapter.notifyItemChanged(newPosition - 1);
+			}
 			
 			// Scroll to the new message immediately
 			ChatMessagesListRecycler.post(() -> {
 				scrollToBottom();
 			});
+
+			if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
+				ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
+				singleMessageList.add(ChatSendMap);
+				_fetchRepliedMessages(singleMessageList);
+			}
 
 			// Enhanced Smart Notification Check with chat ID for deep linking
 			String chatId = senderUid + "_" + recipientUid;
