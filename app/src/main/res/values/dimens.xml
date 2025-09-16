@@ -5,7 +5,7 @@
     <dimen name="chat_carousel_image_size">200dp</dimen>
     <dimen name="chat_carousel_spacing">8dp</dimen>
     <dimen name="chat_corner_radius_default">27dp</dimen>
-    <dimen name="chat_side_margin">40dp</dimen>
+    <dimen name="chat_side_margin">16dp</dimen>
     <dimen name="chat_padding_vertical">2dp</dimen>
     <dimen name="chat_padding_inner">8dp</dimen>
     

@@ -46,7 +46,7 @@
 				android:paddingTop="4dp"
 				android:paddingRight="4dp"
 				android:paddingBottom="8dp"
-				android:background="#CFD8DC"
+				android:background="@android:color/transparent"
 				android:orientation="vertical">
 				<com.google.android.material.card.MaterialCardView
 					android:id="@+id/videoContainerCard"

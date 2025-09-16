@@ -257,24 +257,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
         }
 
-        if (holder.mProfileCard != null && holder.mProfileImage != null) {
-            if (!isMyMessage) {
-                String currUid = data != null && data.get("uid") != null ? String.valueOf(data.get("uid")) : "";
-                String prevUid = (position - 1 >= 0 && _data.get(position - 1) != null && _data.get(position - 1).get("uid") != null) ? String.valueOf(_data.get(position - 1).get("uid")) : "";
-                boolean isFirstOfGroup = (position == 0) || (position - 1 >= 0 && !prevUid.equals(currUid));
-                holder.mProfileCard.setVisibility(isFirstOfGroup ? View.VISIBLE : View.GONE);
-                if (isFirstOfGroup) {
-                    if (secondUserAvatarUrl != null && !secondUserAvatarUrl.isEmpty() && !secondUserAvatarUrl.equals("null_banned")) {
-                         Glide.with(_context).load(Uri.parse(secondUserAvatarUrl)).into(holder.mProfileImage);
-                    } else if ("null_banned".equals(secondUserAvatarUrl)) {
-                         holder.mProfileImage.setImageResource(R.drawable.banned_avatar);
-                    } else {
-                         holder.mProfileImage.setImageResource(R.drawable.avatar);
-                    }
-                }
-            } else {
-                holder.mProfileCard.setVisibility(View.GONE);
-            }
+        if (holder.mProfileCard != null) {
+            holder.mProfileCard.setVisibility(View.GONE);
         }
         
         if (holder.mRepliedMessageLayout != null) {
@@ -383,32 +367,47 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         
         if (holder.messageBG != null) {
-            int cornerRadius = 27;
-            try { cornerRadius = (int) Double.parseDouble(appSettings.getString("ChatCornerRadius", "27")); } catch (Exception e) {}
-            
-            android.graphics.drawable.GradientDrawable bubbleDrawable = new android.graphics.drawable.GradientDrawable();
-            float density = _context.getResources().getDisplayMetrics().density;
-            bubbleDrawable.setCornerRadius(density * cornerRadius);
+            boolean isFirst = isFirstMessage(position);
+            boolean isLast = isLastMessage(position);
+
+            int drawableResId;
+            if (isMyMessage) {
+                if (isFirst && isLast) {
+                    drawableResId = R.drawable.shape_outgoing_message_single;
+                } else if (isFirst) {
+                    drawableResId = R.drawable.shape_outgoing_message_first;
+                } else if (isLast) {
+                    drawableResId = R.drawable.shape_outgoing_message_last;
+                } else {
+                    drawableResId = R.drawable.shape_outgoing_message_middle;
+                }
+            } else {
+                if (isFirst && isLast) {
+                    drawableResId = R.drawable.shape_incoming_message_single;
+                } else if (isFirst) {
+                    drawableResId = R.drawable.shape_incoming_message_first;
+                } else if (isLast) {
+                    drawableResId = R.drawable.shape_incoming_message_last;
+                } else {
+                    drawableResId = R.drawable.shape_incoming_message_middle;
+                }
+            }
+            holder.messageBG.setBackgroundResource(drawableResId);
 
             if (isMyMessage) {
-                bubbleDrawable.setColor(_context.getResources().getColor(R.color.md_theme_primaryContainer, null));
                 if(holder.message_text != null) holder.message_text.setTextColor(_context.getResources().getColor(R.color.md_theme_onPrimaryContainer, null));
             } else {
-                bubbleDrawable.setColor(_context.getResources().getColor(R.color.md_theme_surfaceContainerHighest, null));
-                bubbleDrawable.setStroke((int)(2 * density), _context.getResources().getColor(R.color.md_theme_outlineVariant, null));
                 if(holder.message_text != null) holder.message_text.setTextColor(_context.getResources().getColor(R.color.md_theme_onSurface, null));
             }
-            holder.messageBG.setBackground(bubbleDrawable);
 
             // Rounded ripple foreground to match bubble corners
             int rippleColor = isMyMessage ? 0x33FFFFFF : 0x22000000;
-            android.graphics.drawable.GradientDrawable rippleMask = new android.graphics.drawable.GradientDrawable();
-            rippleMask.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            rippleMask.setCornerRadius(density * cornerRadius);
-            rippleMask.setColor(_context.getResources().getColor(R.color.md_theme_surface, null));
-            android.content.res.ColorStateList rippleColors = new android.content.res.ColorStateList(new int[][]{ new int[]{} }, new int[]{ rippleColor });
-            android.graphics.drawable.RippleDrawable ripple = new android.graphics.drawable.RippleDrawable(rippleColors, null, rippleMask);
-            holder.messageBG.setForeground(ripple);
+            android.graphics.drawable.Drawable background = holder.messageBG.getBackground();
+            if (background instanceof android.graphics.drawable.RippleDrawable) {
+                android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable) background;
+                android.content.res.ColorStateList rippleColors = new android.content.res.ColorStateList(new int[][]{ new int[]{} }, new int[]{ rippleColor });
+                ripple.setColor(rippleColors);
+            }
             holder.messageBG.setClickable(true);
             holder.messageBG.setLongClickable(true);
         }
@@ -906,6 +905,24 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+    }
+
+    private boolean isFirstMessage(int position) {
+        if (position == 0) {
+            return true;
+        }
+        String currentSender = (String) _data.get(position).get("uid");
+        String previousSender = (String) _data.get(position - 1).get("uid");
+        return !currentSender.equals(previousSender);
+    }
+
+    private boolean isLastMessage(int position) {
+        if (position == _data.size() - 1) {
+            return true;
+        }
+        String currentSender = (String) _data.get(position).get("uid");
+        String nextSender = (String) _data.get(position + 1).get("uid");
+        return !currentSender.equals(nextSender);
     }
     
     // CRITICAL FIX: Smart timestamp visibility logic
