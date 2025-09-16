@@ -2088,11 +2088,20 @@ public class ChatActivity extends AppCompatActivity {
 				Log.d("ChatActivity", "Added message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 				// Use more granular insertion notification for smooth updates
 				chatAdapter.notifyItemInserted(newPosition);
+				if (newPosition > 0) {
+					chatAdapter.notifyItemChanged(newPosition - 1);
+				}
 				
 				// Scroll to the new message immediately
 				ChatMessagesListRecycler.post(() -> {
 					scrollToBottom();
 				});
+
+				if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
+					ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
+					singleMessageList.add(ChatSendMap);
+					_fetchRepliedMessages(singleMessageList);
+				}
 
 				String lastMessage = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
 
@@ -2168,11 +2177,20 @@ public class ChatActivity extends AppCompatActivity {
 			int newPosition = ChatMessagesList.size() - 1;
 			Log.d("ChatActivity", "Added text message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
 			chatAdapter.notifyItemInserted(newPosition);
+			if (newPosition > 0) {
+				chatAdapter.notifyItemChanged(newPosition - 1);
+			}
 			
 			// Scroll to the new message immediately
 			ChatMessagesListRecycler.post(() -> {
 				scrollToBottom();
 			});
+
+			if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
+				ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
+				singleMessageList.add(ChatSendMap);
+				_fetchRepliedMessages(singleMessageList);
+			}
 
 			// Enhanced Smart Notification Check with chat ID for deep linking
 			String chatId = senderUid + "_" + recipientUid;
