@@ -9,8 +9,8 @@
 		android:id="@+id/body"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:paddingLeft="8dp"
-		android:paddingRight="8dp"
+		android:paddingLeft="0dp"
+		android:paddingRight="0dp"
 		android:orientation="horizontal">
 		<androidx.cardview.widget.CardView
 			android:id="@+id/mProfileCard"
@@ -38,9 +38,9 @@
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_marginLeft="8dp"
+			android:layout_marginLeft="0dp"
 				android:layout_marginTop="2dp"
-				android:layout_marginRight="8dp"
+			android:layout_marginRight="0dp"
 				android:layout_marginBottom="2dp"
 				android:paddingLeft="12dp"
 				android:paddingTop="10dp"
