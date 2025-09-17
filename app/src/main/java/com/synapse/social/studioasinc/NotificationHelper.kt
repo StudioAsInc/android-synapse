@@ -244,7 +244,6 @@ object NotificationHelper {
         val request = Request.Builder()
             .url(ONESIGNAL_API_URL)
             .addHeader("Authorization", "Key ${NotificationConfig.ONESIGNAL_REST_API_KEY}")
-            .addHeader("Content-Type", "application/json")
             .post(body)
             .build()
 
