@@ -96,6 +96,7 @@ import com.synapse.social.studioasinc.SketchwareUtil;
 import com.synapse.social.studioasinc.StorageUtil;
 import com.synapse.social.studioasinc.UploadFiles;
 import com.synapse.social.studioasinc.AsyncUploadService;
+import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
 
 import java.io.File;
 import java.io.IOException;
@@ -580,8 +581,8 @@ public class ChatActivity extends AppCompatActivity {
 		_setupSwipeToReply();
 		// --- START: Critical Initialization for Attachment RecyclerView ---
 
-		// 1. Create the adapter for the attachment list, passing it our empty list.
-		Rv_attacmentListAdapter attachmentAdapter = new Rv_attacmentListAdapter(attactmentmap);
+        // 1. Create the adapter for the attachment list, passing it our empty list.
+        Rv_attacmentListAdapter attachmentAdapter = new Rv_attacmentListAdapter(this, attactmentmap, attachmentLayoutListHolder);
 		rv_attacmentList.setAdapter(attachmentAdapter);
 
 		// 2. A RecyclerView must have a LayoutManager to function.
@@ -3118,190 +3119,7 @@ public class ChatActivity extends AppCompatActivity {
 		}
 	}
 
-	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> {
-
-		ArrayList<HashMap<String, Object>> _data;
-
-		public Rv_attacmentListAdapter(ArrayList<HashMap<String, Object>> _arr) {
-			_data = _arr;
-		}
-
-		@Override
-		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-			LayoutInflater _inflater = getLayoutInflater();
-			View _v = _inflater.inflate(R.layout.chat_attactment, null);
-			// CRITICAL FIX: Ensure consistent dimensions to prevent height changes during upload
-			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(dpToPx(100), dpToPx(100));
-			_v.setLayoutParams(_lp);
-			return new ViewHolder(_v);
-		}
-
-		@Override
-		public void onBindViewHolder(ViewHolder _holder, final int _position) {
-			View _view = _holder.itemView;
-
-			final androidx.cardview.widget.CardView cardMediaItem = _view.findViewById(R.id.cardMediaItem);
-			final RelativeLayout imageWrapperRL = _view.findViewById(R.id.imageWrapperRL);
-			final ImageView previewIV = _view.findViewById(R.id.previewIV);
-			final LinearLayout overlayLL = _view.findViewById(R.id.overlayLL);
-			final com.google.android.material.progressindicator.CircularProgressIndicator uploadProgressCPI = _view.findViewById(R.id.uploadProgressCPI);
-			final ImageView closeIV = _view.findViewById(R.id.closeIV);
-
-			// Safety check for position bounds
-			if (_position < 0 || _position >= attactmentmap.size()) {
-				Log.w("ChatActivity", "Invalid position in attachment adapter: " + _position);
-				_view.setVisibility(View.GONE);
-				return;
-			}
-
-			// Get the data map using the block's parameters
-			HashMap<String, Object> itemData = attactmentmap.get(_position);
-			if (itemData == null) {
-				Log.w("ChatActivity", "Null item data at position: " + _position);
-				_view.setVisibility(View.GONE);
-				return;
-			}
-
-			// --- START: ROBUSTNESS FIX ---
-			// Safety Check: Verify that the required "localPath" key exists and is not null.
-			if (!itemData.containsKey("localPath") || itemData.get("localPath") == null) {
-				// If the data is invalid, hide this item completely to prevent a crash.
-				_view.setVisibility(View.GONE);
-				_view.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
-				return; // Stop processing this broken item.
-			}
-			// If we pass this check, we can safely proceed.
-			_view.setVisibility(View.VISIBLE);
-			// CRITICAL FIX: Maintain consistent dimensions regardless of upload state
-			_view.setLayoutParams(new RecyclerView.LayoutParams(dpToPx(100), dpToPx(100)));
-			// --- END: ROBUSTNESS FIX ---
-
-			// Set the image preview with error handling
-			String localPath = itemData.get("localPath").toString();
-			try {
-				// Clear previous image to prevent recycling issues
-				previewIV.setImageDrawable(null);
-				
-				// Load new image
-				previewIV.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(localPath, 1024, 1024));
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error loading image preview: " + e.getMessage());
-				// Set a placeholder image on error
-				previewIV.setImageResource(R.drawable.ph_imgbluredsqure);
-			}
-
-			// Get the upload state and progress.
-			String uploadState = itemData.getOrDefault("uploadState", "pending").toString();
-			int progress = 0;
-			if (itemData.containsKey("uploadProgress")) {
-				try {
-					progress = (int) Double.parseDouble(itemData.get("uploadProgress").toString());
-				} catch (NumberFormatException e) {
-					Log.w("ChatActivity", "Invalid upload progress value: " + itemData.get("uploadProgress"));
-					progress = 0;
-				}
-			}
-
-			// Update the UI by accessing views directly by their ID.
-			switch (uploadState) {
-				case "uploading":
-					overlayLL.setVisibility(View.VISIBLE);
-					overlayLL.setBackgroundColor(0x80000000);
-					uploadProgressCPI.setVisibility(View.VISIBLE);
-					uploadProgressCPI.setProgress(progress);
-					closeIV.setVisibility(View.GONE);
-					break;
-
-				case "success":
-					overlayLL.setVisibility(View.GONE);
-					uploadProgressCPI.setVisibility(View.GONE);
-					closeIV.setVisibility(View.VISIBLE);
-					break;
-
-				case "failed":
-					overlayLL.setVisibility(View.VISIBLE);
-					overlayLL.setBackgroundColor(0x80D32F2F);
-					uploadProgressCPI.setVisibility(View.GONE);
-					closeIV.setVisibility(View.VISIBLE);
-					break;
-
-				default: // "pending" state
-					overlayLL.setVisibility(View.GONE);
-					uploadProgressCPI.setVisibility(View.GONE);
-					closeIV.setVisibility(View.VISIBLE);
-					break;
-			}
-
-			// Set the click listener on the close icon with proper position handling
-			closeIV.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					// Use final position to avoid closure issues
-					final int finalPosition = _position;
-					
-					if (finalPosition < 0 || finalPosition >= attactmentmap.size()) {
-						Log.w("ChatActivity", "Invalid position for removal: " + finalPosition);
-						return;
-					}
-
-					HashMap<String, Object> currentItemData = attactmentmap.get(finalPosition);
-					if (currentItemData == null) {
-						Log.w("ChatActivity", "Null item data for removal at position: " + finalPosition);
-						return;
-					}
-
-					// Cancel upload if in progress
-					if ("uploading".equals(currentItemData.get("uploadState"))) {
-						String localPath = currentItemData.get("localPath").toString();
-						AsyncUploadService.cancelUpload(ChatActivity.this, localPath);
-					}
-					
-					// Remove the item
-					attactmentmap.remove(finalPosition);
-					
-					// Notify adapter of changes
-					if (rv_attacmentList.getAdapter() != null) {
-						rv_attacmentList.getAdapter().notifyItemRemoved(finalPosition);
-						// Update remaining items
-						rv_attacmentList.getAdapter().notifyItemRangeChanged(finalPosition, attactmentmap.size() - finalPosition);
-					}
-
-					// Delete from cloud storage if available
-					if (currentItemData.containsKey("publicId")) {
-						String publicId = currentItemData.get("publicId").toString();
-						if (publicId != null && !publicId.isEmpty()) {
-							UploadFiles.deleteByPublicId(publicId, new UploadFiles.DeleteCallback() {
-								@Override 
-								public void onSuccess() {
-									Log.d("ChatActivity", "Successfully deleted attachment: " + publicId);
-								}
-								@Override 
-								public void onFailure(String error) {
-									Log.e("ChatActivity", "Failed to delete attachment: " + error);
-								}
-							});
-						}
-					}
-
-					// Hide attachment holder if no more attachments
-					if (attactmentmap.isEmpty()) {
-						attachmentLayoutListHolder.setVisibility(View.GONE);
-					}
-				}
-			});
-		}
-
-		@Override
-		public int getItemCount() {
-			return _data.size();
-		}
-
-		public class ViewHolder extends RecyclerView.ViewHolder {
-			public ViewHolder(View v) {
-				super(v);
-			}
-		}
-	}
+//	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }
 
 	private void uploadAudioFile() {
 		if (audioFilePath != null && !audioFilePath.isEmpty()) {
