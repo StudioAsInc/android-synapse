@@ -57,86 +57,77 @@
 				app:layout_constraintStart_toStartOf="parent"
 				app:layout_constraintEnd_toEndOf="parent">
 
-				<LinearLayout
+				<androidx.constraintlayout.widget.ConstraintLayout
 					android:id="@+id/nameLayout"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
 					android:padding="16dp"
-					android:orientation="vertical"
 					android:background="@drawable/white_rounded_stroke"
 					android:animateLayoutChanges="true"
 					app:layout_constraintTop_toTopOf="parent"
 					app:layout_constraintStart_toStartOf="parent"
 					app:layout_constraintEnd_toEndOf="parent">
+
 					<LinearLayout
-						android:id="@+id/profileSeparatorLayout"
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
-						android:orientation="horizontal"
-						android:animateLayoutChanges="true">
+						android:id="@+id/profileHolderLayout"
+						android:layout_width="wrap_content"
+						android:layout_height="0dp"
+						android:layout_marginRight="10dp"
+						android:gravity="center_horizontal|center_vertical"
+						android:orientation="vertical"
+						android:visibility="gone"
+						android:animateLayoutChanges="true"
+						app:layout_constraintTop_toTopOf="parent"
+						app:layout_constraintBottom_toBottomOf="parent"
+						app:layout_constraintStart_toStartOf="parent">
 						<LinearLayout
-							android:id="@+id/profileHolderLayout"
-							android:layout_width="wrap_content"
-							android:layout_height="match_parent"
-							android:layout_marginRight="10dp"
+							android:id="@+id/latterProfilePictureLayoutCircle"
+							android:layout_width="50dp"
+							android:layout_height="50dp"
 							android:gravity="center_horizontal|center_vertical"
 							android:orientation="vertical"
-							android:visibility="gone"
-							android:animateLayoutChanges="true">
-							<LinearLayout
-								android:id="@+id/latterProfilePictureLayoutCircle"
-								android:layout_width="50dp"
-								android:layout_height="50dp"
-								android:gravity="center_horizontal|center_vertical"
-								android:orientation="vertical"
-								android:background="@drawable/circlelayout">
-								<TextView
-									android:id="@+id/nameFirstLetterTextView"
-									android:layout_width="wrap_content"
-									android:layout_height="wrap_content"
-									android:text="A"
-									android:textSize="20sp"
-									android:textStyle="bold"
-									android:textColor="?colorSurface" />
-							</LinearLayout>
-						</LinearLayout>
-						<LinearLayout
-							android:id="@+id/nameLayoutHolderLayout"
-							android:layout_width="match_parent"
-							android:layout_height="match_parent"
-							android:orientation="vertical">
+							android:background="@drawable/circlelayout">
 							<TextView
-								android:id="@+id/userAutoResponseTextView_1"
+								android:id="@+id/nameFirstLetterTextView"
 								android:layout_width="wrap_content"
 								android:layout_height="wrap_content"
-								android:text="Nice to meet you, I'm..."
-								android:textSize="16sp"
-								android:textColor="?attr/colorOnSurface"
-								android:fontFamily="@font/product_sans" />
-							<LinearLayout
-								android:id="@+id/EditTextContainerLayout"
-								android:layout_width="match_parent"
-								android:layout_height="wrap_content"
-								android:layout_marginTop="5dp"
-								android:background="@android:color/transparent"
-								android:orientation="horizontal">
-								<EditText
-									android:id="@+id/usernameEditText"
-									android:layout_width="match_parent"
-									android:layout_height="match_parent"
-									android:padding="2dp"
-									android:background="@android:color/transparent"
-									android:gravity="center_vertical"
-									android:textSize="18sp"
-									android:textColor="?attr/colorOnSurface"
-									android:hint="Enter your name"
-									android:textColorHint="?attr/colorOnSurfaceVariant"
-									android:singleLine="true"
-									android:fontFamily="@font/product_sans" />
-							</LinearLayout>
+								android:text="A"
+								android:textSize="20sp"
+								android:textStyle="bold"
+								android:textColor="?colorSurface" />
 						</LinearLayout>
 					</LinearLayout>
-				</LinearLayout>
+
+					<TextView
+						android:id="@+id/userAutoResponseTextView_1"
+						android:layout_width="0dp"
+						android:layout_height="wrap_content"
+						android:text="Nice to meet you, I'm..."
+						android:textSize="16sp"
+						android:textColor="?attr/colorOnSurface"
+						android:fontFamily="@font/product_sans"
+						app:layout_constraintTop_toTopOf="parent"
+						app:layout_constraintStart_toEndOf="@id/profileHolderLayout"
+						app:layout_constraintEnd_toEndOf="parent"/>
+
+					<EditText
+						android:id="@+id/usernameEditText"
+						android:layout_width="0dp"
+						android:layout_height="wrap_content"
+						android:layout_marginTop="5dp"
+						android:padding="2dp"
+						android:background="@android:color/transparent"
+						android:gravity="center_vertical"
+						android:textSize="18sp"
+						android:textColor="?attr/colorOnSurface"
+						android:hint="Enter your name"
+						android:textColorHint="?attr/colorOnSurfaceVariant"
+						android:singleLine="true"
+						android:fontFamily="@font/product_sans"
+						app:layout_constraintTop_toBottomOf="@id/userAutoResponseTextView_1"
+						app:layout_constraintStart_toStartOf="@id/userAutoResponseTextView_1"
+						app:layout_constraintEnd_toEndOf="@id/userAutoResponseTextView_1"/>
+				</androidx.constraintlayout.widget.ConstraintLayout>
 
 				<View
 					android:id="@+id/animatorSupportLayout"
@@ -147,55 +138,48 @@
 					app:layout_constraintStart_toStartOf="parent"
 					app:layout_constraintEnd_toEndOf="parent"/>
 
-				<LinearLayout
+				<androidx.constraintlayout.widget.ConstraintLayout
 					android:id="@+id/linear2"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
 					android:layout_marginTop="10dp"
 					android:padding="8dp"
-					android:gravity="center_horizontal|center_vertical"
-					android:orientation="vertical"
 					app:layout_constraintBottom_toBottomOf="parent"
 					app:layout_constraintStart_toStartOf="parent"
 					app:layout_constraintEnd_toEndOf="parent">
-					<LinearLayout
-						android:id="@+id/ageCheckboxLayout"
-						android:layout_width="match_parent"
+
+					<CheckBox
+						android:id="@+id/confirmAgeCheckBox"
+						android:layout_width="0dp"
 						android:layout_height="wrap_content"
-						android:orientation="horizontal"
-						android:background="@drawable/rounded_stroke">
-						<CheckBox
-							android:id="@+id/confirmAgeCheckBox"
-							android:layout_width="match_parent"
-							android:layout_height="wrap_content"
-							android:layout_marginLeft="12dp"
-							android:layout_marginRight="12dp"
-							android:background="@android:color/transparent"
-							android:gravity="center_vertical"
-							android:text="@string/age_agreement"
-							android:textSize="12sp"
-							android:textStyle="bold"
-							android:textColor="?colorOnSurface"
-							android:fontFamily="@font/product_sans" />
-					</LinearLayout>
-					<LinearLayout
-						android:id="@+id/continueBtnHolderLayout"
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
+						android:layout_marginLeft="12dp"
+						android:layout_marginRight="12dp"
+						android:background="@drawable/rounded_stroke"
+						android:gravity="center_vertical"
+						android:text="@string/age_agreement"
+						android:textSize="12sp"
+						android:textStyle="bold"
+						android:textColor="?colorOnSurface"
+						android:fontFamily="@font/product_sans"
+						app:layout_constraintTop_toTopOf="parent"
+						app:layout_constraintStart_toStartOf="parent"
+						app:layout_constraintEnd_toEndOf="parent"/>
+
+					<Button
+						android:id="@+id/continueButton"
+						android:layout_width="0dp"
+						android:layout_height="60dp"
 						android:layout_marginTop="15dp"
-						android:gravity="center_horizontal|center_vertical"
-						android:orientation="horizontal">
-						<Button
-							android:id="@+id/continueButton"
-							android:layout_width="match_parent"
-							android:layout_height="60dp"
-							android:padding="8dp"
-							android:text="Continue"
-							android:textSize="16sp"
-							android:textColor="?colorSurface"
-							style="@style/Widget.Material3.Button"
-							android:fontFamily="@font/product_sans_bold" />
-					</LinearLayout>
+						android:padding="8dp"
+						android:text="Continue"
+						android:textSize="16sp"
+						android:textColor="?colorSurface"
+						style="@style/Widget.Material3.Button"
+						android:fontFamily="@font/product_sans_bold"
+						app:layout_constraintTop_toBottomOf="@id/confirmAgeCheckBox"
+						app:layout_constraintStart_toStartOf="parent"
+						app:layout_constraintEnd_toEndOf="parent"/>
+
 					<TextView
 						android:id="@+id/infoTextView_1"
 						android:layout_width="wrap_content"
@@ -205,8 +189,11 @@
 						android:text="You can always change your name later"
 						android:textSize="12sp"
 						android:textColor="?attr/colorOnBackground"
-						android:fontFamily="@font/product_sans" />
-				</LinearLayout>
+						android:fontFamily="@font/product_sans"
+						app:layout_constraintTop_toBottomOf="@id/continueButton"
+						app:layout_constraintStart_toStartOf="parent"
+						app:layout_constraintEnd_toEndOf="parent"/>
+				</androidx.constraintlayout.widget.ConstraintLayout>
 			</androidx.constraintlayout.widget.ConstraintLayout>
 			<androidx.constraintlayout.widget.ConstraintLayout
 				android:id="@+id/section2Layout"
