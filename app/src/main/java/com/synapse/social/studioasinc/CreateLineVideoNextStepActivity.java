@@ -97,19 +97,11 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private String fileSize = "";
 	private String fileName = "";
 
-	private LinearLayout main;
-	private LinearLayout top;
-	private LinearLayout topSpace;
 	private ScrollView scroll;
 	private ImageView back;
-	private LinearLayout topSpc;
 	private TextView continueButton;
 	private TextView title;
 	private TextView subtitle;
-	private LinearLayout scrollBody;
-	private LinearLayout PostInfoTop1;
-	private LinearLayout topSpace2;
-	private LinearLayout HashtagLayoutBody;
 	private EditText postDescription;
 	private RecyclerView recyclerview1;
 
@@ -163,19 +155,11 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		main = findViewById(R.id.main);
-		top = findViewById(R.id.top);
-		topSpace = findViewById(R.id.topSpace);
 		scroll = findViewById(R.id.scroll);
 		back = findViewById(R.id.back);
-		topSpc = findViewById(R.id.topSpc);
 		continueButton = findViewById(R.id.continueButton);
 		title = findViewById(R.id.title);
 		subtitle = findViewById(R.id.subtitle);
-		scrollBody = findViewById(R.id.scrollBody);
-		PostInfoTop1 = findViewById(R.id.PostInfoTop1);
-		topSpace2 = findViewById(R.id.topSpace2);
-		HashtagLayoutBody = findViewById(R.id.HashtagLayoutBody);
 		postDescription = findViewById(R.id.postDescription);
 		recyclerview1 = findViewById(R.id.recyclerview1);
 		auth = FirebaseAuth.getInstance();
@@ -211,9 +195,9 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
 				if (_charSeq.length() == 0) {
-					_TransitionManager(PostInfoTop1, 200);
+					// _TransitionManager(PostInfoTop1, 200);
 				} else {
-					_TransitionManager(PostInfoTop1, 200);
+					// _TransitionManager(PostInfoTop1, 200);
 				}
 			}
 

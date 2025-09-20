@@ -25,13 +25,11 @@
 			app:statusBarScrim="@android:color/transparent"
 			app:titleEnabled="false">
 
-			<LinearLayout
+			<androidx.constraintlayout.widget.ConstraintLayout
 				android:id="@+id/user_info"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="?attr/actionBarSize"
-				android:gravity="center_horizontal|center_vertical"
-				android:orientation="vertical"
 				android:padding="8dp"
 				app:layout_collapseMode="parallax">
 
@@ -40,7 +38,10 @@
 					android:layout_width="120dp"
 					android:layout_height="120dp"
 					app:cardCornerRadius="300dp"
-					app:cardElevation="1dp">
+					app:cardElevation="1dp"
+					app:layout_constraintTop_toTopOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toEndOf="parent">
 
 					<ImageView
 						android:id="@+id/profilePictureIV"
@@ -59,7 +60,10 @@
 					android:text="Md Ashik"
 					android:textColor="?android:attr/textColorPrimary"
 					android:textSize="30sp"
-					android:textStyle="bold" />
+					android:textStyle="bold"
+					app:layout_constraintTop_toBottomOf="@id/cardProfilePictureWrapper"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toEndOf="parent"/>
 
 				<Button
 					android:id="@+id/button1"
@@ -73,8 +77,11 @@
 					android:text="End-to-end encrypted"
 					android:textColor="?android:attr/textColorPrimary"
 					android:textSize="14sp"
-					app:icon="@drawable/ic_shield_lock" />
-			</LinearLayout>
+					app:icon="@drawable/ic_shield_lock"
+					app:layout_constraintTop_toBottomOf="@id/username"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toEndOf="parent"/>
+			</androidx.constraintlayout.widget.ConstraintLayout>
 
 			<com.google.android.material.appbar.MaterialToolbar
 				android:id="@+id/toolbar"
@@ -140,29 +147,29 @@
 						app:cardCornerRadius="20dp"
 						app:cardElevation="0dp">
 
-						<LinearLayout
+						<androidx.constraintlayout.widget.ConstraintLayout
 							android:id="@+id/linear14"
 							android:layout_width="match_parent"
 							android:layout_height="wrap_content"
-							android:orientation="vertical"
 							android:padding="8dp">
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/themeMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toTopOf="parent"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview10"
@@ -172,37 +179,40 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_category"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview10"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Theme"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview10"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview10"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Theme"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview9"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="Default"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview9"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="Default"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview10"
+										app:layout_constraintStart_toStartOf="@id/textview10"
+										app:layout_constraintEnd_toEndOf="@id/textview10"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/nicknameMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:layout_marginBottom="10dp"
@@ -211,13 +221,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/themeMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview11"
@@ -227,50 +238,54 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_edit_note_48px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview11"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Nickname"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview11"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview11"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Nickname"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview12"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="Md Ashik"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview12"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="Md Ashik"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview11"
+										app:layout_constraintStart_toStartOf="@id/textview11"
+										app:layout_constraintEnd_toEndOf="@id/textview11"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/wordEffectMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/nicknameMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview12"
@@ -280,37 +295,40 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/filter_vintage_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview13"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Word effect"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview12"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview13"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Word effect"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview14"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="No word effect"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview14"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="No word effect"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview13"
+										app:layout_constraintStart_toStartOf="@id/textview13"
+										app:layout_constraintEnd_toEndOf="@id/textview13"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/quickReactionOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:clickable="true"
@@ -318,13 +336,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/wordEffectMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview13"
@@ -334,34 +353,37 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_thumb_up_48px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview15"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Quick reaction"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview13"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview15"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Quick reaction"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview16"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="👍"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview16"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="👍"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview15"
+										app:layout_constraintStart_toStartOf="@id/textview15"
+										app:layout_constraintEnd_toEndOf="@id/textview15"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
-						</LinearLayout>
+						</androidx.constraintlayout.widget.ConstraintLayout>
 					</androidx.cardview.widget.CardView>
 
 					<TextView
@@ -382,66 +404,67 @@
 						app:cardCornerRadius="20dp"
 						app:cardElevation="0dp">
 
-						<LinearLayout
+						<androidx.constraintlayout.widget.ConstraintLayout
 							android:id="@+id/linear21"
 							android:layout_width="match_parent"
 							android:layout_height="wrap_content"
-							android:orientation="vertical"
 							android:padding="8dp">
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/cardReadReceipt"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="70dp"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toTopOf="parent"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:id="@+id/readReceiptsMainSwitch"
 									android:layout_width="match_parent"
-									android:layout_height="match_parent"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="match_parent">
 
 									<ImageView
 										android:id="@+id/imageview14"
-										android:layout_width="wrap_content"
+										android:layout_width="25dp"
 										android:layout_height="25dp"
 										android:layout_marginLeft="10dp"
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/mark_chat_read_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear26"
-										android:layout_width="wrap_content"
+									<TextView
+										android:id="@+id/textview18"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:layout_weight="1"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Read receipts"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview14"
+										app:layout_constraintEnd_toStartOf="@id/switchReadReceipt"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview18"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Read receipts"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview19"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="Default"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
+									<TextView
+										android:id="@+id/textview19"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="Default"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview18"
+										app:layout_constraintStart_toStartOf="@id/textview18"
+										app:layout_constraintEnd_toEndOf="@id/textview18"/>
 
 									<com.google.android.material.materialswitch.MaterialSwitch
 										android:id="@+id/switchReadReceipt"
@@ -451,13 +474,16 @@
 										android:layout_marginRight="10dp"
 										android:checked="true"
 										android:textColor="?android:attr/textColorPrimary"
-										android:textSize="12sp" />
-								</LinearLayout>
+										android:textSize="12sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintEnd_toEndOf="parent"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/disappearingMainSwitch"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:layout_marginBottom="10dp"
@@ -466,13 +492,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/cardReadReceipt"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview15"
@@ -482,33 +509,34 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/auto_delete_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear27"
-										android:layout_width="wrap_content"
+									<TextView
+										android:id="@+id/textview20"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:layout_weight="1"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Disappearing message"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview15"
+										app:layout_constraintEnd_toStartOf="@id/switchDisappearingMessages"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview20"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Disappearing message"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview21"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="24 hours"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
+									<TextView
+										android:id="@+id/textview21"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="24 hours"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview20"
+										app:layout_constraintStart_toStartOf="@id/textview20"
+										app:layout_constraintEnd_toEndOf="@id/textview20"/>
 
 									<com.google.android.material.materialswitch.MaterialSwitch
 										android:id="@+id/switchDisappearingMessages"
@@ -517,13 +545,16 @@
 										android:layout_marginLeft="3dp"
 										android:layout_marginRight="10dp"
 										android:textColor="?android:attr/textColorPrimary"
-										android:textSize="12sp" />
-								</LinearLayout>
+										android:textSize="12sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintEnd_toEndOf="parent"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/savePhotoVideoMainSwitch"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginBottom="10dp"
 								android:clickable="true"
@@ -531,13 +562,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/disappearingMainSwitch"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview26"
@@ -547,33 +579,34 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/file_save_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear49"
-										android:layout_width="wrap_content"
+									<TextView
+										android:id="@+id/textview44"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:layout_weight="1"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Save photos and videos"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview26"
+										app:layout_constraintEnd_toStartOf="@id/switchAutoSaveMedia"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview44"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Save photos and videos"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview45"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="Automatically save photos and videos"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
+									<TextView
+										android:id="@+id/textview45"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="Automatically save photos and videos"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview44"
+										app:layout_constraintStart_toStartOf="@id/textview44"
+										app:layout_constraintEnd_toEndOf="@id/textview44"/>
 
 									<com.google.android.material.materialswitch.MaterialSwitch
 										android:id="@+id/switchAutoSaveMedia"
@@ -582,26 +615,30 @@
 										android:layout_marginLeft="3dp"
 										android:layout_marginRight="10dp"
 										android:textColor="?android:attr/textColorPrimary"
-										android:textSize="12sp" />
-								</LinearLayout>
+										android:textSize="12sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintEnd_toEndOf="parent"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/pinnedMessagesMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/savePhotoVideoMainSwitch"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview16"
@@ -611,38 +648,40 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/keep_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear28"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview22"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Pinned message"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview16"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview22"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Pinned message"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview23"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="View pinned message"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview23"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="View pinned message"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview22"
+										app:layout_constraintStart_toStartOf="@id/textview22"
+										app:layout_constraintEnd_toEndOf="@id/textview22"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/searchMessagesMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:clickable="true"
@@ -650,13 +689,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/pinnedMessagesMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview17"
@@ -666,35 +706,37 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_search_48px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear29"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview24"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Search conversation"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview17"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview24"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Search conversation"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview25"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginTop="5dp"
-											android:text="Find specific conversations"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview25"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginTop="5dp"
+										android:text="Find specific conversations"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview24"
+										app:layout_constraintStart_toStartOf="@id/textview24"
+										app:layout_constraintEnd_toEndOf="@id/textview24"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
-						</LinearLayout>
+						</androidx.constraintlayout.widget.ConstraintLayout>
 					</androidx.cardview.widget.CardView>
 
 					<TextView
@@ -715,29 +757,29 @@
 						app:cardCornerRadius="20dp"
 						app:cardElevation="0dp">
 
-						<LinearLayout
+						<androidx.constraintlayout.widget.ConstraintLayout
 							android:id="@+id/linear39"
 							android:layout_width="match_parent"
 							android:layout_height="wrap_content"
-							android:orientation="vertical"
 							android:padding="8dp">
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/e2eVerificationMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toTopOf="parent"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview22"
@@ -747,39 +789,41 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_key"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear44"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview36"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Verify encryption"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview22"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview36"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Verify encryption"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview37"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginLeft="1dp"
-											android:layout_marginTop="5dp"
-											android:text="Verify end-to-end and encryption"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview37"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginLeft="1dp"
+										android:layout_marginTop="5dp"
+										android:text="Verify end-to-end and encryption"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview36"
+										app:layout_constraintStart_toStartOf="@id/textview36"
+										app:layout_constraintEnd_toEndOf="@id/textview36"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/sharedContactsMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:layout_marginBottom="10dp"
@@ -788,13 +832,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/e2eVerificationMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview23"
@@ -804,52 +849,55 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/ic_forward"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear45"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview38"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Share contact"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview23"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview38"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Share contact"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview39"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginLeft="1dp"
-											android:layout_marginTop="5dp"
-											android:text="Share the link of  profile"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview39"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginLeft="1dp"
+										android:layout_marginTop="5dp"
+										android:text="Share the link of  profile"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview38"
+										app:layout_constraintStart_toStartOf="@id/textview38"
+										app:layout_constraintEnd_toEndOf="@id/textview38"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/blockMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:clickable="true"
 								android:focusable="true"
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/sharedContactsMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview24"
@@ -859,39 +907,41 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/mobile_block_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/block_lay1"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview40"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Block"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview24"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview40"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Block"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview41"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginLeft="1dp"
-											android:layout_marginTop="5dp"
-											android:text="They won't be able to call or message."
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview41"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginLeft="1dp"
+										android:layout_marginTop="5dp"
+										android:text="They won't be able to call or message."
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview40"
+										app:layout_constraintStart_toStartOf="@id/textview40"
+										app:layout_constraintEnd_toEndOf="@id/textview40"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
 
 							<androidx.cardview.widget.CardView
 								android:id="@+id/reportMainOption"
-								android:layout_width="match_parent"
+								android:layout_width="0dp"
 								android:layout_height="wrap_content"
 								android:layout_marginTop="10dp"
 								android:clickable="true"
@@ -899,13 +949,14 @@
 								android:foreground="@drawable/ripple_rounded_corners"
 								app:cardBackgroundColor="@android:color/transparent"
 								app:cardCornerRadius="20dp"
-								app:cardElevation="0dp">
+								app:cardElevation="0dp"
+								app:layout_constraintTop_toBottomOf="@id/blockMainOption"
+								app:layout_constraintStart_toStartOf="parent"
+								app:layout_constraintEnd_toEndOf="parent">
 
-								<LinearLayout
+								<androidx.constraintlayout.widget.ConstraintLayout
 									android:layout_width="match_parent"
-									android:layout_height="wrap_content"
-									android:gravity="center_horizontal|center_vertical"
-									android:orientation="horizontal">
+									android:layout_height="wrap_content">
 
 									<ImageView
 										android:id="@+id/imageview25"
@@ -915,36 +966,38 @@
 										android:layout_marginRight="12dp"
 										android:scaleType="fitCenter"
 										android:src="@drawable/report_24px"
-										app:tint="?attr/colorOnSurface" />
+										app:tint="?attr/colorOnSurface"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintBottom_toBottomOf="parent"
+										app:layout_constraintStart_toStartOf="parent"/>
 
-									<LinearLayout
-										android:id="@+id/linear47"
-										android:layout_width="match_parent"
+									<TextView
+										android:id="@+id/textview42"
+										android:layout_width="0dp"
 										android:layout_height="wrap_content"
-										android:orientation="vertical"
-										android:padding="8dp">
+										android:text="Report"
+										android:textColor="?android:attr/textColorPrimary"
+										android:textSize="18sp"
+										app:layout_constraintTop_toTopOf="parent"
+										app:layout_constraintStart_toEndOf="@id/imageview25"
+										app:layout_constraintEnd_toEndOf="parent"
+										android:layout_marginLeft="8dp"/>
 
-										<TextView
-											android:id="@+id/textview42"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:text="Report"
-											android:textColor="?android:attr/textColorPrimary"
-											android:textSize="18sp" />
-
-										<TextView
-											android:id="@+id/textview43"
-											android:layout_width="wrap_content"
-											android:layout_height="wrap_content"
-											android:layout_marginLeft="1dp"
-											android:layout_marginTop="5dp"
-											android:text="Give feedbacks and report conversation"
-											android:textColor="?android:attr/textColorSecondary"
-											android:textSize="14sp" />
-									</LinearLayout>
-								</LinearLayout>
+									<TextView
+										android:id="@+id/textview43"
+										android:layout_width="0dp"
+										android:layout_height="wrap_content"
+										android:layout_marginLeft="1dp"
+										android:layout_marginTop="5dp"
+										android:text="Give feedbacks and report conversation"
+										android:textColor="?android:attr/textColorSecondary"
+										android:textSize="14sp"
+										app:layout_constraintTop_toBottomOf="@id/textview42"
+										app:layout_constraintStart_toStartOf="@id/textview42"
+										app:layout_constraintEnd_toEndOf="@id/textview42"/>
+								</androidx.constraintlayout.widget.ConstraintLayout>
 							</androidx.cardview.widget.CardView>
-						</LinearLayout>
+						</androidx.constraintlayout.widget.ConstraintLayout>
 					</androidx.cardview.widget.CardView>
 				</LinearLayout>
 			</LinearLayout>
