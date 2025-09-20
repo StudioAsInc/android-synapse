@@ -109,7 +109,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private LinearLayout scrollBody;
 	private LinearLayout PostInfoTop1;
 	private LinearLayout topSpace2;
-	private LinearLayout HashtagLayoutBody;
 	private EditText postDescription;
 	private RecyclerView recyclerview1;
 
@@ -175,7 +174,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		scrollBody = findViewById(R.id.scrollBody);
 		PostInfoTop1 = findViewById(R.id.PostInfoTop1);
 		topSpace2 = findViewById(R.id.topSpace2);
-		HashtagLayoutBody = findViewById(R.id.HashtagLayoutBody);
 		postDescription = findViewById(R.id.postDescription);
 		recyclerview1 = findViewById(R.id.recyclerview1);
 		auth = FirebaseAuth.getInstance();

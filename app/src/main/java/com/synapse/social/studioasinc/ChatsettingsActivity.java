@@ -102,11 +102,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private TextView textview50;
 	private LinearLayout linear52;
 	private LinearLayout linear59;
-	private LinearLayout inappbrowser_switch_lay;
-	private LinearLayout animation_btn;
 	private LinearLayout linear19;
 	private ImageView imageview31;
-	private LinearLayout linear60;
 	private TextView textview57;
 	private Slider seekbar6;
 	private CenterCropLinearLayoutNoEffect preview_font_size_layout;
@@ -134,7 +131,6 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private TextView textview66;
 	private ImageView message_state;
 	private ImageView imageview14;
-	private LinearLayout linear26;
 	private ImageView imageview32;
 	private TextView textview18;
 	private TextView textview19;
@@ -161,25 +157,19 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private TextView textview26;
 	private TextView textview27;
 	private ImageView imageview18;
-	private LinearLayout linear34;
 	private MaterialSwitch switch3;
 	private TextView textview29;
 	private TextView textview30;
 	private LinearLayout linear39;
-	private LinearLayout linear41;
-	private LinearLayout linear43;
 	private LinearLayout linear12;
 	private ImageView imageview21;
-	private LinearLayout linear40;
 	private MaterialSwitch switch5;
 	private TextView textview35;
 	private ImageView imageview22;
-	private LinearLayout linear42;
 	private MaterialSwitch switch6;
 	private TextView textview37;
 	private TextView textview38;
 	private ImageView imageview23;
-	private LinearLayout linear44;
 	private MaterialSwitch switch7;
 	private TextView textview39;
 	private TextView textview40;
@@ -187,42 +177,31 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private LinearLayout linear13;
 	private TextView textview10;
 	private TextView textview9;
-	private LinearLayout Language_btn;
 	private RecyclerView appicons_listview;
 	private ImageView imageview19;
 	private LinearLayout linear36;
 	private ImageView imageview30;
 	private TextView textview31;
 	private TextView textview32;
-	private LinearLayout linear46;
-	private LinearLayout linear47;
-	private LinearLayout linear48;
 	private ImageView imageview24;
-	private LinearLayout linear49;
 	private TextView textview48;
 	private TextView textview42;
 	private TextView textview43;
 	private ImageView imageview25;
-	private LinearLayout linear50;
 	private TextView textview49;
 	private TextView textview44;
 	private TextView textview45;
 	private ImageView imageview26;
-	private LinearLayout linear51;
 	private MaterialSwitch switch10;
 	private TextView textview46;
 	private TextView textview47;
-	private LinearLayout premiumFeaturesMainOption;
-	private LinearLayout linear54;
 	private CardView linear55;
 	private ImageView imageview27;
-	private LinearLayout linear56;
 	private TextView textview51;
 	private ImageView imageview28;
 	private LinearLayout linear57;
 	private TextView textview53;
 	private ImageView imageview29;
-	private LinearLayout linear58;
 	private TextView textview55;
 	private TextView textview56;
 	
@@ -278,11 +257,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		textview50 = findViewById(R.id.textview50);
 		linear52 = findViewById(R.id.linear52);
 		linear59 = findViewById(R.id.linear59);
-		inappbrowser_switch_lay = findViewById(R.id.inappbrowser_switch_lay);
-		animation_btn = findViewById(R.id.animation_btn);
 		linear19 = findViewById(R.id.linear19);
 		imageview31 = findViewById(R.id.imageview31);
-		linear60 = findViewById(R.id.linear60);
 		textview57 = findViewById(R.id.textview57);
 		seekbar6 = findViewById(R.id.seekbar6);
 		preview_font_size_layout = findViewById(R.id.preview_font_size_layout);
@@ -310,7 +286,6 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		textview66 = findViewById(R.id.textview66);
 		message_state = findViewById(R.id.message_state);
 		imageview14 = findViewById(R.id.imageview14);
-		linear26 = findViewById(R.id.linear26);
 		imageview32 = findViewById(R.id.imageview32);
 		textview18 = findViewById(R.id.textview18);
 		textview19 = findViewById(R.id.textview19);
@@ -337,25 +312,19 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		textview26 = findViewById(R.id.textview26);
 		textview27 = findViewById(R.id.textview27);
 		imageview18 = findViewById(R.id.imageview18);
-		linear34 = findViewById(R.id.linear34);
 		switch3 = findViewById(R.id.switch3);
 		textview29 = findViewById(R.id.textview29);
 		textview30 = findViewById(R.id.textview30);
 		linear39 = findViewById(R.id.linear39);
-		linear41 = findViewById(R.id.linear41);
-		linear43 = findViewById(R.id.linear43);
 		linear12 = findViewById(R.id.linear12);
 		imageview21 = findViewById(R.id.imageview21);
-		linear40 = findViewById(R.id.linear40);
 		switch5 = findViewById(R.id.switch5);
 		textview35 = findViewById(R.id.textview35);
 		imageview22 = findViewById(R.id.imageview22);
-		linear42 = findViewById(R.id.linear42);
 		switch6 = findViewById(R.id.switch6);
 		textview37 = findViewById(R.id.textview37);
 		textview38 = findViewById(R.id.textview38);
 		imageview23 = findViewById(R.id.imageview23);
-		linear44 = findViewById(R.id.linear44);
 		switch7 = findViewById(R.id.switch7);
 		textview39 = findViewById(R.id.textview39);
 		textview40 = findViewById(R.id.textview40);
@@ -363,42 +332,31 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		linear13 = findViewById(R.id.linear13);
 		textview10 = findViewById(R.id.textview10);
 		textview9 = findViewById(R.id.textview9);
-		Language_btn = findViewById(R.id.Language_btn);
 		appicons_listview = findViewById(R.id.appicons_listview);
 		imageview19 = findViewById(R.id.imageview19);
 		linear36 = findViewById(R.id.linear36);
 		imageview30 = findViewById(R.id.imageview30);
 		textview31 = findViewById(R.id.textview31);
 		textview32 = findViewById(R.id.textview32);
-		linear46 = findViewById(R.id.linear46);
-		linear47 = findViewById(R.id.linear47);
-		linear48 = findViewById(R.id.linear48);
 		imageview24 = findViewById(R.id.imageview24);
-		linear49 = findViewById(R.id.linear49);
 		textview48 = findViewById(R.id.textview48);
 		textview42 = findViewById(R.id.textview42);
 		textview43 = findViewById(R.id.textview43);
 		imageview25 = findViewById(R.id.imageview25);
-		linear50 = findViewById(R.id.linear50);
 		textview49 = findViewById(R.id.textview49);
 		textview44 = findViewById(R.id.textview44);
 		textview45 = findViewById(R.id.textview45);
 		imageview26 = findViewById(R.id.imageview26);
-		linear51 = findViewById(R.id.linear51);
 		switch10 = findViewById(R.id.switch10);
 		textview46 = findViewById(R.id.textview46);
 		textview47 = findViewById(R.id.textview47);
-		premiumFeaturesMainOption = findViewById(R.id.premiumFeaturesMainOption);
-		linear54 = findViewById(R.id.linear54);
 		linear55 = findViewById(R.id.linear55);
 		imageview27 = findViewById(R.id.imageview27);
-		linear56 = findViewById(R.id.linear56);
 		textview51 = findViewById(R.id.textview51);
 		imageview28 = findViewById(R.id.imageview28);
 		linear57 = findViewById(R.id.linear57);
 		textview53 = findViewById(R.id.textview53);
 		imageview29 = findViewById(R.id.imageview29);
-		linear58 = findViewById(R.id.linear58);
 		textview55 = findViewById(R.id.textview55);
 		textview56 = findViewById(R.id.textview56);
 		auth = FirebaseAuth.getInstance();
@@ -413,14 +371,15 @@ public class ChatsettingsActivity extends AppCompatActivity {
 				finish();
 			}
 		});
-		
-		inappbrowser_switch_lay.setOnClickListener(new View.OnClickListener() {
+
+		application_stage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				intent.setClass(getApplicationContext(), BgWallpapersActivity.class);
 				startActivity(intent);
 			}
 		});
+		
 		
 		
 		_mainDb_child_listener = new ChildEventListener() {
