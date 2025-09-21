@@ -110,6 +110,8 @@ public class InboxChatsFragment extends Fragment {
 	private DatabaseReference main = _firebase.getReference("skyline");
 	private ChildEventListener _main_child_listener;
 	private Intent intent = new Intent();
+	private ChildEventListener _user_chats_child_listener;
+	private DatabaseReference userChatsRef;
 
 	@NonNull
 	@Override
@@ -269,6 +271,104 @@ public class InboxChatsFragment extends Fragment {
 		_getInboxReference();
 	}
 
+	@Override
+	public void onStart() {
+		super.onStart();
+		if (userChatsRef != null && _user_chats_child_listener != null) {
+			userChatsRef.addChildEventListener(_user_chats_child_listener);
+		}
+	}
+
+	@Override
+	public void onStop() {
+		super.onStop();
+		if (userChatsRef != null && _user_chats_child_listener != null) {
+			userChatsRef.removeEventListener(_user_chats_child_listener);
+		}
+	}
+
+	public void _getInboxReference() {
+		userChatsRef = _firebase.getReference("user-chats").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+
+		_user_chats_child_listener = new ChildEventListener() {
+			@Override
+			public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
+				final String chatID = dataSnapshot.getKey();
+				if (chatID == null) return;
+
+				DatabaseReference inboxRef = _firebase.getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(chatID);
+				inboxRef.addValueEventListener(new ValueEventListener() {
+					@Override
+					public void onDataChange(@NonNull DataSnapshot snapshot) {
+						if (snapshot.exists()) {
+							HashMap<String, Object> inboxData = snapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
+							if (inboxData != null) {
+								inboxData.put("chatID", chatID); // Add chatID to the map for later reference
+
+								int index = -1;
+								for (int i = 0; i < ChatInboxList.size(); i++) {
+									if (chatID.equals(ChatInboxList.get(i).get("chatID"))) {
+										index = i;
+										break;
+									}
+								}
+
+								if (index != -1) {
+									ChatInboxList.set(index, inboxData);
+								} else {
+									ChatInboxList.add(inboxData);
+								}
+
+								// Sort and update adapter
+								SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
+								inboxListRecyclerView.getAdapter().notifyDataSetChanged();
+								inboxListRecyclerView.setVisibility(View.VISIBLE);
+							}
+						}
+					}
+
+					@Override
+					public void onCancelled(@NonNull DatabaseError error) {}
+				});
+			}
+
+			@Override
+			public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
+				// This listener will be triggered by the inboxRef listener above, so no need to do anything here.
+			}
+
+			@Override
+			public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+				final String chatID = dataSnapshot.getKey();
+				if (chatID == null) return;
+
+				int index = -1;
+				for (int i = 0; i < ChatInboxList.size(); i++) {
+					if (chatID.equals(ChatInboxList.get(i).get("chatID"))) {
+						index = i;
+						break;
+					}
+				}
+
+				if (index != -1) {
+					ChatInboxList.remove(index);
+					inboxListRecyclerView.getAdapter().notifyItemRemoved(index);
+				}
+
+				if (ChatInboxList.isEmpty()) {
+					inboxListRecyclerView.setVisibility(View.GONE);
+				}
+			}
+
+			@Override
+			public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError error) {}
+		};
+		userChatsRef.addChildEventListener(_user_chats_child_listener);
+	}
+
 	public void _ImgRound(final ImageView _imageview, final double _value) {
 		android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable ();
 		gd.setColor(android.R.color.transparent);
@@ -319,39 +419,6 @@ public class InboxChatsFragment extends Fragment {
 	}
 
 
-	public void _getInboxReference() {
-		Query getInboxRef = FirebaseDatabase.getInstance().getReference("skyline/inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getInboxRef.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					inboxListRecyclerView.setVisibility(View.VISIBLE);
-					ChatInboxList.clear();
-					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
-							ChatInboxList.add(_map);
-						}
-					} catch (Exception _e) {
-						_e.printStackTrace();
-					}
-
-					SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
-					inboxListRecyclerView.getAdapter().notifyDataSetChanged();
-				} else {
-					inboxListRecyclerView.setVisibility(View.GONE);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-	}
-
-
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -369,6 +436,15 @@ public class InboxChatsFragment extends Fragment {
 	private boolean isNullOrEmpty(String str) {
 		return str == null || str.trim().isEmpty() || "null".equalsIgnoreCase(str);
 	}
+
+	private String getChatId(String uid1, String uid2) {
+		if (uid1.compareTo(uid2) > 0) {
+			return uid1 + uid2;
+		} else {
+			return uid2 + uid1;
+		}
+	}
+
 	public class InboxListRecyclerViewAdapter extends RecyclerView.Adapter<InboxListRecyclerViewAdapter.ViewHolder> {
 
 		ArrayList<HashMap<String, Object>> _data;
@@ -438,61 +514,20 @@ public class InboxChatsFragment extends Fragment {
 					unread_messages_count_badge.setVisibility(View.GONE);
 				} else {
 					message_state.setVisibility(View.GONE);
-					{
-						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-						Handler mMainHandler = new Handler(Looper.getMainLooper());
-						
-						mExecutorService.execute(new Runnable() {
-							@Override
-							public void run() {
-								Query getUnreadMessagesCount = FirebaseDatabase.getInstance().getReference("skyline/chats").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("uid").toString()).orderByChild("message_state").equalTo("sended");
-								getUnreadMessagesCount.addValueEventListener(new ValueEventListener() {
-									@Override
-									public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-										mMainHandler.post(new Runnable() {
-											@Override
-											public void run() {
-												long unReadMessageCount = dataSnapshot.getChildrenCount();
-												if(dataSnapshot.exists()) {
-													last_message.setTextColor(0xFF000000);
-													push.setTextColor(0xFF000000);
-													//	last_message.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 1);
-													//	push.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 1);
-													unread_messages_count_badge.setText(String.valueOf((long)(unReadMessageCount)));
-													unread_messages_count_badge.setVisibility(View.VISIBLE);
-												} else {
-													last_message.setTextColor(0xFF616161);
-													push.setTextColor(0xFF616161);
-													//	last_message.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 0);
-													//	push.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 0);
-													unread_messages_count_badge.setVisibility(View.GONE);
-												}
-											}
-										});
-									}
-									
-									@Override
-									public void onCancelled(@NonNull DatabaseError databaseError) {
-										
-									}
-								});
-							}
-						});
-					}
+					last_message.setTextColor(0xFF000000);
+					push.setTextColor(0xFF000000);
+					unread_messages_count_badge.setVisibility(View.GONE);
 				}
 				_setTime(Double.parseDouble(_data.get((int)_position).get("push_date").toString()), push);
-				if (UserInfoCacheMap.containsKey("uid-".concat(_data.get((int)_position).get("uid").toString()))) {
+				if (UserInfoCacheMap.containsKey("uid-".concat(_data.get((int)_position).get("otherUserUid").toString()))) {
 					main.setVisibility(View.VISIBLE);
 					
-					// Get uid once to avoid repeated calls
-					String uid = _data.get((int)_position).get("uid").toString();
+					String uid = _data.get((int)_position).get("otherUserUid").toString();
 					
-					// Handle banned status with null check
 					Object bannedObj = UserInfoCacheMap.get("banned-".concat(uid));
 					if (bannedObj != null && bannedObj.toString().equals("true")) {
 						profileCardImage.setImageResource(R.drawable.banned_avatar);
 					} else {
-						// Handle avatar with null check
 						Object avatarObj = UserInfoCacheMap.get("avatar-".concat(uid));
 						if (isNullOrEmpty(avatarObj != null ? avatarObj.toString() : null)) {
 							profileCardImage.setImageResource(R.drawable.avatar);
@@ -503,7 +538,6 @@ public class InboxChatsFragment extends Fragment {
 						}
 					}
 					
-					// Handle nickname with null check
 					Object nicknameObj = UserInfoCacheMap.get("nickname-".concat(uid));
 					if (isNullOrEmpty(nicknameObj != null ? nicknameObj.toString() : null)) {
 						Object usernameObj = UserInfoCacheMap.get("username-".concat(uid));
@@ -512,12 +546,10 @@ public class InboxChatsFragment extends Fragment {
 						username.setText(nicknameObj.toString());
 					}
 					
-					// Handle status with null check
 					Object statusObj = UserInfoCacheMap.get("status-".concat(uid));
 					userStatusCircleBG.setVisibility(statusObj != null && statusObj.toString().equals("online") 
 					? View.VISIBLE : View.GONE);
 					
-					// Handle gender with null check
 					Object genderObj = UserInfoCacheMap.get("gender-".concat(uid));
 					if (isNullOrEmpty(genderObj != null ? genderObj.toString() : null) || "hidden".equals(genderObj != null ? genderObj.toString() : null)) {
 						genderBadge.setVisibility(View.GONE);
@@ -531,7 +563,6 @@ public class InboxChatsFragment extends Fragment {
 						}
 					}
 					
-					// Handle account type and badges with null checks
 					Object accountTypeObj = UserInfoCacheMap.get("account_type-".concat(uid));
 					Object premiumObj = UserInfoCacheMap.get("account_premium-".concat(uid));
 					Object verifyObj = UserInfoCacheMap.get("verify-".concat(uid));
@@ -573,7 +604,7 @@ public class InboxChatsFragment extends Fragment {
 						mExecutorService.execute(new Runnable() {
 							@Override
 							public void run() {
-								DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_data.get((int)_position).get("uid").toString());
+								DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_data.get((int)_position).get("otherUserUid").toString());
 								getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
 									@Override
 									public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -581,16 +612,16 @@ public class InboxChatsFragment extends Fragment {
 											@Override
 											public void run() {
 												if(dataSnapshot.exists()) {
-													UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-													UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-													UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
-													UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
-													UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
-													UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
-													UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
-													UserInfoCacheMap.put("account_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
-													UserInfoCacheMap.put("account_premium-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_premium").getValue(String.class));
-													UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
+													UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("otherUserUid").toString()), _data.get((int)_position).get("otherUserUid").toString());
+													UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("avatar").getValue(String.class));
+													UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("banned").getValue(String.class));
+													UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("username").getValue(String.class));
+													UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("nickname").getValue(String.class));
+													UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("status").getValue(String.class));
+													UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("gender").getValue(String.class));
+													UserInfoCacheMap.put("account_type-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("account_type").getValue(String.class));
+													UserInfoCacheMap.put("account_premium-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("account_premium").getValue(String.class));
+													UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("otherUserUid").toString()), dataSnapshot.child("verify").getValue(String.class));
 													main.setVisibility(View.VISIBLE);
 													String banned = dataSnapshot.child("banned").getValue(String.class);
 													String avatar = dataSnapshot.child("avatar").getValue(String.class);
@@ -673,7 +704,7 @@ public class InboxChatsFragment extends Fragment {
 					@Override
 					public void onClick(View _view) {
 						intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
-						intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
+						intent.putExtra("uid", _data.get((int)_position).get("otherUserUid").toString());
 						intent.putExtra("origin", "InboxActivity");
 						startActivity(intent);
 					}

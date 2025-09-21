@@ -2516,23 +2516,28 @@ public class ChatActivity extends AppCompatActivity {
 		Log.d("ChatActivity", "=== ATTACHMENT STATE RESET COMPLETE ===");
 	}
 
-	private void _updateInboxForUser(String user, String chatID, String lastMessage, String lastMessageSender, String otherUser) {
-		HashMap<String, Object> inboxEntry = new HashMap<>();
-		inboxEntry.put(LAST_MESSAGE_UID_KEY, lastMessageSender);
-		inboxEntry.put(LAST_MESSAGE_TEXT_KEY, lastMessage);
-		inboxEntry.put(LAST_MESSAGE_STATE_KEY, "sended");
-		inboxEntry.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
-		inboxEntry.put("otherUserUid", otherUser);
-		_firebase.getReference(INBOX_REF).child(user).child(chatID).setValue(inboxEntry);
-    }
-
 	public void _updateInbox(final String _lastMessage) {
 		final String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		final String otherUserUid = getIntent().getStringExtra(UID_KEY);
 		final String chatID = getChatId(currentUserUid, otherUserUid);
 
-        _updateInboxForUser(currentUserUid, chatID, _lastMessage, currentUserUid, otherUserUid);
-        _updateInboxForUser(otherUserUid, chatID, _lastMessage, currentUserUid, currentUserUid);
+		// Update inbox for current user
+		HashMap<String, Object> currentUserInboxEntry = new HashMap<>();
+		currentUserInboxEntry.put(LAST_MESSAGE_UID_KEY, currentUserUid);
+		currentUserInboxEntry.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
+		currentUserInboxEntry.put(LAST_MESSAGE_STATE_KEY, "sended");
+		currentUserInboxEntry.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
+		currentUserInboxEntry.put("otherUserUid", otherUserUid);
+		_firebase.getReference(INBOX_REF).child(currentUserUid).child(chatID).setValue(currentUserInboxEntry);
+
+		// Update inbox for other user
+		HashMap<String, Object> otherUserInboxEntry = new HashMap<>();
+		otherUserInboxEntry.put(LAST_MESSAGE_UID_KEY, currentUserUid);
+		otherUserInboxEntry.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
+		otherUserInboxEntry.put(LAST_MESSAGE_STATE_KEY, "sended");
+		otherUserInboxEntry.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
+		otherUserInboxEntry.put("otherUserUid", currentUserUid);
+		_firebase.getReference(INBOX_REF).child(otherUserUid).child(chatID).setValue(otherUserInboxEntry);
 	}
 
 
@@ -2688,14 +2693,6 @@ public class ChatActivity extends AppCompatActivity {
 	public void performHapticFeedbackLight() {
 		if (vbr != null) {
 			vbr.vibrate((long)(24));
-		}
-	}
-
-	public String getChatId(String uid1, String uid2) {
-		if (uid1.compareTo(uid2) > 0) {
-			return uid1 + uid2;
-		} else {
-			return uid2 + uid1;
 		}
 	}
 
