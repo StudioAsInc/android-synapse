@@ -36,6 +36,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.*;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import android.view.Menu;
 import android.view.MenuItem;
 import androidx.browser.*;
@@ -110,7 +111,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private String thedpurl = "";
 	
 	private ScrollView scroll;
-	private LinearLayout body;
+	private androidx.constraintlayout.widget.ConstraintLayout body;
 	private com.google.android.material.appbar.MaterialToolbar toolbar;
 	private TextView title;
 	private TextView subtitle;
@@ -118,8 +119,8 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private FadeEditText username_input;
 	private FadeEditText nickname_input;
 	private FadeEditText biography_input;
-	private LinearLayout email_verification;
-	private LinearLayout buttons;
+	private androidx.constraintlayout.widget.ConstraintLayout email_verification;
+	private androidx.constraintlayout.widget.ConstraintLayout buttons;
 	private ImageView profile_image;
 	private TextView email_verification_title;
 	private TextView email_verification_subtitle;
