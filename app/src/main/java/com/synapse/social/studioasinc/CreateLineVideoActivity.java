@@ -59,10 +59,8 @@ public class CreateLineVideoActivity extends AppCompatActivity {
 	private String LocalVideoUri = null;
 	private String UrlVideoUri = null;
 
-	private LinearLayout main;
-	private LinearLayout top;
-	private LinearLayout body;
-	private LinearLayout bottomButtons;
+	private androidx.constraintlayout.widget.ConstraintLayout top;
+	private com.google.android.material.button.MaterialButtonToggleGroup bottomButtons;
 	private ImageView back;
 	private TextView title;
 	private LinearLayout topSpc;
@@ -95,9 +93,7 @@ public class CreateLineVideoActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		main = findViewById(R.id.main);
 		top = findViewById(R.id.top);
-		body = findViewById(R.id.body);
 		bottomButtons = findViewById(R.id.bottomButtons);
 		back = findViewById(R.id.back);
 		title = findViewById(R.id.title);

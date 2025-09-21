@@ -97,18 +97,16 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private String fileSize = "";
 	private String fileName = "";
 
-	private LinearLayout main;
-	private LinearLayout top;
-	private LinearLayout topSpace;
+	private androidx.constraintlayout.widget.ConstraintLayout top;
+	private View topSpace;
 	private ScrollView scroll;
 	private ImageView back;
 	private LinearLayout topSpc;
 	private TextView continueButton;
 	private TextView title;
 	private TextView subtitle;
-	private LinearLayout scrollBody;
-	private LinearLayout PostInfoTop1;
-	private LinearLayout topSpace2;
+	private androidx.constraintlayout.widget.ConstraintLayout scrollBody;
+	private View topSpace2;
 	private EditText postDescription;
 	private RecyclerView recyclerview1;
 
@@ -162,7 +160,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		main = findViewById(R.id.main);
 		top = findViewById(R.id.top);
 		topSpace = findViewById(R.id.topSpace);
 		scroll = findViewById(R.id.scroll);
@@ -172,7 +169,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		title = findViewById(R.id.title);
 		subtitle = findViewById(R.id.subtitle);
 		scrollBody = findViewById(R.id.scrollBody);
-		PostInfoTop1 = findViewById(R.id.PostInfoTop1);
 		topSpace2 = findViewById(R.id.topSpace2);
 		postDescription = findViewById(R.id.postDescription);
 		recyclerview1 = findViewById(R.id.recyclerview1);

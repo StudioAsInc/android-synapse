@@ -44,14 +44,14 @@ public class AuthActivity extends AppCompatActivity {
 
     // UI Components
     private ScrollView vscroll1;
-    private LinearLayout parentLayout;
+    private androidx.constraintlayout.widget.ConstraintLayout parentLayout;
     private TVeffects aiNameTextView;
     private TVeffects aiResponseTextView_1;
-    private LinearLayout mainHiddenLayout;
-    private LinearLayout section2Layout;
-    private LinearLayout section3Layout;
+    private androidx.constraintlayout.widget.ConstraintLayout mainHiddenLayout;
+    private androidx.constraintlayout.widget.ConstraintLayout section2Layout;
+    private androidx.constraintlayout.widget.ConstraintLayout section3Layout;
     private LinearLayout nameLayout;
-    private LinearLayout animatorSupportLayout;
+    private View animatorSupportLayout;
     private LinearLayout profileHolderLayout;
     private TextView nameFirstLetterTextView;
     private EditText usernameEditText;
@@ -60,10 +60,10 @@ public class AuthActivity extends AppCompatActivity {
     private TVeffects aiResponseTextView_2;
     private Button finishButton;
     private TVeffects ruleTextView1;
-    private LinearLayout emailLayout;
+    private androidx.constraintlayout.widget.ConstraintLayout emailLayout;
     private TextView ask_for_email_tv;
     private EditText email_et;
-    private LinearLayout passLayout;
+    private androidx.constraintlayout.widget.ConstraintLayout passLayout;
     private TextView askForPassTV;
     private EditText pass_et;
     private Button button1;
