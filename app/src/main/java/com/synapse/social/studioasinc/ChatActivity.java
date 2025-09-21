@@ -2097,6 +2097,13 @@ public class ChatActivity extends AppCompatActivity {
 				ChatMessagesList.add(ChatSendMap);
 				int newPosition = ChatMessagesList.size() - 1;
 				Log.d("ChatActivity", "Added message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
+
+				// BUG FIX: Ensure RecyclerView is visible when first message is sent
+				if (ChatMessagesList.size() == 1) {
+					noChatText.setVisibility(View.GONE);
+					ChatMessagesListRecycler.setVisibility(View.VISIBLE);
+				}
+
 				// Use more granular insertion notification for smooth updates
 				chatAdapter.notifyItemInserted(newPosition);
 				if (newPosition > 0) {
@@ -2187,6 +2194,13 @@ public class ChatActivity extends AppCompatActivity {
 			ChatMessagesList.add(ChatSendMap);
 			int newPosition = ChatMessagesList.size() - 1;
 			Log.d("ChatActivity", "Added text message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
+
+			// BUG FIX: Ensure RecyclerView is visible when first message is sent
+			if (ChatMessagesList.size() == 1) {
+				noChatText.setVisibility(View.GONE);
+				ChatMessagesListRecycler.setVisibility(View.VISIBLE);
+			}
+
 			chatAdapter.notifyItemInserted(newPosition);
 			if (newPosition > 0) {
 				chatAdapter.notifyItemChanged(newPosition - 1);
