@@ -2658,14 +2658,6 @@ public class ChatActivity extends AppCompatActivity {
 		}
 	}
 
-	public String getChatId(String uid1, String uid2) {
-		if (uid1.compareTo(uid2) > 0) {
-			return uid1 + uid2;
-		} else {
-			return uid2 + uid1;
-		}
-	}
-
 	public void scrollToMessage(final String _messageKey) {
 		final int position = _findMessagePosition(_messageKey);
 		if (position != -1) {
