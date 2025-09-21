@@ -385,7 +385,6 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 		private void handleCommentMentions(TextView textView, String text) {
 			com.synapse.social.studioasinc.util.MentionUtils.handleMentions(getContext(), textView, text);
 		}
-		}
 
 		public void getCommentsRef(String key, boolean increaseLimit) {
 			if (increaseLimit) {
@@ -608,7 +607,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_viewGraphics(body, 0xFFFFFFFF, 0xFFEEEEEE, 0, 0, Color.TRANSPARENT);
 						profileCard.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
 						likedByPublisherLayoutHeartIc.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, 0xFFFFFFFF));
-						_ImageColor(likedByPublisherLayoutHeartIc, 0xFFE91E63);        
+						_ImageColor(likedByPublisherLayoutHeartIc, 0xFFE91E63);
 						_ImageColor(top_popular_1_fire_ic, 0xFFF50057);
 						_ImageColor(top_popular_2_fire_ic, 0xFFFF5722);
 						_ImageColor(top_popular_3_fire_ic, 0xFFFF9800);
@@ -1218,7 +1217,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						replies_layout.setVisibility(View.GONE);
 						profileCard.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
 						likedByPublisherLayoutHeartIc.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, 0xFFFFFFFF));
-						_ImageColor(likedByPublisherLayoutHeartIc, 0xFFE91E63);        
+						_ImageColor(likedByPublisherLayoutHeartIc, 0xFFE91E63);
 						_ImageColor(top_popular_1_fire_ic, 0xFFF50057);
 						_ImageColor(top_popular_2_fire_ic, 0xFFFF5722);
 						_ImageColor(top_popular_3_fire_ic, 0xFFFF9800);
@@ -1613,7 +1612,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				comment_send_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)75, 0xFFF5F5F5));
 				profile_image_bg_2_x2.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
 				_viewGraphics(comment_send_button, 0xFFF50057, 0xFFAD1457, 300, 0, Color.TRANSPARENT);
-				_ImageColor(comment_send_button, 0xFFFFFFFF);        
+				_ImageColor(comment_send_button, 0xFFFFFFFF);
 				_viewGraphics(emoji1, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 				_viewGraphics(emoji2, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 				_viewGraphics(emoji3, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
