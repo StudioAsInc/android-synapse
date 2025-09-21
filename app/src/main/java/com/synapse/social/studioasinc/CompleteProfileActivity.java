@@ -123,7 +123,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private ImageView profile_image;
 	private TextView email_verification_title;
 	private TextView email_verification_subtitle;
-	private LinearLayout email_verification_middle;
 	private TextView email_verification_send;
 	private ImageView email_verification_error_ic;
 	private ImageView email_verification_verified_ic;
@@ -207,7 +206,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		profile_image = findViewById(R.id.profile_image);
 		email_verification_title = findViewById(R.id.email_verification_title);
 		email_verification_subtitle = findViewById(R.id.email_verification_subtitle);
-		email_verification_middle = findViewById(R.id.email_verification_middle);
 		email_verification_send = findViewById(R.id.email_verification_send);
 		email_verification_error_ic = findViewById(R.id.email_verification_error_ic);
 		email_verification_verified_ic = findViewById(R.id.email_verification_verified_ic);

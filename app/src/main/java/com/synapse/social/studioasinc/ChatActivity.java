@@ -180,7 +180,7 @@ public class ChatActivity extends AppCompatActivity {
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
 	private ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
-	private RelativeLayout relativelayout1;
+	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
 	private ImageView ivBGimage;
 	private LinearLayout body;
 	private LinearLayout appBar;
