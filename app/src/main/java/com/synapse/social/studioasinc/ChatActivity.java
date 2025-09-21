@@ -436,7 +436,6 @@ public class ChatActivity extends AppCompatActivity {
 					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.GONE);
 					toolContainer.setVisibility(View.VISIBLE);
-					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input);
 				} else {
 					typingSnd = new HashMap<>();
 					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
@@ -445,7 +444,6 @@ public class ChatActivity extends AppCompatActivity {
 					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.VISIBLE);
 					toolContainer.setVisibility(View.GONE);
-					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input_expanded);
 				}
 			}
 
@@ -456,7 +454,11 @@ public class ChatActivity extends AppCompatActivity {
 
 			@Override
 			public void afterTextChanged(Editable _param1) {
-
+				if (message_et.getLineCount() > 1) {
+					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input_expanded);
+				} else {
+					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input);
+				}
 			}
 		});
 
