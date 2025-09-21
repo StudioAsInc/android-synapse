@@ -63,6 +63,7 @@
 			android:hardwareAccelerated="true"
 			android:supportsPictureInPicture="true"
 			android:screenOrientation="portrait"
+			android:theme="@style/AppTheme.DebugActivity"
 			android:windowSoftInputMode="stateHidden" />
 		<activity
 			android:name=".ProfileActivity"

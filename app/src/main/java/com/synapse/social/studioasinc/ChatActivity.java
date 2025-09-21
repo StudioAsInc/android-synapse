@@ -430,17 +430,11 @@ public class ChatActivity extends AppCompatActivity {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
-				DatabaseReference typingRef = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF);
 				if (_charSeq.length() == 0) {
-					typingRef.removeValue();
 					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.GONE);
 					toolContainer.setVisibility(View.VISIBLE);
 				} else {
-					typingSnd = new HashMap<>();
-					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
-					typingSnd.put("typingMessageStatus", "true");
-					typingRef.updateChildren(typingSnd);
 					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.VISIBLE);
 					toolContainer.setVisibility(View.GONE);
@@ -563,7 +557,8 @@ public class ChatActivity extends AppCompatActivity {
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
 		
 		// Set up the chat reference for the current user's perspective
-		chatMessagesRef = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(currentUserUid).child(otherUserUid);
+		String chatID = getChatId(currentUserUid, otherUserUid);
+		chatMessagesRef = _firebase.getReference("chats").child(chatID);
 		
 		// Set up user reference
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
@@ -731,7 +726,6 @@ public class ChatActivity extends AppCompatActivity {
 	@Override
 	public void onPause() {
 		super.onPause();
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF).removeValue();
 	}
 
 	@Override
@@ -763,7 +757,6 @@ public class ChatActivity extends AppCompatActivity {
 		_detachChatListener();
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF).removeValue();
 	}
 
 	@Override
@@ -772,11 +765,7 @@ public class ChatActivity extends AppCompatActivity {
 		
 		// Clean up typing indicator
 		if (auth.getCurrentUser() != null) {
-			try {
-				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(auth.getCurrentUser().getUid()).child(TYPING_MESSAGE_REF).removeValue();
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
-			}
+			// Typing indicator cleanup removed as per review feedback.
 		}
 		
 		// Clean up Firebase listeners
@@ -895,7 +884,8 @@ public class ChatActivity extends AppCompatActivity {
 
 		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		String theirUid = getIntent().getStringExtra("uid");
-		DatabaseReference chatRef = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(myUid).child(theirUid);
+		String chatID = getChatId(myUid, theirUid);
+		DatabaseReference chatRef = _firebase.getReference("chats").child(chatID);
 
 		for (String messageKey : repliedIdsToFetch) {
 			repliedMessagesCache.put(messageKey, new HashMap<>());
@@ -1028,10 +1018,9 @@ public class ChatActivity extends AppCompatActivity {
 				if (otherUid == null || msgKey == null) {
 					return;
 				}
-				DatabaseReference msgRef1 = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(myUid).child(otherUid).child(msgKey);
-				DatabaseReference msgRef2 = _firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(otherUid).child(myUid).child(msgKey);
-				msgRef1.child(MESSAGE_TEXT_KEY).setValue(newText);
-				msgRef2.child(MESSAGE_TEXT_KEY).setValue(newText);
+				String chatID = getChatId(myUid, otherUid);
+				DatabaseReference msgRef = _firebase.getReference("chats").child(chatID).child(msgKey);
+				msgRef.child(MESSAGE_TEXT_KEY).setValue(newText);
 			});
 			dialog.setNegativeButton("Cancel", null);
 			AlertDialog shownDialog = dialog.show();
@@ -1684,9 +1673,7 @@ public class ChatActivity extends AppCompatActivity {
 		isLoading = true;
 		_showLoadMoreIndicator();
 
-		Query getChatsMessages = _firebase.getReference(SKYLINE_REF).child(CHATS_REF)
-		.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
-		.child(getIntent().getStringExtra(UID_KEY))
+		Query getChatsMessages = chatMessagesRef
 		.orderByKey()
 		.endBefore(oldestMessageKey)
 		.limitToLast(CHAT_PAGE_SIZE);
@@ -1790,8 +1777,8 @@ public class ChatActivity extends AppCompatActivity {
 				locallyDeletedMessages.add(messageKey);
 
 				// Remove from Firebase
-				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).child(messageKey).removeValue();
-				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(messageKey).removeValue();
+				String chatID = getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				_firebase.getReference("chats").child(chatID).child(messageKey).removeValue();
 
 				// Safely remove by key to avoid incorrect index removals and double-removals
 				int idx = -1;
@@ -2089,8 +2076,10 @@ public class ChatActivity extends AppCompatActivity {
 				Log.d("ChatActivity", "Message data: " + ChatSendMap.toString());
 				
 				// Send to both chat nodes using setValue for proper real-time updates
-				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(senderUid).child(recipientUid).child(uniqueMessageKey).setValue(ChatSendMap);
-				_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(recipientUid).child(senderUid).child(uniqueMessageKey).setValue(ChatSendMap);
+				String chatID = getChatId(senderUid, recipientUid);
+				_firebase.getReference("chats").child(chatID).child(uniqueMessageKey).setValue(ChatSendMap);
+				_firebase.getReference("user-chats").child(senderUid).child(chatID).setValue(true);
+				_firebase.getReference("user-chats").child(recipientUid).child(chatID).setValue(true);
 
 				// CRITICAL FIX: Immediately add the message to local list for instant feedback
 				ChatSendMap.put("isLocalMessage", true); // Mark as local message
@@ -2186,8 +2175,10 @@ public class ChatActivity extends AppCompatActivity {
 			Log.d("ChatActivity", "Text message data: " + ChatSendMap.toString());
 			
 			// Send to both chat nodes using setValue for proper real-time updates
-			_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(senderUid).child(recipientUid).child(uniqueMessageKey).setValue(ChatSendMap);
-			_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(recipientUid).child(senderUid).child(uniqueMessageKey).setValue(ChatSendMap);
+			String chatID = getChatId(senderUid, recipientUid);
+			_firebase.getReference("chats").child(chatID).child(uniqueMessageKey).setValue(ChatSendMap);
+			_firebase.getReference("user-chats").child(senderUid).child(chatID).setValue(true);
+			_firebase.getReference("user-chats").child(recipientUid).child(chatID).setValue(true);
 
 			// CRITICAL FIX: Immediately add the message to local list for instant feedback
 			ChatSendMap.put("isLocalMessage", true); // Mark as local message
@@ -2473,24 +2464,29 @@ public class ChatActivity extends AppCompatActivity {
 	public void _updateInbox(final String _lastMessage) {
 		// Using the correct parameter name '_lastMessage' with the underscore prefix.
 		cc = Calendar.getInstance();
+		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		String otherUserUid = getIntent().getStringExtra(UID_KEY);
+		String chatID = getChatId(currentUserUid, otherUserUid);
 
 		// Update inbox for the current user
 		ChatInboxSend = new HashMap<>();
-		ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
-		ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
+		ChatInboxSend.put(UID_KEY, otherUserUid);
+		ChatInboxSend.put(LAST_MESSAGE_UID_KEY, currentUserUid);
+		ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
 		ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
 		ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-		_firebase.getReference(SKYLINE_REF).child(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
+		ChatInboxSend.put("chatID", chatID);
+		_firebase.getReference(SKYLINE_REF).child(INBOX_REF).child(currentUserUid).child(chatID).setValue(ChatInboxSend);
 
 		// Update inbox for the other user
 		ChatInboxSend2 = new HashMap<>();
-		ChatInboxSend2.put(UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend2.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
+		ChatInboxSend2.put(UID_KEY, currentUserUid);
+		ChatInboxSend2.put(LAST_MESSAGE_UID_KEY, currentUserUid);
+		ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
 		ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
 		ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-		_firebase.getReference(SKYLINE_REF).child(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
+		ChatInboxSend2.put("chatID", chatID);
+		_firebase.getReference(SKYLINE_REF).child(INBOX_REF).child(otherUserUid).child(chatID).setValue(ChatInboxSend2);
 	}
 
 
@@ -3176,8 +3172,11 @@ public class ChatActivity extends AppCompatActivity {
 		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
 		ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
 
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(senderUid).child(recipientUid).child(uniqueMessageKey).setValue(ChatSendMap);
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(recipientUid).child(senderUid).child(uniqueMessageKey).setValue(ChatSendMap);
+		String chatID = getChatId(senderUid, recipientUid);
+		_firebase.getReference("chats").child(chatID).child(uniqueMessageKey).setValue(ChatSendMap);
+		_firebase.getReference("user-chats").child(senderUid).child(chatID).setValue(true);
+		_firebase.getReference("user-chats").child(recipientUid).child(chatID).setValue(true);
+
 
 		ChatSendMap.put("isLocalMessage", true);
 		messageKeys.add(uniqueMessageKey);
