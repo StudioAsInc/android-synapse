@@ -65,7 +65,7 @@ public class MentionUtils {
                     public void updateDrawState(android.text.TextPaint ds) {
                         super.updateDrawState(ds);
                         ds.setUnderlineText(false);
-                        ds.setColor(context.getColor(R.color.quantum_googblue600));
+                        ds.setColor(context.getColor(R.color.md_theme_primary));
                     }
                 };
                 spannableString.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
