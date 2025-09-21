@@ -127,6 +127,9 @@ class CreatePostActivity : AppCompatActivity() {
         publishButton.setOnClickListener { createPost() }
         addPhotoIcon.setOnClickListener { selectImages() }
         addVideoIcon.setOnClickListener { selectVideo() }
+
+        val userMention = UserMention(postDescriptionEditText)
+        postDescriptionEditText.addTextChangedListener(userMention)
         
         // Initially hide media recycler if empty
         updateMediaVisibility()
@@ -319,6 +322,7 @@ class CreatePostActivity : AppCompatActivity() {
                 runOnUiThread {
                     showLoading(false)
                     Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
+                    handleMentions(post.postText, post.key)
                     finish()
                 }
             }
@@ -328,6 +332,10 @@ class CreatePostActivity : AppCompatActivity() {
                     Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
                 }
             }
+    }
+
+    private fun handleMentions(text: String?, postKey: String) {
+        com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, null, "post")
     }
 
     private fun showLoading(show: Boolean) {

@@ -110,14 +110,17 @@ class PostsAdapter(
         }
 
         private fun setupPostContent(post: Post) {
-            // Show/hide text content
             val text: String? = post.postText
             if (!text.isNullOrEmpty()) {
-                MarkdownRenderer.get(context).render(postMessageTextMiddle, text)
+                handleMentions(postMessageTextMiddle, text)
                 postMessageTextMiddle.visibility = View.VISIBLE
             } else {
                 postMessageTextMiddle.visibility = View.GONE
             }
+        }
+
+        private fun handleMentions(textView: TextView, text: String) {
+            com.synapse.social.studioasinc.util.MentionUtils.handleMentions(context, textView, text)
         }
 
         private fun setupUserInfo(uid: String) {

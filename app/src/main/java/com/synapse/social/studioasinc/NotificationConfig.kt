@@ -30,6 +30,7 @@ object NotificationConfig {
     const val NOTIFICATION_TYPE_NEW_REPLY = "NEW_REPLY"
     const val NOTIFICATION_TYPE_NEW_LIKE_POST = "NEW_LIKE_POST"
     const val NOTIFICATION_TYPE_NEW_LIKE_COMMENT = "NEW_LIKE_COMMENT"
+    const val NOTIFICATION_TYPE_MENTION = "MENTION"
 
     // ===== NOTIFICATION TITLES =====
     const val NOTIFICATION_TITLE_NEW_POST = "New Post"
@@ -37,6 +38,7 @@ object NotificationConfig {
     const val NOTIFICATION_TITLE_NEW_REPLY = "New Reply"
     const val NOTIFICATION_TITLE_NEW_LIKE_POST = "New Like"
     const val NOTIFICATION_TITLE_NEW_LIKE_COMMENT = "New Like"
+    const val NOTIFICATION_TITLE_MENTION = "New Mention"
     
     // ===== SERVER-SIDE CONFIGURATION =====
     const val WORKER_URL = "https://my-app-notification-sender.mashikahamed0.workers.dev"
@@ -84,6 +86,7 @@ object NotificationConfig {
             NOTIFICATION_TYPE_NEW_REPLY -> NOTIFICATION_TITLE_NEW_REPLY
             NOTIFICATION_TYPE_NEW_LIKE_POST -> NOTIFICATION_TITLE_NEW_LIKE_POST
             NOTIFICATION_TYPE_NEW_LIKE_COMMENT -> NOTIFICATION_TITLE_NEW_LIKE_COMMENT
+            NOTIFICATION_TYPE_MENTION -> NOTIFICATION_TITLE_MENTION
             else -> NOTIFICATION_TITLE
         }
     }

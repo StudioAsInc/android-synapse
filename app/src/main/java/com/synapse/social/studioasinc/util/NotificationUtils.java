@@ -47,4 +47,40 @@ public class NotificationUtils {
             }
         });
     }
+
+    public static void sendMentionNotification(String mentionedUid, String postKey, String commentKey, String contentType) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || currentUser.getUid().equals(mentionedUid)) {
+            return;
+        }
+        String currentUid = currentUser.getUid();
+
+        DatabaseReference senderRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(currentUid);
+        senderRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot senderSnapshot) {
+                String senderName = senderSnapshot.child("username").getValue(String.class);
+                String message = senderName + " mentioned you in a " + contentType;
+
+                HashMap<String, String> data = new HashMap<>();
+                data.put("postId", postKey);
+                if (commentKey != null) {
+                    data.put("commentId", commentKey);
+                }
+
+                NotificationHelper.sendNotification(
+                    mentionedUid,
+                    currentUid,
+                    message,
+                    NotificationConfig.NOTIFICATION_TYPE_MENTION,
+                    data
+                );
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                android.util.Log.e("NotificationUtils", "Failed to get sender name for mention notification", databaseError.toException());
+            }
+        });
+    }
 }
