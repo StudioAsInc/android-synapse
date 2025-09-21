@@ -31,6 +31,7 @@ import androidx.fragment.app.FragmentManager;
 import com.bumptech.glide.*;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.MaterialColors;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthResult;
@@ -100,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
+		DynamicColors.applyToActivitiesIfAvailable(this);
 		setContentView(R.layout.activity_main);
 		initialize(_savedInstanceState);
 		FirebaseApp.initializeApp(this);
