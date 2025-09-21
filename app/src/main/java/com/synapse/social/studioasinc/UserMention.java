@@ -52,9 +52,9 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
         recyclerView.setAdapter(searchUserAdapter);
         recyclerView.setBackgroundResource(R.drawable.rounded_background);
 
-        int height = (int) (300 * context.getResources().getDisplayMetrics().density);
+        int height = (int) (200 * context.getResources().getDisplayMetrics().density);
         popupWindow = new PopupWindow(recyclerView,
-                RecyclerView.LayoutParams.WRAP_CONTENT,
+                RecyclerView.LayoutParams.MATCH_PARENT,
                 height);
         popupWindow.setFocusable(false);
         popupWindow.setOutsideTouchable(true);
