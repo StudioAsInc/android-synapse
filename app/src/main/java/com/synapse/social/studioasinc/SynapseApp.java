@@ -9,6 +9,7 @@ import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
+import com.google.android.material.color.DynamicColors;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
@@ -47,6 +48,7 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
     @Override
     public void onCreate() {
         super.onCreate();
+        DynamicColors.applyToActivitiesIfAvailable(this);
         mContext = this;
         this.mExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
         this.mCalendar = Calendar.getInstance();
