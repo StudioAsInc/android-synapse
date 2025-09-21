@@ -89,9 +89,7 @@
         <item name="cornerSizeBottomLeft">10%</item>
         <item name="cornerSizeBottomRight">10%</item>
     </style>
-    <style name="AppTheme.DebugActivity" parent="AppTheme">
-        <item name="windowActionBar">true</item>
-        <item name="windowNoTitle">false</item>
+    <style name="AppTheme.DebugActivity" parent="Theme.Material3Expressive.DynamicColors.DayNight">
     </style>
     <style name="CollapsingTextExpanded.Material3" parent="TextAppearance.Material3.HeadlineMedium">
         <item name="android:textSize">28sp</item>
