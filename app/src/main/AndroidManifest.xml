@@ -203,7 +203,7 @@
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
 			android:supportsPictureInPicture="true"
-			android:theme="@style/AppTheme"
+			android:theme="@style/AppTheme.DebugActivity"
 			android:windowSoftInputMode="stateHidden"
 			android:exported="true">
 			<intent-filter>
