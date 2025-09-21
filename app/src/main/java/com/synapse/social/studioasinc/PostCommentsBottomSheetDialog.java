@@ -275,28 +275,8 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						}
 				});
 				
-				comment_send_input.addTextChangedListener(new TextWatcher() {
-						@Override
-						public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-								final String _charSeq = _param1.toString();
-								if (!_charSeq.trim().equals("")) {
-										comment_send_button.setVisibility(View.VISIBLE);
-								}
-								else {
-										comment_send_button.setVisibility(View.GONE);
-								}
-						}
-						
-						@Override
-						public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-								
-						}
-						
-						@Override
-						public void afterTextChanged(Editable _param1) {
-								
-						}
-				});
+				UserMention userMention = new UserMention(comment_send_input, comment_send_button);
+				comment_send_input.addTextChangedListener(userMention);
 				
 				comment_send_button.setOnClickListener(new View.OnClickListener() {
 						@Override
@@ -327,6 +307,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 												sendCommentMap.put("like", "0");
 												main.child("posts-comments").child(postKey).child(pushKey).updateChildren(sendCommentMap);
 												_sendCommentNotification(false, pushKey);
+												handleMentions(comment_send_input.getText().toString(), postKey, pushKey);
 												comment_send_input.setText("");
 												getCommentsRef(postKey, false);
 										}
@@ -376,7 +357,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						}
 					}
 				});
-				} else {
+			} else {
 				senderNameTask.addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<DataSnapshot>() {
 					@Override
 					public void onSuccess(DataSnapshot dataSnapshot) {
@@ -395,6 +376,15 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 					}
 				});
 			}
+		}
+
+		private void handleMentions(String text, String postKey, String commentKey) {
+			com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, commentKey, "comment");
+		}
+
+		private void handleCommentMentions(TextView textView, String text) {
+			com.synapse.social.studioasinc.util.MentionUtils.handleMentions(getContext(), textView, text);
+		}
 		}
 
 		public void getCommentsRef(String key, boolean increaseLimit) {
@@ -624,7 +614,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_ImageColor(top_popular_3_fire_ic, 0xFFFF9800);
 
 						if (commentData.get("comment") != null) {
-								comment_text.setText(commentData.get("comment").toString());
+								handleCommentMentions(comment_text, commentData.get("comment").toString());
 						} else {
 								comment_text.setText("");
 						}
