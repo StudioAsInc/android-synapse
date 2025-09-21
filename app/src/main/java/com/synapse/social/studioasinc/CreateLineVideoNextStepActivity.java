@@ -101,7 +101,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private View topSpace;
 	private ScrollView scroll;
 	private ImageView back;
-	private LinearLayout topSpc;
 	private TextView continueButton;
 	private TextView title;
 	private TextView subtitle;
@@ -164,7 +163,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		topSpace = findViewById(R.id.topSpace);
 		scroll = findViewById(R.id.scroll);
 		back = findViewById(R.id.back);
-		topSpc = findViewById(R.id.topSpc);
 		continueButton = findViewById(R.id.continueButton);
 		title = findViewById(R.id.title);
 		subtitle = findViewById(R.id.subtitle);
@@ -205,9 +203,9 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
 				if (_charSeq.length() == 0) {
-					_TransitionManager(PostInfoTop1, 200);
+					_TransitionManager(scrollBody, 200);
 				} else {
-					_TransitionManager(PostInfoTop1, 200);
+					_TransitionManager(scrollBody, 200);
 				}
 			}
 
@@ -620,7 +618,7 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 
 
 	public void _TransitionManager(final View _view, final double _duration) {
-		LinearLayout viewgroup =(LinearLayout) _view;
+		android.view.ViewGroup viewgroup = (android.view.ViewGroup) _view;
 		
 		android.transition.AutoTransition autoTransition = new android.transition.AutoTransition(); autoTransition.setDuration((long)_duration); android.transition.TransitionManager.beginDelayedTransition(viewgroup, autoTransition);
 	}
