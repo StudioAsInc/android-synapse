@@ -135,10 +135,10 @@
                                                         </LinearLayout>
 
                                                         <TextView
-                                                                android:id="@+id/topProfileLayoutStatus"
+                                                                        android:id="@+id/group_participants"
                                                                 android:layout_width="wrap_content"
                                                                 android:layout_height="wrap_content"
-                                                                android:text="@string/status_text_minutes"
+                                                                        android:text="You, and 15 others"
                                                                 android:textSize="@dimen/text_size_normal"
                                                                 android:textColor="@color/md_theme_onBackground"
                                                                 android:singleLine="true" />
@@ -154,24 +154,6 @@
                                                 android:padding="@dimen/spacing_normal"
                                                 android:orientation="vertical"
                                                 android:layout_weight="1" />
-
-                                        <ImageView
-                                                android:id="@+id/ic_video_call"
-                                                android:layout_width="@dimen/spacing_xlarge"
-                                                android:layout_height="match_parent"
-                                                android:padding="@dimen/dot_size"
-                                                android:src="@drawable/ic_video_chat_48px"
-                                                android:scaleType="fitCenter" />
-
-                                        <ImageView
-                                                android:id="@+id/ic_audio_call"
-                                                android:layout_width="@dimen/spacing_xlarge"
-                                                android:layout_height="match_parent"
-                                                android:layout_marginLeft="@dimen/spacing_normal"
-                                                android:layout_marginRight="@dimen/spacing_normal"
-                                                android:padding="@dimen/dot_size"
-                                                android:src="@drawable/ic_call_48px"
-                                                android:scaleType="fitCenter" />
 
                                         <ImageView
                                                 android:id="@+id/ic_more"
@@ -214,18 +196,6 @@
                                 android:paddingBottom="80dp"
                                 tools:listitem="@layout/chat_msg_cv_synapse" />
                 </LinearLayout>
-                <TextView
-                        android:id="@+id/blocked_txt"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:padding="@dimen/spacing_normal"
-                        android:background="@color/colorPrimary"
-                        android:gravity="center_horizontal|bottom"
-                        android:text="@string/cant_reply"
-                        android:textSize="@dimen/text_size_normal"
-                        android:textColor="@color/md_theme_onPrimary"
-                        android:visibility="gone"
-                        android:elevation="5dp" />
         </LinearLayout>
         <LinearLayout
                 android:layout_width="0dp"

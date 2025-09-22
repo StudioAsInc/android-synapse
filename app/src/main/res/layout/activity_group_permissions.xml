@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/pureWhite">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        app:elevation="0dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="Group permissions"
+            app:navigationIcon="@drawable/ic_arrow_back_ios_new_48px" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Members can:"
+                android:textStyle="bold"
+                android:textColor="@color/colorPrimary"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_edit_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Edit group settings"
+                android:checked="true"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This includes the name, icon, description, disappearing message timer, and the ability to pin, keep or unkeep messages."
+                android:layout_marginStart="8dp"
+                android:layout_marginBottom="16dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_send_messages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send new messages"
+                android:checked="true"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_add_members"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Add other members"
+                android:layout_marginTop="16dp"
+                android:checked="true"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_invite_link"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Invite via link or QR code"
+                android:layout_marginTop="16dp"
+                android:checked="false"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Admins can:"
+                android:textStyle="bold"
+                android:textColor="@color/colorPrimary"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_approve_members"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Approve new members"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="When turned on, admins must approve anyone who wants to join the group."
+                android:layout_marginStart="8dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>
