@@ -194,13 +194,6 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 			}
 		});
 		
-		bottom_chats.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), MessagesActivity.class);
-				startActivity(intent);
-			}
-		});
 		
 		bottom_profile.setOnClickListener(new View.OnClickListener() {
 			@Override

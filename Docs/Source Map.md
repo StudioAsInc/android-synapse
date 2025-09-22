@@ -64,7 +64,6 @@ synapse-android/
 
 #### Messaging System
 - **`InboxActivity.java`** - Message inbox interface
-- **`MessagesActivity.java`** - Chat interface
 - **`ChatActivity.java`** - Individual chat conversations
 - **`ChatAdapter.java`** - Message display adapter
 - **`FragInboxChatsActivity.java`** - Chat list fragment
@@ -90,7 +89,6 @@ synapse-android/
 #### UI Components
 - **`PostCommentsBottomSheetDialog.java`** - Comment interface
 - **`PostMoreBottomSheetDialog.java`** - Post action menu
-- **`UserProfileMoreBottomSheet.java`** - Profile action menu
 - **`ContentDisplayBottomSheetDialogFragment.java`** - Content summary display
 
 #### Utility Classes
