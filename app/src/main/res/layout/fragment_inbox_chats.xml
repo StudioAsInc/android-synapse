@@ -85,7 +85,7 @@
 
 				<com.google.android.material.chip.Chip
 					android:id="@+id/linear33"
-					android.layout_width="wrap_content"
+					android:layout_width="wrap_content"
 					android:layout_height="match_parent"
 					android:layout_marginLeft="8dp"
 					android:layout_marginBottom="3dp"
