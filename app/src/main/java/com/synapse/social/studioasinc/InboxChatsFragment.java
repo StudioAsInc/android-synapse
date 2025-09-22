@@ -320,7 +320,7 @@ public class InboxChatsFragment extends Fragment {
 
 
 	public void _getInboxReference() {
-		Query getInboxRef = FirebaseDatabase.getInstance().getReference("skyline/inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+		Query getInboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
 		getInboxRef.addValueEventListener(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -672,10 +672,12 @@ public class InboxChatsFragment extends Fragment {
 				main.setOnClickListener(new View.OnClickListener() {
 					@Override
 					public void onClick(View _view) {
-						intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
-						intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-						intent.putExtra("origin", "InboxActivity");
-						startActivity(intent);
+						if (_data.get((int)_position).containsKey("uid")) {
+							intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
+							intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
+							intent.putExtra("origin", "InboxActivity");
+							startActivity(intent);
+						}
 					}
 				});
 			}catch(Exception e){
