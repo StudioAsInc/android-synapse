@@ -120,9 +120,8 @@ class CreateGroupActivity : AppCompatActivity() {
             .addOnSuccessListener {
                 Toast.makeText(this, "Group created successfully", Toast.LENGTH_SHORT).show()
                 // Navigate to the group chat activity
-                val intent = Intent(this, ChatActivity::class.java)
+                val intent = Intent(this, ChatGroupActivity::class.java)
                 intent.putExtra("uid", groupId)
-                intent.putExtra("isGroup", true)
                 startActivity(intent)
                 finish()
             }

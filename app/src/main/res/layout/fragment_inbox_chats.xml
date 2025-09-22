@@ -29,18 +29,29 @@
 				android:animateLayoutChanges="true">
 
 				<com.google.android.material.chip.Chip
-					android:id="@+id/linear10"
+					android:id="@+id/chip_all"
 					android:layout_width="wrap_content"
 					android:layout_height="match_parent"
 					android:layout_marginLeft="8dp"
 					android:layout_marginBottom="3dp"
 					android:orientation="vertical"
-					android:text="Chats"
+					android:text="All"
+					style="@style/Widget.Material3.Chip.Filter"
+					android:checked="true" />
+
+				<com.google.android.material.chip.Chip
+					android:id="@+id/chip_single"
+					android:layout_width="wrap_content"
+					android:layout_height="match_parent"
+					android:layout_marginLeft="8dp"
+					android:layout_marginBottom="3dp"
+					android:orientation="vertical"
+					android:text="Single"
 					style="@style/Widget.Material3.Chip.Filter"
 					android:checked="false" />
 
 				<com.google.android.material.chip.Chip
-					android:id="@+id/linear29"
+					android:id="@+id/chip_groups"
 					android:layout_width="wrap_content"
 					android:layout_height="match_parent"
 					android:layout_marginLeft="8dp"
@@ -49,51 +60,6 @@
 					android:text="Groups"
 					style="@style/Widget.Material3.Chip.Filter"
 					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear30"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Channels"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear31"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Bots"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear32"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Community"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear33"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="AI"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false"
-					android:animateLayoutChanges="true" />
 			</com.google.android.material.chip.ChipGroup>
 		</HorizontalScrollView>
 

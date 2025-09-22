@@ -85,17 +85,15 @@ public class InboxChatsFragment extends Fragment {
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 
 	private ArrayList<HashMap<String, Object>> ChatInboxList = new ArrayList<>();
+	private ArrayList<HashMap<String, Object>> FilteredChatInboxList = new ArrayList<>();
 
 	private LinearLayout linear2;
 	private HorizontalScrollView hscroll1;
 	private RecyclerView inboxListRecyclerView;
 	private ChipGroup linear9;
-	private Chip linear10;
-	private Chip linear29;
-	private Chip linear30;
-	private Chip linear31;
-	private Chip linear32;
-	private Chip linear33;
+	private Chip chip_all;
+	private Chip chip_single;
+	private Chip chip_groups;
 	private FloatingActionButton fab_new_group;
 
 	private FirebaseAuth auth;
@@ -128,14 +126,18 @@ public class InboxChatsFragment extends Fragment {
 		hscroll1 = _view.findViewById(R.id.hscroll1);
 		inboxListRecyclerView = _view.findViewById(R.id.inboxListRecyclerView);
 		linear9 = _view.findViewById(R.id.linear9);
-		linear10 = _view.findViewById(R.id.linear10);
-		linear29 = _view.findViewById(R.id.linear29);
-		linear30 = _view.findViewById(R.id.linear30);
-		linear31 = _view.findViewById(R.id.linear31);
-		linear32 = _view.findViewById(R.id.linear32);
-		linear33 = _view.findViewById(R.id.linear33);
+		chip_all = _view.findViewById(R.id.chip_all);
+		chip_single = _view.findViewById(R.id.chip_single);
+		chip_groups = _view.findViewById(R.id.chip_groups);
 		fab_new_group = _view.findViewById(R.id.fab_new_group);
 		auth = FirebaseAuth.getInstance();
+
+		linear9.setOnCheckedChangeListener(new ChipGroup.OnCheckedChangeListener() {
+			@Override
+			public void onCheckedChanged(ChipGroup group, int checkedId) {
+				filterChats(checkedId);
+			}
+		});
 
 		_main_child_listener = new ChildEventListener() {
 			@Override
@@ -267,7 +269,7 @@ public class InboxChatsFragment extends Fragment {
 	}
 
 	private void initializeLogic() {
-		inboxListRecyclerView.setAdapter(new InboxListRecyclerViewAdapter(ChatInboxList));
+		inboxListRecyclerView.setAdapter(new InboxListRecyclerViewAdapter(FilteredChatInboxList));
 		inboxListRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 		_getInboxReference();
 
@@ -331,8 +333,8 @@ public class InboxChatsFragment extends Fragment {
 
 
 	public void _getInboxReference() {
-		Query getInboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getInboxRef.addValueEventListener(new ValueEventListener() {
+		DatabaseReference inboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+		inboxRef.addValueEventListener(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
@@ -347,11 +349,47 @@ public class InboxChatsFragment extends Fragment {
 					} catch (Exception _e) {
 						_e.printStackTrace();
 					}
-
-					SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
 					inboxListRecyclerView.getAdapter().notifyDataSetChanged();
 				} else {
 					inboxListRecyclerView.setVisibility(View.GONE);
+				}
+			}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError databaseError) {
+
+			}
+		});
+
+		DatabaseReference groupsRef = FirebaseDatabase.getInstance().getReference("groups");
+		groupsRef.addValueEventListener(new ValueEventListener() {
+			@Override
+			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				if(dataSnapshot.exists()) {
+					try {
+						for (DataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue();
+							if (_map.get("members") != null && ((HashMap<String, Object>)_map.get("members")).containsKey(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+								_map.put("isGroup", "true");
+								// find and update if exists, otherwise add
+								boolean found = false;
+								for (int i = 0; i < ChatInboxList.size(); i++) {
+									if (ChatInboxList.get(i).get("uid").equals(_map.get("groupId"))) {
+										ChatInboxList.set(i, _map);
+										found = true;
+										break;
+									}
+								}
+								if (!found) {
+									ChatInboxList.add(_map);
+								}
+							}
+						}
+						SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
+						filterChats(linear9.getCheckedChipId());
+					} catch (Exception _e) {
+						_e.printStackTrace();
+					}
 				}
 			}
 
@@ -375,6 +413,26 @@ public class InboxChatsFragment extends Fragment {
 
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
+	}
+
+	private void filterChats(int checkedId) {
+		FilteredChatInboxList.clear();
+		if (checkedId == R.id.chip_all) {
+			FilteredChatInboxList.addAll(ChatInboxList);
+		} else if (checkedId == R.id.chip_single) {
+			for (HashMap<String, Object> chat : ChatInboxList) {
+				if (!chat.containsKey("isGroup")) {
+					FilteredChatInboxList.add(chat);
+				}
+			}
+		} else if (checkedId == R.id.chip_groups) {
+			for (HashMap<String, Object> chat : ChatInboxList) {
+				if (chat.containsKey("isGroup") && chat.get("isGroup").toString().equals("true")) {
+					FilteredChatInboxList.add(chat);
+				}
+			}
+		}
+		inboxListRecyclerView.getAdapter().notifyDataSetChanged();
 	}
 
 	private boolean isNullOrEmpty(String str) {
@@ -680,17 +738,38 @@ public class InboxChatsFragment extends Fragment {
 					}
 
 				}
-				main.setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View _view) {
-						if (_data.get((int)_position).containsKey("uid")) {
-							intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
-							intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-							intent.putExtra("origin", "InboxActivity");
-							startActivity(intent);
+				if (_data.get(_position).containsKey("isGroup") && _data.get(_position).get("isGroup").toString().equals("true")) {
+					// Group chat
+					username.setText(_data.get(_position).get("name").toString());
+					Glide.with(getContext()).load(Uri.parse(_data.get(_position).get("icon").toString())).into(profileCardImage);
+					genderBadge.setVisibility(View.GONE);
+					verifiedBadge.setVisibility(View.GONE);
+					userStatusCircleBG.setVisibility(View.GONE);
+					last_message.setText(_data.get(_position).get("last_message_text") != null ? _data.get(_position).get("last_message_text").toString() : "No messages yet.");
+					main.setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View _view) {
+							if (_data.get((int)_position).containsKey("groupId")) {
+								intent.setClass(getContext().getApplicationContext(), ChatGroupActivity.class);
+								intent.putExtra("uid", _data.get((int)_position).get("groupId").toString());
+								startActivity(intent);
+							}
 						}
-					}
-				});
+					});
+				} else {
+					// Single chat
+					main.setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View _view) {
+							if (_data.get((int)_position).containsKey("uid")) {
+								intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
+								intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
+								intent.putExtra("origin", "InboxActivity");
+								startActivity(intent);
+							}
+						}
+					});
+				}
 			}catch(Exception e){
 				
 			}
