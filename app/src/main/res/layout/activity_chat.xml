@@ -118,7 +118,7 @@
 
 								<ImageView
 									android:id="@+id/topProfileLayoutGenderBadge"
-									android:layout_width="0dp"
+									android:layout_width="wrap_content"
 									android:layout_height="@dimen/spacing_medium"
 									android:layout_marginRight="@dimen/spacing_small"
 									android:src="@drawable/male_badge"
@@ -156,7 +156,7 @@
 
 					<ImageView
 						android:id="@+id/ic_video_call"
-						android:layout_width="35dp"
+						android:layout_width="@dimen/spacing_xlarge"
 						android:layout_height="match_parent"
 						android:padding="@dimen/dot_size"
 						android:src="@drawable/ic_video_chat_48px"
@@ -164,17 +164,17 @@
 
 					<ImageView
 						android:id="@+id/ic_audio_call"
-						android:layout_width="35dp"
+						android:layout_width="@dimen/spacing_xlarge"
 						android:layout_height="match_parent"
-						android:layout_marginLeft="10dp"
-						android:layout_marginRight="10dp"
+						android:layout_marginLeft="@dimen/spacing_normal"
+						android:layout_marginRight="@dimen/spacing_normal"
 						android:padding="@dimen/dot_size"
 						android:src="@drawable/ic_call_48px"
 						android:scaleType="fitCenter" />
 
 					<ImageView
 						android:id="@+id/ic_more"
-						android:layout_width="35dp"
+						android:layout_width="@dimen/spacing_xlarge"
 						android:layout_height="match_parent"
 						android:padding="@dimen/dot_size"
 						android:src="@drawable/ic_info_48px"
