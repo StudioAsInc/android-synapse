@@ -341,14 +341,6 @@ public class ChatsettingsActivity extends AppCompatActivity {
 				finish();
 			}
 		});
-
-		application_stage.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), BgWallpapersActivity.class);
-				startActivity(intent);
-			}
-		});
 		
 		
 		
