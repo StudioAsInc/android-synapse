@@ -38,8 +38,9 @@ public class BgWallpapersActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bg_wallpapers);
         initializeViews();
-        wallpapersList.addAll(getWallpapersList());
         setupGridView();
+        wallpapersList.addAll(getWallpapersList());
+        wallpaperAdapter.notifyDataSetChanged();
 
         // Set back button click listener
         findViewById(R.id.back).setOnClickListener(v -> finish());
