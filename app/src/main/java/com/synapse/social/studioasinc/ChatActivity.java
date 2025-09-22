@@ -162,6 +162,7 @@ public class ChatActivity extends AppCompatActivity {
 	private String FirstUserName = "";
 	private String oldestMessageKey = null;
 	private static final int CHAT_PAGE_SIZE = 80;
+	private boolean is_group = false;
 	private String object_clicked = "";
 	private String handle = "";
 	private HashMap<String, Object> block = new HashMap<>();
@@ -246,7 +247,12 @@ public class ChatActivity extends AppCompatActivity {
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
-		setContentView(R.layout.activity_chat);
+		is_group = getIntent().getBooleanExtra("isGroup", false);
+		if (is_group) {
+			setContentView(R.layout.activity_chat_group);
+		} else {
+			setContentView(R.layout.activity_chat);
+		}
 		initialize(_savedInstanceState);
 		FirebaseApp.initializeApp(this);
 
@@ -528,6 +534,7 @@ public class ChatActivity extends AppCompatActivity {
 	}
 
 	private void initializeLogic() {
+		is_group = getIntent().getBooleanExtra("isGroup", false);
 		// Load and apply chat background
 		SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
 		String backgroundUrl = themePrefs.getString("chat_background_url", null);
@@ -564,8 +571,12 @@ public class ChatActivity extends AppCompatActivity {
 		// We need to listen to the chat node where messages are being sent/received
 		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
-		String chatID = getChatId(currentUserUid, otherUserUid);
-		chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
+		if (is_group) {
+			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
+		} else {
+			String chatID = getChatId(currentUserUid, otherUserUid);
+			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
+		}
 		
 		// Set up user reference
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
@@ -608,7 +619,11 @@ public class ChatActivity extends AppCompatActivity {
 		});
 
 		// --- END: Critical Initialization ---
-		_getUserReference();
+		if (is_group) {
+			_getGroupReference();
+		} else {
+			_getUserReference();
+		}
 		message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 		if (message_et.getText().toString().trim().equals("")) {
 			_TransitionManager(message_input_overall_container, 100);
@@ -2066,12 +2081,15 @@ public class ChatActivity extends AppCompatActivity {
 	}
 
 	private void _sendMessageToDb(HashMap<String, Object> messageMap, String senderUid, String recipientUid, String uniqueMessageKey) {
-		String chatID = getChatId(senderUid, recipientUid);
-		_firebase.getReference(CHATS_REF).child(chatID).child(uniqueMessageKey).setValue(messageMap);
-
-		// Add to user-chats node
-		_firebase.getReference(USER_CHATS_REF).child(senderUid).child(chatID).setValue(true);
-		_firebase.getReference(USER_CHATS_REF).child(recipientUid).child(chatID).setValue(true);
+		if (is_group) {
+			_firebase.getReference("skyline/group-chats").child(recipientUid).child(uniqueMessageKey).setValue(messageMap);
+		} else {
+			String chatID = getChatId(senderUid, recipientUid);
+			_firebase.getReference(CHATS_REF).child(chatID).child(uniqueMessageKey).setValue(messageMap);
+			// Add to user-chats node
+			_firebase.getReference(USER_CHATS_REF).child(senderUid).child(chatID).setValue(true);
+			_firebase.getReference(USER_CHATS_REF).child(recipientUid).child(chatID).setValue(true);
+		}
 	}
 
 	/**
@@ -2507,28 +2525,59 @@ public class ChatActivity extends AppCompatActivity {
 	}
 
 	public void _updateInbox(final String _lastMessage) {
-		// Using the correct parameter name '_lastMessage' with the underscore prefix.
-		cc = Calendar.getInstance();
+		if (is_group) {
+			DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
+			groupRef.child("members").addListenerForSingleValueEvent(new ValueEventListener() {
+				@Override
+				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					if (dataSnapshot.exists()) {
+						for (DataSnapshot memberSnapshot : dataSnapshot.getChildren()) {
+							String memberUid = memberSnapshot.getKey();
+							if (memberUid != null) {
+								cc = Calendar.getInstance();
+								ChatInboxSend = new HashMap<>();
+								ChatInboxSend.put(CHAT_ID_KEY, getIntent().getStringExtra(UID_KEY));
+								ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
+								ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
+								ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
+								ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
+								ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
+								ChatInboxSend.put("isGroup", "true");
+								_firebase.getReference(INBOX_REF).child(memberUid).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
+							}
+						}
+					}
+				}
 
-		// Update inbox for the current user
-		ChatInboxSend = new HashMap<>();
-		ChatInboxSend.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
-		ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
-		ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
-		ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
-		ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-		_firebase.getReference(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
+				@Override
+				public void onCancelled(@NonNull DatabaseError databaseError) {
 
-		// Update inbox for the other user
-		ChatInboxSend2 = new HashMap<>();
-		ChatInboxSend2.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
-		ChatInboxSend2.put(UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend2.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-		ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
-		ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
-		ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-		_firebase.getReference(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
+				}
+			});
+		} else {
+			// Using the correct parameter name '_lastMessage' with the underscore prefix.
+			cc = Calendar.getInstance();
+
+			// Update inbox for the current user
+			ChatInboxSend = new HashMap<>();
+			ChatInboxSend.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
+			ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
+			ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
+			ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
+			ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
+			ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
+			_firebase.getReference(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
+
+			// Update inbox for the other user
+			ChatInboxSend2 = new HashMap<>();
+			ChatInboxSend2.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
+			ChatInboxSend2.put(UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
+			ChatInboxSend2.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
+			ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
+			ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
+			ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
+			_firebase.getReference(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
+		}
 	}
 
 
@@ -2719,6 +2768,29 @@ public class ChatActivity extends AppCompatActivity {
 			}
 		}
 		return -1;
+	}
+
+	public void _getGroupReference() {
+		DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
+		groupRef.addValueEventListener(new ValueEventListener() {
+			@Override
+			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
+					topProfileLayoutUsername.setText(dataSnapshot.child("name").getValue(String.class));
+					Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("icon").getValue(String.class))).into(topProfileLayoutProfileImage);
+					topProfileLayoutGenderBadge.setVisibility(View.GONE);
+					topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
+					topProfileLayoutStatus.setText("Group");
+				}
+			}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError databaseError) {
+
+			}
+		});
+
+		_getChatMessagesRef();
 	}
 
 	// CRITICAL FIX: Add highlight animation for replied messages with NPE protection
@@ -3162,6 +3234,17 @@ public class ChatActivity extends AppCompatActivity {
 			final ImageView mMessageImageView = _view.findViewById(R.id.mMessageImageView);
 			final TextView date = _view.findViewById(R.id.date);
 			final ImageView message_state = _view.findViewById(R.id.message_state);
+			final TextView sender_name = _view.findViewById(R.id.sender_name);
+
+			if (is_group && !_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+				sender_name.setVisibility(View.VISIBLE);
+				// Here you would fetch the user's name from Firebase based on the UID
+				// and set it to the sender_name TextView.
+				// For now, we'll just show the UID.
+				sender_name.setText(_data.get(_position).get("uid").toString());
+			} else {
+				sender_name.setVisibility(View.GONE);
+			}
 		}
 
 		@Override

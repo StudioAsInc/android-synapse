@@ -38,6 +38,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.chip.*;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
@@ -95,6 +96,7 @@ public class InboxChatsFragment extends Fragment {
 	private Chip linear31;
 	private Chip linear32;
 	private Chip linear33;
+	private FloatingActionButton fab_new_group;
 
 	private FirebaseAuth auth;
 	private OnCompleteListener<AuthResult> _auth_create_user_listener;
@@ -132,6 +134,7 @@ public class InboxChatsFragment extends Fragment {
 		linear31 = _view.findViewById(R.id.linear31);
 		linear32 = _view.findViewById(R.id.linear32);
 		linear33 = _view.findViewById(R.id.linear33);
+		fab_new_group = _view.findViewById(R.id.fab_new_group);
 		auth = FirebaseAuth.getInstance();
 
 		_main_child_listener = new ChildEventListener() {
@@ -267,6 +270,14 @@ public class InboxChatsFragment extends Fragment {
 		inboxListRecyclerView.setAdapter(new InboxListRecyclerViewAdapter(ChatInboxList));
 		inboxListRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 		_getInboxReference();
+
+		fab_new_group.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				Intent intent = new Intent(getContext(), NewGroupActivity.class);
+				startActivity(intent);
+			}
+		});
 	}
 
 	public void _ImgRound(final ImageView _imageview, final double _value) {
