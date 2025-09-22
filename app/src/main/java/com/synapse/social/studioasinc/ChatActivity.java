@@ -3217,8 +3217,7 @@ public class ChatActivity extends AppCompatActivity {
 		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
 		ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
 
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(senderUid).child(recipientUid).child(uniqueMessageKey).setValue(ChatSendMap);
-		_firebase.getReference(SKYLINE_REF).child(CHATS_REF).child(recipientUid).child(senderUid).child(uniqueMessageKey).setValue(ChatSendMap);
+		_sendMessageToDb(ChatSendMap, senderUid, recipientUid, uniqueMessageKey);
 
 		ChatSendMap.put("isLocalMessage", true);
 		messageKeys.add(uniqueMessageKey);
