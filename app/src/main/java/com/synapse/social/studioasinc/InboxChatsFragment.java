@@ -92,8 +92,12 @@ public class InboxChatsFragment extends Fragment {
 	private RecyclerView inboxListRecyclerView;
 	private ChipGroup linear9;
 	private Chip chip_all;
-	private Chip chip_single;
+	private Chip chip_chats;
 	private Chip chip_groups;
+	private Chip chip_channels;
+	private Chip chip_bots;
+	private Chip chip_community;
+	private Chip chip_ai;
 	private FloatingActionButton fab_new_group;
 
 	private FirebaseAuth auth;
@@ -127,8 +131,12 @@ public class InboxChatsFragment extends Fragment {
 		inboxListRecyclerView = _view.findViewById(R.id.inboxListRecyclerView);
 		linear9 = _view.findViewById(R.id.linear9);
 		chip_all = _view.findViewById(R.id.chip_all);
-		chip_single = _view.findViewById(R.id.chip_single);
-		chip_groups = _view.findViewById(R.id.chip_groups);
+		chip_chats = _view.findViewById(R.id.linear10);
+		chip_groups = _view.findViewById(R.id.linear29);
+		chip_channels = _view.findViewById(R.id.linear30);
+		chip_bots = _view.findViewById(R.id.linear31);
+		chip_community = _view.findViewById(R.id.linear32);
+		chip_ai = _view.findViewById(R.id.linear33);
 		fab_new_group = _view.findViewById(R.id.fab_new_group);
 		auth = FirebaseAuth.getInstance();
 
@@ -382,7 +390,7 @@ public class InboxChatsFragment extends Fragment {
 	private void filterChats(int checkedId) {
 		FilteredChatInboxList.clear();
 		Chip checkedChip = getView().findViewById(checkedId);
-		if (checkedChip == null) {
+		if (checkedChip == null) { // This can happen if no chip is checked
 			FilteredChatInboxList.addAll(ChatInboxList);
 			inboxListRecyclerView.getAdapter().notifyDataSetChanged();
 			return;
@@ -392,13 +400,18 @@ public class InboxChatsFragment extends Fragment {
 		if (filter.equals("all")) {
 			FilteredChatInboxList.addAll(ChatInboxList);
 		} else {
-			String chatTypeToFilter = filter.substring(0, filter.length() - 1); // "groups" -> "group"
+			String chatTypeToFilter = "";
 			if (filter.equals("chats")) {
 				chatTypeToFilter = "single";
+			} else if (filter.equals("groups")) {
+				chatTypeToFilter = "group";
 			}
-			for (HashMap<String, Object> chat : ChatInboxList) {
-				if (chat.containsKey("chat_type") && chat.get("chat_type").toString().equals(chatTypeToFilter)) {
-					FilteredChatInboxList.add(chat);
+
+			if (!chatTypeToFilter.isEmpty()) {
+				for (HashMap<String, Object> chat : ChatInboxList) {
+					if (chat.containsKey("chat_type") && chat.get("chat_type").toString().equals(chatTypeToFilter)) {
+						FilteredChatInboxList.add(chat);
+					}
 				}
 			}
 		}
@@ -520,194 +533,6 @@ public class InboxChatsFragment extends Fragment {
 					}
 				}
 				_setTime(Double.parseDouble(_data.get((int)_position).get("push_date").toString()), push);
-				if (UserInfoCacheMap.containsKey("uid-".concat(_data.get((int)_position).get("uid").toString()))) {
-					main.setVisibility(View.VISIBLE);
-					
-					// Get uid once to avoid repeated calls
-					String uid = _data.get((int)_position).get("uid").toString();
-					
-					// Handle banned status with null check
-					Object bannedObj = UserInfoCacheMap.get("banned-".concat(uid));
-					if (bannedObj != null && bannedObj.toString().equals("true")) {
-						profileCardImage.setImageResource(R.drawable.banned_avatar);
-					} else {
-						// Handle avatar with null check
-						Object avatarObj = UserInfoCacheMap.get("avatar-".concat(uid));
-						if (isNullOrEmpty(avatarObj != null ? avatarObj.toString() : null)) {
-							profileCardImage.setImageResource(R.drawable.avatar);
-						} else {
-							Glide.with(getContext())
-							.load(Uri.parse(avatarObj.toString()))
-							.into(profileCardImage);
-						}
-					}
-					
-					// Handle nickname with null check
-					Object nicknameObj = UserInfoCacheMap.get("nickname-".concat(uid));
-					if (isNullOrEmpty(nicknameObj != null ? nicknameObj.toString() : null)) {
-						Object usernameObj = UserInfoCacheMap.get("username-".concat(uid));
-						username.setText("@" + (usernameObj != null ? usernameObj.toString() : "unknown"));
-					} else {
-						username.setText(nicknameObj.toString());
-					}
-					
-					// Handle status with null check
-					Object statusObj = UserInfoCacheMap.get("status-".concat(uid));
-					userStatusCircleBG.setVisibility(statusObj != null && statusObj.toString().equals("online") 
-					? View.VISIBLE : View.GONE);
-					
-					// Handle gender with null check
-					Object genderObj = UserInfoCacheMap.get("gender-".concat(uid));
-					if (isNullOrEmpty(genderObj != null ? genderObj.toString() : null) || "hidden".equals(genderObj != null ? genderObj.toString() : null)) {
-						genderBadge.setVisibility(View.GONE);
-					} else {
-						genderBadge.setVisibility(View.VISIBLE);
-						String gender = genderObj.toString();
-						if (gender.equals("male")) {
-							genderBadge.setImageResource(R.drawable.male_badge);
-						} else if (gender.equals("female")) {
-							genderBadge.setImageResource(R.drawable.female_badge);
-						}
-					}
-					
-					// Handle account type and badges with null checks
-					Object accountTypeObj = UserInfoCacheMap.get("account_type-".concat(uid));
-					Object premiumObj = UserInfoCacheMap.get("account_premium-".concat(uid));
-					Object verifyObj = UserInfoCacheMap.get("verify-".concat(uid));
-					
-					if (accountTypeObj != null) {
-						String accountType = accountTypeObj.toString();
-						if (accountType.equals("admin")) {
-							verifiedBadge.setImageResource(R.drawable.admin_badge);
-							verifiedBadge.setVisibility(View.VISIBLE);
-						} else if (accountType.equals("moderator")) {
-							verifiedBadge.setImageResource(R.drawable.moderator_badge);
-							verifiedBadge.setVisibility(View.VISIBLE);
-						} else if (accountType.equals("support")) {
-							verifiedBadge.setImageResource(R.drawable.support_badge);
-							verifiedBadge.setVisibility(View.VISIBLE);
-						} else if (premiumObj != null && premiumObj.toString().equals("true")) {
-							verifiedBadge.setImageResource(R.drawable.premium_badge);
-							verifiedBadge.setVisibility(View.VISIBLE);
-						} else if (verifyObj != null && verifyObj.toString().equals("true")) {
-							verifiedBadge.setImageResource(R.drawable.verified_badge);
-							verifiedBadge.setVisibility(View.VISIBLE);
-						} else {
-							verifiedBadge.setVisibility(View.GONE);
-						}
-					} else if (premiumObj != null && premiumObj.toString().equals("true")) {
-						verifiedBadge.setImageResource(R.drawable.premium_badge);
-						verifiedBadge.setVisibility(View.VISIBLE);
-					} else if (verifyObj != null && verifyObj.toString().equals("true")) {
-						verifiedBadge.setImageResource(R.drawable.verified_badge);
-						verifiedBadge.setVisibility(View.VISIBLE);
-					} else {
-						verifiedBadge.setVisibility(View.GONE);
-					}
-				} else {
-					{
-						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-						Handler mMainHandler = new Handler(Looper.getMainLooper());
-						
-						mExecutorService.execute(new Runnable() {
-							@Override
-							public void run() {
-								DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_data.get((int)_position).get("uid").toString());
-								getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
-									@Override
-									public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-										mMainHandler.post(new Runnable() {
-											@Override
-											public void run() {
-												if(dataSnapshot.exists()) {
-													UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-													UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-													UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
-													UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
-													UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
-													UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
-													UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
-													UserInfoCacheMap.put("account_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
-													UserInfoCacheMap.put("account_premium-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_premium").getValue(String.class));
-													UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
-													main.setVisibility(View.VISIBLE);
-													String banned = dataSnapshot.child("banned").getValue(String.class);
-													String avatar = dataSnapshot.child("avatar").getValue(String.class);
-													String nickname = dataSnapshot.child("nickname").getValue(String.class);
-													String usernameValue = dataSnapshot.child("username").getValue(String.class);
-													String status = dataSnapshot.child("status").getValue(String.class);
-													String gender = dataSnapshot.child("gender").getValue(String.class);
-													String accountType = dataSnapshot.child("account_type").getValue(String.class);
-													String accountPremium = dataSnapshot.child("account_premium").getValue(String.class);
-													String verify = dataSnapshot.child("verify").getValue(String.class);
-
-													if ("true".equals(banned)) {
-														profileCardImage.setImageResource(R.drawable.banned_avatar);
-													} else {
-														if (isNullOrEmpty(avatar)) {
-															profileCardImage.setImageResource(R.drawable.avatar);
-														} else {
-															Glide.with(getContext()).load(Uri.parse(avatar)).into(profileCardImage);
-														}
-													}
-
-													if (isNullOrEmpty(nickname)) {
-														username.setText("@" + (usernameValue != null ? usernameValue : ""));
-													} else {
-														username.setText(nickname);
-													}
-
-													if ("online".equals(status)) {
-														userStatusCircleBG.setVisibility(View.VISIBLE);
-													} else {
-														userStatusCircleBG.setVisibility(View.GONE);
-													}
-
-													if (isNullOrEmpty(gender) || "hidden".equals(gender)) {
-														genderBadge.setVisibility(View.GONE);
-													} else {
-														if ("male".equals(gender)) {
-															genderBadge.setImageResource(R.drawable.male_badge);
-															genderBadge.setVisibility(View.VISIBLE);
-														} else if ("female".equals(gender)) {
-															genderBadge.setImageResource(R.drawable.female_badge);
-															genderBadge.setVisibility(View.VISIBLE);
-														}
-													}
-
-													verifiedBadge.setVisibility(View.GONE);
-													if ("admin".equals(accountType)) {
-														verifiedBadge.setImageResource(R.drawable.admin_badge);
-														verifiedBadge.setVisibility(View.VISIBLE);
-													} else if ("moderator".equals(accountType)) {
-														verifiedBadge.setImageResource(R.drawable.moderator_badge);
-														verifiedBadge.setVisibility(View.VISIBLE);
-													} else if ("support".equals(accountType)) {
-														verifiedBadge.setImageResource(R.drawable.support_badge);
-														verifiedBadge.setVisibility(View.VISIBLE);
-													} else if ("true".equals(accountPremium)) {
-														verifiedBadge.setImageResource(R.drawable.premium_badge);
-														verifiedBadge.setVisibility(View.VISIBLE);
-													} else if ("true".equals(verify)) {
-														verifiedBadge.setImageResource(R.drawable.verified_badge);
-														verifiedBadge.setVisibility(View.VISIBLE);
-													}
-												} else {
-												}
-											}
-										});
-									}
-									
-									@Override
-									public void onCancelled(@NonNull DatabaseError databaseError) {
-										
-									}
-								});
-							}
-						});
-					}
-
-				}
 				if (_data.get(_position).containsKey("chat_type") && _data.get(_position).get("chat_type").toString().equals("group")) {
 					String groupId = _data.get(_position).get("uid").toString();
 					main.setOnClickListener(v -> {
@@ -741,8 +566,196 @@ public class InboxChatsFragment extends Fragment {
 					genderBadge.setVisibility(View.GONE);
 					verifiedBadge.setVisibility(View.GONE);
 					userStatusCircleBG.setVisibility(View.GONE);
+					main.setVisibility(View.VISIBLE);
 				} else {
-					// Single chat
+					// Default to single chat logic
+					if (UserInfoCacheMap.containsKey("uid-".concat(_data.get((int)_position).get("uid").toString()))) {
+						main.setVisibility(View.VISIBLE);
+
+						// Get uid once to avoid repeated calls
+						String uid = _data.get((int)_position).get("uid").toString();
+
+						// Handle banned status with null check
+						Object bannedObj = UserInfoCacheMap.get("banned-".concat(uid));
+						if (bannedObj != null && bannedObj.toString().equals("true")) {
+							profileCardImage.setImageResource(R.drawable.banned_avatar);
+						} else {
+							// Handle avatar with null check
+							Object avatarObj = UserInfoCacheMap.get("avatar-".concat(uid));
+							if (isNullOrEmpty(avatarObj != null ? avatarObj.toString() : null)) {
+								profileCardImage.setImageResource(R.drawable.avatar);
+							} else {
+								Glide.with(getContext())
+								.load(Uri.parse(avatarObj.toString()))
+								.into(profileCardImage);
+							}
+						}
+
+						// Handle nickname with null check
+						Object nicknameObj = UserInfoCacheMap.get("nickname-".concat(uid));
+						if (isNullOrEmpty(nicknameObj != null ? nicknameObj.toString() : null)) {
+							Object usernameObj = UserInfoCacheMap.get("username-".concat(uid));
+							username.setText("@" + (usernameObj != null ? usernameObj.toString() : "unknown"));
+						} else {
+							username.setText(nicknameObj.toString());
+						}
+
+						// Handle status with null check
+						Object statusObj = UserInfoCacheMap.get("status-".concat(uid));
+						userStatusCircleBG.setVisibility(statusObj != null && statusObj.toString().equals("online")
+						? View.VISIBLE : View.GONE);
+
+						// Handle gender with null check
+						Object genderObj = UserInfoCacheMap.get("gender-".concat(uid));
+						if (isNullOrEmpty(genderObj != null ? genderObj.toString() : null) || "hidden".equals(genderObj != null ? genderObj.toString() : null)) {
+							genderBadge.setVisibility(View.GONE);
+						} else {
+							genderBadge.setVisibility(View.VISIBLE);
+							String gender = genderObj.toString();
+							if (gender.equals("male")) {
+								genderBadge.setImageResource(R.drawable.male_badge);
+							} else if (gender.equals("female")) {
+								genderBadge.setImageResource(R.drawable.female_badge);
+							}
+						}
+
+						// Handle account type and badges with null checks
+						Object accountTypeObj = UserInfoCacheMap.get("account_type-".concat(uid));
+						Object premiumObj = UserInfoCacheMap.get("account_premium-".concat(uid));
+						Object verifyObj = UserInfoCacheMap.get("verify-".concat(uid));
+
+						if (accountTypeObj != null) {
+							String accountType = accountTypeObj.toString();
+							if (accountType.equals("admin")) {
+								verifiedBadge.setImageResource(R.drawable.admin_badge);
+								verifiedBadge.setVisibility(View.VISIBLE);
+							} else if (accountType.equals("moderator")) {
+								verifiedBadge.setImageResource(R.drawable.moderator_badge);
+								verifiedBadge.setVisibility(View.VISIBLE);
+							} else if (accountType.equals("support")) {
+								verifiedBadge.setImageResource(R.drawable.support_badge);
+								verifiedBadge.setVisibility(View.VISIBLE);
+							} else if (premiumObj != null && premiumObj.toString().equals("true")) {
+								verifiedBadge.setImageResource(R.drawable.premium_badge);
+								verifiedBadge.setVisibility(View.VISIBLE);
+							} else if (verifyObj != null && verifyObj.toString().equals("true")) {
+								verifiedBadge.setImageResource(R.drawable.verified_badge);
+								verifiedBadge.setVisibility(View.VISIBLE);
+							} else {
+								verifiedBadge.setVisibility(View.GONE);
+							}
+						} else if (premiumObj != null && premiumObj.toString().equals("true")) {
+							verifiedBadge.setImageResource(R.drawable.premium_badge);
+							verifiedBadge.setVisibility(View.VISIBLE);
+						} else if (verifyObj != null && verifyObj.toString().equals("true")) {
+							verifiedBadge.setImageResource(R.drawable.verified_badge);
+							verifiedBadge.setVisibility(View.VISIBLE);
+						} else {
+							verifiedBadge.setVisibility(View.GONE);
+						}
+					} else {
+						{
+							ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
+							Handler mMainHandler = new Handler(Looper.getMainLooper());
+
+							mExecutorService.execute(new Runnable() {
+								@Override
+								public void run() {
+									DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_data.get((int)_position).get("uid").toString());
+									getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+										@Override
+										public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+											mMainHandler.post(new Runnable() {
+												@Override
+												public void run() {
+													if(dataSnapshot.exists()) {
+														UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
+														UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
+														UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
+														UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
+														UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
+														UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
+														UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
+														UserInfoCacheMap.put("account_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
+														UserInfoCacheMap.put("account_premium-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_premium").getValue(String.class));
+														UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
+														main.setVisibility(View.VISIBLE);
+														String banned = dataSnapshot.child("banned").getValue(String.class);
+														String avatar = dataSnapshot.child("avatar").getValue(String.class);
+														String nickname = dataSnapshot.child("nickname").getValue(String.class);
+														String usernameValue = dataSnapshot.child("username").getValue(String.class);
+														String status = dataSnapshot.child("status").getValue(String.class);
+														String gender = dataSnapshot.child("gender").getValue(String.class);
+														String accountType = dataSnapshot.child("account_type").getValue(String.class);
+														String accountPremium = dataSnapshot.child("account_premium").getValue(String.class);
+														String verify = dataSnapshot.child("verify").getValue(String.class);
+
+														if ("true".equals(banned)) {
+															profileCardImage.setImageResource(R.drawable.banned_avatar);
+														} else {
+															if (isNullOrEmpty(avatar)) {
+																profileCardImage.setImageResource(R.drawable.avatar);
+															} else {
+																Glide.with(getContext()).load(Uri.parse(avatar)).into(profileCardImage);
+															}
+														}
+
+														if (isNullOrEmpty(nickname)) {
+															username.setText("@" + (usernameValue != null ? usernameValue : ""));
+														} else {
+															username.setText(nickname);
+														}
+
+														if ("online".equals(status)) {
+															userStatusCircleBG.setVisibility(View.VISIBLE);
+														} else {
+															userStatusCircleBG.setVisibility(View.GONE);
+														}
+
+														if (isNullOrEmpty(gender) || "hidden".equals(gender)) {
+															genderBadge.setVisibility(View.GONE);
+														} else {
+															if ("male".equals(gender)) {
+																genderBadge.setImageResource(R.drawable.male_badge);
+																genderBadge.setVisibility(View.VISIBLE);
+															} else if ("female".equals(gender)) {
+																genderBadge.setImageResource(R.drawable.female_badge);
+																genderBadge.setVisibility(View.VISIBLE);
+															}
+														}
+
+														verifiedBadge.setVisibility(View.GONE);
+														if ("admin".equals(accountType)) {
+															verifiedBadge.setImageResource(R.drawable.admin_badge);
+															verifiedBadge.setVisibility(View.VISIBLE);
+														} else if ("moderator".equals(accountType)) {
+															verifiedBadge.setImageResource(R.drawable.moderator_badge);
+															verifiedBadge.setVisibility(View.VISIBLE);
+														} else if ("support".equals(accountType)) {
+															verifiedBadge.setImageResource(R.drawable.support_badge);
+															verifiedBadge.setVisibility(View.VISIBLE);
+														} else if ("true".equals(accountPremium)) {
+															verifiedBadge.setImageResource(R.drawable.premium_badge);
+															verifiedBadge.setVisibility(View.VISIBLE);
+														} else if ("true".equals(verify)) {
+															verifiedBadge.setImageResource(R.drawable.verified_badge);
+															verifiedBadge.setVisibility(View.VISIBLE);
+														}
+													} else {
+													}
+												}
+											});
+										}
+
+										@Override
+										public void onCancelled(@NonNull DatabaseError databaseError) {
+
+										}
+									});
+								}
+							});
+						}
+					}
 					main.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
