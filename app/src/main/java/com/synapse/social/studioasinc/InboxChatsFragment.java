@@ -703,23 +703,38 @@ public class InboxChatsFragment extends Fragment {
 
 				}
 				if (_data.get(_position).containsKey("isGroup") && _data.get(_position).get("isGroup").toString().equals("true")) {
-					// Group chat
-					username.setText(_data.get(_position).get("name").toString());
-					Glide.with(getContext()).load(Uri.parse(_data.get(_position).get("icon").toString())).into(profileCardImage);
+					String groupId = _data.get(_position).get("uid").toString();
+					main.setOnClickListener(v -> {
+						Intent intent = new Intent(getContext(), ChatGroupActivity.class);
+						intent.putExtra("uid", groupId);
+						startActivity(intent);
+					});
+					last_message.setText(_data.get(_position).get("last_message_text").toString());
+
+					if (UserInfoCacheMap.containsKey("group-name-" + groupId)) {
+						username.setText(UserInfoCacheMap.get("group-name-" + groupId).toString());
+						Glide.with(getContext()).load(Uri.parse(UserInfoCacheMap.get("group-icon-" + groupId).toString())).into(profileCardImage);
+					} else {
+						DatabaseReference groupRef = FirebaseDatabase.getInstance().getReference("groups").child(groupId);
+						groupRef.addListenerForSingleValueEvent(new ValueEventListener() {
+							@Override
+							public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+								if (dataSnapshot.exists()) {
+									String name = dataSnapshot.child("name").getValue(String.class);
+									String icon = dataSnapshot.child("icon").getValue(String.class);
+									username.setText(name);
+									Glide.with(getContext()).load(Uri.parse(icon)).into(profileCardImage);
+									UserInfoCacheMap.put("group-name-" + groupId, name);
+									UserInfoCacheMap.put("group-icon-" + groupId, icon);
+								}
+							}
+							@Override
+							public void onCancelled(@NonNull DatabaseError databaseError) {}
+						});
+					}
 					genderBadge.setVisibility(View.GONE);
 					verifiedBadge.setVisibility(View.GONE);
 					userStatusCircleBG.setVisibility(View.GONE);
-					last_message.setText(_data.get(_position).get("last_message_text") != null ? _data.get(_position).get("last_message_text").toString() : "No messages yet.");
-					main.setOnClickListener(new View.OnClickListener() {
-						@Override
-						public void onClick(View _view) {
-							if (_data.get((int)_position).containsKey("uid")) {
-								intent.setClass(getContext().getApplicationContext(), ChatGroupActivity.class);
-								intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-								startActivity(intent);
-							}
-						}
-					});
 				} else {
 					// Single chat
 					main.setOnClickListener(new View.OnClickListener() {
