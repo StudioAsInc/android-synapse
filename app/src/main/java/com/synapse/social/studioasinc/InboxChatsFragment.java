@@ -672,10 +672,12 @@ public class InboxChatsFragment extends Fragment {
 				main.setOnClickListener(new View.OnClickListener() {
 					@Override
 					public void onClick(View _view) {
-						intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
-						intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-						intent.putExtra("origin", "InboxActivity");
-						startActivity(intent);
+						if (_data.get((int)_position).containsKey("uid")) {
+							intent.setClass(getContext().getApplicationContext(), ChatActivity.class);
+							intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
+							intent.putExtra("origin", "InboxActivity");
+							startActivity(intent);
+						}
 					}
 				});
 			}catch(Exception e){
