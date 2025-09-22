@@ -271,7 +271,7 @@ class ChatGroupActivity : AppCompatActivity() {
                             chatInboxSend["last_message_text"] = lastMessage
                             chatInboxSend["last_message_state"] = "sended"
                             chatInboxSend["push_date"] = cc.timeInMillis.toString()
-                            chatInboxSend["isGroup"] = "true"
+                            chatInboxSend["chat_type"] = "group"
                             _firebase.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
                         }
                     }

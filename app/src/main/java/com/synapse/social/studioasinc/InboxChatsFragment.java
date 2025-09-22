@@ -381,17 +381,23 @@ public class InboxChatsFragment extends Fragment {
 
 	private void filterChats(int checkedId) {
 		FilteredChatInboxList.clear();
-		if (checkedId == R.id.chip_all) {
+		Chip checkedChip = getView().findViewById(checkedId);
+		if (checkedChip == null) {
 			FilteredChatInboxList.addAll(ChatInboxList);
-		} else if (checkedId == R.id.chip_single) {
-			for (HashMap<String, Object> chat : ChatInboxList) {
-				if (!chat.containsKey("isGroup")) {
-					FilteredChatInboxList.add(chat);
-				}
+			inboxListRecyclerView.getAdapter().notifyDataSetChanged();
+			return;
+		}
+		String filter = checkedChip.getText().toString().toLowerCase();
+
+		if (filter.equals("all")) {
+			FilteredChatInboxList.addAll(ChatInboxList);
+		} else {
+			String chatTypeToFilter = filter.substring(0, filter.length() - 1); // "groups" -> "group"
+			if (filter.equals("chats")) {
+				chatTypeToFilter = "single";
 			}
-		} else if (checkedId == R.id.chip_groups) {
 			for (HashMap<String, Object> chat : ChatInboxList) {
-				if (chat.containsKey("isGroup") && chat.get("isGroup").toString().equals("true")) {
+				if (chat.containsKey("chat_type") && chat.get("chat_type").toString().equals(chatTypeToFilter)) {
 					FilteredChatInboxList.add(chat);
 				}
 			}
@@ -702,7 +708,7 @@ public class InboxChatsFragment extends Fragment {
 					}
 
 				}
-				if (_data.get(_position).containsKey("isGroup") && _data.get(_position).get("isGroup").toString().equals("true")) {
+				if (_data.get(_position).containsKey("chat_type") && _data.get(_position).get("chat_type").toString().equals("group")) {
 					String groupId = _data.get(_position).get("uid").toString();
 					main.setOnClickListener(v -> {
 						Intent intent = new Intent(getContext(), ChatGroupActivity.class);
