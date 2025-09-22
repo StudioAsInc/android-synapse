@@ -55,6 +55,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        app:srcCompat="@drawable/ic_check_round" />
+        app:srcCompat="@drawable/icon_check_round" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
