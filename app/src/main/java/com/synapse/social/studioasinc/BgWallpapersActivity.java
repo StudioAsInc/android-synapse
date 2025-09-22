@@ -38,9 +38,9 @@ public class BgWallpapersActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bg_wallpapers);
         initializeViews();
+        wallpapersList.addAll(getWallpapersList());
         setupGridView();
-        loadWallpapers();
-        
+
         // Set back button click listener
         findViewById(R.id.back).setOnClickListener(v -> finish());
     }
@@ -76,50 +76,44 @@ public class BgWallpapersActivity extends AppCompatActivity {
         });
     }
     
-    private void loadWallpapers() {
-        new Thread(() -> {
-            try {
-                InputStream inputStream = getResources().openRawResource(R.raw.wallpapers);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                StringBuilder stringBuilder = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    stringBuilder.append(line);
-                }
-                
-                Type listType = new TypeToken<List<Wallpaper>>(){}.getType();
-                List<Wallpaper> wallpapers = new Gson().fromJson(stringBuilder.toString(), listType);
-                
-                wallpapersList.clear();
-                for (Wallpaper wallpaper : wallpapers) {
-                    HashMap<String, Object> map = new HashMap<>();
-                    map.put("id", wallpaper.id);
-                    map.put("name", wallpaper.name);
-                    map.put("imageUrl", wallpaper.imageUrl);
-                    map.put("thumbnailUrl", wallpaper.thumbnailUrl);
-                    map.put("theme", wallpaper.theme);
-                    wallpapersList.add(map);
-                }
-                
-                runOnUiThread(() -> wallpaperAdapter.notifyDataSetChanged());
-                
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> 
-                    Toast.makeText(this, "Error loading wallpapers", Toast.LENGTH_SHORT).show()
-                );
-            }
-        }).start();
-    }
-    
-    // Wallpaper model class
-    private static class Wallpaper {
-        int id;
-        String name;
-        String imageUrl;
-        String thumbnailUrl;
-        String theme;
-        String category;
+    private ArrayList<HashMap<String, Object>> getWallpapersList() {
+        ArrayList<HashMap<String, Object>> wallpapers = new ArrayList<>();
+
+        // Patterns
+        String patternBaseUrl = "https://raw.githubusercontent.com/labStudioAsInc/host/refs/heads/main/images/synapse/chatbg/";
+        for (int i = 1; i <= 5; i++) {
+            HashMap<String, Object> map = new HashMap<>();
+            map.put("name", "Pattern " + i);
+            String url = patternBaseUrl + "pattern%20(" + i + ").png";
+            map.put("imageUrl", url);
+            map.put("thumbnailUrl", url);
+            wallpapers.add(map);
+        }
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("name", "Pattern");
+        String url = patternBaseUrl + "pattern.png";
+        map.put("imageUrl", url);
+        map.put("thumbnailUrl", url);
+        wallpapers.add(map);
+
+        // Wallpapers
+        String wallpaperBaseUrl = "https://raw.githubusercontent.com/labStudioAsInc/host/refs/heads/main/images/synapse/chatbg/";
+        for (int i = 1; i <= 31; i++) {
+            HashMap<String, Object> wallpaperMap = new HashMap<>();
+            wallpaperMap.put("name", "Wallpaper " + i);
+            String wallpaperUrl = wallpaperBaseUrl + "wallpaper%20(" + i + ").jpg";
+            wallpaperMap.put("imageUrl", wallpaperUrl);
+            wallpaperMap.put("thumbnailUrl", wallpaperUrl);
+            wallpapers.add(wallpaperMap);
+        }
+        HashMap<String, Object> wallpaperMap = new HashMap<>();
+        wallpaperMap.put("name", "Wallpaper");
+        String wallpaperUrl = wallpaperBaseUrl + "wallpaper.jpg";
+        wallpaperMap.put("imageUrl", wallpaperUrl);
+        wallpaperMap.put("thumbnailUrl", wallpaperUrl);
+        wallpapers.add(wallpaperMap);
+
+        return wallpapers;
     }
     
     // BaseAdapter for GridView
