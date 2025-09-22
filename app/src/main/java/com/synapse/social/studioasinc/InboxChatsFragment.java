@@ -333,8 +333,8 @@ public class InboxChatsFragment extends Fragment {
 
 
 	public void _getInboxReference() {
-		DatabaseReference inboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		inboxRef.addValueEventListener(new ValueEventListener() {
+		Query getInboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+		getInboxRef.addValueEventListener(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
@@ -349,47 +349,11 @@ public class InboxChatsFragment extends Fragment {
 					} catch (Exception _e) {
 						_e.printStackTrace();
 					}
-					inboxListRecyclerView.getAdapter().notifyDataSetChanged();
+
+					SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
+					filterChats(linear9.getCheckedChipId());
 				} else {
 					inboxListRecyclerView.setVisibility(View.GONE);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-
-		DatabaseReference groupsRef = FirebaseDatabase.getInstance().getReference("groups");
-		groupsRef.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					try {
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue();
-							if (_map.get("members") != null && ((HashMap<String, Object>)_map.get("members")).containsKey(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-								_map.put("isGroup", "true");
-								// find and update if exists, otherwise add
-								boolean found = false;
-								for (int i = 0; i < ChatInboxList.size(); i++) {
-									if (ChatInboxList.get(i).get("uid").equals(_map.get("groupId"))) {
-										ChatInboxList.set(i, _map);
-										found = true;
-										break;
-									}
-								}
-								if (!found) {
-									ChatInboxList.add(_map);
-								}
-							}
-						}
-						SketchwareUtil.sortListMap(ChatInboxList, "push_date", false, false);
-						filterChats(linear9.getCheckedChipId());
-					} catch (Exception _e) {
-						_e.printStackTrace();
-					}
 				}
 			}
 
@@ -749,9 +713,9 @@ public class InboxChatsFragment extends Fragment {
 					main.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
-							if (_data.get((int)_position).containsKey("groupId")) {
+							if (_data.get((int)_position).containsKey("uid")) {
 								intent.setClass(getContext().getApplicationContext(), ChatGroupActivity.class);
-								intent.putExtra("uid", _data.get((int)_position).get("groupId").toString());
+								intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
 								startActivity(intent);
 							}
 						}

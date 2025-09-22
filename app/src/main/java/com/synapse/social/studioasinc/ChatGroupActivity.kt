@@ -250,7 +250,36 @@ class ChatGroupActivity : AppCompatActivity() {
 
             chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
             message_et.setText("")
+            _updateInbox(messageText)
         }
+    }
+
+    private fun _updateInbox(lastMessage: String) {
+        val groupId = intent.getStringExtra("uid")
+        val groupRef = _firebase.getReference("groups").child(groupId!!)
+        groupRef.child("members").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (memberSnapshot in dataSnapshot.children) {
+                        val memberUid = memberSnapshot.key
+                        if (memberUid != null) {
+                            val cc = Calendar.getInstance()
+                            val chatInboxSend = HashMap<String, Any>()
+                            chatInboxSend["chatID"] = groupId
+                            chatInboxSend["uid"] = groupId
+                            chatInboxSend["last_message_uid"] = auth.currentUser!!.uid
+                            chatInboxSend["last_message_text"] = lastMessage
+                            chatInboxSend["last_message_state"] = "sended"
+                            chatInboxSend["push_date"] = cc.timeInMillis.toString()
+                            chatInboxSend["isGroup"] = "true"
+                            _firebase.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {}
+        })
     }
 
     private fun _findCorrectInsertPosition(newMessage: HashMap<String, Any>): Int {
