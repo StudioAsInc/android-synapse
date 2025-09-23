@@ -163,14 +163,16 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             mMessageReplyLayout.visibility = View.GONE
         }
 
+        message_input_outlined_round.orientation = LinearLayout.HORIZONTAL
+        toolContainer.visibility = View.VISIBLE
+        btn_sendMessage.visibility = View.VISIBLE
+
         message_et.addTextChangedListener(object : TextWatcher {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (s.toString().trim().isEmpty()) {
-                    btn_sendMessage.visibility = View.GONE
                     toolContainer.visibility = View.VISIBLE
                     message_input_outlined_round.orientation = LinearLayout.HORIZONTAL
                 } else {
-                    btn_sendMessage.visibility = View.VISIBLE
                     toolContainer.visibility = View.GONE
                     message_input_outlined_round.orientation = LinearLayout.VERTICAL
                 }

@@ -443,7 +443,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				if (_charSeq.length() == 0) {
 					typingRef.removeValue();
 					_TransitionManager(message_input_overall_container, 150);
-					btn_sendMessage.setVisibility(View.GONE);
 					toolContainer.setVisibility(View.VISIBLE);
 					message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 				} else {
@@ -452,7 +451,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					typingSnd.put("typingMessageStatus", "true");
 					typingRef.updateChildren(typingSnd);
 					_TransitionManager(message_input_overall_container, 150);
-					btn_sendMessage.setVisibility(View.VISIBLE);
 					toolContainer.setVisibility(View.GONE);
 					message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
 				}
