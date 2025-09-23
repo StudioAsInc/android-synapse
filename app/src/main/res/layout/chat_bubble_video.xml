@@ -55,6 +55,19 @@
 					app:cardElevation="0dp"
 					app:cardCornerRadius="18dp">
 					<RelativeLayout
+				<!-- Username for group chats -->
+				<TextView
+					android:id="@+id/senderUsername"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginBottom="4dp"
+					android:textSize="12sp"
+					android:textColor="?attr/colorPrimary"
+					android:textStyle="bold"
+					android:visibility="gone"
+					android:singleLine="true"
+					android:ellipsize="end"
+					android:maxWidth="200dp" />
 						android:id="@+id/relativelayout12"
 						android:layout_width="250dp"
 						android:layout_height="250dp">

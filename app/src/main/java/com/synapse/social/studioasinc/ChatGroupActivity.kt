@@ -43,6 +43,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private val messageKeys: MutableSet<String> = HashSet()
     private val ChatMessagesList: ArrayList<HashMap<String, Any>> = ArrayList()
     private val repliedMessagesCache: HashMap<String, HashMap<String, Any>> = HashMap()
+    private val memberNamesMap: HashMap<String, String> = HashMap()
 
     private lateinit var back: ImageView
     private lateinit var topProfileLayoutProfileImage: ImageView
@@ -132,6 +133,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
         chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this)
         chatAdapter?.setHasStableIds(true)
+        chatAdapter?.setGroupChat(true) // This is a group chat
         ChatMessagesListRecycler.adapter = chatAdapter
 
         val groupId = intent.getStringExtra("uid")
@@ -210,6 +212,9 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.exists()) {
                     topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
+                    
+                    // Fetch member usernames for displaying in chat bubbles
+                    fetchMemberUsernames(dataSnapshot)
                     Glide.with(applicationContext)
                         .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
                         .into(topProfileLayoutProfileImage)
@@ -281,6 +286,56 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             override fun onCancelled(error: DatabaseError) {}
         }
         chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
+    }
+    
+    private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
+        val membersSnapshot = groupSnapshot.child("members")
+        if (membersSnapshot.exists()) {
+            // Also fetch current user's username
+            val currentUid = auth.currentUser?.uid
+            if (currentUid != null) {
+                _firebase.getReference("users").child(currentUid).child("username")
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(userSnapshot: DataSnapshot) {
+                            val username = userSnapshot.getValue(String::class.java)
+                            if (username != null) {
+                                FirstUserName = username
+                                memberNamesMap[currentUid] = username
+                                chatAdapter?.setFirstUserName(username)
+                            }
+                        }
+                        
+                        override fun onCancelled(error: DatabaseError) {
+                            // Handle error if needed
+                        }
+                    })
+            }
+            
+            // Fetch usernames for all members
+            for (memberSnapshot in membersSnapshot.children) {
+                val memberUid = memberSnapshot.key
+                if (memberUid != null) {
+                    // Fetch username for each member
+                    _firebase.getReference("users").child(memberUid).child("username")
+                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(userSnapshot: DataSnapshot) {
+                                val username = userSnapshot.getValue(String::class.java)
+                                if (username != null) {
+                                    memberNamesMap[memberUid] = username
+                                    // Update adapter with new usernames map
+                                    chatAdapter?.setUserNamesMap(memberNamesMap)
+                                    // Refresh the list to show usernames
+                                    chatAdapter?.notifyDataSetChanged()
+                                }
+                            }
+                            
+                            override fun onCancelled(error: DatabaseError) {
+                                // Handle error if needed
+                            }
+                        })
+                }
+            }
+        }
     }
 
     private fun _send_btn() {

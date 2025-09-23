@@ -34,6 +34,7 @@ class BaseMessageViewHolder extends RecyclerView.ViewHolder {
     CardView mProfileCard;
     ImageView mProfileImage, message_state;
     TextView date, message_text, mRepliedMessageLayoutUsername, mRepliedMessageLayoutMessage;
+    TextView senderUsername; // Username TextView for group chats
     MaterialCardView mRepliedMessageLayout;
     ShimmerFrameLayout shimmer_container;
     // CRITICAL FIX: Add ImageView for reply image previews
@@ -50,6 +51,7 @@ class BaseMessageViewHolder extends RecyclerView.ViewHolder {
         date = view.findViewById(R.id.date);
         message_state = view.findViewById(R.id.message_state);
         message_text = view.findViewById(R.id.message_text);
+        senderUsername = view.findViewById(R.id.senderUsername); // Initialize username TextView
         shimmer_container = view.findViewById(R.id.shimmer_container);
         
         mRepliedMessageLayout = view.findViewById(R.id.mRepliedMessageLayout);

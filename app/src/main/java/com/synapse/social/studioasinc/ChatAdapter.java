@@ -70,6 +70,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private SharedPreferences appSettings;
     // private TextStylingUtil textStylingUtil;
     private ChatAdapterListener listener;
+    private boolean isGroupChat = false;
+    private HashMap<String, String> userNamesMap = new HashMap<>();
 
     public ChatAdapter(ArrayList<HashMap<String, Object>> _arr, HashMap<String, HashMap<String, Object>> repliedCache, ChatAdapterListener listener) {
         _data = _arr;
@@ -79,6 +81,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public void setSecondUserAvatar(String url) { this.secondUserAvatarUrl = url; }
     public void setFirstUserName(String name) { this.firstUserName = name; }
     public void setSecondUserName(String name) { this.secondUserName = name; }
+    public void setGroupChat(boolean isGroup) { this.isGroupChat = isGroup; }
+    public void setUserNamesMap(HashMap<String, String> map) { this.userNamesMap = map; }
 
     @Override
     public int getItemViewType(int position) {
@@ -181,6 +185,18 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String myUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
         String msgUid = data != null && data.get("uid") != null ? String.valueOf(data.get("uid")) : "";
         boolean isMyMessage = msgUid.equals(myUid);
+        
+        // Handle username display for group chats
+        if (holder.senderUsername != null) {
+            if (isGroupChat && !isMyMessage && userNamesMap != null && userNamesMap.containsKey(msgUid)) {
+                // Show username only for other users' messages in group chats
+                holder.senderUsername.setVisibility(View.VISIBLE);
+                holder.senderUsername.setText(userNamesMap.get(msgUid));
+            } else {
+                // Hide username for own messages or non-group chats
+                holder.senderUsername.setVisibility(View.GONE);
+            }
+        }
         
         if (holder.message_layout != null) {
             ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) holder.message_layout.getLayoutParams();
