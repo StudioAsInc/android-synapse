@@ -38,7 +38,7 @@ class UserProfileUpdater(
         if ("true" == dataSnapshot.child("banned").getValue(String::class.java)) {
             topProfileLayoutProfileImage.setImageResource(R.drawable.banned_avatar)
             secondUserAvatar = "null_banned"
-            topProfileLayoutStatus.setTextColor(0xFF9E9E9E)
+            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#9E9E9E"))
             topProfileLayoutStatus.text = context.getString(R.string.offline)
         } else {
             val avatarUrl = dataSnapshot.child("avatar").getValue(String::class.java)
@@ -69,7 +69,7 @@ class UserProfileUpdater(
         val status = dataSnapshot.child("status").getValue(String::class.java)
         if ("online" == status) {
             topProfileLayoutStatus.text = context.getString(R.string.online)
-            topProfileLayoutStatus.setTextColor(0xFF2196F3)
+            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#2196F3"))
         } else {
             if ("offline" == status) {
                 topProfileLayoutStatus.text = context.getString(R.string.offline)
@@ -86,7 +86,7 @@ class UserProfileUpdater(
                     topProfileLayoutStatus.text = context.getString(R.string.offline)
                 }
             }
-            topProfileLayoutStatus.setTextColor(0xFF757575)
+            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#757575"))
         }
     }
 
@@ -133,27 +133,32 @@ class UserProfileUpdater(
 
     private fun setUserLastSeen(currentTime: Double, txt: TextView) {
         val c1 = Calendar.getInstance()
-        val c2 = Calendar.getInstance().apply {
-            timeInMillis = currentTime.toLong()
+        val c2 = Calendar.getInstance()
+        c2.timeInMillis = currentTime.toLong()
+
+        val timeDiff = c1.timeInMillis - c2.timeInMillis
+
+        val seconds = timeDiff / 1000
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        val days = hours / 24
+        val weeks = days / 7
+        val months = days / 30
+        val years = days / 365
+
+        fun getString(resId: Int): String {
+            return context.resources.getString(resId)
         }
 
-        val diff = c1.timeInMillis - c2.timeInMillis
-
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(diff)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
-        val hours = TimeUnit.MILLISECONDS.toHours(diff)
-        val days = TimeUnit.MILLISECONDS.toDays(diff)
-
-        val res = context.resources
-        txt.text = when {
-            seconds < 60 -> res.getQuantityString(R.plurals.seconds_ago, seconds.toInt(), seconds.toInt())
-            minutes < 60 -> res.getQuantityString(R.plurals.minutes_ago, minutes.toInt(), minutes.toInt())
-            hours < 24 -> res.getQuantityString(R.plurals.hours_ago, hours.toInt(), hours.toInt())
-            days < 7 -> res.getQuantityString(R.plurals.days_ago, days.toInt(), days.toInt())
-            else -> {
-                val weeks = days / 7
-                res.getQuantityString(R.plurals.weeks_ago, weeks.toInt(), weeks.toInt())
-            }
+        val text = when {
+            seconds < 60 -> if (seconds < 2) "1 " + getString(R.string.status_text_seconds) else "$seconds " + getString(R.string.status_text_seconds)
+            minutes < 60 -> if (minutes < 2) "1 " + getString(R.string.status_text_minutes) else "$minutes " + getString(R.string.status_text_minutes)
+            hours < 24 -> if (hours < 2) "1 " + getString(R.string.status_text_hours) else "$hours " + getString(R.string.status_text_hours)
+            days < 7 -> if (days < 2) "1 " + getString(R.string.status_text_days) else "$days " + getString(R.string.status_text_days)
+            weeks < 4 -> if (weeks < 2) "1 " + getString(R.string.status_text_week) else "$weeks " + getString(R.string.status_text_week)
+            months < 12 -> if (months < 2) "1 " + getString(R.string.status_text_month) else "$months " + getString(R.string.status_text_month)
+            else -> if (years < 2) "1 " + getString(R.string.status_text_years) else "$years " + getString(R.string.status_text_years)
         }
+        txt.text = text
     }
 }
