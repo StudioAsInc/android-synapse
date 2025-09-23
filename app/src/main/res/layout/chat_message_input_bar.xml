@@ -47,7 +47,7 @@
 				android:layout_width="48dp"
 				android:layout_height="48dp"
 				android:padding="12dp"
-				android:src="@drawable/ic_add_photo_black"
+				android:src="@drawable/ic_call_48px"
 				android:scaleType="centerInside"
 				android:visibility="gone" />
 
