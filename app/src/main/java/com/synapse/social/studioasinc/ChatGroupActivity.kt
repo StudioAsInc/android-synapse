@@ -302,13 +302,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 }
             }
 
-            chatAdapter?.setMemberUids(ArrayList(memberUids))
-
             val totalMembers = memberUids.size
             var membersProcessed = 0
 
             for (memberUid in memberUids) {
-                _firebase.getReference("users").child(memberUid).child("username")
+                _firebase.getReference("skyline/users").child(memberUid).child("username")
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(userSnapshot: DataSnapshot) {
                             val username = userSnapshot.getValue(String::class.java)

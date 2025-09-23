@@ -72,7 +72,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private ChatAdapterListener listener;
     private boolean isGroupChat = false;
     private HashMap<String, String> userNamesMap = new HashMap<>();
-    private ArrayList<String> memberUids = new ArrayList<>();
 
     public ChatAdapter(ArrayList<HashMap<String, Object>> _arr, HashMap<String, HashMap<String, Object>> repliedCache, ChatAdapterListener listener) {
         _data = _arr;
@@ -84,7 +83,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public void setSecondUserName(String name) { this.secondUserName = name; }
     public void setGroupChat(boolean isGroup) { this.isGroupChat = isGroup; }
     public void setUserNamesMap(HashMap<String, String> map) { this.userNamesMap = map; }
-    public void setMemberUids(ArrayList<String> uids) { this.memberUids = uids; }
 
     @Override
     public int getItemViewType(int position) {
@@ -190,20 +188,12 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         
         // Handle username display for group chats
         if (holder.senderUsername != null) {
-            if (isGroupChat && !isMyMessage) {
+            if (isGroupChat && !isMyMessage && userNamesMap != null && userNamesMap.containsKey(msgUid)) {
+                // Show username only for other users' messages in group chats
                 holder.senderUsername.setVisibility(View.VISIBLE);
-                if (userNamesMap != null && userNamesMap.containsKey(msgUid)) {
-                    holder.senderUsername.setText(userNamesMap.get(msgUid));
-                } else {
-                    String mapKeys = "";
-                    if (userNamesMap != null) {
-                        for (String key : userNamesMap.keySet()) {
-                            mapKeys += key + ", ";
-                        }
-                    }
-                    holder.senderUsername.setText("Unknown User: " + msgUid + " | Map Keys: " + mapKeys);
-                }
+                holder.senderUsername.setText(userNamesMap.get(msgUid));
             } else {
+                // Hide username for own messages or non-group chats
                 holder.senderUsername.setVisibility(View.GONE);
             }
         }
