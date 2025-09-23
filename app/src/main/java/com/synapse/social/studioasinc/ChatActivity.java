@@ -312,7 +312,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
-		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
@@ -2736,12 +2735,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
-	@Override
-	public void performHapticFeedback() {
-		if (vbr != null) {
-			vbr.vibrate((long)(24));
-		}
-	}
 
 	@Override
 	public void scrollToMessage(final String _messageKey) {
@@ -2941,30 +2934,16 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	@Override
-	public void scrollToMessage(String messageId) {
-		scrollToMessage(messageId);
-	}
 
 	@Override
 	public void performHapticFeedback() {
-		performHapticFeedbackLight();
+		if (vbr != null) {
+			vbr.vibrate((long)(24));
+		}
 	}
 
-	@Override
-	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
-		_messageOverviewPopup(anchor, position, data);
-	}
 
-	@Override
-	public void openUrl(String url) {
-		_OpenWebView(url);
-	}
 
-	@Override
-	public String getRecipientUid() {
-		return getIntent().getStringExtra("uid");
-	}
 
 	private void callGeminiForAiFeature(AiFeatureParams params) {
 		Gemini.Builder builder = new Gemini.Builder(this)
