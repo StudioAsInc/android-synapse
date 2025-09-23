@@ -441,17 +441,17 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				DatabaseReference typingRef = _firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF);
 				if (_charSeq.length() == 0) {
 					typingRef.removeValue();
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.GONE);
-					btn_voice_message.setVisibility(View.VISIBLE);
-					galleryBtn.setVisibility(View.VISIBLE);
+					toolContainer.setVisibility(View.VISIBLE);
 				} else {
 					typingSnd = new HashMap<>();
 					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
 					typingSnd.put("typingMessageStatus", "true");
 					typingRef.updateChildren(typingSnd);
+					_TransitionManager(message_input_overall_container, 50);
 					btn_sendMessage.setVisibility(View.VISIBLE);
-					btn_voice_message.setVisibility(View.GONE);
-					galleryBtn.setVisibility(View.GONE);
+					toolContainer.setVisibility(View.GONE);
 				}
 			}
 
