@@ -32,7 +32,7 @@ import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashMap
 
-class ChatGroupActivity : AppCompatActivity() {
+class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private var chatMessagesRef: DatabaseReference? = null
     private var oldestMessageKey: String? = null
@@ -120,7 +120,7 @@ class ChatGroupActivity : AppCompatActivity() {
         chatRecyclerLayoutManager.stackFromEnd = true
         ChatMessagesListRecycler.layoutManager = chatRecyclerLayoutManager
 
-        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache)
+        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this)
         chatAdapter?.setHasStableIds(true)
         ChatMessagesListRecycler.adapter = chatAdapter
 
@@ -307,5 +307,27 @@ class ChatGroupActivity : AppCompatActivity() {
         } catch (e: Exception) {
             System.currentTimeMillis()
         }
+    }
+
+    override fun scrollToMessage(messageId: String) {
+        // Not implemented for group chat
+    }
+
+    override fun performHapticFeedback() {
+        // Not implemented for group chat
+    }
+
+    override fun showMessageOverviewPopup(anchor: View, position: Int, data: ArrayList<HashMap<String, Any>>) {
+        // Not implemented for group chat
+    }
+
+    override fun openUrl(url: String) {
+        val i = Intent(Intent.ACTION_VIEW)
+        i.data = Uri.parse(url)
+        startActivity(i)
+    }
+
+    override fun getRecipientUid(): String? {
+        return intent.getStringExtra("uid")
     }
 }
