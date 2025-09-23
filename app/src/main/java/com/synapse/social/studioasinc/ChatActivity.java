@@ -3368,4 +3368,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		mMessageReplyLayout.setVisibility(View.GONE);
 	}
 
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
+	}
 }
