@@ -258,7 +258,11 @@ public class FileUtil {
                 final String type = split[0];
 
                 if ("raw".equalsIgnoreCase(type)) {
-                    return split[1];
+                    try {
+                        return URLDecoder.decode(split[1], "UTF-8");
+                    } catch(Exception e) {
+                        return null;
+                    }
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && "msf".equalsIgnoreCase(type)) {
                     final String selection = "_id=?";
                     final String[] selectionArgs = new String[]{
@@ -494,111 +498,4 @@ public class FileUtil {
 
     public static void scaleBitmapFile(String fromPath, String destPath, float x, float y) {
         if (!isExistFile(fromPath)) return;
-        Bitmap src = BitmapFactory.decodeFile(fromPath);
-        Matrix matrix = new Matrix();
-        matrix.postScale(x, y);
-
-        int w = src.getWidth();
-        int h = src.getHeight();
-
-        Bitmap bitmap = Bitmap.createBitmap(src, 0, 0, w, h, matrix, true);
-        saveBitmap(bitmap, destPath);
-    }
-
-    public static void skewBitmapFile(String fromPath, String destPath, float x, float y) {
-        if (!isExistFile(fromPath)) return;
-        Bitmap src = BitmapFactory.decodeFile(fromPath);
-        Matrix matrix = new Matrix();
-        matrix.postSkew(x, y);
-
-        int w = src.getWidth();
-        int h = src.getHeight();
-
-        Bitmap bitmap = Bitmap.createBitmap(src, 0, 0, w, h, matrix, true);
-        saveBitmap(bitmap, destPath);
-    }
-
-    public static void setBitmapFileColorFilter(String fromPath, String destPath, int color) {
-        if (!isExistFile(fromPath)) return;
-        Bitmap src = BitmapFactory.decodeFile(fromPath);
-        Bitmap bitmap = Bitmap.createBitmap(src, 0, 0,
-                src.getWidth() - 1, src.getHeight() - 1);
-        Paint p = new Paint();
-        ColorFilter filter = new LightingColorFilter(color, 1);
-        p.setColorFilter(filter);
-        Canvas canvas = new Canvas(bitmap);
-        canvas.drawBitmap(bitmap, 0, 0, p);
-        saveBitmap(bitmap, destPath);
-    }
-
-    public static void setBitmapFileBrightness(String fromPath, String destPath, float brightness) {
-        if (!isExistFile(fromPath)) return;
-        Bitmap src = BitmapFactory.decodeFile(fromPath);
-        ColorMatrix cm = new ColorMatrix(new float[]
-                {
-                        1, 0, 0, 0, brightness,
-                        0, 1, 0, 0, brightness,
-                        0, 0, 1, 0, brightness,
-                        0, 0, 0, 1, 0
-                });
-
-        Bitmap bitmap = Bitmap.createBitmap(src.getWidth(), src.getHeight(), src.getConfig());
-        Canvas canvas = new Canvas(bitmap);
-        Paint paint = new Paint();
-        paint.setColorFilter(new ColorMatrixColorFilter(cm));
-        canvas.drawBitmap(src, 0, 0, paint);
-        saveBitmap(bitmap, destPath);
-    }
-
-    public static void setBitmapFileContrast(String fromPath, String destPath, float contrast) {
-        if (!isExistFile(fromPath)) return;
-        Bitmap src = BitmapFactory.decodeFile(fromPath);
-        ColorMatrix cm = new ColorMatrix(new float[]
-                {
-                        contrast, 0, 0, 0, 0,
-                        0, contrast, 0, 0, 0,
-                        0, 0, contrast, 0, 0,
-                        0, 0, 0, 1, 0
-                });
-
-        Bitmap bitmap = Bitmap.createBitmap(src.getWidth(), src.getHeight(), src.getConfig());
-        Canvas canvas = new Canvas(bitmap);
-        Paint paint = new Paint();
-        paint.setColorFilter(new ColorMatrixColorFilter(cm));
-        canvas.drawBitmap(src, 0, 0, paint);
-
-        saveBitmap(bitmap, destPath);
-    }
-
-    public static int getJpegRotate(String filePath) {
-        int rotate = 0;
-        try {
-            ExifInterface exif = new ExifInterface(filePath);
-            int iOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, -1);
-
-            switch (iOrientation) {
-                case ExifInterface.ORIENTATION_ROTATE_90:
-                    rotate = 90;
-                    break;
-
-                case ExifInterface.ORIENTATION_ROTATE_180:
-                    rotate = 180;
-                    break;
-
-                case ExifInterface.ORIENTATION_ROTATE_270:
-                    rotate = 270;
-                    break;
-            }
-        } catch (IOException e) {
-            return 0;
-        }
-
-        return rotate;
-    }
-
-    public static File createNewPictureFile(Context context) {
-        SimpleDateFormat date = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        String fileName = date.format(new Date()) + ".jpg";
-        return new File(context.getExternalFilesDir(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName);
-    }
-}
+        Bitmap src = BitmapFactory.de
