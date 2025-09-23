@@ -387,6 +387,19 @@ public class InboxChatsFragment extends Fragment {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
 
+	private GradientDrawable createRoundedDrawable(int radius, int color) {
+		GradientDrawable drawable = new GradientDrawable();
+		drawable.setCornerRadius((float) radius);
+		drawable.setColor(color);
+		return drawable;
+	}
+
+	private int getThemeColor(int attr) {
+		TypedValue typedValue = new TypedValue();
+		getContext().getTheme().resolveAttribute(attr, typedValue, true);
+		return typedValue.data;
+	}
+
 	private void filterChats(int checkedId) {
 		if (getView() == null) {
 			return;
@@ -470,10 +483,12 @@ public class InboxChatsFragment extends Fragment {
 			try{
 				RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 				_view.setLayoutParams(_lp);
-				_viewGraphics(main, 0xFFFFFFFF, 0xFFEEEEEE, 0, 0, Color.TRANSPARENT);
-				userStatusCircleBG.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, 0xFFFFFFFF));
-				userStatusCircleIN.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, 0xFF388E3C));
-				unread_messages_count_badge.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, getResources().getColor(R.color.colorPrimary)));
+
+				main.setBackgroundColor(getThemeColor(android.R.attr.colorBackground));
+				userStatusCircleBG.setBackground(createRoundedDrawable(300, getThemeColor(android.R.attr.colorBackground)));
+				userStatusCircleIN.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimary)));
+				unread_messages_count_badge.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimaryContainer)));
+
 				unread_messages_count_badge.setVisibility(View.GONE);
 				main.setVisibility(View.GONE);
 				if (_data.get((int)_position).get("last_message_text").toString().equals("null")) {
@@ -487,8 +502,6 @@ public class InboxChatsFragment extends Fragment {
 					} else {
 						message_state.setImageResource(R.drawable.icon_done_all_round);
 					}
-					last_message.setTextColor(0xFF616161);
-					push.setTextColor(0xFF616161);
 					message_state.setVisibility(View.VISIBLE);
 					unread_messages_count_badge.setVisibility(View.GONE);
 				} else {
@@ -509,17 +522,13 @@ public class InboxChatsFragment extends Fragment {
 											public void run() {
 												long unReadMessageCount = dataSnapshot.getChildrenCount();
 												if(dataSnapshot.exists()) {
-													last_message.setTextColor(0xFF000000);
-													push.setTextColor(0xFF000000);
-													//	last_message.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 1);
-													//	push.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 1);
+													last_message.setTextColor(getThemeColor(R.attr.colorOnSurface));
+													push.setTextColor(getThemeColor(R.attr.colorOnSurface));
 													unread_messages_count_badge.setText(String.valueOf((long)(unReadMessageCount)));
 													unread_messages_count_badge.setVisibility(View.VISIBLE);
 												} else {
-													last_message.setTextColor(0xFF616161);
-													push.setTextColor(0xFF616161);
-													//	last_message.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 0);
-													//	push.setTypeface(Typeface.createFromAsset(getContext().getAssets(),"fonts/appfont.ttf"), 0);
+													last_message.setTextColor(getThemeColor(R.attr.colorOnSurfaceVariant));
+													push.setTextColor(getThemeColor(R.attr.colorOnSurfaceVariant));
 													unread_messages_count_badge.setVisibility(View.GONE);
 												}
 											}
