@@ -49,6 +49,7 @@ import com.synapse.social.studioasinc.model.Attachment;
 import com.synapse.social.studioasinc.util.AttachmentUtils;
 import com.synapse.social.studioasinc.util.UIUtils;
 
+
 public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "ChatAdapter";
@@ -68,13 +69,13 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private String secondUserName = "";
     private SharedPreferences appSettings;
     // private TextStylingUtil textStylingUtil;
-    private ChatActivity chatActivity;
+    private ChatAdapterListener listener;
 
-    public ChatAdapter(ArrayList<HashMap<String, Object>> _arr, HashMap<String, HashMap<String, Object>> repliedCache) {
+    public ChatAdapter(ArrayList<HashMap<String, Object>> _arr, HashMap<String, HashMap<String, Object>> repliedCache, ChatAdapterListener listener) {
         _data = _arr;
         this.repliedMessagesCache = repliedCache;
+        this.listener = listener;
     }
-    public void setChatActivity(ChatActivity activity) { this.chatActivity = activity; }
     public void setSecondUserAvatar(String url) { this.secondUserAvatarUrl = url; }
     public void setFirstUserName(String name) { this.firstUserName = name; }
     public void setSecondUserName(String name) { this.secondUserName = name; }
@@ -330,8 +331,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                             }
 
                             View.OnClickListener clickListener = v -> {
-                                if (chatActivity != null) {
-                                    chatActivity.scrollToMessage(repliedId);
+                                if (listener != null) {
+                                    listener.scrollToMessage(repliedId);
                                 }
                             };
                             holder.mRepliedMessageLayout.setOnClickListener(clickListener);
@@ -420,7 +421,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder.mRepliedMessageLayoutMessage != null) holder.mRepliedMessageLayoutMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
 
         if (!isMyMessage && data.containsKey("message_state") && "sended".equals(String.valueOf(data.get("message_state")))) {
-            String otherUserUid = chatActivity.getIntent().getStringExtra("uid");
+            String otherUserUid = listener.getRecipientUid();
             
             String messageKey = String.valueOf(data.get("key"));
             FirebaseDatabase.getInstance().getReference("skyline/chats").child(otherUserUid).child(myUid).child(messageKey).child("message_state").setValue("seen");
@@ -431,12 +432,12 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Consolidated long click listener for the message context menu.
         View.OnLongClickListener longClickListener = v -> {
             Log.d(TAG, "Long click detected on view: " + v.getClass().getSimpleName() + " at position: " + position);
-            if (chatActivity != null) {
-                chatActivity.performHapticFeedbackLight();
+            if (listener != null) {
+                listener.performHapticFeedback();
             }
             // Use the message bubble (messageBG) as the anchor for the popup if it exists.
             View anchor = holder.messageBG != null ? holder.messageBG : holder.itemView;
-            chatActivity._messageOverviewPopup(anchor, position, _data);
+            listener.showMessageOverviewPopup(anchor, position, _data);
             return true;
         };
 
@@ -698,14 +699,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
     
     private void openImageGallery(ArrayList<HashMap<String, Object>> attachments, int position) {
-        if (_context != null && chatActivity != null) {
+        if (_context != null) {
             ArrayList<Attachment> typed = AttachmentUtils.fromHashMapList(attachments);
             openImageGalleryTyped(typed, position);
         }
     }
 
     private void openImageGalleryTyped(ArrayList<Attachment> attachments, int position) {
-        if (_context != null && chatActivity != null) {
+        if (_context != null) {
             Intent intent = new Intent(_context, ImageGalleryActivity.class);
             intent.putParcelableArrayListExtra("attachments_parcelable", attachments);
             intent.putExtra("position", position);
@@ -766,10 +767,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             
             // --- CRITICAL FIX: Attach click listener to videoContainerCard ---
             if(holder.videoContainerCard != null) {
-                holder.videoContainerCard.setOnClickListener(v -> chatActivity._OpenWebView(videoUrl));
+                holder.videoContainerCard.setOnClickListener(v -> listener.openUrl(videoUrl));
             } else {
                 // Fallback if card isn't found (though it should be)
-                holder.itemView.setOnClickListener(v -> chatActivity._OpenWebView(videoUrl));
+                holder.itemView.setOnClickListener(v -> listener.openUrl(videoUrl));
             }
         }
     }
@@ -814,8 +815,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                         if (holder.linkPreviewDescription != null) holder.linkPreviewDescription.setText(linkData.description);
                         if (holder.linkPreviewDomain != null) holder.linkPreviewDomain.setText(linkData.domain);
                         if (linkData.imageUrl != null && !linkData.imageUrl.isEmpty() && holder.linkPreviewImage != null) {
-                            if (chatActivity != null && !chatActivity.isDestroyed()) {
-                                Glide.with(chatActivity).load(linkData.imageUrl).into(holder.linkPreviewImage);
+                            if (_context != null) {
+                                Glide.with(_context).load(linkData.imageUrl).into(holder.linkPreviewImage);
                                 holder.linkPreviewImage.setVisibility(View.VISIBLE);
                             }
                         }
