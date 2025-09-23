@@ -3247,10 +3247,29 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			if (is_group && !_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
 				sender_name.setVisibility(View.VISIBLE);
-				// Here you would fetch the user's name from Firebase based on the UID
-				// and set it to the sender_name TextView.
-				// For now, we'll just show the UID.
-				sender_name.setText(_data.get(_position).get("uid").toString());
+				DatabaseReference userRef = _firebase.getReference("skyline/users").child(_data.get(_position).get("uid").toString());
+				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+					@Override
+					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						if (dataSnapshot.exists()) {
+							String nickname = dataSnapshot.child("nickname").getValue(String.class);
+							String username = dataSnapshot.child("username").getValue(String.class);
+							if (nickname != null && !"null".equals(nickname)) {
+								sender_name.setText(nickname);
+							} else if (username != null && !"null".equals(username)) {
+								sender_name.setText("@" + username);
+							} else {
+								sender_name.setText("Unknown User");
+							}
+						} else {
+							sender_name.setText("Unknown User");
+						}
+					}
+					@Override
+					public void onCancelled(@NonNull DatabaseError databaseError) {
+						sender_name.setText("Unknown User");
+					}
+				});
 			} else {
 				sender_name.setVisibility(View.GONE);
 			}
