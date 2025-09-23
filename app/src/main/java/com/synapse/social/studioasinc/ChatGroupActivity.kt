@@ -291,49 +291,48 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
         val membersSnapshot = groupSnapshot.child("members")
         if (membersSnapshot.exists()) {
-            // Also fetch current user's username
-            val currentUid = auth.currentUser?.uid
-            if (currentUid != null) {
-                _firebase.getReference("users").child(currentUid).child("username")
+            val memberUids = mutableListOf<String>()
+            for (memberSnapshot in membersSnapshot.children) {
+                memberSnapshot.key?.let { memberUids.add(it) }
+            }
+
+            auth.currentUser?.uid?.let {
+                if (!memberUids.contains(it)) {
+                    memberUids.add(it)
+                }
+            }
+
+            val totalMembers = memberUids.size
+            var membersProcessed = 0
+
+            for (memberUid in memberUids) {
+                _firebase.getReference("skyline/users").child(memberUid).child("username")
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(userSnapshot: DataSnapshot) {
                             val username = userSnapshot.getValue(String::class.java)
                             if (username != null) {
-                                FirstUserName = username
-                                memberNamesMap[currentUid] = username
-                                chatAdapter?.setFirstUserName(username)
+                                memberNamesMap[memberUid] = username
+                                if (memberUid == auth.currentUser?.uid) {
+                                    FirstUserName = username
+                                    chatAdapter?.setFirstUserName(username)
+                                }
+                            }
+
+                            membersProcessed++
+                            if (membersProcessed == totalMembers) {
+                                chatAdapter?.setUserNamesMap(memberNamesMap)
+                                chatAdapter?.notifyDataSetChanged()
                             }
                         }
                         
                         override fun onCancelled(error: DatabaseError) {
-                            // Handle error if needed
+                            membersProcessed++
+                            if (membersProcessed == totalMembers) {
+                                chatAdapter?.setUserNamesMap(memberNamesMap)
+                                chatAdapter?.notifyDataSetChanged()
+                            }
                         }
                     })
-            }
-            
-            // Fetch usernames for all members
-            for (memberSnapshot in membersSnapshot.children) {
-                val memberUid = memberSnapshot.key
-                if (memberUid != null) {
-                    // Fetch username for each member
-                    _firebase.getReference("users").child(memberUid).child("username")
-                        .addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(userSnapshot: DataSnapshot) {
-                                val username = userSnapshot.getValue(String::class.java)
-                                if (username != null) {
-                                    memberNamesMap[memberUid] = username
-                                    // Update adapter with new usernames map
-                                    chatAdapter?.setUserNamesMap(memberNamesMap)
-                                    // Refresh the list to show usernames
-                                    chatAdapter?.notifyDataSetChanged()
-                                }
-                            }
-                            
-                            override fun onCancelled(error: DatabaseError) {
-                                // Handle error if needed
-                            }
-                        })
-                }
             }
         }
     }
