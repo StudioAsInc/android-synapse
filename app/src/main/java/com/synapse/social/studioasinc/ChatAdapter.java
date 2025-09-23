@@ -49,14 +49,6 @@ import com.synapse.social.studioasinc.model.Attachment;
 import com.synapse.social.studioasinc.util.AttachmentUtils;
 import com.synapse.social.studioasinc.util.UIUtils;
 
-public interface ChatAdapterListener {
-    void scrollToMessage(String messageId);
-    void performHapticFeedback();
-    void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data);
-    void openUrl(String url);
-    String getRecipientUid();
-}
-
 public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "ChatAdapter";
