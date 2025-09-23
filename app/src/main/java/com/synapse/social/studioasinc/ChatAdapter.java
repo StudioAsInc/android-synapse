@@ -698,14 +698,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
     
     private void openImageGallery(ArrayList<HashMap<String, Object>> attachments, int position) {
-        if (_context != null && chatActivity != null) {
+        if (_context != null) {
             ArrayList<Attachment> typed = AttachmentUtils.fromHashMapList(attachments);
             openImageGalleryTyped(typed, position);
         }
     }
 
     private void openImageGalleryTyped(ArrayList<Attachment> attachments, int position) {
-        if (_context != null && chatActivity != null) {
+        if (_context != null) {
             Intent intent = new Intent(_context, ImageGalleryActivity.class);
             intent.putParcelableArrayListExtra("attachments_parcelable", attachments);
             intent.putExtra("position", position);

@@ -2734,12 +2734,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
-	public void performHapticFeedbackLight() {
+	@Override
+	public void performHapticFeedback() {
 		if (vbr != null) {
 			vbr.vibrate((long)(24));
 		}
 	}
 
+	@Override
 	public void scrollToMessage(final String _messageKey) {
 		final int position = _findMessagePosition(_messageKey);
 		if (position != -1) {
@@ -2759,6 +2761,21 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		} else {
 			Toast.makeText(getApplicationContext(), "Original message not found", Toast.LENGTH_SHORT).show();
 		}
+	}
+
+	@Override
+	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
+		_messageOverviewPopup(anchor, position, data);
+	}
+
+	@Override
+	public void openUrl(String url) {
+		_OpenWebView(url);
+	}
+
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
 	}
 	
 	// CRITICAL FIX: Helper method to find message position
