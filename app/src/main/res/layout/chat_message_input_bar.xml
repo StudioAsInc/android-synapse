@@ -47,7 +47,7 @@
 				android:layout_width="48dp"
 				android:layout_height="48dp"
 				android:padding="12dp"
-				android:src="@drawable/ic_mic_48px"
+				android:src="@drawable/ic_add_photo_black"
 				android:scaleType="centerInside"
 				android:visibility="gone" />
 
@@ -56,7 +56,7 @@
 				android:layout_width="48dp"
 				android:layout_height="48dp"
 				android:padding="12dp"
-				android:src="@drawable/ic_image_48px"
+				android:src="@drawable/ic_add_photo"
 				android:scaleType="centerInside"
 				android:visibility="gone" />
 
