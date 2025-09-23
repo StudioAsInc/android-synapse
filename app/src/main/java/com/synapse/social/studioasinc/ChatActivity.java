@@ -3215,7 +3215,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
-			View _v = _inflater.inflate(R.layout.chat_msg_cv_synapse, null);
+			View _v;
+			if (is_group) {
+				_v = _inflater.inflate(R.layout.chat_msg_cv_synapse_group, null);
+			} else {
+				_v = _inflater.inflate(R.layout.chat_msg_cv_synapse, null);
+			}
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
