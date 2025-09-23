@@ -50,7 +50,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private lateinit var topProfileLayoutStatus: TextView
     private lateinit var ChatMessagesListRecycler: RecyclerView
     private lateinit var message_et: FadeEditText
-    private lateinit var btn_sendMessage: MaterialButton
+    private lateinit var btn_sendMessage: ImageView
     private lateinit var galleryBtn: ImageView
     private lateinit var attachmentLayoutListHolder: RelativeLayout
     private lateinit var rv_attacmentList: RecyclerView
