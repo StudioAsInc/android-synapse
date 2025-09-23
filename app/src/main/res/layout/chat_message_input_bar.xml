@@ -1,79 +1,81 @@
 <LinearLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
-	android:id="@+id/message_input_overall_container"
-	android:layout_width="match_parent"
-	android:layout_height="wrap_content"
-	android:paddingLeft="10dp"
-	android:paddingRight="10dp"
-	android:paddingBottom="@dimen/spacing_normal"
-	android:background="@android:color/transparent"
-	android:gravity="center_horizontal|center_vertical"
-	android:orientation="horizontal"
-	android:animateLayoutChanges="true">
-	<LinearLayout
-		android:id="@+id/message_input_outlined_round"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:padding="3dp"
-		android:background="@drawable/bg_message_input"
-		android:gravity="center_horizontal|center_vertical"
-		android:orientation="vertical"
-		android:layout_weight="1"
-		android:animateLayoutChanges="true">
-		<com.synapse.social.studioasinc.FadeEditText
-			android:id="@+id/message_et"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:layout_marginLeft="7dp"
-			android:padding="@dimen/spacing_normal"
-			android:background="@android:color/transparent"
-			android:gravity="center_vertical"
-			android:textSize="@dimen/text_size_large"
-			android:textColor="@color/md_theme_onBackground"
-			android:hint="@string/write_message"
-			android:textColorHint="@color/hint_text_color"
-			android:layout_weight="1"
-			android:maxHeight="180dp" />
-		<LinearLayout
-			android:id="@+id/toolContainer"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:gravity="center_vertical"
-			android:orientation="horizontal">
-
-			<ImageView
-				android:id="@+id/btn_voice_message"
-				android:layout_width="48dp"
-				android:layout_height="48dp"
-				android:padding="12dp"
-				android:src="@drawable/ic_call_48px"
-				android:scaleType="centerInside"
-				android:visibility="gone" />
-
-			<ImageView
-				android:id="@+id/galleryBtn"
-				android:layout_width="48dp"
-				android:layout_height="48dp"
-				android:padding="12dp"
-				android:src="@drawable/ic_add_photo"
-				android:scaleType="centerInside"
-				android:visibility="gone" />
-
-			<View
-				android:layout_width="0dp"
-				android:layout_height="0dp"
-				android:layout_weight="1" />
-		</LinearLayout>
-	</LinearLayout>
-	<com.google.android.material.button.MaterialButton
-		android:id="@+id/btn_sendMessage"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginLeft="12dp"
-		android:gravity="center_horizontal|center_vertical"
-		android:textSize="@dimen/text_size_small"
-		style="?attr/materialIconButtonFilledStyle"
-		app:icon="@drawable/ic_send"
-		app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium" />
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/message_input_overall_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="@dimen/spacing_normal"
+        android:background="@android:color/transparent"
+        android:gravity="center_horizontal|center_vertical"
+        android:orientation="horizontal"
+        android:animateLayoutChanges="true">
+        <LinearLayout
+                android:id="@+id/message_input_outlined_round"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:padding="3dp"
+                android:background="@drawable/bg_message_input"
+                android:gravity="center_horizontal|center_vertical"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:animateLayoutChanges="true">
+                <com.synapse.social.studioasinc.FadeEditText
+                        android:id="@+id/message_et"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="7dp"
+                        android:padding="@dimen/spacing_normal"
+                        android:background="@android:color/transparent"
+                        android:gravity="center_vertical"
+                        android:textSize="@dimen/text_size_large"
+                        android:textColor="@color/md_theme_onBackground"
+                        android:hint="@string/write_message"
+                        android:textColorHint="@color/hint_text_color"
+                        android:layout_weight="1"
+                        android:maxHeight="180dp" />
+                <LinearLayout
+                        android:id="@+id/toolContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="60dp"
+                        android:paddingLeft="22dp"
+                        android:paddingTop="12dp"
+                        android:paddingRight="22dp"
+                        android:paddingBottom="12dp"
+                        android:background="@drawable/bg_tool_container"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:orientation="horizontal"
+                        android:elevation="1dp">
+                        <ImageView
+                                android:id="@+id/btn_voice_message"
+                                android:layout_width="20dp"
+                                android:layout_height="match_parent"
+                                android:src="@drawable/ic_call_48px"
+                                android:scaleType="fitCenter" />
+                                        <View
+                                                android:id="@+id/divider_mic_camera"
+                                android:layout_width="1dp"
+                                android:layout_height="20dp"
+                                android:layout_marginLeft="18dp"
+                                android:layout_marginRight="18dp"
+                                                android:background="@color/md_theme_outlineVariant" />
+                        <ImageView
+                                android:id="@+id/galleryBtn"
+                                android:layout_width="20dp"
+                                android:layout_height="25dp"
+                                android:src="@drawable/icons_2"
+                                android:scaleType="fitCenter" />
+                </LinearLayout>
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sendMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:gravity="center_horizontal|center_vertical"
+                android:textSize="@dimen/text_size_small"
+                style="?attr/materialIconButtonFilledStyle"
+                app:icon="@drawable/ic_send"
+                app:materialSizeOverlay="@style/SizeOverlay.Material3Expressive.Button.IconButton.Medium" />
 </LinearLayout>

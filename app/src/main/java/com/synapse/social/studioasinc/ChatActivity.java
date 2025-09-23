@@ -312,6 +312,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
+		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
