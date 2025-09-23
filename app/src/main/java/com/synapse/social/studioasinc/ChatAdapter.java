@@ -193,7 +193,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (userNamesMap != null && userNamesMap.containsKey(msgUid)) {
                     holder.senderUsername.setText(userNamesMap.get(msgUid));
                 } else {
-                    holder.senderUsername.setText("Unknown User");
+                    holder.senderUsername.setText("Unknown User: " + msgUid);
                 }
             } else {
                 holder.senderUsername.setVisibility(View.GONE);
