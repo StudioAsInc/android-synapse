@@ -55,71 +55,69 @@
 					android:id="@+id/mediaContainerCard"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-				<!-- Username for group chats -->
-				<TextView
-					android:id="@+id/senderUsername"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_marginBottom="4dp"
-					android:textSize="12sp"
-					android:textColor="?attr/colorPrimary"
-					android:textStyle="bold"
-					android:visibility="gone"
-					android:singleLine="true"
-					android:ellipsize="end"
-					android:maxWidth="200dp" />
 					app:cardElevation="0dp"
 					app:cardCornerRadius="18dp">
-					
-					<!-- SIMPLIFIED LAYOUT - TESTING -->
-					<!-- Original grid layout for compatibility -->
-					<androidx.gridlayout.widget.GridLayout
-						android:id="@+id/mediaGridLayout"
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
-						app:columnCount="2"
-						app:useDefaultMargins="true">
-					</androidx.gridlayout.widget.GridLayout>
-					
-					<!-- New carousel layout for better UX (temporarily hidden) -->
 					<LinearLayout
-						android:id="@+id/mediaCarouselContainer"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
-						android:orientation="vertical"
-						android:visibility="gone">
-						
-						<!-- Horizontal RecyclerView for carousel -->
-						<androidx.recyclerview.widget.RecyclerView
-							android:id="@+id/mediaCarouselRecyclerView"
-							android:layout_width="match_parent"
-							android:layout_height="200dp"
-							android:layout_marginBottom="8dp"
-							android:clipToPadding="false"
-							android:paddingStart="4dp"
-							android:paddingEnd="4dp"
-							android:nestedScrollingEnabled="false" />
-						
-						<!-- View all button for multiple images -->
-						<com.google.android.material.button.MaterialButton
-							android:id="@+id/viewAllImagesButton"
-							style="@style/Widget.MaterialComponents.Button.TextButton"
+						android:orientation="vertical">
+						<!-- Username for group chats -->
+						<TextView
+							android:id="@+id/senderUsername"
 							android:layout_width="wrap_content"
-							android:layout_height="36dp"
-							android:layout_gravity="center_horizontal"
-							android:layout_marginTop="4dp"
+							android:layout_height="wrap_content"
 							android:layout_marginBottom="4dp"
-							android:text="View all images"
-							android:textSize="14sp"
-							android:textColor="@color/colorPrimary"
+							android:textSize="12sp"
+							android:textColor="?attr/colorPrimary"
+							android:textStyle="bold"
 							android:visibility="gone"
-							app:iconGravity="textStart"
-							app:icon="@drawable/ic_image_multiple"
-							app:iconSize="18dp"
-							app:iconTint="@color/colorPrimary" />
-							
+							android:singleLine="true"
+							android:ellipsize="end"
+							android:maxWidth="200dp" />
+						<!-- SIMPLIFIED LAYOUT - TESTING -->
+						<!-- Original grid layout for compatibility -->
+						<androidx.gridlayout.widget.GridLayout
+							android:id="@+id/mediaGridLayout"
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							app:columnCount="2"
+							app:useDefaultMargins="true" />
+						<!-- New carousel layout for better UX (temporarily hidden) -->
+						<LinearLayout
+							android:id="@+id/mediaCarouselContainer"
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							android:orientation="vertical"
+							android:visibility="gone">
+							<!-- Horizontal RecyclerView for carousel -->
+							<androidx.recyclerview.widget.RecyclerView
+								android:id="@+id/mediaCarouselRecyclerView"
+								android:layout_width="match_parent"
+								android:layout_height="200dp"
+								android:layout_marginBottom="8dp"
+								android:clipToPadding="false"
+								android:paddingStart="4dp"
+								android:paddingEnd="4dp"
+								android:nestedScrollingEnabled="false" />
+							<!-- View all button for multiple images -->
+							<com.google.android.material.button.MaterialButton
+								android:id="@+id/viewAllImagesButton"
+								style="@style/Widget.MaterialComponents.Button.TextButton"
+								android:layout_width="wrap_content"
+								android:layout_height="36dp"
+								android:layout_gravity="center_horizontal"
+								android:layout_marginTop="4dp"
+								android:layout_marginBottom="4dp"
+								android:text="View all images"
+								android:textSize="14sp"
+								android:textColor="@color/colorPrimary"
+								android:visibility="gone"
+								app:iconGravity="textStart"
+								app:icon="@drawable/ic_image_multiple"
+								app:iconSize="18dp"
+								app:iconTint="@color/colorPrimary" />
+						</LinearLayout>
 					</LinearLayout>
-					
 				</androidx.cardview.widget.CardView>
 				<com.google.android.material.card.MaterialCardView
 					android:id="@+id/mRepliedMessageLayout"
