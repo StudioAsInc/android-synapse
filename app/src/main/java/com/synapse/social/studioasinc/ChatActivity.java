@@ -145,7 +145,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private static final int EXPLAIN_CONTEXT_MESSAGES_AFTER = 2;
 	private static final String TAG = "ChatActivity";
 
-	private Timer _timer = new Timer();
+	private Handler recordHandler = new Handler();
+	private Runnable recordRunnable;
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
 
@@ -235,7 +236,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private TimerTask loadTimer;
 	private Calendar cc = Calendar.getInstance();
 	private Vibrator vbr;
-	private TimerTask timer;
 	private DatabaseReference blocklist = _firebase.getReference(SKYLINE_REF).child(BLOCKLIST_REF);
 	private ChildEventListener _blocklist_child_listener;
 	private SharedPreferences blocked;
@@ -579,6 +579,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		
 		// Set up user reference
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
+		userProfileUpdater = new com.synapse.social.studioasinc.util.UserProfileUpdater(
+				this,
+				topProfileLayoutProfileImage,
+				topProfileLayoutUsername,
+				topProfileLayoutStatus,
+				topProfileLayoutGenderBadge,
+				topProfileLayoutVerifiedBadge
+		);
 		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
@@ -816,18 +824,22 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 		
 		// Clean up timers
-		if (_timer != null) {
-			_timer.cancel();
-			_timer = null;
+		if (recordHandler != null && recordRunnable != null) {
+			recordHandler.removeCallbacks(recordRunnable);
 		}
 		
 		// Clean up media recorder
 		if (AudioMessageRecorder != null) {
 			try {
+				if (isRecording) {
+					AudioMessageRecorder.stop();
+				}
 				AudioMessageRecorder.release();
-				AudioMessageRecorder = null;
 			} catch (Exception e) {
-				Log.e("ChatActivity", "Error releasing media recorder: " + e.getMessage());
+				Log.e("ChatActivity", "Error cleaning up media recorder in onDestroy: " + e.getMessage());
+			} finally {
+				AudioMessageRecorder = null;
+				isRecording = false;
 			}
 		}
 		
@@ -870,7 +882,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void onBackPressed() {
 		if (getIntent().hasExtra(ORIGIN_KEY)) {
 			String originSimpleName = getIntent().getStringExtra(ORIGIN_KEY);
-			if (originSimpleName != null && !originSimpleName.trim().isEmpty()) {
+			if (originSimpleName != null && !originSimpleName.equals("null") && !originSimpleName.trim().isEmpty()) {
 				try {
 					String packageName = "com.synapse.social.studioasinc";
 					String fullClassName = packageName + "." + originSimpleName.trim();
@@ -1027,7 +1039,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		});
 
 		deleteLayout.setOnClickListener(v -> {
-			_DeleteMessageDialog(_data, _position);
+			_DeleteMessageDialog(messageData);
 			popupWindow.dismiss();
 		});
 
@@ -1599,8 +1611,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if (dataSnapshot.exists()) {
-					updateUserProfile(dataSnapshot);
-					updateUserBadges(dataSnapshot);
+					userProfileUpdater.updateAll(dataSnapshot);
+					SecondUserName = userProfileUpdater.getSecondUserName();
+					SecondUserAvatar = userProfileUpdater.getSecondUserAvatar();
+					if (chatAdapter != null) {
+						chatAdapter.setSecondUserName(SecondUserName);
+						chatAdapter.setFirstUserName(FirstUserName);
+						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
+					}
 				}
 			}
 
@@ -1618,7 +1636,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			_userStatusListener = null;
 		}
 	}
-
 
 	public void _AudioRecorderStart() {
 		cc = Calendar.getInstance();
@@ -1647,19 +1664,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 
 		vbr.vibrate((long)(48));
-		timer = new TimerTask() {
+		recordRunnable = new Runnable() {
 			@Override
 			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						recordMs = recordMs + 500;
-
-					}
-				});
+				recordMs += 500;
+				recordHandler.postDelayed(this, 500);
 			}
 		};
-		_timer.scheduleAtFixedRate(timer, (int)(0), (int)(500));
+		recordHandler.postDelayed(recordRunnable, 500);
 
 	}
 
@@ -1677,7 +1689,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 			isRecording = false;
 			vbr.vibrate((long)(48));
-			timer.cancel();
+			if (recordHandler != null && recordRunnable != null) {
+				recordHandler.removeCallbacks(recordRunnable);
+			}
 		}
 	}
 
@@ -1792,75 +1806,58 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _DeleteMessageDialog(final ArrayList<HashMap<String, Object>> _data, final double _position) {
-		// Material Delete Dialog
+	public void _DeleteMessageDialog(final HashMap<String, Object> messageData) {
+		if (messageData == null || messageData.get(KEY_KEY) == null) {
+			return;
+		}
+		final String messageKey = messageData.get(KEY_KEY).toString();
+
 		MaterialAlertDialogBuilder zorry = new MaterialAlertDialogBuilder(ChatActivity.this);
-
-		zorry.setTitle("Delete");
-		zorry.setMessage("Are you sure you want to delete this message. Please confirm your decision.");
+		zorry.setTitle("Delete Message");
+		zorry.setMessage("Are you sure you want to delete this message? This action cannot be undone.");
 		zorry.setIcon(R.drawable.popup_ic_3);
-		zorry.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface _dialog, int _which) {
-				// Get the key before the item is removed
-				String messageKey = _data.get((int)_position).get(KEY_KEY).toString();
+		zorry.setPositiveButton("Delete", (dialog, which) -> {
+			locallyDeletedMessages.add(messageKey);
 
-				// Add to locally deleted set to prevent race condition with listener
-				locallyDeletedMessages.add(messageKey);
+			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+			final String otherUid = getIntent().getStringExtra(UID_KEY);
+			final String chatID = getChatId(myUid, otherUid);
+			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
 
-				// Remove from Firebase
-				final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-				final String otherUid = getIntent().getStringExtra(UID_KEY);
-				final String chatID = getChatId(myUid, otherUid);
-				final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
-
-				chatRef.child(messageKey).removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                    if (!snapshot.exists()) {
-                                        // This was the last message, delete inbox and user-chats
-                                        _firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
-                                        _firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
-                                        _firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
-                                        _firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(@NonNull DatabaseError error) {
-                                    Log.e("ChatActivity", "Error checking for last message: " + error.getMessage());
-                                }
-                            });
-                        }
-                    }
-                });
-
-				// Safely remove by key to avoid incorrect index removals and double-removals
-				int idx = -1;
-				for (int i = 0; i < ChatMessagesList.size(); i++) {
-					Object k = ChatMessagesList.get(i).get(KEY_KEY);
-					if (k != null && messageKey.equals(String.valueOf(k))) {
-						idx = i;
-						break;
-					}
+			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
+				if (task.isSuccessful()) {
+					chatRef.limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
+						@Override
+						public void onDataChange(@NonNull DataSnapshot snapshot) {
+							if (!snapshot.exists()) {
+								_firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
+								_firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
+								_firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
+								_firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
+							}
+						}
+						@Override
+						public void onCancelled(@NonNull DatabaseError error) {
+							Log.e("ChatActivity", "Error checking for last message: " + error.getMessage());
+						}
+					});
 				}
-				if (idx != -1) {
-					ChatMessagesList.remove(idx);
+			});
+
+			for (int i = 0; i < ChatMessagesList.size(); i++) {
+				Object k = ChatMessagesList.get(i).get(KEY_KEY);
+				if (k != null && messageKey.equals(String.valueOf(k))) {
+					ChatMessagesList.remove(i);
 					messageKeys.remove(messageKey);
-					chatAdapter.notifyItemRemoved(idx);
+					chatAdapter.notifyItemRemoved(i);
+					if (i > 0) {
+						chatAdapter.notifyItemChanged(i - 1);
+					}
+					break;
 				}
 			}
 		});
-		zorry.setNegativeButton("No", new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface _dialog, int _which) {
-
-			}
-		});
+		zorry.setNegativeButton("Cancel", null);
 		zorry.create().show();
 	}
 
@@ -1872,65 +1869,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _setUserLastSeen(final double _currentTime, final TextView _txt) {
-		Calendar c1 = Calendar.getInstance();
-		Calendar c2 = Calendar.getInstance();
-		c2.setTimeInMillis((long)_currentTime);
-
-		long time_diff = c1.getTimeInMillis() - c2.getTimeInMillis();
-
-		long seconds = time_diff / 1000;
-		long minutes = seconds / 60;
-		long hours = minutes / 60;
-		long days = hours / 24;
-		long weeks = days / 7;
-		long months = days / 30;
-		long years = days / 365;
-
-		if (seconds < 60) {
-			if (seconds < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_seconds));
-			} else {
-				_txt.setText(String.valueOf(seconds) + " " + getResources().getString(R.string.status_text_seconds));
-			}
-		} else if (minutes < 60) {
-			if (minutes < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_minutes));
-			} else {
-				_txt.setText(String.valueOf(minutes) + " " + getResources().getString(R.string.status_text_minutes));
-			}
-		} else if (hours < 24) {
-			if (hours < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_hours));
-			} else {
-				_txt.setText(String.valueOf(hours) + " " + getResources().getString(R.string.status_text_hours));
-			}
-		} else if (days < 7) {
-			if (days < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_days));
-			} else {
-				_txt.setText(String.valueOf(days) + " " + getResources().getString(R.string.status_text_days));
-			}
-		} else if (weeks < 4) {
-			if (weeks < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_week));
-			} else {
-				_txt.setText(String.valueOf(weeks) + " " + getResources().getString(R.string.status_text_week));
-			}
-		} else if (months < 12) {
-			if (months < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_month));
-			} else {
-				_txt.setText(String.valueOf(months) + " " + getResources().getString(R.string.status_text_month));
-			}
-		} else {
-			if (years < 2) {
-				_txt.setText("1 " + getResources().getString(R.string.status_text_years));
-			} else {
-				_txt.setText(String.valueOf(years) + " " + getResources().getString(R.string.status_text_years));
-			}
-		}
-	}
 
 
 	public void _textview_mh(final TextView _txt, final String _value) {
@@ -2048,36 +1986,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		final String senderUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		final String recipientUid = getIntent().getStringExtra("uid");
 
-		// The message sending logic is now wrapped inside a Realtime Database query.
-		// First, we fetch the recipient's OneSignal Player ID from the 'users' node.
-		_firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
-			.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					String recipientOneSignalPlayerId = "missing_id"; // Default value
-
-					if (dataSnapshot.exists() && dataSnapshot.hasChild("oneSignalPlayerId")) {
-						String fetchedId = dataSnapshot.child("oneSignalPlayerId").getValue(String.class);
-						if (fetchedId != null && !fetchedId.isEmpty()) {
-							recipientOneSignalPlayerId = fetchedId;
-						} else {
-							Log.e("ChatActivity", "Recipient's OneSignal Player ID is null or empty in the database.");
-						}
-					} else {
-						Log.e("ChatActivity", "Recipient's user node or oneSignalPlayerId not found in Realtime Database.");
-					}
-
-					// After fetching the ID (or failing), proceed with sending the message.
-					proceedWithMessageSending(messageText, senderUid, recipientUid, recipientOneSignalPlayerId);
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-					Log.e("ChatActivity", "Failed to fetch recipient's data from RTDB. Sending message without notification.", databaseError.toException());
-					// Still send the message, just without the notification.
-					proceedWithMessageSending(messageText, senderUid, recipientUid, "missing_id");
-				}
-			});
+		// The logic is now self-contained in proceedWithMessageSending.
+		// It handles updating the UI immediately and sending the notification in the background.
+		proceedWithMessageSending(messageText, senderUid, recipientUid);
 	}
 
 	private void _sendMessageToDb(HashMap<String, Object> messageMap, String senderUid, String recipientUid, String uniqueMessageKey) {
@@ -2092,27 +2003,24 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	/**
-	 * This helper method contains the original logic for sending a message.
-	 * It's now called after the recipient's OneSignal ID has been fetched.
-	 */
-	private void proceedWithMessageSending(String messageText, String senderUid, String recipientUid, String recipientOneSignalPlayerId) {
+	private void proceedWithMessageSending(String messageText, String senderUid, String recipientUid) {
 		if (auth.getCurrentUser() != null) {
 			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
 		}
-		Log.d("ChatActivity", "=== MESSAGE SENDING START ===");
-		Log.d("ChatActivity", "Message text: '" + messageText + "'");
-		Log.d("ChatActivity", "Sender: " + senderUid + ", Recipient: " + recipientUid);
-		Log.d("ChatActivity", "Attachment map size: " + attactmentmap.size());
-		Log.d("ChatActivity", "Attachment map content: " + attactmentmap.toString());
 		
+		if (attactmentmap.isEmpty() && messageText.isEmpty()) {
+			Log.w("ChatActivity", "No message text and no attachments - nothing to send");
+			return;
+		}
+
+		final String uniqueMessageKey = main.push().getKey();
+		final HashMap<String, Object> messageToSend = new HashMap<>();
+		String lastMessageForInbox;
+
 		if (!attactmentmap.isEmpty()) {
-			Log.d("ChatActivity", "Processing message with " + attactmentmap.size() + " attachments");
-			// Logic for sending messages with attachments
 			ArrayList<HashMap<String, Object>> successfulAttachments = new ArrayList<>();
 			boolean allUploadsSuccessful = true;
 			for (HashMap<String, Object> item : attactmentmap) {
-				Log.d("ChatActivity", "Checking attachment: " + item.toString());
 				if ("success".equals(item.get("uploadState"))) {
 					HashMap<String, Object> attachmentData = new HashMap<>();
 					attachmentData.put("url", item.get("cloudinaryUrl"));
@@ -2120,177 +2028,94 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					attachmentData.put("width", item.get("width"));
 					attachmentData.put("height", item.get("height"));
 					successfulAttachments.add(attachmentData);
-					Log.d("ChatActivity", "Added successful attachment: " + attachmentData.toString());
 				} else {
-					Log.w("ChatActivity", "Attachment not ready: " + item.toString());
 					allUploadsSuccessful = false;
 				}
 			}
 
-			Log.d("ChatActivity", "All uploads successful: " + allUploadsSuccessful + ", Successful attachments: " + successfulAttachments.size());
-			
-			if (allUploadsSuccessful && (!messageText.isEmpty() || !successfulAttachments.isEmpty())) {
-				String uniqueMessageKey = main.push().getKey();
-				Log.d("ChatActivity", "Generated message key: " + uniqueMessageKey);
-				
-				ChatSendMap = new HashMap<>();
-				ChatSendMap.put(UID_KEY, senderUid);
-				ChatSendMap.put(TYPE_KEY, ATTACHMENT_MESSAGE_TYPE);
-				ChatSendMap.put(MESSAGE_TEXT_KEY, messageText);
-				ChatSendMap.put(ATTACHMENTS_KEY, successfulAttachments);
-				ChatSendMap.put(MESSAGE_STATE_KEY, "sended");
-				if (!ReplyMessageID.equals("null")) ChatSendMap.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
-				ChatSendMap.put(KEY_KEY, uniqueMessageKey);
-				ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
-
-				Log.d("ChatActivity", "Sending attachment message to Firebase with key: " + uniqueMessageKey);
-				Log.d("ChatActivity", "Message data: " + ChatSendMap.toString());
-				
-				_sendMessageToDb(ChatSendMap, senderUid, recipientUid, uniqueMessageKey);
-
-				// CRITICAL FIX: Immediately add the message to local list for instant feedback
-				ChatSendMap.put("isLocalMessage", true); // Mark as local message
-				messageKeys.add(uniqueMessageKey); // Add key to set to prevent duplicates
-				// Add to the end since this is a new message being sent
-				ChatMessagesList.add(ChatSendMap);
-				int newPosition = ChatMessagesList.size() - 1;
-				Log.d("ChatActivity", "Added message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
-
-				// BUG FIX: Ensure RecyclerView is visible when first message is sent
-				if (ChatMessagesList.size() == 1) {
-					noChatText.setVisibility(View.GONE);
-					ChatMessagesListRecycler.setVisibility(View.VISIBLE);
-				}
-
-				// Use more granular insertion notification for smooth updates
-				chatAdapter.notifyItemInserted(newPosition);
-				if (newPosition > 0) {
-					chatAdapter.notifyItemChanged(newPosition - 1);
-				}
-				
-				// Scroll to the new message immediately
-				ChatMessagesListRecycler.post(() -> {
-					scrollToBottom();
-				});
-
-				if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
-					ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
-					singleMessageList.add(ChatSendMap);
-					_fetchRepliedMessages(singleMessageList);
-				}
-
-				String lastMessage = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
-
-				// Enhanced Smart Notification Check with chat ID for deep linking
-				String chatId = getChatId(senderUid, recipientUid);
-				String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
-				String notificationPreview;
-				if (!successfulAttachments.isEmpty()) {
-					if (TextUtils.isEmpty(messageText)) {
-						notificationPreview = "Sent an attachment";
-					} else {
-						notificationPreview = messageText + " + Sent an attachment";
-					}
-				} else {
-					notificationPreview = messageText;
-				}
-				String notificationMessage = senderDisplayName + ": " + notificationPreview;
-				HashMap<String, String> data = new HashMap<>();
-				data.put("chatId", chatId);
-				NotificationHelper.sendNotification(
-					recipientUid,
-					senderUid,
-					notificationMessage,
-					"chat_message",
-					data
-				);
-
-				_updateInbox(lastMessage);
-
-				// Clear UI
-				Log.d("ChatActivity", "Clearing attachment map and UI");
-				message_et.setText("");
-				ReplyMessageID = "null";
-				mMessageReplyLayout.setVisibility(View.GONE);
-				
-				// CRITICAL FIX: Reset attachment state completely
-				resetAttachmentState();
-				
-				Log.d("ChatActivity", "=== ATTACHMENT MESSAGE SENT SUCCESSFULLY ===");
-
-			} else {
-				Log.w("ChatActivity", "Cannot send message - All uploads successful: " + allUploadsSuccessful + ", Message text empty: " + messageText.isEmpty() + ", Attachments empty: " + successfulAttachments.isEmpty());
+			if (!allUploadsSuccessful) {
 				Toast.makeText(getApplicationContext(), "Waiting for uploads to complete...", Toast.LENGTH_SHORT).show();
-			}
-
-		} else if (!messageText.isEmpty()) {
-			Log.d("ChatActivity", "Processing text-only message");
-			// Logic for sending text-only messages
-			String uniqueMessageKey = main.push().getKey();
-			Log.d("ChatActivity", "Generated text message key: " + uniqueMessageKey);
-			
-			ChatSendMap = new HashMap<>();
-			ChatSendMap.put(UID_KEY, senderUid);
-			ChatSendMap.put(TYPE_KEY, MESSAGE_TYPE);
-			ChatSendMap.put(MESSAGE_TEXT_KEY, messageText);
-			ChatSendMap.put(MESSAGE_STATE_KEY, "sended");
-			if (!ReplyMessageID.equals("null")) ChatSendMap.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
-			ChatSendMap.put(KEY_KEY, uniqueMessageKey);
-			ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
-
-			Log.d("ChatActivity", "Sending text message to Firebase with key: " + uniqueMessageKey);
-			Log.d("ChatActivity", "Text message data: " + ChatSendMap.toString());
-			
-			_sendMessageToDb(ChatSendMap, senderUid, recipientUid, uniqueMessageKey);
-
-			// CRITICAL FIX: Immediately add the message to local list for instant feedback
-			ChatSendMap.put("isLocalMessage", true); // Mark as local message
-			messageKeys.add(uniqueMessageKey); // Add key to set to prevent duplicates
-			// Add to the end since this is a new message being sent
-			ChatMessagesList.add(ChatSendMap);
-			int newPosition = ChatMessagesList.size() - 1;
-			Log.d("ChatActivity", "Added text message to local list at position " + newPosition + ", total messages: " + ChatMessagesList.size());
-
-			// BUG FIX: Ensure RecyclerView is visible when first message is sent
-			if (ChatMessagesList.size() == 1) {
-				noChatText.setVisibility(View.GONE);
-				ChatMessagesListRecycler.setVisibility(View.VISIBLE);
-			}
-
-			chatAdapter.notifyItemInserted(newPosition);
-			if (newPosition > 0) {
-				chatAdapter.notifyItemChanged(newPosition - 1);
+				return;
 			}
 			
-			// Scroll to the new message immediately
-			ChatMessagesListRecycler.post(() -> {
-				scrollToBottom();
-			});
+			messageToSend.put(TYPE_KEY, ATTACHMENT_MESSAGE_TYPE);
+			messageToSend.put(ATTACHMENTS_KEY, successfulAttachments);
+			lastMessageForInbox = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
 
-			if (ChatSendMap.containsKey(REPLIED_MESSAGE_ID_KEY)) {
-				ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
-				singleMessageList.add(ChatSendMap);
-				_fetchRepliedMessages(singleMessageList);
-			}
-
-			// Enhanced Smart Notification Check with chat ID for deep linking
-			String chatId = getChatId(senderUid, recipientUid);
-			String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
-			String notificationPreview = messageText;
-			String notificationMessage = senderDisplayName + ": " + notificationPreview;
-			NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId);
-
-			_updateInbox(messageText);
-
-			// Clear UI
-			message_et.setText("");
-			ReplyMessageID = "null";
-			mMessageReplyLayout.setVisibility(View.GONE);
-			
-			Log.d("ChatActivity", "=== TEXT MESSAGE SENT SUCCESSFULLY ===");
-		} else {
-			Log.w("ChatActivity", "No message text and no attachments - nothing to send");
+		} else { // Text-only message
+			messageToSend.put(TYPE_KEY, MESSAGE_TYPE);
+			lastMessageForInbox = messageText;
 		}
+
+		messageToSend.put(UID_KEY, senderUid);
+		messageToSend.put(MESSAGE_TEXT_KEY, messageText);
+		messageToSend.put(MESSAGE_STATE_KEY, "sended");
+		if (!ReplyMessageID.equals("null")) messageToSend.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
+		messageToSend.put(KEY_KEY, uniqueMessageKey);
+		messageToSend.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
+
+		// --- Immediate Actions: Update UI and send to DB ---
+		_sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey);
+
+		// Create a copy for local UI to avoid modification by reference
+		HashMap<String, Object> localMessage = new HashMap<>(messageToSend);
+		localMessage.put("isLocalMessage", true);
+		messageKeys.add(uniqueMessageKey);
+		ChatMessagesList.add(localMessage);
+
+		if (ChatMessagesList.size() == 1) {
+			noChatText.setVisibility(View.GONE);
+			ChatMessagesListRecycler.setVisibility(View.VISIBLE);
+		}
+
+		int newPosition = ChatMessagesList.size() - 1;
+		chatAdapter.notifyItemInserted(newPosition);
+		if (newPosition > 0) chatAdapter.notifyItemChanged(newPosition - 1);
+
+		ChatMessagesListRecycler.post(this::scrollToBottom);
+
+		if (localMessage.containsKey(REPLIED_MESSAGE_ID_KEY)) {
+			ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
+			singleMessageList.add(localMessage);
+			_fetchRepliedMessages(singleMessageList);
+		}
+
+		_updateInbox(lastMessageForInbox);
+
+		// Clear UI fields
+		message_et.setText("");
+		ReplyMessageID = "null";
+		mMessageReplyLayout.setVisibility(View.GONE);
+		if (!attactmentmap.isEmpty()) {
+			resetAttachmentState();
+		}
+
+		// --- Background Action: Fetch recipient's notification ID and send notification ---
+		final String chatId = getChatId(senderUid, recipientUid);
+		final String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
+		final String notificationMessage = senderDisplayName + ": " + lastMessageForInbox;
+
+		_firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
+			.addListenerForSingleValueEvent(new ValueEventListener() {
+				@Override
+				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					String recipientOneSignalPlayerId = "missing_id";
+					if (dataSnapshot.exists() && dataSnapshot.hasChild("oneSignalPlayerId")) {
+						String fetchedId = dataSnapshot.child("oneSignalPlayerId").getValue(String.class);
+						if (fetchedId != null && !fetchedId.isEmpty()) {
+							recipientOneSignalPlayerId = fetchedId;
+						}
+					}
+					NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId);
+				}
+				
+				@Override
+				public void onCancelled(@NonNull DatabaseError databaseError) {
+					Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", databaseError.toException());
+					// Still attempt to send notification without the specific ID
+					NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, "missing_id", notificationMessage, chatId);
+				}
+			});
 	}
 
 
@@ -3088,231 +2913,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				afterContext.toString());
 	}
 
-	private void updateUserProfile(DataSnapshot dataSnapshot) {
-		// Add null checks for critical fields
-		if (dataSnapshot == null || !dataSnapshot.exists()) {
-			Log.w("ChatActivity", "User profile data snapshot is null or doesn't exist");
-			return;
-		}
-		
-		// Check if user is banned
-		String bannedStatus = dataSnapshot.child("banned").getValue(String.class);
-		if ("true".equals(bannedStatus)) {
-			topProfileLayoutProfileImage.setImageResource(R.drawable.banned_avatar);
-			SecondUserAvatar = "null_banned";
-			topProfileLayoutStatus.setTextColor(0xFF9E9E9E);
-			topProfileLayoutStatus.setText(getResources().getString(R.string.offline));
-		} else {
-			// Handle avatar
-			String avatarUrl = dataSnapshot.child("avatar").getValue(String.class);
-			if (avatarUrl == null || "null".equals(avatarUrl)) {
-				topProfileLayoutProfileImage.setImageResource(R.drawable.avatar);
-				SecondUserAvatar = "null";
-			} else {
-				try {
-					Glide.with(getApplicationContext()).load(Uri.parse(avatarUrl)).into(topProfileLayoutProfileImage);
-					SecondUserAvatar = avatarUrl;
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error loading avatar: " + e.getMessage());
-					topProfileLayoutProfileImage.setImageResource(R.drawable.avatar);
-					SecondUserAvatar = "null";
-				}
-			}
-		}
+	private com.synapse.social.studioasinc.util.UserProfileUpdater userProfileUpdater;
 
-		// Handle nickname/username
-		String nickname = dataSnapshot.child("nickname").getValue(String.class);
-		if (nickname == null || "null".equals(nickname)) {
-			String username = dataSnapshot.child("username").getValue(String.class);
-			SecondUserName = username != null ? "@" + username : "Unknown User";
-		} else {
-			SecondUserName = nickname;
-		}
-		
-		if (topProfileLayoutUsername != null) {
-			topProfileLayoutUsername.setText(SecondUserName);
-		}
-
-		// Update adapter with user info
-		if (chatAdapter != null) {
-			chatAdapter.setSecondUserName(SecondUserName);
-			chatAdapter.setFirstUserName(FirstUserName);
-			chatAdapter.setSecondUserAvatar(SecondUserAvatar);
-		}
-
-		// Handle status
-		String status = dataSnapshot.child("status").getValue(String.class);
-		if (topProfileLayoutStatus != null) {
-			if ("online".equals(status)) {
-				topProfileLayoutStatus.setText(getResources().getString(R.string.online));
-				topProfileLayoutStatus.setTextColor(0xFF2196F3);
-			} else {
-				if ("offline".equals(status)) {
-					topProfileLayoutStatus.setText(getResources().getString(R.string.offline));
-				} else {
-					try {
-						_setUserLastSeen(Double.parseDouble(status), topProfileLayoutStatus);
-					} catch (NumberFormatException e) {
-						Log.e("ChatActivity", "Invalid status timestamp: " + status);
-						topProfileLayoutStatus.setText(getResources().getString(R.string.offline));
-					}
-				}
-				topProfileLayoutStatus.setTextColor(0xFF757575);
-			}
-		}
-	}
-
-	private void updateUserBadges(DataSnapshot dataSnapshot) {
-		// Add null checks for critical fields
-		if (dataSnapshot == null || !dataSnapshot.exists()) {
-			Log.w("ChatActivity", "User badge data snapshot is null or doesn't exist");
-			return;
-		}
-		
-		// Handle gender badge
-		String gender = dataSnapshot.child("gender").getValue(String.class);
-		if (topProfileLayoutGenderBadge != null) {
-			if (gender == null || "hidden".equals(gender)) {
-				topProfileLayoutGenderBadge.setVisibility(View.GONE);
-			} else if ("male".equals(gender)) {
-				topProfileLayoutGenderBadge.setImageResource(R.drawable.male_badge);
-				topProfileLayoutGenderBadge.setVisibility(View.VISIBLE);
-			} else if ("female".equals(gender)) {
-				topProfileLayoutGenderBadge.setImageResource(R.drawable.female_badge);
-				topProfileLayoutGenderBadge.setVisibility(View.VISIBLE);
-			}
-		}
-
-		// Handle account type badge
-		if (topProfileLayoutVerifiedBadge != null) {
-			String accountType = dataSnapshot.child("account_type").getValue(String.class);
-			topProfileLayoutVerifiedBadge.setVisibility(View.VISIBLE);
-			
-			if (accountType != null) {
-				switch (accountType) {
-					case "admin":
-						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.admin_badge);
-						break;
-					case "moderator":
-						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.moderator_badge);
-						break;
-					case "support":
-						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.support_badge);
-						break;
-					default:
-						// Check for premium or verified status
-						String accountPremium = dataSnapshot.child("account_premium").getValue(String.class);
-						String verifyStatus = dataSnapshot.child("verify").getValue(String.class);
-						
-						if ("true".equals(accountPremium)) {
-							topProfileLayoutVerifiedBadge.setImageResource(R.drawable.premium_badge);
-						} else if ("true".equals(verifyStatus)) {
-							topProfileLayoutVerifiedBadge.setImageResource(R.drawable.verified_badge);
-						} else {
-							topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
-						}
-						break;
-				}
-			} else {
-				// No account type specified, check for premium or verified status
-				String accountPremium = dataSnapshot.child("account_premium").getValue(String.class);
-				String verifyStatus = dataSnapshot.child("verify").getValue(String.class);
-				
-				if ("true".equals(accountPremium)) {
-					topProfileLayoutVerifiedBadge.setImageResource(R.drawable.premium_badge);
-				} else if ("true".equals(verifyStatus)) {
-					topProfileLayoutVerifiedBadge.setImageResource(R.drawable.verified_badge);
-				} else {
-					topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
-				}
-			}
-		}
-	}
-
-	public class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {
-
-		ArrayList<HashMap<String, Object>> _data;
-
-		public ChatMessagesListRecyclerAdapter(ArrayList<HashMap<String, Object>> _arr) {
-			_data = _arr;
-		}
-
-		@Override
-		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-			LayoutInflater _inflater = getLayoutInflater();
-			View _v = _inflater.inflate(R.layout.chat_msg_cv_synapse, null);
-			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-			_v.setLayoutParams(_lp);
-			return new ViewHolder(_v);
-		}
-
-		@Override
-		public void onBindViewHolder(ViewHolder _holder, final int _position) {
-			View _view = _holder.itemView;
-
-			final LinearLayout body = _view.findViewById(R.id.body);
-			final androidx.cardview.widget.CardView mProfileCard = _view.findViewById(R.id.mProfileCard);
-			final LinearLayout message_layout = _view.findViewById(R.id.message_layout);
-			final ImageView mProfileImage = _view.findViewById(R.id.mProfileImage);
-			final LinearLayout menuView_d = _view.findViewById(R.id.menuView_d);
-			final LinearLayout messageBG = _view.findViewById(R.id.messageBG);
-			final LinearLayout my_message_info = _view.findViewById(R.id.my_message_info);
-			final com.google.android.material.card.MaterialCardView mRepliedMessageLayout = _view.findViewById(R.id.mRepliedMessageLayout);
-			final androidx.cardview.widget.CardView mMessageImageBody = _view.findViewById(R.id.mMessageImageBody);
-			final com.airbnb.lottie.LottieAnimationView lottie1 = _view.findViewById(R.id.lottie1);
-			final TextView message_text = _view.findViewById(R.id.message_text);
-			final LinearLayout mRepliedMessageLayoutLeftBar = _view.findViewById(R.id.mRepliedMessageLayoutLeftBar);
-			final LinearLayout mRepliedMessageLayoutRightBody = _view.findViewById(R.id.mRepliedMessageLayoutRightBody);
-			final TextView mRepliedMessageLayoutUsername = _view.findViewById(R.id.mRepliedMessageLayoutUsername);
-			final TextView mRepliedMessageLayoutMessage = _view.findViewById(R.id.mRepliedMessageLayoutMessage);
-			final ImageView mMessageImageView = _view.findViewById(R.id.mMessageImageView);
-			final TextView date = _view.findViewById(R.id.date);
-			final ImageView message_state = _view.findViewById(R.id.message_state);
-			final TextView sender_name = _view.findViewById(R.id.sender_name);
-
-			if (is_group && !_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-				sender_name.setVisibility(View.VISIBLE);
-				final String senderUid = _data.get(_position).get("uid").toString();
-				DatabaseReference userRef = _firebase.getReference("skyline/users").child(senderUid);
-				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if (dataSnapshot.exists()) {
-							String nickname = dataSnapshot.child("nickname").getValue(String.class);
-							String username = dataSnapshot.child("username").getValue(String.class);
-							if (nickname != null && !"null".equals(nickname)) {
-								sender_name.setText(nickname);
-							} else if (username != null && !"null".equals(username)) {
-								sender_name.setText("@" + username);
-							} else {
-								sender_name.setText("Unknown User");
-							}
-						} else {
-							sender_name.setText("Unknown User");
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-						sender_name.setText("Unknown User");
-					}
-				});
-			} else {
-				sender_name.setVisibility(View.GONE);
-			}
-		}
-
-		@Override
-		public int getItemCount() {
-			return _data.size();
-		}
-
-		public class ViewHolder extends RecyclerView.ViewHolder {
-			public ViewHolder(View v) {
-				super(v);
-			}
-		}
-	}
 
 //	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }
 
