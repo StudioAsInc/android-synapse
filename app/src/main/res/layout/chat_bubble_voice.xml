@@ -40,6 +40,19 @@
 				android:layout_width="match_parent"
 				android:layout_height="0dp"
 				android:orientation="horizontal" />
+			<!-- Username for group chats -->
+			<TextView
+				android:id="@+id/senderUsername"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="4dp"
+				android:textSize="12sp"
+				android:textColor="?attr/colorPrimary"
+				android:textStyle="bold"
+				android:visibility="gone"
+				android:singleLine="true"
+				android:ellipsize="end"
+				android:maxWidth="200dp" />
 			<LinearLayout
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
@@ -55,42 +68,27 @@
 				android:focusable="true"
 				android:foreground="?attr/selectableItemBackgroundBorderless"
 				android:orientation="horizontal"
-				<!-- Username for group chats -->
+				android:gravity="center_vertical">
+				<ImageView
+					android:id="@+id/play_pause_button"
+					android:layout_width="40dp"
+					android:layout_height="40dp"
+					android:src="@drawable/ic_send"
+					android:scaleType="fitCenter"
+					android:layout_marginEnd="8dp"/>
+				<SeekBar
+					android:id="@+id/voice_seekbar"
+					android:layout_width="150dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:layout_gravity="center_vertical"/>
 				<TextView
-					android:id="@+id/senderUsername"
+					android:id="@+id/voice_duration"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginBottom="4dp"
+					android:text="0:00"
 					android:textSize="12sp"
-					android:textColor="?attr/colorPrimary"
-					android:textStyle="bold"
-					android:visibility="gone"
-					android:singleLine="true"
-					android:ellipsize="end"
-					android:maxWidth="200dp" />
-                android:gravity="center_vertical">
-                <ImageView
-                    android:id="@+id/play_pause_button"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_send"
-                    android:scaleType="fitCenter"
-                    android:layout_marginEnd="8dp"/>
-
-                <SeekBar
-                    android:id="@+id/voice_seekbar"
-                    android:layout_width="150dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_gravity="center_vertical"/>
-
-                <TextView
-                    android:id="@+id/voice_duration"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0:00"
-                    android:textSize="12sp"
-                    android:layout_marginStart="8dp"/>
+					android:layout_marginStart="8dp"/>
 			</LinearLayout>
 			<LinearLayout
 				android:id="@+id/my_message_info"
