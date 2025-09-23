@@ -302,6 +302,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 }
             }
 
+            chatAdapter?.setMemberUids(ArrayList(memberUids))
+
             val totalMembers = memberUids.size
             var membersProcessed = 0
 
