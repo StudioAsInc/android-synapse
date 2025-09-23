@@ -2182,7 +2182,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				String lastMessage = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
 
 				// Enhanced Smart Notification Check with chat ID for deep linking
-				String chatId = senderUid + "_" + recipientUid;
+				String chatId = getChatId(senderUid, recipientUid);
 				String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
 				String notificationPreview;
 				if (!successfulAttachments.isEmpty()) {
@@ -2274,7 +2274,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 
 			// Enhanced Smart Notification Check with chat ID for deep linking
-			String chatId = senderUid + "_" + recipientUid;
+			String chatId = getChatId(senderUid, recipientUid);
 			String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
 			String notificationPreview = messageText;
 			String notificationMessage = senderDisplayName + ": " + notificationPreview;
