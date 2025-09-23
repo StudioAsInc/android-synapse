@@ -388,6 +388,9 @@ public class InboxChatsFragment extends Fragment {
 	}
 
 	private void filterChats(int checkedId) {
+		if (getView() == null) {
+			return;
+		}
 		FilteredChatInboxList.clear();
 		Chip checkedChip = getView().findViewById(checkedId);
 		if (checkedChip == null) { // This can happen if no chip is checked
