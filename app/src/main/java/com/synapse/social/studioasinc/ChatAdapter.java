@@ -188,12 +188,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         
         // Handle username display for group chats
         if (holder.senderUsername != null) {
-            if (isGroupChat && !isMyMessage && userNamesMap != null && userNamesMap.containsKey(msgUid)) {
-                // Show username only for other users' messages in group chats
+            if (isGroupChat && !isMyMessage) {
                 holder.senderUsername.setVisibility(View.VISIBLE);
-                holder.senderUsername.setText(userNamesMap.get(msgUid));
+                if (userNamesMap != null && userNamesMap.containsKey(msgUid)) {
+                    holder.senderUsername.setText(userNamesMap.get(msgUid));
+                } else {
+                    holder.senderUsername.setText("Unknown User");
+                }
             } else {
-                // Hide username for own messages or non-group chats
                 holder.senderUsername.setVisibility(View.GONE);
             }
         }
