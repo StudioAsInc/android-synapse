@@ -977,12 +977,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _messageOverviewPopup(final View _view, final double _position, final ArrayList<HashMap<String, Object>> _data) {
-		if (_data == null || (int)_position >= _data.size() || (int)_position < 0) {
+	@Override
+	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
+		if (_data == null || _position >= _data.size() || _position < 0) {
 			return;
 		}
 
-		final HashMap<String, Object> messageData = _data.get((int)_position);
+		final HashMap<String, Object> messageData = _data.get(_position);
 		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 		String senderUid = messageData.get(UID_KEY) != null ? String.valueOf(messageData.get(UID_KEY)) : null;
 		final boolean isMine = currentUser != null && senderUid != null && senderUid.equals(currentUser.getUid());
@@ -2365,7 +2366,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _OpenWebView(final String _URL) {
+	@Override
+	public void openUrl(final String _URL) {
 		AndroidDevelopersBlogURL = _URL;
 		CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
 		builder.setToolbarColor(Color.parseColor("#242D39"));
@@ -2734,12 +2736,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
-	public void performHapticFeedbackLight() {
+	@Override
+	public void performHapticFeedback() {
 		if (vbr != null) {
 			vbr.vibrate((long)(24));
 		}
 	}
 
+	@Override
 	public void scrollToMessage(final String _messageKey) {
 		final int position = _findMessagePosition(_messageKey);
 		if (position != -1) {
@@ -3338,5 +3342,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 		ReplyMessageID = "null";
 		mMessageReplyLayout.setVisibility(View.GONE);
+	}
+
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
 	}
 }
