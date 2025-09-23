@@ -1,4 +1,8 @@
 <resources>
+    <attr name="myAppPrimaryColor" format="color" />
+    <attr name="myAppPrimaryContainerColor" format="color" />
+    <attr name="myAppColorOnSurface" format="color" />
+    <attr name="myAppColorOnSurfaceVariant" format="color" />
     <declare-styleable name="CustomView">
         <attr name="bgColor" format="color" />
         <attr name="cornerRadius" format="dimension" />
