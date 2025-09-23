@@ -64,6 +64,13 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private val attactmentmap: ArrayList<HashMap<String, Any>> = ArrayList()
     private val REQ_CD_IMAGE_PICKER = 101
+    private var AudioMessageRecorder: android.media.MediaRecorder? = null
+    private var audioFilePath: String? = ""
+    private var isRecording = false
+    private var recordMs: Long = 0
+    private var timer: java.util.TimerTask? = null
+    private val _timer = java.util.Timer()
+
 
     private val _firebase = FirebaseDatabase.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -172,6 +179,26 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
             override fun afterTextChanged(s: Editable) {}
         })
+
+        btn_voice_message.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        _AudioRecorderStart()
+                        Toast.makeText(applicationContext, "Recording...", Toast.LENGTH_SHORT).show()
+                    } else {
+                        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1000)
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    _AudioRecorderStop()
+                    uploadAudioFile()
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun _getGroupReference() {
@@ -349,5 +376,205 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     override fun getRecipientUid(): String? {
         return intent.getStringExtra("uid")
+    }
+
+    private fun _AudioRecorderStart() {
+        val cc = Calendar.getInstance()
+        recordMs = 0
+        AudioMessageRecorder = android.media.MediaRecorder()
+
+        val getCacheDir = externalCacheDir
+        val getCacheDirName = "audio_records"
+        val getCacheFolder = java.io.File(getCacheDir, getCacheDirName)
+        getCacheFolder.mkdirs()
+        val getRecordFile = java.io.File(getCacheFolder, cc.timeInMillis.toString() + ".mp3")
+        audioFilePath = getRecordFile.absolutePath
+
+        AudioMessageRecorder?.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+        AudioMessageRecorder?.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
+        AudioMessageRecorder?.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+        AudioMessageRecorder?.setAudioEncodingBitRate(320000)
+        AudioMessageRecorder?.setOutputFile(audioFilePath)
+
+        try {
+            AudioMessageRecorder?.prepare()
+            AudioMessageRecorder?.start()
+            isRecording = true
+        } catch (e: java.io.IOException) {
+            e.printStackTrace()
+        }
+
+        timer = object : java.util.TimerTask() {
+            override fun run() {
+                runOnUiThread {
+                    recordMs += 500
+                }
+            }
+        }
+        _timer.scheduleAtFixedRate(timer, 0, 500)
+    }
+
+    private fun _AudioRecorderStop() {
+        if (isRecording) {
+            if (AudioMessageRecorder != null) {
+                try {
+                    AudioMessageRecorder?.stop()
+                    AudioMessageRecorder?.release()
+                } catch (e: RuntimeException) {
+                    Log.e("ChatGroupActivity", "Error stopping media recorder: " + e.message)
+                }
+                AudioMessageRecorder = null
+            }
+            isRecording = false
+            timer?.cancel()
+        }
+    }
+
+    private fun uploadAudioFile() {
+        if (audioFilePath != null && audioFilePath!!.isNotEmpty()) {
+            val file = java.io.File(audioFilePath)
+            if (file.exists()) {
+                AsyncUploadService.uploadWithNotification(this, audioFilePath, file.name, object : AsyncUploadService.UploadProgressListener {
+                    override fun onProgress(filePath: String, percent: Int) {}
+                    override fun onSuccess(filePath: String, url: String, publicId: String) {
+                        _sendVoiceMessage(url, recordMs)
+                    }
+
+                    override fun onFailure(filePath: String, error: String) {
+                        Toast.makeText(applicationContext, "Failed to upload audio.", Toast.LENGTH_SHORT).show()
+                    }
+                })
+            }
+        }
+    }
+
+    private fun _sendVoiceMessage(audioUrl: String, duration: Long) {
+        val senderUid = auth.currentUser!!.uid
+        val groupId = intent.getStringExtra("uid")
+        val uniqueMessageKey = chatMessagesRef!!.push().key
+
+        val chatSendMap = HashMap<String, Any>()
+        chatSendMap["uid"] = senderUid
+        chatSendMap["type"] = "VOICE_MESSAGE"
+        chatSendMap["audio_url"] = audioUrl
+        chatSendMap["audio_duration"] = duration
+        chatSendMap["message_state"] = "sended"
+        if (ReplyMessageID != "null") chatSendMap["replied_message_id"] = ReplyMessageID!!
+        chatSendMap["key"] = uniqueMessageKey!!
+        chatSendMap["push_date"] = ServerValue.TIMESTAMP
+
+        chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
+
+        _updateInbox("Voice Message")
+
+        ReplyMessageID = "null"
+        mMessageReplyLayout.visibility = View.GONE
+    }
+
+    private fun _startUploadForItem(position: Int) {
+        if (position < 0 || position >= attactmentmap.size) {
+            return
+        }
+        val itemMap = attactmentmap[position]
+        if (itemMap == null || "pending" != itemMap["uploadState"]) {
+            return
+        }
+        itemMap["uploadState"] = "uploading"
+        itemMap["uploadProgress"] = 0.0
+        rv_attacmentList.adapter?.notifyItemChanged(position)
+
+        val filePath = itemMap["localPath"].toString()
+        if (filePath.isEmpty()) {
+            itemMap["uploadState"] = "failed"
+            rv_attacmentList.adapter?.notifyItemChanged(position)
+            return
+        }
+
+        val file = java.io.File(filePath)
+        if (!file.exists()) {
+            itemMap["uploadState"] = "failed"
+            rv_attacmentList.adapter?.notifyItemChanged(position)
+            return
+        }
+
+        AsyncUploadService.uploadWithNotification(this, filePath, file.name, object : AsyncUploadService.UploadProgressListener {
+            override fun onProgress(filePath: String, percent: Int) {
+                if (position >= 0 && position < attactmentmap.size) {
+                    val currentItem = attactmentmap[position]
+                    if (currentItem != null && filePath == currentItem["localPath"]) {
+                        currentItem["uploadProgress"] = percent.toDouble()
+                        rv_attacmentList.adapter?.notifyItemChanged(position)
+                    }
+                }
+            }
+
+            override fun onSuccess(filePath: String, url: String, publicId: String) {
+                if (position >= 0 && position < attactmentmap.size) {
+                    val mapToUpdate = attactmentmap[position]
+                    if (mapToUpdate != null && filePath == mapToUpdate["localPath"]) {
+                        mapToUpdate["uploadState"] = "success"
+                        mapToUpdate["cloudinaryUrl"] = url
+                        mapToUpdate["publicId"] = publicId
+                        rv_attacmentList.adapter?.notifyItemChanged(position)
+                    }
+                }
+            }
+
+            override fun onFailure(filePath: String, error: String) {
+                if (position >= 0 && position < attactmentmap.size) {
+                    val currentItem = attactmentmap[position]
+                    if (currentItem != null && filePath == currentItem["localPath"]) {
+                        currentItem["uploadState"] = "failed"
+                        rv_attacmentList.adapter?.notifyItemChanged(position)
+                    }
+                }
+            }
+        })
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_CD_IMAGE_PICKER && resultCode == Activity.RESULT_OK) {
+            if (data != null) {
+                val resolvedFilePaths = ArrayList<String>()
+                try {
+                    if (data.clipData != null) {
+                        for (i in 0 until data.clipData!!.itemCount) {
+                            val fileUri = data.clipData!!.getItemAt(i).uri
+                            val path = StorageUtil.getPathFromUri(applicationContext, fileUri)
+                            if (path != null && path.isNotEmpty()) {
+                                resolvedFilePaths.add(path)
+                            }
+                        }
+                    } else if (data.data != null) {
+                        val fileUri = data.data
+                        val path = StorageUtil.getPathFromUri(applicationContext, fileUri)
+                        if (path != null && path.isNotEmpty()) {
+                            resolvedFilePaths.add(path)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error processing selected files", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                if (resolvedFilePaths.isNotEmpty()) {
+                    attachmentLayoutListHolder.visibility = View.VISIBLE
+                    val startingPosition = attactmentmap.size
+                    for (filePath in resolvedFilePaths) {
+                        val itemMap = HashMap<String, Any>()
+                        itemMap["localPath"] = filePath
+                        itemMap["uploadState"] = "pending"
+                        attactmentmap.add(itemMap)
+                    }
+                    rv_attacmentList.adapter?.notifyItemRangeInserted(startingPosition, resolvedFilePaths.size)
+                    for (i in resolvedFilePaths.indices) {
+                        _startUploadForItem(startingPosition + i)
+                    }
+                } else {
+                    Toast.makeText(this, "No valid files selected", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }
