@@ -108,6 +108,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         message_et = findViewById(R.id.message_et)
         btn_sendMessage = findViewById(R.id.btn_sendMessage)
         galleryBtn = findViewById(R.id.galleryBtn)
+        val toolContainer = findViewById<LinearLayout>(R.id.toolContainer)
+        val btn_voice_message = findViewById<ImageView>(R.id.btn_voice_message)
         attachmentLayoutListHolder = findViewById(R.id.attachmentLayoutListHolder)
         rv_attacmentList = findViewById(R.id.rv_attacmentList)
         close_attachments_btn = findViewById(R.id.close_attachments_btn)
@@ -152,6 +154,21 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             ReplyMessageID = "null"
             mMessageReplyLayout.visibility = View.GONE
         }
+
+        message_et.addTextChangedListener(object : TextWatcher {
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                if (s.toString().trim().isEmpty()) {
+                    btn_sendMessage.visibility = View.GONE
+                    toolContainer.visibility = View.VISIBLE
+                } else {
+                    btn_sendMessage.visibility = View.VISIBLE
+                    toolContainer.visibility = View.GONE
+                }
+            }
+
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+            override fun afterTextChanged(s: Editable) {}
+        })
     }
 
     private fun _getGroupReference() {

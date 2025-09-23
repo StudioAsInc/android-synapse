@@ -2613,6 +2613,34 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		HashMap<String, Object> messageData = ChatMessagesList.get((int)_position);
 		ReplyMessageID = messageData.get(KEY_KEY).toString();
 
+		if (is_group) {
+			DatabaseReference userRef = _firebase.getReference("skyline/users").child(messageData.get("uid").toString());
+			userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+				@Override
+				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					if (dataSnapshot.exists()) {
+						String nickname = dataSnapshot.child("nickname").getValue(String.class);
+						String username = dataSnapshot.child("username").getValue(String.class);
+						if (nickname != null && !"null".equals(nickname)) {
+							((TextView)findViewById(R.id.sender_name)).setText(nickname);
+						} else if (username != null && !"null".equals(username)) {
+							((TextView)findViewById(R.id.sender_name)).setText("@" + username);
+						} else {
+							((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+						}
+					} else {
+						((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+					}
+					findViewById(R.id.sender_name).setVisibility(View.VISIBLE);
+				}
+				@Override
+				public void onCancelled(@NonNull DatabaseError databaseError) {
+					((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+					findViewById(R.id.sender_name).setVisibility(View.VISIBLE);
+				}
+			});
+		}
+
 		if (messageData.get(UID_KEY).toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
 			mMessageReplyLayoutBodyRightUsername.setText(FirstUserName);
 		} else {
@@ -3268,10 +3296,31 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			if (is_group && !_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
 				sender_name.setVisibility(View.VISIBLE);
-				// Here you would fetch the user's name from Firebase based on the UID
-				// and set it to the sender_name TextView.
-				// For now, we'll just show the UID.
-				sender_name.setText(_data.get(_position).get("uid").toString());
+				final String senderUid = _data.get(_position).get("uid").toString();
+				DatabaseReference userRef = _firebase.getReference("skyline/users").child(senderUid);
+				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+					@Override
+					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						if (dataSnapshot.exists()) {
+							String nickname = dataSnapshot.child("nickname").getValue(String.class);
+							String username = dataSnapshot.child("username").getValue(String.class);
+							if (nickname != null && !"null".equals(nickname)) {
+								sender_name.setText(nickname);
+							} else if (username != null && !"null".equals(username)) {
+								sender_name.setText("@" + username);
+							} else {
+								sender_name.setText("Unknown User");
+							}
+						} else {
+							sender_name.setText("Unknown User");
+						}
+					}
+
+					@Override
+					public void onCancelled(@NonNull DatabaseError databaseError) {
+						sender_name.setText("Unknown User");
+					}
+				});
 			} else {
 				sender_name.setVisibility(View.GONE);
 			}
