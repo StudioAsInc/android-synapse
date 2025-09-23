@@ -117,6 +117,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         mMessageReplyLayoutBodyRightUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername)
         mMessageReplyLayoutBodyRightMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage)
         mMessageReplyLayoutBodyCancel = findViewById(R.id.mMessageReplyLayoutBodyCancel)
+        val message_input_outlined_round = findViewById<LinearLayout>(R.id.message_input_outlined_round)
 
         val chatRecyclerLayoutManager = LinearLayoutManager(this)
         chatRecyclerLayoutManager.stackFromEnd = true
@@ -160,9 +161,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 if (s.toString().trim().isEmpty()) {
                     btn_sendMessage.visibility = View.GONE
                     toolContainer.visibility = View.VISIBLE
+                    message_input_outlined_round.orientation = LinearLayout.HORIZONTAL
                 } else {
                     btn_sendMessage.visibility = View.VISIBLE
                     toolContainer.visibility = View.GONE
+                    message_input_outlined_round.orientation = LinearLayout.VERTICAL
                 }
             }
 
