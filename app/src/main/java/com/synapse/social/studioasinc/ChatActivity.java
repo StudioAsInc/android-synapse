@@ -312,6 +312,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
+		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
@@ -2612,6 +2613,34 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		HashMap<String, Object> messageData = ChatMessagesList.get((int)_position);
 		ReplyMessageID = messageData.get(KEY_KEY).toString();
 
+		if (is_group) {
+			DatabaseReference userRef = _firebase.getReference("skyline/users").child(messageData.get("uid").toString());
+			userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+				@Override
+				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					if (dataSnapshot.exists()) {
+						String nickname = dataSnapshot.child("nickname").getValue(String.class);
+						String username = dataSnapshot.child("username").getValue(String.class);
+						if (nickname != null && !"null".equals(nickname)) {
+							((TextView)findViewById(R.id.sender_name)).setText(nickname);
+						} else if (username != null && !"null".equals(username)) {
+							((TextView)findViewById(R.id.sender_name)).setText("@" + username);
+						} else {
+							((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+						}
+					} else {
+						((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+					}
+					findViewById(R.id.sender_name).setVisibility(View.VISIBLE);
+				}
+				@Override
+				public void onCancelled(@NonNull DatabaseError databaseError) {
+					((TextView)findViewById(R.id.sender_name)).setText("Unknown User");
+					findViewById(R.id.sender_name).setVisibility(View.VISIBLE);
+				}
+			});
+		}
+
 		if (messageData.get(UID_KEY).toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
 			mMessageReplyLayoutBodyRightUsername.setText(FirstUserName);
 		} else {
@@ -2735,6 +2764,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
+	@Override
+	public void performHapticFeedback() {
+		if (vbr != null) {
+			vbr.vibrate((long)(24));
+		}
+	}
 
 	@Override
 	public void scrollToMessage(final String _messageKey) {
@@ -2934,16 +2969,30 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
+	@Override
+	public void scrollToMessage(String messageId) {
+		scrollToMessage(messageId);
+	}
 
 	@Override
 	public void performHapticFeedback() {
-		if (vbr != null) {
-			vbr.vibrate((long)(24));
-		}
+		performHapticFeedbackLight();
 	}
 
+	@Override
+	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
+		_messageOverviewPopup(anchor, position, data);
+	}
 
+	@Override
+	public void openUrl(String url) {
+		_OpenWebView(url);
+	}
 
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
+	}
 
 	private void callGeminiForAiFeature(AiFeatureParams params) {
 		Gemini.Builder builder = new Gemini.Builder(this)
@@ -3215,12 +3264,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
-			View _v;
-			if (is_group) {
-				_v = _inflater.inflate(R.layout.chat_msg_cv_synapse_group, null);
-			} else {
-				_v = _inflater.inflate(R.layout.chat_msg_cv_synapse, null);
-			}
+			View _v = _inflater.inflate(R.layout.chat_msg_cv_synapse, null);
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
@@ -3252,39 +3296,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			if (is_group && !_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
 				sender_name.setVisibility(View.VISIBLE);
-				DatabaseReference userRef = _firebase.getReference("skyline/users").child(_data.get(_position).get("uid").toString());
-				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if (dataSnapshot.exists()) {
-							String nickname = dataSnapshot.child("nickname").getValue(String.class);
-							String username = dataSnapshot.child("username").getValue(String.class);
-							if (nickname != null && !"null".equals(nickname)) {
-								sender_name.setText(nickname);
-							} else if (username != null && !"null".equals(username)) {
-								sender_name.setText("@" + username);
-							} else {
-								sender_name.setText("Unknown User");
-							}
-						} else {
-							sender_name.setText("Unknown User");
-						}
-					}
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-						sender_name.setText("Unknown User");
-					}
-				});
+				// Here you would fetch the user's name from Firebase based on the UID
+				// and set it to the sender_name TextView.
+				// For now, we'll just show the UID.
+				sender_name.setText(_data.get(_position).get("uid").toString());
 			} else {
 				sender_name.setVisibility(View.GONE);
-			}
-
-			if (_data.get(_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-				body.setGravity(Gravity.END);
-				mProfileCard.setVisibility(View.GONE);
-			} else {
-				body.setGravity(Gravity.START);
-				mProfileCard.setVisibility(View.VISIBLE);
 			}
 		}
 
