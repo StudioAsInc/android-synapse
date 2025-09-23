@@ -29,6 +29,17 @@
 				android:animateLayoutChanges="true">
 
 				<com.google.android.material.chip.Chip
+					android:id="@+id/chip_all"
+					android:layout_width="wrap_content"
+					android:layout_height="match_parent"
+					android:layout_marginLeft="8dp"
+					android:layout_marginBottom="3dp"
+					android:orientation="vertical"
+					android:text="All"
+					style="@style/Widget.Material3.Chip.Filter"
+					android:checked="true" />
+
+				<com.google.android.material.chip.Chip
 					android:id="@+id/linear10"
 					android:layout_width="wrap_content"
 					android:layout_height="match_parent"

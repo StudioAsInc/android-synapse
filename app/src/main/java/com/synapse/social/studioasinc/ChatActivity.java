@@ -110,7 +110,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 
 
-public class ChatActivity extends AppCompatActivity {
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener {
 
 	// Constants
 	private static final String SKYLINE_REF = "skyline";
@@ -557,9 +557,8 @@ public class ChatActivity extends AppCompatActivity {
 		ChatMessagesListRecycler.setClickable(true);
 		
 		// Create, configure, and set the new ChatAdapter
-		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache);
+		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this);
 		chatAdapter.setHasStableIds(true);
-		chatAdapter.setChatActivity(this);
 		ChatMessagesListRecycler.setAdapter(chatAdapter);
 		
 		// CRITICAL FIX: Ensure RecyclerView is properly configured for smooth updates
@@ -2566,6 +2565,7 @@ public class ChatActivity extends AppCompatActivity {
 			ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
 			ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
 			ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
+			ChatInboxSend.put("chat_type", "single");
 			_firebase.getReference(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
 
 			// Update inbox for the other user
@@ -2576,6 +2576,7 @@ public class ChatActivity extends AppCompatActivity {
 			ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
 			ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
 			ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
+			ChatInboxSend2.put("chat_type", "single");
 			_firebase.getReference(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
 		}
 	}
@@ -2934,6 +2935,31 @@ public class ChatActivity extends AppCompatActivity {
 			this.viewHolder = viewHolder;
 			this.maxTokens = maxTokens;
 		}
+	}
+
+	@Override
+	public void scrollToMessage(String messageId) {
+		scrollToMessage(messageId);
+	}
+
+	@Override
+	public void performHapticFeedback() {
+		performHapticFeedbackLight();
+	}
+
+	@Override
+	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
+		_messageOverviewPopup(anchor, position, data);
+	}
+
+	@Override
+	public void openUrl(String url) {
+		_OpenWebView(url);
+	}
+
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
 	}
 
 	private void callGeminiForAiFeature(AiFeatureParams params) {
