@@ -387,6 +387,13 @@ public class InboxChatsFragment extends Fragment {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
 
+	private GradientDrawable createRoundedDrawable(int radius, int color) {
+		GradientDrawable drawable = new GradientDrawable();
+		drawable.setCornerRadius((float) radius);
+		drawable.setColor(color);
+		return drawable;
+	}
+
 	private int getThemeColor(int attr) {
 		TypedValue typedValue = new TypedValue();
 		getContext().getTheme().resolveAttribute(attr, typedValue, true);
@@ -478,9 +485,9 @@ public class InboxChatsFragment extends Fragment {
 				_view.setLayoutParams(_lp);
 
 				main.setBackgroundColor(getThemeColor(android.R.attr.colorBackground));
-				userStatusCircleBG.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, getThemeColor(android.R.attr.colorBackground)));
-				userStatusCircleIN.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, getThemeColor(R.attr.colorPrimary)));
-				unread_messages_count_badge.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, getThemeColor(R.attr.colorPrimaryContainer)));
+				userStatusCircleBG.setBackground(createRoundedDrawable(300, getThemeColor(android.R.attr.colorBackground)));
+				userStatusCircleIN.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimary)));
+				unread_messages_count_badge.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimaryContainer)));
 
 				unread_messages_count_badge.setVisibility(View.GONE);
 				main.setVisibility(View.GONE);
