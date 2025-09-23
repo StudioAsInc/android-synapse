@@ -977,12 +977,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _messageOverviewPopup(final View _view, final double _position, final ArrayList<HashMap<String, Object>> _data) {
-		if (_data == null || (int)_position >= _data.size() || (int)_position < 0) {
+	@Override
+	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
+		if (_data == null || _position >= _data.size() || _position < 0) {
 			return;
 		}
 
-		final HashMap<String, Object> messageData = _data.get((int)_position);
+		final HashMap<String, Object> messageData = _data.get(_position);
 		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 		String senderUid = messageData.get(UID_KEY) != null ? String.valueOf(messageData.get(UID_KEY)) : null;
 		final boolean isMine = currentUser != null && senderUid != null && senderUid.equals(currentUser.getUid());
@@ -2365,7 +2366,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _OpenWebView(final String _URL) {
+	@Override
+	public void openUrl(final String _URL) {
 		AndroidDevelopersBlogURL = _URL;
 		CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
 		builder.setToolbarColor(Color.parseColor("#242D39"));
@@ -2565,7 +2567,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
 			ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
 			ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-			ChatInboxSend.put("chat_type", "single");
 			_firebase.getReference(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
 
 			// Update inbox for the other user
@@ -2576,7 +2577,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
 			ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
 			ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-			ChatInboxSend2.put("chat_type", "single");
 			_firebase.getReference(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
 		}
 	}
@@ -2762,21 +2762,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			Toast.makeText(getApplicationContext(), "Original message not found", Toast.LENGTH_SHORT).show();
 		}
 	}
-
-	@Override
-	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
-		_messageOverviewPopup(anchor, position, data);
-	}
-
-	@Override
-	public void openUrl(String url) {
-		_OpenWebView(url);
-	}
-
-	@Override
-	public String getRecipientUid() {
-		return getIntent().getStringExtra("uid");
-	}
 	
 	// CRITICAL FIX: Helper method to find message position
 	private int _findMessagePosition(String messageKey) {
@@ -2952,31 +2937,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			this.viewHolder = viewHolder;
 			this.maxTokens = maxTokens;
 		}
-	}
-
-	@Override
-	public void scrollToMessage(String messageId) {
-		scrollToMessage(messageId);
-	}
-
-	@Override
-	public void performHapticFeedback() {
-		performHapticFeedbackLight();
-	}
-
-	@Override
-	public void showMessageOverviewPopup(View anchor, int position, ArrayList<HashMap<String, Object>> data) {
-		_messageOverviewPopup(anchor, position, data);
-	}
-
-	@Override
-	public void openUrl(String url) {
-		_OpenWebView(url);
-	}
-
-	@Override
-	public String getRecipientUid() {
-		return getIntent().getStringExtra("uid");
 	}
 
 	private void callGeminiForAiFeature(AiFeatureParams params) {
@@ -3355,5 +3315,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 		ReplyMessageID = "null";
 		mMessageReplyLayout.setVisibility(View.GONE);
+	}
+
+	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
 	}
 }
