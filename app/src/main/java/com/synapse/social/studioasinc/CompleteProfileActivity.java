@@ -87,6 +87,7 @@ import com.synapse.social.studioasinc.ImageUploader;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
+import com.synapse.social.studioasinc.util.ViewUtilsKt;
 
 public class CompleteProfileActivity extends AppCompatActivity {
 	
@@ -241,23 +242,23 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
 				if (_charSeq.trim().equals("")) {
-					username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+					ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
 					((EditText)username_input).setError(getResources().getString(R.string.enter_username));
 					userNameErr = true;
 				} else {
 					if (_charSeq.matches("[a-z0-9_.]+")) {
 						if (_charSeq.contains("q") || (_charSeq.contains("w") || (_charSeq.contains("e") || (_charSeq.contains("r") || (_charSeq.contains("t") || (_charSeq.contains("y") || (_charSeq.contains("u") || (_charSeq.contains("i") || (_charSeq.contains("o") || (_charSeq.contains("p") || (_charSeq.contains("a") || (_charSeq.contains("s") || (_charSeq.contains("d") || (_charSeq.contains("f") || (_charSeq.contains("g") || (_charSeq.contains("h") || (_charSeq.contains("j") || (_charSeq.contains("k") || (_charSeq.contains("l") || (_charSeq.contains("z") || (_charSeq.contains("x") || (_charSeq.contains("c") || (_charSeq.contains("v") || (_charSeq.contains("b") || (_charSeq.contains("n") || _charSeq.contains("m")))))))))))))))))))))))))) {
 							if (username_input.getText().toString().length() < 3) {
-								username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+								ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
 								((EditText)username_input).setError(getResources().getString(R.string.username_err_3_characters));
 								userNameErr = true;
 							} else {
 								if (username_input.getText().toString().length() > 25) {
-									username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+									ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
 									((EditText)username_input).setError(getResources().getString(R.string.username_err_25_characters));
 									userNameErr = true;
 								} else {
-									username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+									ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
 									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
 									
 									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
@@ -265,11 +266,11 @@ public class CompleteProfileActivity extends AppCompatActivity {
 										@Override
 										public void onDataChange(DataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
-												username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFEEEEEE));
+												ViewUtilsKt.setGradientDrawable(username_input, 0xFFEEEEEE, 28f, 3, 0xFFF44336);
 												((EditText)username_input).setError(getResources().getString(R.string.username_err_already_taken));
 												userNameErr = true;
 											} else {
-												username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+												ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
 												userNameErr = false;
 											}
 										}
@@ -282,12 +283,12 @@ public class CompleteProfileActivity extends AppCompatActivity {
 								}
 							}
 						} else {
-							username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+							ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
 							((EditText)username_input).setError(getResources().getString(R.string.username_err_one_letter));
 							userNameErr = true;
 						}
 					} else {
-						username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+						ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
 						((EditText)username_input).setError(getResources().getString(R.string.username_err_invalid_characters));
 						userNameErr = true;
 					}
@@ -720,7 +721,7 @@ username_input.setEnabled(false);
 						final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
 						dialog_no_button.setVisibility(View.GONE);
 						dialog_yes_button.setTextColor(0xFF2196F3);
-						_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+						ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
 						dialog_title.setText(getResources().getString(R.string.info));
 						dialog_message.setText(getResources().getString(R.string.email_verification_success_text));
 						dialog_yes_button.setText(getResources().getString(R.string.okay));
@@ -813,18 +814,18 @@ username_input.setEnabled(false);
 		email_verification_title.setTypeface(Typeface.DEFAULT, 1);
 		subtitle.setTypeface(Typeface.DEFAULT, 0);
 		title.setTypeface(Typeface.DEFAULT, 1);
-		_stateColor(0xFFFFFFFF, 0xFFFFFFFF);
+		ViewUtilsKt.setStateColor(this, 0xFFFFFFFF, 0xFFFFFFFF);
 		avatarUri = "null";
 		thedpurl = "null";
 		userNameErr = true;
-		_ImageColor(email_verification_error_ic, 0xFFF44336);
-		_ImageColor(email_verification_verified_ic, 0xFF4CAF50);
-		profile_image_card.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
-		email_verification.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		nickname_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		biography_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		_viewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
+		ViewUtilsKt.setImageColor(email_verification_error_ic, 0xFFF44336);
+		ViewUtilsKt.setImageColor(email_verification_verified_ic, 0xFF4CAF50);
+		ViewUtilsKt.setGradientDrawable(profile_image_card, Color.TRANSPARENT, 300f, 0, Color.TRANSPARENT);
+		ViewUtilsKt.setGradientDrawable(email_verification, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+		ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+		ViewUtilsKt.setGradientDrawable(nickname_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+		ViewUtilsKt.setGradientDrawable(biography_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+		ViewUtilsKt.setViewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
 		if (getIntent().hasExtra("findedUsername")) {
 			username_input.setText(getIntent().getStringExtra("findedUsername"));
 		} else {
@@ -981,9 +982,9 @@ username_input.setEnabled(false);
 			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
 			final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
 			dialog_yes_button.setTextColor(0xFFF44336);
-			_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+			ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
 			dialog_no_button.setTextColor(0xFF2196F3);
-			_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+			ViewUtilsKt.setViewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
 			dialog_title.setText(getResources().getString(R.string.info));
 			dialog_message.setText(getResources().getString(R.string.cancel_complete_profile_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_complete_profile_warn2))));
 			dialog_yes_button.setText(getResources().getString(R.string.yes));
@@ -1046,33 +1047,12 @@ username_input.setEnabled(false);
 			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
 		}
 	}
-	public void _stateColor(final int _statusColor, final int _navigationColor) {
-		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-		getWindow().setStatusBarColor(_statusColor);
-		getWindow().setNavigationBarColor(_navigationColor);
-	}
 	
 	
-	public void _ImageColor(final ImageView _image, final int _color) {
-		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
-	}
 	
 	
-	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
-		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
-		GG.setColor(_onFocus);
-		GG.setCornerRadius((float)_radius);
-		GG.setStroke((int) _stroke, _strokeColor);
-		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
-		_view.setBackground(RE);
-	}
 	
 	
-	public void _progressBarColor(final ProgressBar _progressbar, final int _color) {
-		int color = _color;
-		_progressbar.setIndeterminateTintList(ColorStateList.valueOf(color));
-		_progressbar.setProgressTintList(ColorStateList.valueOf(color));
-	}
 	
 	
 	@Override
@@ -1096,9 +1076,9 @@ username_input.setEnabled(false);
 				final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
 				final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
 				dialog_yes_button.setTextColor(0xFFF44336);
-				_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+				ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
 				dialog_no_button.setTextColor(0xFF2196F3);
-				_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+				ViewUtilsKt.setViewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
 				dialog_title.setText(getResources().getString(R.string.info));
 				dialog_message.setText(getResources().getString(R.string.cancel_create_account_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_create_account_warn2))));
 				dialog_yes_button.setText(getResources().getString(R.string.yes));
