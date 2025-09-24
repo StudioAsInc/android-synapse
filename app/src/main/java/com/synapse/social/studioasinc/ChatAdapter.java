@@ -29,7 +29,6 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-// import com.synapse.social.studioasinc.styling.TextStylingUtil;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,7 +67,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private String firstUserName = "";
     private String secondUserName = "";
     private SharedPreferences appSettings;
-    // private TextStylingUtil textStylingUtil;
     private ChatAdapterListener listener;
     private boolean isGroupChat = false;
     private HashMap<String, String> userNamesMap = new HashMap<>();
@@ -133,7 +131,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         _context = parent.getContext();
         appSettings = _context.getSharedPreferences("appSettings", Context.MODE_PRIVATE);
-        // textStylingUtil = new TextStylingUtil(_context);
         LayoutInflater inflater = LayoutInflater.from(_context);
         switch (viewType) {
             case VIEW_TYPE_MEDIA_GRID: return new MediaViewHolder(inflater.inflate(R.layout.chat_bubble_media, parent, false));
