@@ -174,8 +174,4 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
      * Enable offline persistence for any database reference
      * @param ref DatabaseReference to enable offline sync for
      */
-    public static void enableOfflineSync(DatabaseReference ref) {
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-        ref.keepSynced(true);
-    }
 }
