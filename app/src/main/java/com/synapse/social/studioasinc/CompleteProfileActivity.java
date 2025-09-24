@@ -242,23 +242,23 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
 				if (_charSeq.trim().equals("")) {
-					ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
+					username_input.setActivated(true);
 					((EditText)username_input).setError(getResources().getString(R.string.enter_username));
 					userNameErr = true;
 				} else {
 					if (_charSeq.matches("[a-z0-9_.]+")) {
 						if (_charSeq.contains("q") || (_charSeq.contains("w") || (_charSeq.contains("e") || (_charSeq.contains("r") || (_charSeq.contains("t") || (_charSeq.contains("y") || (_charSeq.contains("u") || (_charSeq.contains("i") || (_charSeq.contains("o") || (_charSeq.contains("p") || (_charSeq.contains("a") || (_charSeq.contains("s") || (_charSeq.contains("d") || (_charSeq.contains("f") || (_charSeq.contains("g") || (_charSeq.contains("h") || (_charSeq.contains("j") || (_charSeq.contains("k") || (_charSeq.contains("l") || (_charSeq.contains("z") || (_charSeq.contains("x") || (_charSeq.contains("c") || (_charSeq.contains("v") || (_charSeq.contains("b") || (_charSeq.contains("n") || _charSeq.contains("m")))))))))))))))))))))))))) {
 							if (username_input.getText().toString().length() < 3) {
-								ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
+								username_input.setActivated(true);
 								((EditText)username_input).setError(getResources().getString(R.string.username_err_3_characters));
 								userNameErr = true;
 							} else {
 								if (username_input.getText().toString().length() > 25) {
-									ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
+									username_input.setActivated(true);
 									((EditText)username_input).setError(getResources().getString(R.string.username_err_25_characters));
 									userNameErr = true;
 								} else {
-									ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+									username_input.setActivated(false);
 									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
 									
 									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
@@ -266,11 +266,11 @@ public class CompleteProfileActivity extends AppCompatActivity {
 										@Override
 										public void onDataChange(DataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
-												ViewUtilsKt.setGradientDrawable(username_input, 0xFFEEEEEE, 28f, 3, 0xFFF44336);
+												username_input.setActivated(true);
 												((EditText)username_input).setError(getResources().getString(R.string.username_err_already_taken));
 												userNameErr = true;
 											} else {
-												ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+												username_input.setActivated(false);
 												userNameErr = false;
 											}
 										}
@@ -283,12 +283,12 @@ public class CompleteProfileActivity extends AppCompatActivity {
 								}
 							}
 						} else {
-							ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
+							username_input.setActivated(true);
 							((EditText)username_input).setError(getResources().getString(R.string.username_err_one_letter));
 							userNameErr = true;
 						}
 					} else {
-						ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFF44336);
+						username_input.setActivated(true);
 						((EditText)username_input).setError(getResources().getString(R.string.username_err_invalid_characters));
 						userNameErr = true;
 					}
@@ -822,9 +822,6 @@ username_input.setEnabled(false);
 		ViewUtilsKt.setImageColor(email_verification_verified_ic, 0xFF4CAF50);
 		ViewUtilsKt.setGradientDrawable(profile_image_card, Color.TRANSPARENT, 300f, 0, Color.TRANSPARENT);
 		ViewUtilsKt.setGradientDrawable(email_verification, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
-		ViewUtilsKt.setGradientDrawable(username_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
-		ViewUtilsKt.setGradientDrawable(nickname_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
-		ViewUtilsKt.setGradientDrawable(biography_input, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
 		ViewUtilsKt.setViewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
 		if (getIntent().hasExtra("findedUsername")) {
 			username_input.setText(getIntent().getStringExtra("findedUsername"));

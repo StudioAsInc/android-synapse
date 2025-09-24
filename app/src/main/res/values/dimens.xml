@@ -41,4 +41,9 @@
     <!-- Page indicator dimensions -->
     <dimen name="dot_size">6dp</dimen>
     <dimen name="dot_margin">2dp</dimen>
+
+    <!-- Refactoring Dimensions -->
+    <dimen name="edit_text_corner_radius">28dp</dimen>
+    <dimen name="edit_text_stroke_width">3dp</dimen>
+    <dimen name="button_corner_radius">300dp</dimen>
 </resources>
