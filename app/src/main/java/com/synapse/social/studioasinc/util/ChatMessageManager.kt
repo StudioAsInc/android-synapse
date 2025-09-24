@@ -46,11 +46,12 @@ object ChatMessageManager {
                 .setValue(messageMap)
         } else {
             val chatId = getChatId(senderUid, recipientUid)
-            firebaseDatabase.getReference(CHATS_REF).child(chatId).child(uniqueMessageKey)
-                .setValue(messageMap)
-            // Add to user-chats node
-            firebaseDatabase.getReference(USER_CHATS_REF).child(senderUid).child(chatId).setValue(true)
-            firebaseDatabase.getReference(USER_CHATS_REF).child(recipientUid).child(chatId).setValue(true)
+            val fanOutObject = hashMapOf<String, Any?>(
+                "/$CHATS_REF/$chatId/$uniqueMessageKey" to messageMap,
+                "/$USER_CHATS_REF/$senderUid/$chatId" to true,
+                "/$USER_CHATS_REF/$recipientUid/$chatId" to true
+            )
+            firebaseDatabase.reference.updateChildren(fanOutObject)
         }
     }
 
