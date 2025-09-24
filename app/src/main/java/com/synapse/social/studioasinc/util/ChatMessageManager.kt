@@ -14,6 +14,7 @@ object ChatMessageManager {
     private const val SKYLINE_REF = "skyline"
     private const val CHATS_REF = "chats"
     private const val USER_CHATS_REF = "user-chats"
+    private const val GROUP_CHATS_REF = "group-chats"
     private const val INBOX_REF = "inbox"
 
     private const val CHAT_ID_KEY = "chatID"
@@ -42,7 +43,7 @@ object ChatMessageManager {
         isGroup: Boolean
     ) {
         if (isGroup) {
-            firebaseDatabase.getReference("skyline/group-chats").child(recipientUid).child(uniqueMessageKey)
+            firebaseDatabase.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey)
                 .setValue(messageMap)
         } else {
             val chatId = getChatId(senderUid, recipientUid)
@@ -59,7 +60,7 @@ object ChatMessageManager {
         val senderUid = auth.currentUser?.uid ?: return
 
         if (isGroup) {
-            val groupRef = firebaseDatabase.getReference("groups").child(recipientUid)
+            val groupRef = firebaseDatabase.getReference(SKYLINE_REF).child("groups").child(recipientUid)
             groupRef.child("members").get().addOnSuccessListener { dataSnapshot ->
                 if (dataSnapshot.exists()) {
                     for (memberSnapshot in dataSnapshot.children) {
