@@ -38,7 +38,7 @@ class UserProfileUpdater(
         if ("true" == dataSnapshot.child("banned").getValue(String::class.java)) {
             topProfileLayoutProfileImage.setImageResource(R.drawable.banned_avatar)
             secondUserAvatar = "null_banned"
-            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#9E9E9E"))
+            topProfileLayoutStatus.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.status_banned_text))
             topProfileLayoutStatus.text = context.getString(R.string.offline)
         } else {
             val avatarUrl = dataSnapshot.child("avatar").getValue(String::class.java)
@@ -69,7 +69,7 @@ class UserProfileUpdater(
         val status = dataSnapshot.child("status").getValue(String::class.java)
         if ("online" == status) {
             topProfileLayoutStatus.text = context.getString(R.string.online)
-            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#2196F3"))
+            topProfileLayoutStatus.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.status_online_text))
         } else {
             if ("offline" == status) {
                 topProfileLayoutStatus.text = context.getString(R.string.offline)
@@ -86,7 +86,7 @@ class UserProfileUpdater(
                     topProfileLayoutStatus.text = context.getString(R.string.offline)
                 }
             }
-            topProfileLayoutStatus.setTextColor(android.graphics.Color.parseColor("#757575"))
+            topProfileLayoutStatus.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.status_offline_text))
         }
     }
 

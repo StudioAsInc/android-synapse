@@ -1208,6 +1208,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						Log.w("ChatActivity", "User data snapshot doesn't exist");
 						FirstUserName = "Unknown User";
 					}
+					if (chatAdapter != null) {
+						chatAdapter.setFirstUserName(FirstUserName);
+					}
 				} catch (Exception e) {
 					Log.e("ChatActivity", "Error processing user data: " + e.getMessage());
 					FirstUserName = "Unknown User";
@@ -1616,7 +1619,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					SecondUserAvatar = userProfileUpdater.getSecondUserAvatar();
 					if (chatAdapter != null) {
 						chatAdapter.setSecondUserName(SecondUserName);
-						chatAdapter.setFirstUserName(FirstUserName);
 						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
 					}
 				}
@@ -2974,5 +2976,77 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public String getRecipientUid() {
 		return getIntent().getStringExtra("uid");
+	}
+
+	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {
+
+		private final ArrayList<HashMap<String, Object>> data;
+		private final Context context;
+		private final boolean isGroup;
+		private final FirebaseDatabase firebase;
+
+		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, FirebaseDatabase firebase) {
+			this.data = arr;
+			this.context = context;
+			this.isGroup = isGroup;
+			this.firebase = firebase;
+		}
+
+		@Override
+		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			LayoutInflater inflater = LayoutInflater.from(context);
+			View v = inflater.inflate(R.layout.chat_msg_cv_synapse, null);
+			RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+			v.setLayoutParams(lp);
+			return new ViewHolder(v);
+		}
+
+		@Override
+		public void onBindViewHolder(ViewHolder holder, final int position) {
+			View view = holder.itemView;
+			final TextView sender_name = view.findViewById(R.id.sender_name);
+
+			if (isGroup && !data.get(position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+				sender_name.setVisibility(View.VISIBLE);
+				final String senderUid = data.get(position).get("uid").toString();
+				DatabaseReference userRef = firebase.getReference("skyline/users").child(senderUid);
+				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+					@Override
+					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						if (dataSnapshot.exists()) {
+							String nickname = dataSnapshot.child("nickname").getValue(String.class);
+							String username = dataSnapshot.child("username").getValue(String.class);
+							if (nickname != null && !"null".equals(nickname)) {
+								sender_name.setText(nickname);
+							} else if (username != null && !"null".equals(username)) {
+								sender_name.setText("@" + username);
+							} else {
+								sender_name.setText("Unknown User");
+							}
+						} else {
+							sender_name.setText("Unknown User");
+						}
+					}
+
+					@Override
+					public void onCancelled(@NonNull DatabaseError databaseError) {
+						sender_name.setText("Unknown User");
+					}
+				});
+			} else {
+				sender_name.setVisibility(View.GONE);
+			}
+		}
+
+		@Override
+		public int getItemCount() {
+			return data.size();
+		}
+
+		public static class ViewHolder extends RecyclerView.ViewHolder {
+			public ViewHolder(View v) {
+				super(v);
+			}
+		}
 	}
 }

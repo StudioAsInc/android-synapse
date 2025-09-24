@@ -166,4 +166,9 @@
 	<color name="quarter_black">#40000000</color>
     <color name="reply_text_color">#445E91</color>
     <color name="hint_text_color">#607D8B</color>
+
+    <!-- User Status Colors -->
+    <color name="status_banned_text">#9E9E9E</color>
+    <color name="status_online_text">#2196F3</color>
+    <color name="status_offline_text">#757575</color>
 </resources>
