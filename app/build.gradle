@@ -79,14 +79,24 @@ android {
             } else {
                 signingConfig = signingConfigs.debug
             }
-            buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
-            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
+            def localProperties = new Properties()
+            def localPropertiesFile = rootProject.file('local.properties')
+            if (localPropertiesFile.exists()) {
+                localProperties.load(new FileInputStream(localPropertiesFile))
+            }
+            buildConfigField "String", "SUPABASE_URL", "\"${localProperties['SUPABASE_URL']}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${localProperties['SUPABASE_ANON_KEY']}\""
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
-            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
+            def localProperties = new Properties()
+            def localPropertiesFile = rootProject.file('local.properties')
+            if (localPropertiesFile.exists()) {
+                localProperties.load(new FileInputStream(localPropertiesFile))
+            }
+            buildConfigField "String", "SUPABASE_URL", "\"${localProperties['SUPABASE_URL']}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${localProperties['SUPABASE_ANON_KEY']}\""
         }
     }
 
