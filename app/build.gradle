@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
     id 'com.google.firebase.crashlytics'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.0'
     //id 'com.google.firebase.firebase-perf'
 }
 
@@ -78,10 +79,14 @@ android {
             } else {
                 signingConfig = signingConfigs.debug
             }
+            buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
         }
     }
 
@@ -111,17 +116,26 @@ android {
 }
 
 dependencies {
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.3"))
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.ktor:ktor-client-android")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+
     // Import the Firebase BoM (downgraded to avoid gRPC conflict)
-    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    // implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
 
     // When using the BoM, don't specify versions in Firebase dependencies
     // Re-adding -ktx suffixes as they are included in this BoM version
-    implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
-    implementation 'com.google.firebase:firebase-perf-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
+    // implementation 'com.google.firebase:firebase-auth-ktx'
+    // implementation 'com.google.firebase:firebase-database-ktx'
+    // implementation 'com.google.firebase:firebase-storage-ktx'
+    // implementation 'com.google.firebase:firebase-perf-ktx'
+    // implementation 'com.google.firebase:firebase-crashlytics-ktx'
+    // implementation 'com.google.firebase:firebase-analytics-ktx'
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'
