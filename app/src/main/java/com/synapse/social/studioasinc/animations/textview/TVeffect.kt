@@ -17,8 +17,14 @@ class TVeffects @JvmOverloads constructor(
 ) : AppCompatTextView(context, attrs) {
 
     private var charDelay: Long = 50L
-    var fadeDuration: Long = 200L
-    var totalDuration: Long = 0L  // if > 0, use totalDuration instead of charDelay
+    private var _fadeDuration: Long = 200L
+    private var _totalDuration: Long = 0L  // if > 0, use totalDuration instead of charDelay
+
+    val fadeDuration: Long
+        get() = _fadeDuration
+
+    val totalDuration: Long
+        get() = _totalDuration
 
     // Setter methods to control timing from code
     fun setCharDelay(delay: Long) {
@@ -26,16 +32,16 @@ class TVeffects @JvmOverloads constructor(
     }
 
     fun setFadeDuration(duration: Long) {
-        fadeDuration = duration
+        _fadeDuration = duration
     }
 
     fun setTotalDuration(duration: Long) {
-        totalDuration = duration
+        _totalDuration = duration
     }
 
     fun startTyping(text: CharSequence) {
-        val delay = if (totalDuration > 0 && text.isNotEmpty()) totalDuration / text.length else charDelay
-        startTyping(text, delay, fadeDuration)
+        val delay = if (_totalDuration > 0 && text.isNotEmpty()) _totalDuration / text.length else charDelay
+        startTyping(text, delay, _fadeDuration)
     }
 
     private fun startTyping(text: CharSequence, charDelay: Long, fadeDuration: Long) {

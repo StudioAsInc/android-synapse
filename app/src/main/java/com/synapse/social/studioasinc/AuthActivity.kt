@@ -21,12 +21,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.animations.layout.layoutshaker
 import com.synapse.social.studioasinc.animations.textview.TVeffects
+import com.onesignal.OneSignal
+import io.github.jan.supabase.exceptions.BadRequestRestException
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.onesignal.OneSignal
-import io.github.jan.supabase.gotrue.user.UserSession
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -247,11 +249,15 @@ class AuthActivity : AppCompatActivity() {
                         this.email = email
                         this.password = pass
                     }
-                    if (user != null) {
-                        handleSuccessfulRegistration()
+                    withContext(Dispatchers.Main) {
+                        if (user != null) {
+                            handleSuccessfulRegistration()
+                        }
                     }
                 } catch (e: Exception) {
-                    handleRegistrationError(e)
+                    withContext(Dispatchers.Main) {
+                        handleRegistrationError(e)
+                    }
                 }
             }
         }
@@ -268,7 +274,7 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun handleRegistrationError(exception: Exception) {
-        if ("User already registered" in (exception.message ?: "")) {
+        if (exception is BadRequestRestException && exception.message?.contains("User already registered") == true) {
             handleExistingAccount()
         } else {
             aiResponseTextView_1.totalDuration = 1300L
@@ -287,16 +293,20 @@ class AuthActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val session: UserSession = Supabase.client.auth.signInWith(Email) {
+                Supabase.client.auth.signInWith(Email) {
                     this.email = email
                     this.password = pass
                 }
                 val user = Supabase.client.auth.currentUserOrNull()
-                if (user != null) {
-                    fetchUsername(user.id)
+                withContext(Dispatchers.Main) {
+                    if (user != null) {
+                        fetchUsername(user.id)
+                    }
                 }
             } catch (e: Exception) {
-                showSignInError()
+                withContext(Dispatchers.Main) {
+                    showSignInError()
+                }
             }
         }
     }
@@ -311,20 +321,24 @@ class AuthActivity : AppCompatActivity() {
                     }
                 }.decodeList<Map<String, Any>>().firstOrNull()
 
-                if (userProfile != null) {
-                    val username = userProfile["username"] as? String
-                    if (username != null) {
-                        showWelcomeMessage("You are @$username right? No further steps, Let's go...")
+                withContext(Dispatchers.Main) {
+                    if (userProfile != null) {
+                        val username = userProfile["username"] as? String
+                        if (username != null) {
+                            showWelcomeMessage("You are @$username right? No further steps, Let's go...")
+                        } else {
+                            showWelcomeMessage("I recognize you! Let's go...")
+                        }
                     } else {
                         showWelcomeMessage("I recognize you! Let's go...")
                     }
-                } else {
-                    showWelcomeMessage("I recognize you! Let's go...")
+                    navigateToHomeAfterDelay()
                 }
-                navigateToHomeAfterDelay()
             } catch (e: Exception) {
-                showWelcomeMessage("I recognize you! Let's go...")
-                navigateToHomeAfterDelay()
+                withContext(Dispatchers.Main) {
+                    showWelcomeMessage("I recognize you! Let's go...")
+                    navigateToHomeAfterDelay()
+                }
             }
         }
     }

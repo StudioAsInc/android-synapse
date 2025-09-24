@@ -33,7 +33,9 @@ import com.synapse.social.studioasinc.util.ViewUtilsKt
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
@@ -181,15 +183,17 @@ class CompleteProfileActivity : AppCompatActivity() {
                                             filter {
                                                 eq("username", charSeq.trim())
                                             }
-                                        }.data
-                                        if (result.isNotEmpty()) {
-                                            username_input.isActivated = true
-                                            (username_input as EditText).error =
-                                                getString(R.string.username_err_already_taken)
-                                            userNameErr = true
-                                        } else {
-                                            username_input.isActivated = false
-                                            userNameErr = false
+                                        }.decodeList<Map<String, Any>>()
+                                        withContext(Dispatchers.Main) {
+                                            if (result.isNotEmpty()) {
+                                                username_input.isActivated = true
+                                                (username_input as EditText).error =
+                                                    getString(R.string.username_err_already_taken)
+                                                userNameErr = true
+                                            } else {
+                                                username_input.isActivated = false
+                                                userNameErr = false
+                                            }
                                         }
                                     } catch (e: Exception) {
                                         // Handle error
@@ -425,7 +429,9 @@ class CompleteProfileActivity : AppCompatActivity() {
         dialog_yes_button.setOnClickListener {
             lifecycleScope.launch {
                 Supabase.client.auth.signOut()
-                finish()
+                withContext(Dispatchers.Main) {
+                    finish()
+                }
             }
         }
         dialog_no_button.setOnClickListener { newCustomDialog.dismiss() }
@@ -512,17 +518,19 @@ class CompleteProfileActivity : AppCompatActivity() {
                         "avatar_url" to (avatarUrl ?: googleLoginAvatarUri),
                         "email" to user.email
                     )
-                    try {
-                        Supabase.client.postgrest["profiles"].insert(profileData, upsert = true)
+                    Supabase.client.postgrest["profiles"].insert(profileData, upsert = true)
+                    withContext(Dispatchers.Main) {
                         callback(true, null)
-                    } catch (e: Exception) {
-                        callback(false, e.message)
                     }
                 } else {
-                    callback(false, "User not logged in")
+                    withContext(Dispatchers.Main) {
+                        callback(false, "User not logged in")
+                    }
                 }
             } catch (e: Exception) {
-                callback(false, e.message)
+                withContext(Dispatchers.Main) {
+                    callback(false, e.message)
+                }
             }
         }
     }
@@ -537,9 +545,13 @@ class CompleteProfileActivity : AppCompatActivity() {
                 val file = File(filePath)
                 val fileName = "${UUID.randomUUID()}.${file.extension}"
                 val url = Supabase.client.storage["avatars"].upload(fileName, file.readBytes(), upsert = true)
-                onUploadSuccess(url)
+                withContext(Dispatchers.Main) {
+                    onUploadSuccess(url)
+                }
             } catch (e: Exception) {
-                onUploadError()
+                withContext(Dispatchers.Main) {
+                    onUploadError()
+                }
             }
         }
     }
