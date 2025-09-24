@@ -359,8 +359,7 @@ class AuthActivity : AppCompatActivity() {
         if (OneSignal.User.pushSubscription.optedIn) {
             val playerId = OneSignal.User.pushSubscription.id
             if (!playerId.isNullOrEmpty()) {
-                // We'll need to create a new OneSignalManager for Supabase
-                // OneSignalManager.savePlayerIdToRealtimeDatabase(uid, playerId)
+                OneSignalManager.savePlayerIdToSupabase(uid, playerId)
             }
         }
     }

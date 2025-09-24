@@ -463,7 +463,10 @@ class CompleteProfileActivity : AppCompatActivity() {
             dialog_no_button.text = getString(R.string.no)
             dialog_yes_button.setOnClickListener {
                 item.isEnabled = false
-                // TODO: Implement a serverless function to delete the user
+                // TODO: Implement a serverless function to delete the user.
+                // This requires admin privileges and should be handled by a secure serverless function.
+                // The function should delete the user from the `auth.users` table and also from the `profiles` table.
+                //
                 // lifecycleScope.launch {
                 //     try {
                 //         Supabase.client.functions.invoke("delete-user")
