@@ -29,8 +29,6 @@ fun View.setViewGraphics(onFocus: Int, onRipple: Int, radius: Double, stroke: Do
     background = rippleDrawable
 }
 
-import android.widget.ProgressBar
-
 fun View.setGradientDrawable(color: Int, cornerRadius: Float, strokeWidth: Int = 0, strokeColor: Int = Color.TRANSPARENT) {
     val gradientDrawable = GradientDrawable()
     gradientDrawable.setColor(color)
