@@ -97,6 +97,7 @@ import com.synapse.social.studioasinc.StorageUtil;
 import com.synapse.social.studioasinc.UploadFiles;
 import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
+import com.synapse.social.studioasinc.util.ChatMessageManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -333,7 +334,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 				// Clear the attachment draft from SharedPreferences
 				SharedPreferences drafts = getSharedPreferences("chat_drafts", Context.MODE_PRIVATE);
-				String chatId = getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra("uid"));
+				String chatId = ChatMessageManager.INSTANCE.getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra("uid"));
 				drafts.edit().remove(chatId + "_attachments").apply();
 				if (auth.getCurrentUser() != null) {
 					PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
@@ -438,7 +439,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
-				String chatID = getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 				DatabaseReference typingRef = _firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF);
 				if (_charSeq.length() == 0) {
 					typingRef.removeValue();
@@ -573,7 +574,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		if (is_group) {
 			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
 		} else {
-			String chatID = getChatId(currentUserUid, otherUserUid);
+			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
 			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
 		}
 		
@@ -756,7 +757,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void onPause() {
 		super.onPause();
 		if (auth.getCurrentUser() != null) {
-			String chatID = getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -791,7 +792,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
-			String chatID = getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -803,7 +804,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		// Clean up typing indicator
 		if (auth.getCurrentUser() != null) {
 			try {
-				String chatID = getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 				_firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 			} catch (Exception e) {
 				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
@@ -1062,7 +1063,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				if (otherUid == null || msgKey == null) {
 					return;
 				}
-				String chatID = getChatId(myUid, otherUid);
+				String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
 				DatabaseReference msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey);
 				msgRef.child(MESSAGE_TEXT_KEY).setValue(newText);
 			});
@@ -1356,17 +1357,35 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 									_fetchRepliedMessages(singleMessageList);
 								}
 							} else {
-								// The message key already exists. This means it was a local message that has now been confirmed by the server.
-								// We need to find it and update it to remove the 'isLocalMessage' flag and get the server timestamp.
+								// The message was sent locally and is now confirmed by the server.
+								// We must move it to its correct chronological position.
+								int oldPosition = -1;
 								for (int i = 0; i < ChatMessagesList.size(); i++) {
 									if (messageKey.equals(ChatMessagesList.get(i).get(KEY_KEY))) {
-										Log.d("ChatActivity", "Updating local message with server data at position " + i);
-										newMessage.remove("isLocalMessage"); // Ensure local flag is removed
-										ChatMessagesList.set(i, newMessage);
-										if (chatAdapter != null) {
-											chatAdapter.notifyItemChanged(i);
-										}
+										oldPosition = i;
 										break;
+									}
+								}
+
+								if (oldPosition != -1) {
+									newMessage.remove("isLocalMessage");
+									int newPosition = _findCorrectInsertPosition(newMessage);
+
+									// If the position hasn't changed, just update the item.
+									if (oldPosition == newPosition) {
+										ChatMessagesList.set(oldPosition, newMessage);
+										if (chatAdapter != null) {
+											chatAdapter.notifyItemChanged(oldPosition);
+										}
+									} else {
+										// Otherwise, move the item to its new correct position.
+										ChatMessagesList.remove(oldPosition);
+										ChatMessagesList.add(newPosition, newMessage);
+										if (chatAdapter != null) {
+											chatAdapter.notifyItemMoved(oldPosition, newPosition);
+											// Also notify item changed for timestamp/bubble shape updates
+											chatAdapter.notifyItemChanged(newPosition);
+										}
 									}
 								}
 							}
@@ -1823,7 +1842,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 			final String otherUid = getIntent().getStringExtra(UID_KEY);
-			final String chatID = getChatId(myUid, otherUid);
+			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
 			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
 
 			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
@@ -1993,18 +2012,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		proceedWithMessageSending(messageText, senderUid, recipientUid);
 	}
 
-	private void _sendMessageToDb(HashMap<String, Object> messageMap, String senderUid, String recipientUid, String uniqueMessageKey) {
-		if (is_group) {
-			_firebase.getReference("skyline/group-chats").child(recipientUid).child(uniqueMessageKey).setValue(messageMap);
-		} else {
-			String chatID = getChatId(senderUid, recipientUid);
-			_firebase.getReference(CHATS_REF).child(chatID).child(uniqueMessageKey).setValue(messageMap);
-			// Add to user-chats node
-			_firebase.getReference(USER_CHATS_REF).child(senderUid).child(chatID).setValue(true);
-			_firebase.getReference(USER_CHATS_REF).child(recipientUid).child(chatID).setValue(true);
-		}
-	}
-
 	private void proceedWithMessageSending(String messageText, String senderUid, String recipientUid) {
 		if (auth.getCurrentUser() != null) {
 			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
@@ -2057,7 +2064,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		messageToSend.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
 
 		// --- Immediate Actions: Update UI and send to DB ---
-		_sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey);
+		ChatMessageManager.INSTANCE.sendMessageToDb(
+				(HashMap<String, Object>) messageToSend,
+				senderUid,
+				recipientUid,
+				uniqueMessageKey,
+				is_group
+		);
 
 		// Create a copy for local UI to avoid modification by reference
 		HashMap<String, Object> localMessage = new HashMap<>(messageToSend);
@@ -2082,7 +2095,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			_fetchRepliedMessages(singleMessageList);
 		}
 
-		_updateInbox(lastMessageForInbox);
+		ChatMessageManager.INSTANCE.updateInbox(lastMessageForInbox, recipientUid, is_group, null);
 
 		// Clear UI fields
 		message_et.setText("");
@@ -2093,7 +2106,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 
 		// --- Background Action: Fetch recipient's notification ID and send notification ---
-		final String chatId = getChatId(senderUid, recipientUid);
+		final String chatId = ChatMessageManager.INSTANCE.getChatId(senderUid, recipientUid);
 		final String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
 		final String notificationMessage = senderDisplayName + ": " + lastMessageForInbox;
 
@@ -2352,63 +2365,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		Log.d("ChatActivity", "=== ATTACHMENT STATE RESET COMPLETE ===");
 	}
 
-	public void _updateInbox(final String _lastMessage) {
-		if (is_group) {
-			DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
-			groupRef.child("members").addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if (dataSnapshot.exists()) {
-						for (DataSnapshot memberSnapshot : dataSnapshot.getChildren()) {
-							String memberUid = memberSnapshot.getKey();
-							if (memberUid != null) {
-								cc = Calendar.getInstance();
-								ChatInboxSend = new HashMap<>();
-								ChatInboxSend.put(CHAT_ID_KEY, getIntent().getStringExtra(UID_KEY));
-								ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
-								ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-								ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage);
-								ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
-								ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-								ChatInboxSend.put("isGroup", "true");
-								_firebase.getReference(INBOX_REF).child(memberUid).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
-							}
-						}
-					}
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-
-				}
-			});
-		} else {
-			// Using the correct parameter name '_lastMessage' with the underscore prefix.
-			cc = Calendar.getInstance();
-
-			// Update inbox for the current user
-			ChatInboxSend = new HashMap<>();
-			ChatInboxSend.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
-			ChatInboxSend.put(UID_KEY, getIntent().getStringExtra(UID_KEY));
-			ChatInboxSend.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-			ChatInboxSend.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
-			ChatInboxSend.put(LAST_MESSAGE_STATE_KEY, "sended");
-			ChatInboxSend.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-			ChatInboxSend.put("chat_type", "single");
-			_firebase.getReference(INBOX_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra(UID_KEY)).setValue(ChatInboxSend);
-
-			// Update inbox for the other user
-			ChatInboxSend2 = new HashMap<>();
-			ChatInboxSend2.put(CHAT_ID_KEY, getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)));
-			ChatInboxSend2.put(UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-			ChatInboxSend2.put(LAST_MESSAGE_UID_KEY, FirebaseAuth.getInstance().getCurrentUser().getUid());
-			ChatInboxSend2.put(LAST_MESSAGE_TEXT_KEY, _lastMessage); // <-- CORRECTED
-			ChatInboxSend2.put(LAST_MESSAGE_STATE_KEY, "sended");
-			ChatInboxSend2.put(PUSH_DATE_KEY, String.valueOf((long)(cc.getTimeInMillis())));
-			ChatInboxSend2.put("chat_type", "single");
-			_firebase.getReference(INBOX_REF).child(getIntent().getStringExtra(UID_KEY)).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(ChatInboxSend2);
-		}
-	}
 
 
 	public void _showLoadMoreIndicator() {
@@ -2478,16 +2434,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		vbr.vibrate((long)(48));
 	}
 
-	private String getChatId(String uid1, String uid2) {
-		if (uid1 == null || uid2 == null) {
-			return "";
-		}
-		if (uid1.compareTo(uid2) > 0) {
-			return uid1 + uid2;
-		} else {
-			return uid2 + uid1;
-		}
-	}
 
 
 	public void _setupSwipeToReply() {
@@ -2959,7 +2905,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
 		ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
 
-		_sendMessageToDb(ChatSendMap, senderUid, recipientUid, uniqueMessageKey);
+		ChatMessageManager.INSTANCE.sendMessageToDb(
+				(HashMap<String, Object>) ChatSendMap,
+				senderUid,
+				recipientUid,
+				uniqueMessageKey,
+				is_group
+		);
 
 		ChatSendMap.put("isLocalMessage", true);
 		messageKeys.add(uniqueMessageKey);
@@ -2967,7 +2919,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		chatAdapter.notifyItemInserted(ChatMessagesList.size() - 1);
 		ChatMessagesListRecycler.post(() -> scrollToBottom());
 
-		_updateInbox("Voice Message");
+		ChatMessageManager.INSTANCE.updateInbox("Voice Message", recipientUid, is_group, null);
 
 		ReplyMessageID = "null";
 		mMessageReplyLayout.setVisibility(View.GONE);
