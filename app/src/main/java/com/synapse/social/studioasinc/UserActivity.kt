@@ -1,18 +1,36 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.Supabase.client
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object UserActivity {
 
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
-
     @JvmStatic
     fun setActivity(uid: String, activity: String) {
-        usersRef.child(uid).child("activity").setValue(activity)
+        updateUserActivity(uid, activity)
     }
 
     @JvmStatic
     fun clearActivity(uid: String) {
-        usersRef.child(uid).child("activity").removeValue()
+        updateUserActivity(uid, null)
+    }
+
+    private fun updateUserActivity(uid: String, activity: String?) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.postgrest["profiles"].update({
+                    set("activity", activity)
+                }) {
+                    filter {
+                        eq("id", uid)
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
     }
 }

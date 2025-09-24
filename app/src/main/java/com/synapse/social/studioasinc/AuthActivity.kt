@@ -26,6 +26,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import com.onesignal.OneSignal
+import io.github.jan.supabase.gotrue.user.UserSession
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -242,11 +243,13 @@ class AuthActivity : AppCompatActivity() {
         if (isValid) {
             lifecycleScope.launch {
                 try {
-                    Supabase.client.auth.signUpWith(Email) {
+                    val user = Supabase.client.auth.signUpWith(Email) {
                         this.email = email
                         this.password = pass
                     }
-                    handleSuccessfulRegistration()
+                    if (user != null) {
+                        handleSuccessfulRegistration()
+                    }
                 } catch (e: Exception) {
                     handleRegistrationError(e)
                 }
@@ -284,7 +287,7 @@ class AuthActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                Supabase.client.auth.signInWith(Email) {
+                val session: UserSession = Supabase.client.auth.signInWith(Email) {
                     this.email = email
                     this.password = pass
                 }
@@ -306,10 +309,10 @@ class AuthActivity : AppCompatActivity() {
                     filter {
                         eq("id", uid)
                     }
-                }.data
+                }.decodeList<Map<String, Any>>().firstOrNull()
 
-                if (userProfile.isNotEmpty()) {
-                    val username = userProfile.first().jsonObject["username"]?.jsonPrimitive?.content
+                if (userProfile != null) {
+                    val username = userProfile["username"] as? String
                     if (username != null) {
                         showWelcomeMessage("You are @$username right? No further steps, Let's go...")
                     } else {

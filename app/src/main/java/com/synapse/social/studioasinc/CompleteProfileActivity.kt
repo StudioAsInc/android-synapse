@@ -181,8 +181,8 @@ class CompleteProfileActivity : AppCompatActivity() {
                                             filter {
                                                 eq("username", charSeq.trim())
                                             }
-                                        }
-                                        if (result.data.isNotEmpty()) {
+                                        }.data
+                                        if (result.isNotEmpty()) {
                                             username_input.isActivated = true
                                             (username_input as EditText).error =
                                                 getString(R.string.username_err_already_taken)
@@ -513,7 +513,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                         "email" to user.email
                     )
                     try {
-                        Supabase.client.postgrest["profiles"].insert(profileData)
+                        Supabase.client.postgrest["profiles"].insert(profileData, upsert = true)
                         callback(true, null)
                     } catch (e: Exception) {
                         callback(false, e.message)
@@ -536,7 +536,7 @@ class CompleteProfileActivity : AppCompatActivity() {
             try {
                 val file = File(filePath)
                 val fileName = "${UUID.randomUUID()}.${file.extension}"
-                val url = Supabase.client.storage["avatars"].upload(fileName, file.readBytes())
+                val url = Supabase.client.storage["avatars"].upload(fileName, file.readBytes(), upsert = true)
                 onUploadSuccess(url)
             } catch (e: Exception) {
                 onUploadError()

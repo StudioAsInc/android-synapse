@@ -2,20 +2,16 @@ package com.synapse.social.studioasinc.util
 
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
-import android.net.Uri
-import com.google.firebase.storage.FirebaseStorage
-import com.synapse.social.studioasinc.ImageUploader
+import com.synapse.social.studioasinc.Supabase.client
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 
 object MediaUploadManager {
-    
-    private val storage = FirebaseStorage.getInstance()
-    private val storageRef = storage.reference
     
     fun uploadMultipleMedia(
         mediaItems: List<MediaItem>,
@@ -75,16 +71,15 @@ object MediaUploadManager {
         localPath: String,
         onComplete: (String?) -> Unit
     ) {
-        // Use existing ImageUploader
-        ImageUploader.uploadImage(localPath, object : ImageUploader.UploadCallback {
-            override fun onUploadComplete(imageUrl: String) {
-                onComplete(imageUrl)
-            }
-            
-            override fun onUploadError(errorMessage: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val file = File(localPath)
+                val url = client.storage["media"].upload("${UUID.randomUUID()}.${file.extension}", file.readBytes(), upsert = true)
+                onComplete(url)
+            } catch (e: Exception) {
                 onComplete(null)
             }
-        })
+        }
     }
     
     private fun uploadVideo(
@@ -94,28 +89,20 @@ object MediaUploadManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val videoFile = File(localPath)
-                val videoUri = Uri.fromFile(videoFile)
                 
                 // Generate thumbnail
                 val thumbnail = generateVideoThumbnail(localPath)
                 
                 // Upload video
-                val videoRef = storageRef.child("videos/${UUID.randomUUID()}.mp4")
-                val uploadTask = videoRef.putFile(videoUri)
+                val videoUrl = client.storage["media"].upload("${UUID.randomUUID()}.mp4", videoFile.readBytes(), upsert = true)
                 
-                uploadTask.addOnSuccessListener { taskSnapshot ->
-                    videoRef.downloadUrl.addOnSuccessListener { videoUrl ->
-                        // Upload thumbnail if generated
-                        if (thumbnail != null) {
-                            uploadThumbnail(thumbnail) { thumbnailUrl ->
-                                onComplete(videoUrl.toString(), thumbnailUrl)
-                            }
-                        } else {
-                            onComplete(videoUrl.toString(), null)
-                        }
+                // Upload thumbnail if generated
+                if (thumbnail != null) {
+                    uploadThumbnail(thumbnail) { thumbnailUrl ->
+                        onComplete(videoUrl, thumbnailUrl)
                     }
-                }.addOnFailureListener {
-                    onComplete(null, null)
+                } else {
+                    onComplete(videoUrl, null)
                 }
             } catch (e: Exception) {
                 onComplete(null, null)
@@ -148,16 +135,13 @@ object MediaUploadManager {
         thumbnailData: ByteArray,
         onComplete: (String?) -> Unit
     ) {
-        val thumbnailRef = storageRef.child("thumbnails/${UUID.randomUUID()}.jpg")
-        
-        thumbnailRef.putBytes(thumbnailData)
-            .addOnSuccessListener {
-                thumbnailRef.downloadUrl.addOnSuccessListener { url ->
-                    onComplete(url.toString())
-                }
-            }
-            .addOnFailureListener {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val url = client.storage["media"].upload("${UUID.randomUUID()}.jpg", thumbnailData, upsert = true)
+                onComplete(url)
+            } catch (e: Exception) {
                 onComplete(null)
             }
+        }
     }
 }

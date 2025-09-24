@@ -1,45 +1,33 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.Supabase.client
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
- * Manages user online presence in Firebase, writing to the correct database path.
+ * Manages user online presence in Supabase, writing to the correct database path.
  * Handles online, offline (timestamp), and chat statuses.
  */
 object PresenceManager {
 
-    // Correct database reference to the 'users' node
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
-
-    /**
-     * Returns the specific database reference for a user's status.
-     * Path: /skyline/users/{uid}/status
-     */
-    private fun getUserStatusRef(uid: String) = usersRef.child(uid).child("status")
-
     /**
      * Sets user status to "online".
-     * Registers onDisconnect to set a timestamp for last seen.
-     * @param uid The Firebase UID of the current user.
+     * @param uid The Supabase UID of the current user.
      */
     @JvmStatic
     fun goOnline(uid: String) {
-        val statusRef = getUserStatusRef(uid)
-        val activityRef = usersRef.child(uid).child("activity")
-        statusRef.setValue("online")
-        // On disconnect, set the last seen time as a timestamp string
-        statusRef.onDisconnect().setValue(System.currentTimeMillis().toString())
-        activityRef.onDisconnect().removeValue()
+        updateUserStatus(uid, "online")
     }
 
     /**
      * Explicitly sets the user's status to a timestamp (last seen).
-     * @param uid The Firebase UID of the current user.
+     * @param uid The Supabase UID of the current user.
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        // Set the last seen time as a timestamp string
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString())
+        updateUserStatus(uid, System.currentTimeMillis().toString())
     }
 
     /**
@@ -49,7 +37,7 @@ object PresenceManager {
      */
     @JvmStatic
     fun setChattingWith(currentUserUid: String, otherUserUid: String) {
-        UserActivity.setActivity(currentUserUid, "chatting_with_$otherUserUid")
+        updateUserStatus(currentUserUid, "chatting_with_$otherUserUid")
     }
 
     /**
@@ -58,11 +46,27 @@ object PresenceManager {
      */
     @JvmStatic
     fun stopChatting(currentUserUid: String) {
-        UserActivity.clearActivity(currentUserUid)
+        updateUserStatus(currentUserUid, "online")
     }
 
     @JvmStatic
     fun setActivity(uid: String, activity: String) {
-        UserActivity.setActivity(uid, activity)
+        updateUserStatus(uid, activity)
+    }
+
+    private fun updateUserStatus(uid: String, status: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.postgrest["profiles"].update({
+                    set("status", status)
+                }) {
+                    filter {
+                        eq("id", uid)
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
     }
 }

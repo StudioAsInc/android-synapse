@@ -1,7 +1,11 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.Supabase.client
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -10,7 +14,7 @@ import java.io.IOException
 
 /**
  * Enhanced notification system supporting both server-side and client-side OneSignal notifications.
- * 
+ *
  * Features:
  * - Toggle between server-side (Cloudflare Workers) and client-side (OneSignal REST API) notification sending
  * - Smart notification suppression when both users are actively chatting
@@ -46,65 +50,55 @@ object NotificationHelper {
             return
         }
 
-        val userDb = FirebaseDatabase.getInstance().getReference("skyline/users")
-        userDb.child(recipientUid).child("oneSignalPlayerId").get().addOnSuccessListener {
-            val recipientOneSignalPlayerId = it.getValue(String::class.java)
-            if (recipientOneSignalPlayerId.isNullOrBlank()) {
-                Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
-                return@addOnSuccessListener
-            }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val user = client.postgrest["profiles"].select {
+                    filter {
+                        eq("id", recipientUid)
+                    }
+                }.decodeList<Map<String, Any>>().firstOrNull()
 
-            val recipientStatusRef = FirebaseDatabase.getInstance().getReference("/skyline/users/$recipientUid/status")
-
-            recipientStatusRef.get().addOnSuccessListener { dataSnapshot ->
-                val recipientStatus = dataSnapshot.getValue(String::class.java)
-                val suppressStatus = "chatting_with_$senderUid"
-
-                if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
-                    if (suppressStatus == recipientStatus) {
-                        if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                            Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
-                        }
-                        return@addOnSuccessListener
+                if (user != null) {
+                    val recipientOneSignalPlayerId = user["oneSignalPlayerId"] as? String
+                    if (recipientOneSignalPlayerId.isNullOrBlank()) {
+                        Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
+                        return@launch
                     }
 
-                    if (recipientStatus == "online") {
-                        if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                            Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
+                    val recipientStatus = user["status"] as? String
+                    val suppressStatus = "chatting_with_$senderUid"
+
+                    if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
+                        if (suppressStatus == recipientStatus) {
+                            if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
+                                Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
+                            }
+                            return@launch
                         }
-                        return@addOnSuccessListener
+
+                        if (recipientStatus == "online") {
+                            if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
+                                Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
+                            }
+                            return@launch
+                        }
+                    }
+
+                    if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
+                        sendClientSideNotification(
+                            recipientOneSignalPlayerId,
+                            message,
+                            senderUid,
+                            notificationType,
+                            data
+                        )
+                    } else {
+                        sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
                     }
                 }
-
-                if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                    sendClientSideNotification(
-                        recipientOneSignalPlayerId,
-                        message,
-                        senderUid,
-                        notificationType,
-                        data
-                    )
-                } else {
-                    sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                }
-                // Removed Firebase RDB chat notifications as requested
-            }.addOnFailureListener { e ->
-                Log.e(TAG, "Status check failed. Defaulting to send notification.", e)
-                if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                     sendClientSideNotification(
-                        recipientOneSignalPlayerId,
-                        message,
-                        senderUid,
-                        notificationType,
-                        data
-                    )
-                } else {
-                    sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                }
-                // Removed Firebase RDB chat notifications as requested
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", e)
             }
-        }.addOnFailureListener {
-            Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", it)
         }
     }
 

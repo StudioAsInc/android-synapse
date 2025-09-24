@@ -9,12 +9,14 @@ import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.model.User
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.launch
 
 class NewGroupActivity : AppCompatActivity() {
 
@@ -25,8 +27,6 @@ class NewGroupActivity : AppCompatActivity() {
     private lateinit var usersAdapter: UsersAdapter
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
-
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,22 +81,16 @@ class NewGroupActivity : AppCompatActivity() {
     }
 
     private fun fetchUsers() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
+        lifecycleScope.launch {
+            try {
+                val users = Supabase.client.postgrest["profiles"].select().decodeList<User>()
                 usersList.clear()
-                for (userSnapshot in snapshot.children) {
-                    val user = userSnapshot.getValue(User::class.java)
-                    if (user != null) {
-                        usersList.add(user)
-                    }
-                }
+                usersList.addAll(users)
                 usersAdapter.notifyDataSetChanged()
-            }
-
-            override fun onCancelled(error: DatabaseError) {
+            } catch (e: Exception) {
                 Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
             }
-        })
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

@@ -1,8 +1,11 @@
 
 package com.synapse.social.studioasinc
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.Supabase.client
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.HashMap
 
@@ -20,14 +23,14 @@ class UserDataPusher {
     ) {
         val getJoinTime = Calendar.getInstance()
         val createUserMap = HashMap<String, Any>()
-        createUserMap["uid"] = uid
+        createUserMap["id"] = uid
         createUserMap["email"] = email
         createUserMap["profile_cover_image"] = "null"
 
         if (googleLoginAvatarUri != null) {
-            createUserMap["avatar"] = googleLoginAvatarUri
+            createUserMap["avatar_url"] = googleLoginAvatarUri
         } else {
-            createUserMap["avatar"] = thedpurl
+            createUserMap["avatar_url"] = thedpurl
         }
 
         createUserMap["avatar_history_type"] = "local"
@@ -36,44 +39,30 @@ class UserDataPusher {
         createUserMap["biography"] = if (biography.isEmpty()) "null" else biography
 
         if (email == "mashikahamed0@gmail.com") {
-            createUserMap["account_premium"] = "true"
-            createUserMap["user_level_xp"] = "500"
-            createUserMap["verify"] = "true"
+            createUserMap["account_premium"] = true
+            createUserMap["user_level_xp"] = 500
+            createUserMap["verify"] = true
             createUserMap["account_type"] = "admin"
             createUserMap["gender"] = "hidden"
         } else {
-            createUserMap["account_premium"] = "false"
-            createUserMap["user_level_xp"] = "500"
-            createUserMap["verify"] = "false"
+            createUserMap["account_premium"] = false
+            createUserMap["user_level_xp"] = 500
+            createUserMap["verify"] = false
             createUserMap["account_type"] = "user"
             createUserMap["gender"] = "hidden"
         }
 
-        createUserMap["banned"] = "false"
+        createUserMap["banned"] = false
         createUserMap["status"] = "online"
-        createUserMap["join_date"] = getJoinTime.timeInMillis.toString()
-        // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
+        createUserMap["join_date"] = getJoinTime.timeInMillis
 
-        val main = FirebaseDatabase.getInstance().getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val map = HashMap<String, Any>()
-                    map["uid"] = uid
-                    map["email"] = email
-                    map["username"] = username
-                    val pushusername = FirebaseDatabase.getInstance().getReference("synapse/username")
-                    pushusername.child(username).updateChildren(map)
-                        .addOnCompleteListener { pushTask ->
-                            if (pushTask.isSuccessful) {
-                                onComplete(true, null)
-                            } else {
-                                onComplete(false, pushTask.exception?.message)
-                            }
-                        }
-                } else {
-                    onComplete(false, task.exception?.message)
-                }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.postgrest["profiles"].insert(createUserMap)
+                onComplete(true, null)
+            } catch (e: Exception) {
+                onComplete(false, e.message)
             }
+        }
     }
 }

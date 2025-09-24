@@ -14,20 +14,21 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
 import com.synapse.social.studioasinc.PostMoreBottomSheetDialog
 import com.synapse.social.studioasinc.ProfileActivity
 import com.synapse.social.studioasinc.R
+import com.synapse.social.studioasinc.Supabase.client
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toPost
 import com.synapse.social.studioasinc.styling.MarkdownRenderer
-import com.synapse.social.studioasinc.util.TimeUtils
 import com.synapse.social.studioasinc.util.CountUtils
+import com.synapse.social.studioasinc.util.TimeUtils
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class PostsAdapter(
     private val context: Context,
@@ -36,8 +37,7 @@ class PostsAdapter(
     private val onMediaClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<PostsAdapter.PostViewHolder>() {
 
-    private val firebase = FirebaseDatabase.getInstance()
-    private val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val currentUserUid = client.auth.currentUserOrNull()?.id ?: ""
     private val mediaPagerAdapters = mutableMapOf<Int, MediaPagerAdapter>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -311,118 +311,178 @@ class PostsAdapter(
         }
 
         private fun loadUserInfo(uid: String) {
-            firebase.getReference("skyline/users").child(uid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        if (snapshot.exists()) {
-                            // Cache user info
-                            userInfoCache["uid-$uid"] = uid
-                            userInfoCache["banned-$uid"] = snapshot.child("banned").getValue(String::class.java) ?: "false"
-                            userInfoCache["nickname-$uid"] = snapshot.child("nickname").getValue(String::class.java) ?: ""
-                            userInfoCache["username-$uid"] = snapshot.child("username").getValue(String::class.java) ?: ""
-                            userInfoCache["avatar-$uid"] = snapshot.child("avatar").getValue(String::class.java) ?: ""
-                            userInfoCache["gender-$uid"] = snapshot.child("gender").getValue(String::class.java) ?: "hidden"
-                            userInfoCache["verify-$uid"] = snapshot.child("verify").getValue(String::class.java) ?: "false"
-                            userInfoCache["acc_type-$uid"] = snapshot.child("account_type").getValue(String::class.java) ?: "user"
-                            
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val user = client.postgrest["profiles"].select {
+                        filter {
+                            eq("id", uid)
+                        }
+                    }.decodeList<Map<String, Any>>().firstOrNull()
+
+                    if (user != null) {
+                        // Cache user info
+                        userInfoCache["uid-$uid"] = uid
+                        userInfoCache["banned-$uid"] = user["banned"] as? String ?: "false"
+                        userInfoCache["nickname-$uid"] = user["nickname"] as? String ?: ""
+                        userInfoCache["username-$uid"] = user["username"] as? String ?: ""
+                        userInfoCache["avatar-$uid"] = user["avatar_url"] as? String ?: ""
+                        userInfoCache["gender-$uid"] = user["gender"] as? String ?: "hidden"
+                        userInfoCache["verify-$uid"] = user["verify"] as? String ?: "false"
+                        userInfoCache["acc_type-$uid"] = user["account_type"] as? String ?: "user"
+
+                        CoroutineScope(Dispatchers.Main).launch {
                             displayUserInfoFromCache(uid)
                         }
                     }
-
-                    override fun onCancelled(error: DatabaseError) {
+                } catch (e: Exception) {
+                    CoroutineScope(Dispatchers.Main).launch {
                         userInfoProfileImage.setImageResource(R.drawable.avatar)
                         userInfoUsername.text = "Error User"
                     }
-                })
+                }
+            }
         }
 
         private fun loadLikeStatus(postKey: String) {
-            firebase.getReference("skyline/posts-likes").child(postKey).child(currentUserUid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val result = client.postgrest["posts-likes"].select {
+                        filter {
+                            eq("post_id", postKey)
+                            eq("user_id", currentUserUid)
+                        }
+                    }.decodeList<Map<String, Any>>()
+
+                    CoroutineScope(Dispatchers.Main).launch {
                         likeButtonIc.setImageResource(
-                            if (snapshot.exists()) R.drawable.post_icons_1_2 
+                            if (result.isNotEmpty()) R.drawable.post_icons_1_2
                             else R.drawable.post_icons_1_1
                         )
                     }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                } catch (e: Exception) {
+                    // Handle error
+                }
+            }
         }
 
         private fun loadCounts(postKey: String) {
-            // Load like count
-            firebase.getReference("skyline/posts-likes").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(likeButtonCount, snapshot.childrenCount.toDouble())
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    // Load like count
+                    val likeCount = client.postgrest["posts-likes"].select {
+                        filter {
+                            eq("post_id", postKey)
+                        }
+                    }.decodeList<Map<String, Any>>().size.toDouble()
+
+                    // Load comment count
+                    val commentCount = client.postgrest["posts-comments"].select {
+                        filter {
+                            eq("post_id", postKey)
+                        }
+                    }.decodeList<Map<String, Any>>().size.toDouble()
+
+                    CoroutineScope(Dispatchers.Main).launch {
+                        CountUtils.setCount(likeButtonCount, likeCount)
+                        CountUtils.setCount(commentsButtonCount, commentCount)
                     }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
-
-            // Load comment count
-            firebase.getReference("skyline/posts-comments").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(commentsButtonCount, snapshot.childrenCount.toDouble())
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                } catch (e: Exception) {
+                    // Handle error
+                }
+            }
         }
 
         private fun loadFavoriteStatus(postKey: String) {
-            firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val result = client.postgrest["favorite-posts"].select {
+                        filter {
+                            eq("user_id", currentUserUid)
+                            eq("post_id", postKey)
+                        }
+                    }.decodeList<Map<String, Any>>()
+
+                    CoroutineScope(Dispatchers.Main).launch {
                         favoritePostButton.setImageResource(
-                            if (snapshot.exists()) R.drawable.delete_favorite_post_ic
+                            if (result.isNotEmpty()) R.drawable.delete_favorite_post_ic
                             else R.drawable.add_favorite_post_ic
                         )
                     }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                } catch (e: Exception) {
+                    // Handle error
+                }
+            }
         }
 
         private fun toggleLike(post: Post) {
-            val likeRef = firebase.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
-            likeRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        likeRef.removeValue()
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val likeRef = client.postgrest["posts-likes"]
+                    val result = likeRef.select {
+                        filter {
+                            eq("post_id", post.key)
+                            eq("user_id", currentUserUid)
+                        }
+                    }.decodeList<Map<String, Any>>()
+
+                    if (result.isNotEmpty()) {
+                        likeRef.delete {
+                            filter {
+                                eq("post_id", post.key)
+                                eq("user_id", currentUserUid)
+                            }
+                        }
+                        CoroutineScope(Dispatchers.Main).launch {
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
+                        }
                     } else {
-                        likeRef.setValue(currentUserUid)
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
+                        likeRef.insert(mapOf("post_id" to post.key, "user_id" to currentUserUid))
+                        CoroutineScope(Dispatchers.Main).launch {
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
+                        }
                         // Send notification
                         com.synapse.social.studioasinc.util.NotificationUtils
                             .sendPostLikeNotification(post.key, post.uid)
                     }
                     // Reload count
                     loadCounts(post.key)
+                } catch (e: Exception) {
+                    // Handle error
                 }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
+            }
         }
 
         private fun toggleFavorite(postKey: String) {
-            val favoriteRef = firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-            favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        favoriteRef.removeValue()
-                        favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
-                    } else {
-                        favoriteRef.setValue(postKey)
-                        favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
-                    }
-                }
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val favoriteRef = client.postgrest["favorite-posts"]
+                    val result = favoriteRef.select {
+                        filter {
+                            eq("user_id", currentUserUid)
+                            eq("post_id", postKey)
+                        }
+                    }.decodeList<Map<String, Any>>()
 
-                override fun onCancelled(error: DatabaseError) {}
-            })
+                    if (result.isNotEmpty()) {
+                        favoriteRef.delete {
+                            filter {
+                                eq("user_id", currentUserUid)
+                                eq("post_id", postKey)
+                            }
+                        }
+                        CoroutineScope(Dispatchers.Main).launch {
+                            favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
+                        }
+                    } else {
+                        favoriteRef.insert(mapOf("user_id" to currentUserUid, "post_id" to postKey))
+                        CoroutineScope(Dispatchers.Main).launch {
+                            favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Handle error
+                }
+            }
         }
 
         private fun showComments(post: Post, originalMap: HashMap<String, Any>) {

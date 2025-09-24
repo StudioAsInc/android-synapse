@@ -17,8 +17,8 @@ class TVeffects @JvmOverloads constructor(
 ) : AppCompatTextView(context, attrs) {
 
     private var charDelay: Long = 50L
-    private var fadeDuration: Long = 200L
-    private var totalDuration: Long = 0L  // if > 0, use totalDuration instead of charDelay
+    var fadeDuration: Long = 200L
+    var totalDuration: Long = 0L  // if > 0, use totalDuration instead of charDelay
 
     // Setter methods to control timing from code
     fun setCharDelay(delay: Long) {
