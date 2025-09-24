@@ -344,19 +344,9 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		
 		
 		
-		email_verification_send.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				FirebaseAuth.getInstance().getCurrentUser().sendEmailVerification().addOnCompleteListener(auth_emailVerificationSentListener);
-			}
-		});
 		
-		email_verification_status_refresh.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				
-			}
-		});
+		
+		
 		
 		skip_button.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -547,43 +537,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			}
 		};
 		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				if (_success) {
-					{
-						final AlertDialog NewCustomDialog = new AlertDialog.Builder(CompleteProfileActivity.this).create();
-						LayoutInflater NewCustomDialogLI = getLayoutInflater();
-						View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
-						NewCustomDialog.setView(NewCustomDialogCV);
-						NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-						
-						final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
-						final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
-						final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
-						final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
-						dialog_no_button.setVisibility(View.GONE);
-						dialog_yes_button.setTextColor(0xFF2196F3);
-						ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
-						dialog_title.setText(getResources().getString(R.string.info));
-						dialog_message.setText(getResources().getString(R.string.email_verification_success_text));
-						dialog_yes_button.setText(getResources().getString(R.string.okay));
-						dialog_yes_button.setOnClickListener(new View.OnClickListener() {
-							@Override
-							public void onClick(View _view) {
-								NewCustomDialog.dismiss();
-							}
-						});
-						NewCustomDialog.setCancelable(true);
-						NewCustomDialog.show();
-					}
-				} else {
-					SketchwareUtil.showMessage(getApplicationContext(), _errorMessage);
-				}
-			}
-		};
+		
 		
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
@@ -677,69 +631,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			Glide.with(getApplicationContext()).load(Uri.parse(getIntent().getStringExtra("googleLoginAvatarUri"))).into(profile_image);
 			nickname_input.setText(getIntent().getStringExtra("googleLoginName"));
 		}
-		try{
-			FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-			FirebaseUser user = firebaseAuth.getCurrentUser();
-			
-			FirebaseAuth.AuthStateListener authStateListener = new FirebaseAuth.AuthStateListener() {
-				@Override
-				public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-					FirebaseUser user = firebaseAuth.getCurrentUser();
-					if (user != null && user.isEmailVerified()) {
-						email_verification_status_refresh.setVisibility(View.GONE);
-						email_verification_error_ic.setVisibility(View.GONE);
-						email_verification_verified_ic.setVisibility(View.VISIBLE);
-						email_verification_status.setTextColor(0xFF4CAF50);
-						email_verification_status.setText(getResources().getString(R.string.email_verified));
-						email_verification_send.setVisibility(View.GONE);
-						
-						emailVerify = true;
-					} else {
-						email_verification_status_refresh.setVisibility(View.VISIBLE);
-						email_verification_error_ic.setVisibility(View.VISIBLE);
-						email_verification_verified_ic.setVisibility(View.GONE);
-						email_verification_status.setTextColor(0xFFF44336);
-						email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-						email_verification_send.setVisibility(View.VISIBLE);
-						
-						emailVerify = false;
-					}
-				}
-			};
-			
-			firebaseAuth.addAuthStateListener(authStateListener);
-			
-			if (user != null) {
-				user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-					@Override
-					public void onComplete(@NonNull Task<Void> task) {
-						if (task.isSuccessful()) {
-							if (user.isEmailVerified()) {
-								email_verification_status_refresh.setVisibility(View.GONE);
-								email_verification_error_ic.setVisibility(View.GONE);
-								email_verification_verified_ic.setVisibility(View.VISIBLE);
-								email_verification_status.setTextColor(0xFF4CAF50);
-								email_verification_status.setText(getResources().getString(R.string.email_verified));
-								email_verification_send.setVisibility(View.GONE);
-								
-								emailVerify = true;
-							} else {
-								email_verification_status_refresh.setVisibility(View.VISIBLE);
-								email_verification_error_ic.setVisibility(View.VISIBLE);
-								email_verification_verified_ic.setVisibility(View.GONE);
-								email_verification_status.setTextColor(0xFFF44336);
-								email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-								email_verification_send.setVisibility(View.VISIBLE);
-								
-								emailVerify = false;
-							}
-						}
-					}
-				});
-			}
-		}catch(Exception e){
-			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-		}
+		
 		
 		_font();
 	}
@@ -827,45 +719,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	}
 	
 	
-	@Override
-	public void onStart() {
-		super.onStart();
-		try{
-			FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-			FirebaseUser user = firebaseAuth.getCurrentUser();
-			
-			if (user != null) {
-				user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-					@Override
-					public void onComplete(@NonNull Task<Void> task) {
-						if (task.isSuccessful()) {
-							if (user.isEmailVerified()) {
-								email_verification_status_refresh.setVisibility(View.GONE);
-								email_verification_error_ic.setVisibility(View.GONE);
-								email_verification_verified_ic.setVisibility(View.VISIBLE);
-								email_verification_status.setTextColor(0xFF4CAF50);
-								email_verification_status.setText(getResources().getString(R.string.email_verified));
-								email_verification_send.setVisibility(View.GONE);
-								
-								emailVerify = true;
-							} else {
-								email_verification_status_refresh.setVisibility(View.VISIBLE);
-								email_verification_error_ic.setVisibility(View.VISIBLE);
-								email_verification_verified_ic.setVisibility(View.GONE);
-								email_verification_status.setTextColor(0xFFF44336);
-								email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-								email_verification_send.setVisibility(View.VISIBLE);
-								
-								emailVerify = false;
-							}
-						}
-					}
-				});
-			}
-		}catch(Exception e){
-			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-		}
-	}
+	
 	
 	
 	
