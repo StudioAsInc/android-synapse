@@ -201,6 +201,8 @@ dependencies {
     implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
 
     // Testing
-    implementation("io.supabase.android:gotrue-kt:2.5.2")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.5.2")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.2")
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.5.2")
 }
 
