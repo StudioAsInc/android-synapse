@@ -394,6 +394,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 									SketchwareUtil.showMessage(getApplicationContext(), errorMessage);
 								}
 							}
+							return null;
 						}
 					);
 				}
