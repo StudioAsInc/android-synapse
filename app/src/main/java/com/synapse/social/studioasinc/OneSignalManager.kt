@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object OneSignalManager {
+    // This function assumes that there is a table named `profiles` with a column named `one_signal_player_id`.
     fun savePlayerIdToSupabase(userId: String, playerId: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {

@@ -131,7 +131,8 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
-    implementation("io.ktor:ktor-client-android")
+    // Ktor 3.0.0-rc-1 or later is required for supabase-kt 3.0.0 and above.
+    implementation("io.ktor:ktor-client-android:3.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
 
