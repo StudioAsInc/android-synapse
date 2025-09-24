@@ -64,11 +64,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.OnProgressListener;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
+
 import com.synapse.social.studioasinc.FadeEditText;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -94,7 +90,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	public final int REQ_CD_SELECTAVATAR = 101;
 	
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
+	
 	
 	private boolean userNameErr = false;
 	private String avatarUri = "";
@@ -148,13 +144,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private Intent intent = new Intent();
 	private DatabaseReference main = _firebase.getReference("skyline");
 	private ChildEventListener _main_child_listener;
-	private StorageReference uploadAvatar = _firebase_storage.getReference("/");
-	private OnCompleteListener<Uri> _uploadAvatar_upload_success_listener;
-	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _uploadAvatar_download_success_listener;
-	private OnSuccessListener _uploadAvatar_delete_success_listener;
-	private OnProgressListener _uploadAvatar_upload_progress_listener;
-	private OnProgressListener _uploadAvatar_download_progress_listener;
-	private OnFailureListener _uploadAvatar_failure_listener;
+	
 	private Calendar getJoinTime = Calendar.getInstance();
 	private Intent SelectAvatar = new Intent(Intent.ACTION_GET_CONTENT);
 	private DatabaseReference fdb = _firebase.getReference("notify");
@@ -364,43 +354,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		email_verification_status_refresh.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				/*
-try{
-FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-FirebaseUser user = firebaseAuth.getCurrentUser();
-
-if (user != null) {
-	user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-		@Override
-		public void onComplete(@NonNull Task<Void> task) {
-			if (task.isSuccessful()) {
-				if (user.isEmailVerified()) {
-                    email_verification_status_refresh.setVisibility(View.GONE);
-					email_verification_error_ic.setVisibility(View.GONE);
-					email_verification_verified_ic.setVisibility(View.VISIBLE);
-					email_verification_status.setTextColor(0xFF445E91);
-					email_verification_status.setText(getResources().getString(R.string.email_verified));
-					email_verification_send.setVisibility(View.GONE);
-                    
-                    //emailVerify = true;
-				} else {
-                    email_verification_status_refresh.setVisibility(View.VISIBLE);
-					email_verification_error_ic.setVisibility(View.VISIBLE);
-					email_verification_verified_ic.setVisibility(View.GONE);
-					email_verification_status.setTextColor(0xFFF44336);
-					email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-					email_verification_send.setVisibility(View.VISIBLE);
-                    
-                    //emailVerify = false;
-				}
-			}
-		}
-	});
-}
-}catch(Exception e){
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-}
-*/
+				
 			}
 		});
 		
@@ -408,64 +362,7 @@ SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.s
 			@Override
 			public void onClick(View _view) {
 				SketchwareUtil.showMessage(getApplicationContext(), "Not possible");
-				/*
-if (emailVerify) {
-
-} else {
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.email_not_verified));
-}
-if (userNameErr) {
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
-vbr.vibrate((long)(48));
-} else {
-
-}
-getJoinTime = Calendar.getInstance();
-createUserMap = new HashMap<>();
-createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-createUserMap.put("profile_cover_image", "null");
-if (getIntent().hasExtra("googleLoginName") && (getIntent().hasExtra("googleLoginEmail") && getIntent().hasExtra("googleLoginAvatarUri"))) {
-createUserMap.put("avatar", getIntent().getStringExtra("googleLoginAvatarUri"));
-} else {
-createUserMap.put("avatar", "null");
-}
-createUserMap.put("avatar_history_type", "local");
-createUserMap.put("username", username_input.getText().toString().trim());
-if (nickname_input.getText().toString().trim().equals("")) {
-createUserMap.put("nickname", "null");
-} else {
-createUserMap.put("nickname", nickname_input.getText().toString().trim());
-}
-if (biography_input.getText().toString().trim().equals("")) {
-createUserMap.put("biography", "null");
-} else {
-createUserMap.put("biography", biography_input.getText().toString().trim());
-}
-createUserMap.put("verify", "false");
-createUserMap.put("account_type", "user");
-createUserMap.put("account_premium", "false");
-createUserMap.put("banned", "false");
-createUserMap.put("gender", "hidden");
-createUserMap.put("status", "online");
-createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-addOneSignalPlayerIdToMap(createUserMap);
-main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-	@Override
-	public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-		if (databaseError == null) {
-			intent.setClass(getApplicationContext(), HomeActivity.class);
-			startActivity(intent);
-			finish();
-		} else {
-			SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-			username_input.setEnabled(true);
-		}
-	}
-});
-
-username_input.setEnabled(false);
-*/
+				
 			}
 		});
 		
@@ -520,91 +417,7 @@ username_input.setEnabled(false);
 		};
 		main.addChildEventListener(_main_child_listener);
 		
-		_uploadAvatar_upload_progress_listener = new OnProgressListener<UploadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(UploadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
 		
-		_uploadAvatar_download_progress_listener = new OnProgressListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(FileDownloadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_uploadAvatar_upload_success_listener = new OnCompleteListener<Uri>() {
-			@Override
-			public void onComplete(Task<Uri> _param1) {
-				final String _downloadUrl = _param1.getResult().toString();
-				getJoinTime = Calendar.getInstance();
-				createUserMap = new HashMap<>();
-				createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				createUserMap.put("profile_cover_image", "null");
-				createUserMap.put("avatar", _downloadUrl);
-				createUserMap.put("avatar_history_type", "local");
-				createUserMap.put("username", username_input.getText().toString().trim());
-				if (nickname_input.getText().toString().trim().equals("")) {
-					createUserMap.put("nickname", "null");
-				} else {
-					createUserMap.put("nickname", nickname_input.getText().toString().trim());
-				}
-				if (biography_input.getText().toString().trim().equals("")) {
-					createUserMap.put("biography", "null");
-				} else {
-					createUserMap.put("biography", biography_input.getText().toString().trim());
-				}
-				createUserMap.put("verify", "true");
-				createUserMap.put("account_type", "user");
-				createUserMap.put("account_premium", "false");
-				createUserMap.put("banned", "false");
-				createUserMap.put("user_level_xp", "500");
-				createUserMap.put("gender", "hidden");
-				createUserMap.put("status", "online");
-				createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-				addOneSignalPlayerIdToMap(createUserMap);
-				main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-					@Override
-					public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-						if (databaseError == null) {
-							intent.setClass(getApplicationContext(), HomeActivity.class);
-							startActivity(intent);
-							finish();
-						} else {
-							SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-							username_input.setEnabled(true);
-						}
-					}
-				});
-			}
-		};
-		
-		_uploadAvatar_download_success_listener = new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onSuccess(FileDownloadTask.TaskSnapshot _param1) {
-				final long _totalByteCount = _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_uploadAvatar_delete_success_listener = new OnSuccessListener() {
-			@Override
-			public void onSuccess(Object _param1) {
-				
-			}
-		};
-		
-		_uploadAvatar_failure_listener = new OnFailureListener() {
-			@Override
-			public void onFailure(Exception _param1) {
-				final String _message = _param1.getMessage();
-				
-			}
-		};
 		
 		_fdb_child_listener = new ChildEventListener() {
 			@Override
@@ -895,8 +708,7 @@ username_input.setEnabled(false);
 		}catch(Exception e){
 			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
 		}
-		StorageDB = "skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/avatars"));
-		uploadAvatar = _firebase_storage.getReference(StorageDB);
+		
 		_font();
 	}
 	
@@ -935,12 +747,10 @@ username_input.setEnabled(false);
 							@Override
 							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
 								if (databaseError == null) {
-									//	intent.setClass(getApplicationContext(), HomeActivity.class);
-									//	startActivity(intent);
-									//	finish();
+									
 								} else {
 									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
+									
 								}
 							}
 						});
