@@ -22,6 +22,10 @@
         <item name="colorOnSurface">@color/md_theme_onSurface</item>
         <item name="colorSurfaceVariant">@color/md_theme_surfaceVariant</item>
         <item name="colorOnSurfaceVariant">@color/md_theme_onSurfaceVariant</item>
+        <item name="myAppPrimaryColor">@color/md_theme_primary</item>
+        <item name="myAppPrimaryContainerColor">@color/md_theme_primaryContainer</item>
+        <item name="myAppColorOnSurface">@color/md_theme_onSurface</item>
+        <item name="myAppColorOnSurfaceVariant">@color/md_theme_onSurfaceVariant</item>
         <item name="colorOutline">@color/md_theme_outline</item>
         <item name="colorOutlineVariant">@color/md_theme_outlineVariant</item>
         <item name="colorSurfaceInverse">@color/md_theme_inverseSurface</item>

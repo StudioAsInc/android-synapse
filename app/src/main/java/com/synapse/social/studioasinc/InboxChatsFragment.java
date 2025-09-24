@@ -486,8 +486,8 @@ public class InboxChatsFragment extends Fragment {
 
 				main.setBackgroundColor(getThemeColor(android.R.attr.colorBackground));
 				userStatusCircleBG.setBackground(createRoundedDrawable(300, getThemeColor(android.R.attr.colorBackground)));
-				userStatusCircleIN.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimary)));
-				unread_messages_count_badge.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.colorPrimaryContainer)));
+				userStatusCircleIN.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.myAppPrimaryColor)));
+				unread_messages_count_badge.setBackground(createRoundedDrawable(300, getThemeColor(R.attr.myAppPrimaryContainerColor)));
 
 				unread_messages_count_badge.setVisibility(View.GONE);
 				main.setVisibility(View.GONE);
@@ -522,13 +522,13 @@ public class InboxChatsFragment extends Fragment {
 											public void run() {
 												long unReadMessageCount = dataSnapshot.getChildrenCount();
 												if(dataSnapshot.exists()) {
-													last_message.setTextColor(getThemeColor(R.attr.colorOnSurface));
-													push.setTextColor(getThemeColor(R.attr.colorOnSurface));
+													last_message.setTextColor(getThemeColor(R.attr.myAppColorOnSurface));
+													push.setTextColor(getThemeColor(R.attr.myAppColorOnSurface));
 													unread_messages_count_badge.setText(String.valueOf((long)(unReadMessageCount)));
 													unread_messages_count_badge.setVisibility(View.VISIBLE);
 												} else {
-													last_message.setTextColor(getThemeColor(R.attr.colorOnSurfaceVariant));
-													push.setTextColor(getThemeColor(R.attr.colorOnSurfaceVariant));
+													last_message.setTextColor(getThemeColor(R.attr.myAppColorOnSurfaceVariant));
+													push.setTextColor(getThemeColor(R.attr.myAppColorOnSurfaceVariant));
 													unread_messages_count_badge.setVisibility(View.GONE);
 												}
 											}
