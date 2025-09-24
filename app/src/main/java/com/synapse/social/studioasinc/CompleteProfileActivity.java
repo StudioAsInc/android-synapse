@@ -64,11 +64,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.OnProgressListener;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
+
 import com.synapse.social.studioasinc.FadeEditText;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -87,13 +83,14 @@ import com.synapse.social.studioasinc.ImageUploader;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
+import com.synapse.social.studioasinc.util.ViewUtilsKt;
 
 public class CompleteProfileActivity extends AppCompatActivity {
 	
 	public final int REQ_CD_SELECTAVATAR = 101;
 	
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
+	
 	
 	private boolean userNameErr = false;
 	private String avatarUri = "";
@@ -147,13 +144,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private Intent intent = new Intent();
 	private DatabaseReference main = _firebase.getReference("skyline");
 	private ChildEventListener _main_child_listener;
-	private StorageReference uploadAvatar = _firebase_storage.getReference("/");
-	private OnCompleteListener<Uri> _uploadAvatar_upload_success_listener;
-	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _uploadAvatar_download_success_listener;
-	private OnSuccessListener _uploadAvatar_delete_success_listener;
-	private OnProgressListener _uploadAvatar_upload_progress_listener;
-	private OnProgressListener _uploadAvatar_download_progress_listener;
-	private OnFailureListener _uploadAvatar_failure_listener;
+	
 	private Calendar getJoinTime = Calendar.getInstance();
 	private Intent SelectAvatar = new Intent(Intent.ACTION_GET_CONTENT);
 	private DatabaseReference fdb = _firebase.getReference("notify");
@@ -241,23 +232,23 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
 				if (_charSeq.trim().equals("")) {
-					username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+					username_input.setActivated(true);
 					((EditText)username_input).setError(getResources().getString(R.string.enter_username));
 					userNameErr = true;
 				} else {
 					if (_charSeq.matches("[a-z0-9_.]+")) {
 						if (_charSeq.contains("q") || (_charSeq.contains("w") || (_charSeq.contains("e") || (_charSeq.contains("r") || (_charSeq.contains("t") || (_charSeq.contains("y") || (_charSeq.contains("u") || (_charSeq.contains("i") || (_charSeq.contains("o") || (_charSeq.contains("p") || (_charSeq.contains("a") || (_charSeq.contains("s") || (_charSeq.contains("d") || (_charSeq.contains("f") || (_charSeq.contains("g") || (_charSeq.contains("h") || (_charSeq.contains("j") || (_charSeq.contains("k") || (_charSeq.contains("l") || (_charSeq.contains("z") || (_charSeq.contains("x") || (_charSeq.contains("c") || (_charSeq.contains("v") || (_charSeq.contains("b") || (_charSeq.contains("n") || _charSeq.contains("m")))))))))))))))))))))))))) {
 							if (username_input.getText().toString().length() < 3) {
-								username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+								username_input.setActivated(true);
 								((EditText)username_input).setError(getResources().getString(R.string.username_err_3_characters));
 								userNameErr = true;
 							} else {
 								if (username_input.getText().toString().length() > 25) {
-									username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+									username_input.setActivated(true);
 									((EditText)username_input).setError(getResources().getString(R.string.username_err_25_characters));
 									userNameErr = true;
 								} else {
-									username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+									username_input.setActivated(false);
 									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
 									
 									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
@@ -265,11 +256,11 @@ public class CompleteProfileActivity extends AppCompatActivity {
 										@Override
 										public void onDataChange(DataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
-												username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFEEEEEE));
+												username_input.setActivated(true);
 												((EditText)username_input).setError(getResources().getString(R.string.username_err_already_taken));
 												userNameErr = true;
 											} else {
-												username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+												username_input.setActivated(false);
 												userNameErr = false;
 											}
 										}
@@ -282,12 +273,12 @@ public class CompleteProfileActivity extends AppCompatActivity {
 								}
 							}
 						} else {
-							username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+							username_input.setActivated(true);
 							((EditText)username_input).setError(getResources().getString(R.string.username_err_one_letter));
 							userNameErr = true;
 						}
 					} else {
-						username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFF44336, 0xFFFFFFFF));
+						username_input.setActivated(true);
 						((EditText)username_input).setError(getResources().getString(R.string.username_err_invalid_characters));
 						userNameErr = true;
 					}
@@ -353,118 +344,15 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		
 		
 		
-		email_verification_send.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				FirebaseAuth.getInstance().getCurrentUser().sendEmailVerification().addOnCompleteListener(auth_emailVerificationSentListener);
-			}
-		});
 		
-		email_verification_status_refresh.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				/*
-try{
-FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-FirebaseUser user = firebaseAuth.getCurrentUser();
-
-if (user != null) {
-	user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-		@Override
-		public void onComplete(@NonNull Task<Void> task) {
-			if (task.isSuccessful()) {
-				if (user.isEmailVerified()) {
-                    email_verification_status_refresh.setVisibility(View.GONE);
-					email_verification_error_ic.setVisibility(View.GONE);
-					email_verification_verified_ic.setVisibility(View.VISIBLE);
-					email_verification_status.setTextColor(0xFF445E91);
-					email_verification_status.setText(getResources().getString(R.string.email_verified));
-					email_verification_send.setVisibility(View.GONE);
-                    
-                    //emailVerify = true;
-				} else {
-                    email_verification_status_refresh.setVisibility(View.VISIBLE);
-					email_verification_error_ic.setVisibility(View.VISIBLE);
-					email_verification_verified_ic.setVisibility(View.GONE);
-					email_verification_status.setTextColor(0xFFF44336);
-					email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-					email_verification_send.setVisibility(View.VISIBLE);
-                    
-                    //emailVerify = false;
-				}
-			}
-		}
-	});
-}
-}catch(Exception e){
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-}
-*/
-			}
-		});
+		
+		
 		
 		skip_button.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				SketchwareUtil.showMessage(getApplicationContext(), "Not possible");
-				/*
-if (emailVerify) {
-
-} else {
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.email_not_verified));
-}
-if (userNameErr) {
-SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
-vbr.vibrate((long)(48));
-} else {
-
-}
-getJoinTime = Calendar.getInstance();
-createUserMap = new HashMap<>();
-createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-createUserMap.put("profile_cover_image", "null");
-if (getIntent().hasExtra("googleLoginName") && (getIntent().hasExtra("googleLoginEmail") && getIntent().hasExtra("googleLoginAvatarUri"))) {
-createUserMap.put("avatar", getIntent().getStringExtra("googleLoginAvatarUri"));
-} else {
-createUserMap.put("avatar", "null");
-}
-createUserMap.put("avatar_history_type", "local");
-createUserMap.put("username", username_input.getText().toString().trim());
-if (nickname_input.getText().toString().trim().equals("")) {
-createUserMap.put("nickname", "null");
-} else {
-createUserMap.put("nickname", nickname_input.getText().toString().trim());
-}
-if (biography_input.getText().toString().trim().equals("")) {
-createUserMap.put("biography", "null");
-} else {
-createUserMap.put("biography", biography_input.getText().toString().trim());
-}
-createUserMap.put("verify", "false");
-createUserMap.put("account_type", "user");
-createUserMap.put("account_premium", "false");
-createUserMap.put("banned", "false");
-createUserMap.put("gender", "hidden");
-createUserMap.put("status", "online");
-createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-addOneSignalPlayerIdToMap(createUserMap);
-main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-	@Override
-	public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-		if (databaseError == null) {
-			intent.setClass(getApplicationContext(), HomeActivity.class);
-			startActivity(intent);
-			finish();
-		} else {
-			SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-			username_input.setEnabled(true);
-		}
-	}
-});
-
-username_input.setEnabled(false);
-*/
+				
 			}
 		});
 		
@@ -475,7 +363,40 @@ username_input.setEnabled(false);
 					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
 					vbr.vibrate((long)(48));
 				} else {
-					_pushdata();
+					complete_button.setEnabled(false);
+					complete_button.setText("Loading...");
+					username_input.setEnabled(false);
+					UserDataPusher pusher = new UserDataPusher();
+					pusher.pushData(
+						username_input.getText().toString().trim(),
+						nickname_input.getText().toString().trim(),
+						biography_input.getText().toString().trim(),
+						thedpurl,
+						getIntent().getStringExtra("googleLoginAvatarUri"),
+						FirebaseAuth.getInstance().getCurrentUser().getEmail(),
+						FirebaseAuth.getInstance().getCurrentUser().getUid(),
+						(success, errorMessage) -> {
+							if (success) {
+								intent.setClass(getApplicationContext(), HomeActivity.class);
+								startActivity(intent);
+								finish();
+							} else {
+								username_input.setEnabled(true);
+								complete_button.setEnabled(true);
+								try {
+									complete_button.setText(R.string.continue_button);
+								} catch (Exception e) {
+									complete_button.setText("Continue");
+								}
+								if (errorMessage.equals("Permission denied")) {
+									SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
+								} else {
+									SketchwareUtil.showMessage(getApplicationContext(), errorMessage);
+								}
+							}
+							return null;
+						}
+					);
 				}
 			}
 		});
@@ -519,91 +440,7 @@ username_input.setEnabled(false);
 		};
 		main.addChildEventListener(_main_child_listener);
 		
-		_uploadAvatar_upload_progress_listener = new OnProgressListener<UploadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(UploadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
 		
-		_uploadAvatar_download_progress_listener = new OnProgressListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(FileDownloadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_uploadAvatar_upload_success_listener = new OnCompleteListener<Uri>() {
-			@Override
-			public void onComplete(Task<Uri> _param1) {
-				final String _downloadUrl = _param1.getResult().toString();
-				getJoinTime = Calendar.getInstance();
-				createUserMap = new HashMap<>();
-				createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				createUserMap.put("profile_cover_image", "null");
-				createUserMap.put("avatar", _downloadUrl);
-				createUserMap.put("avatar_history_type", "local");
-				createUserMap.put("username", username_input.getText().toString().trim());
-				if (nickname_input.getText().toString().trim().equals("")) {
-					createUserMap.put("nickname", "null");
-				} else {
-					createUserMap.put("nickname", nickname_input.getText().toString().trim());
-				}
-				if (biography_input.getText().toString().trim().equals("")) {
-					createUserMap.put("biography", "null");
-				} else {
-					createUserMap.put("biography", biography_input.getText().toString().trim());
-				}
-				createUserMap.put("verify", "true");
-				createUserMap.put("account_type", "user");
-				createUserMap.put("account_premium", "false");
-				createUserMap.put("banned", "false");
-				createUserMap.put("user_level_xp", "500");
-				createUserMap.put("gender", "hidden");
-				createUserMap.put("status", "online");
-				createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-				addOneSignalPlayerIdToMap(createUserMap);
-				main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-					@Override
-					public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-						if (databaseError == null) {
-							intent.setClass(getApplicationContext(), HomeActivity.class);
-							startActivity(intent);
-							finish();
-						} else {
-							SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-							username_input.setEnabled(true);
-						}
-					}
-				});
-			}
-		};
-		
-		_uploadAvatar_download_success_listener = new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onSuccess(FileDownloadTask.TaskSnapshot _param1) {
-				final long _totalByteCount = _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_uploadAvatar_delete_success_listener = new OnSuccessListener() {
-			@Override
-			public void onSuccess(Object _param1) {
-				
-			}
-		};
-		
-		_uploadAvatar_failure_listener = new OnFailureListener() {
-			@Override
-			public void onFailure(Exception _param1) {
-				final String _message = _param1.getMessage();
-				
-			}
-		};
 		
 		_fdb_child_listener = new ChildEventListener() {
 			@Override
@@ -701,43 +538,7 @@ username_input.setEnabled(false);
 			}
 		};
 		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				if (_success) {
-					{
-						final AlertDialog NewCustomDialog = new AlertDialog.Builder(CompleteProfileActivity.this).create();
-						LayoutInflater NewCustomDialogLI = getLayoutInflater();
-						View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
-						NewCustomDialog.setView(NewCustomDialogCV);
-						NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-						
-						final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
-						final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
-						final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
-						final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
-						dialog_no_button.setVisibility(View.GONE);
-						dialog_yes_button.setTextColor(0xFF2196F3);
-						_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
-						dialog_title.setText(getResources().getString(R.string.info));
-						dialog_message.setText(getResources().getString(R.string.email_verification_success_text));
-						dialog_yes_button.setText(getResources().getString(R.string.okay));
-						dialog_yes_button.setOnClickListener(new View.OnClickListener() {
-							@Override
-							public void onClick(View _view) {
-								NewCustomDialog.dismiss();
-							}
-						});
-						NewCustomDialog.setCancelable(true);
-						NewCustomDialog.show();
-					}
-				} else {
-					SketchwareUtil.showMessage(getApplicationContext(), _errorMessage);
-				}
-			}
-		};
+		
 		
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
@@ -813,18 +614,15 @@ username_input.setEnabled(false);
 		email_verification_title.setTypeface(Typeface.DEFAULT, 1);
 		subtitle.setTypeface(Typeface.DEFAULT, 0);
 		title.setTypeface(Typeface.DEFAULT, 1);
-		_stateColor(0xFFFFFFFF, 0xFFFFFFFF);
+		ViewUtilsKt.setStateColor(this, 0xFFFFFFFF, 0xFFFFFFFF);
 		avatarUri = "null";
 		thedpurl = "null";
 		userNameErr = true;
-		_ImageColor(email_verification_error_ic, 0xFFF44336);
-		_ImageColor(email_verification_verified_ic, 0xFF4CAF50);
-		profile_image_card.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)300, Color.TRANSPARENT));
-		email_verification.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		username_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		nickname_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		biography_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-		_viewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
+		ViewUtilsKt.setImageColor(email_verification_error_ic, 0xFFF44336);
+		ViewUtilsKt.setImageColor(email_verification_verified_ic, 0xFF4CAF50);
+		ViewUtilsKt.setGradientDrawable(profile_image_card, Color.TRANSPARENT, 300f, 0, Color.TRANSPARENT);
+		ViewUtilsKt.setGradientDrawable(email_verification, 0xFFFFFFFF, 28f, 3, 0xFFEEEEEE);
+		ViewUtilsKt.setViewGraphics(email_verification_send, 0xFF445E91, 0xFF445E91, 300, 0, Color.TRANSPARENT);
 		if (getIntent().hasExtra("findedUsername")) {
 			username_input.setText(getIntent().getStringExtra("findedUsername"));
 		} else {
@@ -834,71 +632,8 @@ username_input.setEnabled(false);
 			Glide.with(getApplicationContext()).load(Uri.parse(getIntent().getStringExtra("googleLoginAvatarUri"))).into(profile_image);
 			nickname_input.setText(getIntent().getStringExtra("googleLoginName"));
 		}
-		try{
-			FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-			FirebaseUser user = firebaseAuth.getCurrentUser();
-			
-			FirebaseAuth.AuthStateListener authStateListener = new FirebaseAuth.AuthStateListener() {
-				@Override
-				public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-					FirebaseUser user = firebaseAuth.getCurrentUser();
-					if (user != null && user.isEmailVerified()) {
-						email_verification_status_refresh.setVisibility(View.GONE);
-						email_verification_error_ic.setVisibility(View.GONE);
-						email_verification_verified_ic.setVisibility(View.VISIBLE);
-						email_verification_status.setTextColor(0xFF4CAF50);
-						email_verification_status.setText(getResources().getString(R.string.email_verified));
-						email_verification_send.setVisibility(View.GONE);
-						
-						emailVerify = true;
-					} else {
-						email_verification_status_refresh.setVisibility(View.VISIBLE);
-						email_verification_error_ic.setVisibility(View.VISIBLE);
-						email_verification_verified_ic.setVisibility(View.GONE);
-						email_verification_status.setTextColor(0xFFF44336);
-						email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-						email_verification_send.setVisibility(View.VISIBLE);
-						
-						emailVerify = false;
-					}
-				}
-			};
-			
-			firebaseAuth.addAuthStateListener(authStateListener);
-			
-			if (user != null) {
-				user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-					@Override
-					public void onComplete(@NonNull Task<Void> task) {
-						if (task.isSuccessful()) {
-							if (user.isEmailVerified()) {
-								email_verification_status_refresh.setVisibility(View.GONE);
-								email_verification_error_ic.setVisibility(View.GONE);
-								email_verification_verified_ic.setVisibility(View.VISIBLE);
-								email_verification_status.setTextColor(0xFF4CAF50);
-								email_verification_status.setText(getResources().getString(R.string.email_verified));
-								email_verification_send.setVisibility(View.GONE);
-								
-								emailVerify = true;
-							} else {
-								email_verification_status_refresh.setVisibility(View.VISIBLE);
-								email_verification_error_ic.setVisibility(View.VISIBLE);
-								email_verification_verified_ic.setVisibility(View.GONE);
-								email_verification_status.setTextColor(0xFFF44336);
-								email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-								email_verification_send.setVisibility(View.VISIBLE);
-								
-								emailVerify = false;
-							}
-						}
-					}
-				});
-			}
-		}catch(Exception e){
-			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-		}
-		StorageDB = "skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/avatars"));
-		uploadAvatar = _firebase_storage.getReference(StorageDB);
+		
+		
 		_font();
 	}
 	
@@ -927,32 +662,10 @@ username_input.setEnabled(false);
 					@Override
 					public void onUploadComplete(String imageUrl) {
 						thedpurl = imageUrl;
-						getJoinTime = Calendar.getInstance();
-						createUserMap = new HashMap<>();
-						createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-						createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-						createUserMap.put("avatar", imageUrl);
-						createUserMap.put("avatar_history_type", "local");
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									//	intent.setClass(getApplicationContext(), HomeActivity.class);
-									//	startActivity(intent);
-									//	finish();
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-								}
-							}
-						});
 					}
 					
 					@Override
 					public void onUploadError(String errorMessage) {
-						
-						
-						
 						SketchwareUtil.showMessage(getApplicationContext(), "Something went wrong");
 					}
 				});
@@ -981,9 +694,9 @@ username_input.setEnabled(false);
 			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
 			final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
 			dialog_yes_button.setTextColor(0xFFF44336);
-			_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+			ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
 			dialog_no_button.setTextColor(0xFF2196F3);
-			_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+			ViewUtilsKt.setViewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
 			dialog_title.setText(getResources().getString(R.string.info));
 			dialog_message.setText(getResources().getString(R.string.cancel_complete_profile_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_complete_profile_warn2))));
 			dialog_yes_button.setText(getResources().getString(R.string.yes));
@@ -1007,72 +720,13 @@ username_input.setEnabled(false);
 	}
 	
 	
-	@Override
-	public void onStart() {
-		super.onStart();
-		try{
-			FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
-			FirebaseUser user = firebaseAuth.getCurrentUser();
-			
-			if (user != null) {
-				user.reload().addOnCompleteListener(new OnCompleteListener<Void>() {
-					@Override
-					public void onComplete(@NonNull Task<Void> task) {
-						if (task.isSuccessful()) {
-							if (user.isEmailVerified()) {
-								email_verification_status_refresh.setVisibility(View.GONE);
-								email_verification_error_ic.setVisibility(View.GONE);
-								email_verification_verified_ic.setVisibility(View.VISIBLE);
-								email_verification_status.setTextColor(0xFF4CAF50);
-								email_verification_status.setText(getResources().getString(R.string.email_verified));
-								email_verification_send.setVisibility(View.GONE);
-								
-								emailVerify = true;
-							} else {
-								email_verification_status_refresh.setVisibility(View.VISIBLE);
-								email_verification_error_ic.setVisibility(View.VISIBLE);
-								email_verification_verified_ic.setVisibility(View.GONE);
-								email_verification_status.setTextColor(0xFFF44336);
-								email_verification_status.setText(getResources().getString(R.string.email_not_verified));
-								email_verification_send.setVisibility(View.VISIBLE);
-								
-								emailVerify = false;
-							}
-						}
-					}
-				});
-			}
-		}catch(Exception e){
-			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.something_went_wrong));
-		}
-	}
-	public void _stateColor(final int _statusColor, final int _navigationColor) {
-		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-		getWindow().setStatusBarColor(_statusColor);
-		getWindow().setNavigationBarColor(_navigationColor);
-	}
 	
 	
-	public void _ImageColor(final ImageView _image, final int _color) {
-		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
-	}
 	
 	
-	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
-		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
-		GG.setColor(_onFocus);
-		GG.setCornerRadius((float)_radius);
-		GG.setStroke((int) _stroke, _strokeColor);
-		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
-		_view.setBackground(RE);
-	}
 	
 	
-	public void _progressBarColor(final ProgressBar _progressbar, final int _color) {
-		int color = _color;
-		_progressbar.setIndeterminateTintList(ColorStateList.valueOf(color));
-		_progressbar.setProgressTintList(ColorStateList.valueOf(color));
-	}
+	
 	
 	
 	@Override
@@ -1096,9 +750,9 @@ username_input.setEnabled(false);
 				final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
 				final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
 				dialog_yes_button.setTextColor(0xFFF44336);
-				_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+				ViewUtilsKt.setViewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
 				dialog_no_button.setTextColor(0xFF2196F3);
-				_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+				ViewUtilsKt.setViewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
 				dialog_title.setText(getResources().getString(R.string.info));
 				dialog_message.setText(getResources().getString(R.string.cancel_create_account_warn).concat("\n\n".concat(getResources().getString(R.string.cancel_create_account_warn2))));
 				dialog_yes_button.setText(getResources().getString(R.string.yes));
@@ -1140,156 +794,6 @@ username_input.setEnabled(false);
 	}
 	
 	
-	public void _pushdata() {
-		if (userNameErr) {
-			SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
-			vbr.vibrate((long)(48));
-		} else {
-			complete_button.setEnabled(false);
-			complete_button.setText("Loading...");
-			username_input.setEnabled(false);
-			if (thedpurl.equals("null")) {
-				getJoinTime = Calendar.getInstance();
-				createUserMap = new HashMap<>();
-				createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				createUserMap.put("profile_cover_image", "null");
-				if (getIntent().hasExtra("googleLoginName") && (getIntent().hasExtra("googleLoginEmail") && getIntent().hasExtra("googleLoginAvatarUri"))) {
-					createUserMap.put("avatar", getIntent().getStringExtra("googleLoginAvatarUri"));
-				} else {
-					createUserMap.put("avatar", "null");
-				}
-				createUserMap.put("avatar_history_type", "local");
-				createUserMap.put("username", username_input.getText().toString().trim());
-				if (nickname_input.getText().toString().trim().equals("")) {
-					createUserMap.put("nickname", "null");
-				} else {
-					createUserMap.put("nickname", nickname_input.getText().toString().trim());
-				}
-				if (biography_input.getText().toString().trim().equals("")) {
-					createUserMap.put("biography", "null");
-				} else {
-					createUserMap.put("biography", biography_input.getText().toString().trim());
-				}
-				if (FirebaseAuth.getInstance().getCurrentUser().getEmail().equals("mashikahamed0@gmail.com")) {
-					createUserMap.put("account_premium", "true");
-					createUserMap.put("user_level_xp", "500");
-					createUserMap.put("verify", "true");
-					createUserMap.put("account_type", "admin");
-					createUserMap.put("gender", "hidden");
-				} else {
-					createUserMap.put("account_premium", "false");
-					createUserMap.put("user_level_xp", "500");
-					createUserMap.put("verify", "false");
-					createUserMap.put("account_type", "user");
-					createUserMap.put("gender", "hidden");
-				}
-				createUserMap.put("banned", "false");
-				createUserMap.put("status", "online");
-				createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-				addOneSignalPlayerIdToMap(createUserMap);
-				main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-					@Override
-					public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-						if (databaseError == null) {
-							intent.setClass(getApplicationContext(), HomeActivity.class);
-							startActivity(intent);
-							finish();
-						} else {
-							username_input.setEnabled(true);
-							complete_button.setEnabled(true);
-							try {
-								complete_button.setText(R.string.continue_button);
-							} catch (Exception e) {
-								complete_button.setText("Continue");
-							}
-							if (databaseError.getMessage().equals("Permission denied")) {
-								SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
-							} else {
-								SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-							}
-						}
-					}
-				});
-				map = new HashMap<>();
-				map.clear();
-				map.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				map.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				map.put("username", username_input.getText().toString());
-				pushusername.child(username_input.getText().toString()).updateChildren(map);
-				map.clear();
-			} else {
-				getJoinTime = Calendar.getInstance();
-				createUserMap = new HashMap<>();
-				createUserMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				createUserMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				createUserMap.put("profile_cover_image", "null");
-				if (getIntent().hasExtra("googleLoginName") && (getIntent().hasExtra("googleLoginEmail") && getIntent().hasExtra("googleLoginAvatarUri"))) {
-					createUserMap.put("avatar", getIntent().getStringExtra("googleLoginAvatarUri"));
-				} else {
-					createUserMap.put("avatar", thedpurl);
-				}
-				createUserMap.put("avatar_history_type", "local");
-				createUserMap.put("username", username_input.getText().toString().trim());
-				if (nickname_input.getText().toString().trim().equals("")) {
-					createUserMap.put("nickname", "null");
-				} else {
-					createUserMap.put("nickname", nickname_input.getText().toString().trim());
-				}
-				if (biography_input.getText().toString().trim().equals("")) {
-					createUserMap.put("biography", "null");
-				} else {
-					createUserMap.put("biography", biography_input.getText().toString().trim());
-				}
-				if (FirebaseAuth.getInstance().getCurrentUser().getEmail().equals("mashikahamed0@gmail.com")) {
-					createUserMap.put("account_premium", "true");
-					createUserMap.put("user_level_xp", "500");
-					createUserMap.put("verify", "true");
-					createUserMap.put("account_type", "admin");
-					createUserMap.put("gender", "hidden");
-				} else {
-					createUserMap.put("account_premium", "false");
-					createUserMap.put("user_level_xp", "500");
-					createUserMap.put("verify", "false");
-					createUserMap.put("account_type", "user");
-					createUserMap.put("gender", "hidden");
-				}
-				createUserMap.put("banned", "false");
-				createUserMap.put("status", "online");
-				createUserMap.put("join_date", String.valueOf((long)(getJoinTime.getTimeInMillis())));
-				addOneSignalPlayerIdToMap(createUserMap);
-				main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(createUserMap, new DatabaseReference.CompletionListener() {
-					@Override
-					public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-						if (databaseError == null) {
-							intent.setClass(getApplicationContext(), HomeActivity.class);
-							startActivity(intent);
-							finish();
-						} else {
-							username_input.setEnabled(true);
-							complete_button.setEnabled(true);
-							try {
-								complete_button.setText(R.string.continue_button);
-							} catch (Exception e) {
-								complete_button.setText("Continue");
-							}
-							if (databaseError.getMessage().equals("Permission denied")) {
-								SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
-							} else {
-								SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-							}
-						}
-					}
-				});
-				map = new HashMap<>();
-				map.clear();
-				map.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				map.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-				map.put("username", username_input.getText().toString());
-				pushusername.child(username_input.getText().toString()).updateChildren(map);
-				map.clear();
-			}
-		}
-	}
+	
 	
 }

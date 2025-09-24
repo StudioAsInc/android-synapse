@@ -171,4 +171,12 @@
     <color name="status_banned_text">#9E9E9E</color>
     <color name="status_online_text">#2196F3</color>
     <color name="status_offline_text">#757575</color>
+
+    <!-- Refactoring Colors -->
+    <color name="error_red">#F44336</color>
+    <color name="light_grey">#EEEEEE</color>
+    <color name="link_blue">#445E91</color>
+    <color name="success_green">#4CAF50</color>
+    <color name="light_red_ripple">#FFCDD2</color>
+    <color name="light_blue_ripple">#BBDEFB</color>
 </resources>
