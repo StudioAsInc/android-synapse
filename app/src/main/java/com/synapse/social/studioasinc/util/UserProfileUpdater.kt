@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.google.firebase.database.DataSnapshot
 import com.synapse.social.studioasinc.R
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -24,25 +23,25 @@ class UserProfileUpdater(
     var secondUserName: String = "Unknown User"
     var secondUserAvatar: String = "null"
 
-    fun updateAll(dataSnapshot: DataSnapshot) {
-        updateUserProfile(dataSnapshot)
-        updateUserBadges(dataSnapshot)
+    fun updateAll(userData: Map<String, Any?>) {
+        updateUserProfile(userData)
+        updateUserBadges(userData)
     }
 
-    private fun updateUserProfile(dataSnapshot: DataSnapshot) {
-        if (!dataSnapshot.exists()) {
-            Log.w("UserProfileUpdater", "User profile data snapshot is null or doesn't exist")
+    private fun updateUserProfile(userData: Map<String, Any?>) {
+        if (userData.isEmpty()) {
+            Log.w("UserProfileUpdater", "User profile data is empty")
             return
         }
 
-        if ("true" == dataSnapshot.child("banned").getValue(String::class.java)) {
+        if ("true" == userData["banned"]?.toString()) {
             topProfileLayoutProfileImage.setImageResource(R.drawable.banned_avatar)
             secondUserAvatar = "null_banned"
             topProfileLayoutStatus.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.status_banned_text))
             topProfileLayoutStatus.text = context.getString(R.string.offline)
         } else {
-            val avatarUrl = dataSnapshot.child("avatar").getValue(String::class.java)
-            if (avatarUrl == null || avatarUrl == "null") {
+            val avatarUrl = userData["avatar"]?.toString()
+            if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
                 topProfileLayoutProfileImage.setImageResource(R.drawable.avatar)
                 secondUserAvatar = "null"
             } else {
@@ -57,16 +56,16 @@ class UserProfileUpdater(
             }
         }
 
-        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-        secondUserName = if (nickname == null || nickname == "null") {
-            val username = dataSnapshot.child("username").getValue(String::class.java)
-            if (username != null) "@$username" else "Unknown User"
+        val nickname = userData["nickname"]?.toString()
+        secondUserName = if (nickname.isNullOrEmpty() || nickname == "null") {
+            val username = userData["username"]?.toString()
+            if (!username.isNullOrEmpty()) "@$username" else "Unknown User"
         } else {
             nickname
         }
         topProfileLayoutUsername.text = secondUserName
 
-        val status = dataSnapshot.child("status").getValue(String::class.java)
+        val status = userData["status"]?.toString()
         if ("online" == status) {
             topProfileLayoutStatus.text = context.getString(R.string.online)
             topProfileLayoutStatus.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.status_online_text))
@@ -75,7 +74,7 @@ class UserProfileUpdater(
                 topProfileLayoutStatus.text = context.getString(R.string.offline)
             } else {
                 try {
-                    val statusTimestamp = status?.toDouble()
+                    val statusTimestamp = status?.toDoubleOrNull()
                     if (statusTimestamp != null) {
                         setUserLastSeen(statusTimestamp, topProfileLayoutStatus)
                     } else {
@@ -90,13 +89,13 @@ class UserProfileUpdater(
         }
     }
 
-    private fun updateUserBadges(dataSnapshot: DataSnapshot) {
-        if (!dataSnapshot.exists()) {
-            Log.w("UserProfileUpdater", "User badge data snapshot is null or doesn't exist")
+    private fun updateUserBadges(userData: Map<String, Any?>) {
+        if (userData.isEmpty()) {
+            Log.w("UserProfileUpdater", "User badge data is empty")
             return
         }
 
-        val gender = dataSnapshot.child("gender").getValue(String::class.java)
+        val gender = userData["gender"]?.toString()
         when (gender) {
             "male" -> {
                 topProfileLayoutGenderBadge.setImageResource(R.drawable.male_badge)
@@ -109,7 +108,7 @@ class UserProfileUpdater(
             else -> topProfileLayoutGenderBadge.visibility = View.GONE
         }
 
-        val accountType = dataSnapshot.child("account_type").getValue(String::class.java)
+        val accountType = userData["account_type"]?.toString()
         topProfileLayoutVerifiedBadge.visibility = View.VISIBLE
         val badgeRes = when (accountType) {
             "admin" -> R.drawable.admin_badge
@@ -117,8 +116,8 @@ class UserProfileUpdater(
             "support" -> R.drawable.support_badge
             else -> {
                 when {
-                    "true" == dataSnapshot.child("account_premium").getValue(String::class.java) -> R.drawable.premium_badge
-                    "true" == dataSnapshot.child("verify").getValue(String::class.java) -> R.drawable.verified_badge
+                    "true" == userData["account_premium"]?.toString() -> R.drawable.premium_badge
+                    "true" == userData["verify"]?.toString() -> R.drawable.verified_badge
                     else -> 0
                 }
             }
