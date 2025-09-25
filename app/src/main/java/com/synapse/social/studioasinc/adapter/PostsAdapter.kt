@@ -25,6 +25,7 @@ import com.synapse.social.studioasinc.styling.MarkdownRenderer
 import com.synapse.social.studioasinc.util.TimeUtils
 import com.synapse.social.studioasinc.util.CountUtils
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
