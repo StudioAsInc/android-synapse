@@ -1,19 +1,55 @@
-name: Gemini CLI Example
+name: Gemini Anything Bot
 
 on:
-  workflow_dispatch:   # allows you to trigger manually
-  pull_request:        # also runs on PRs
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What should Gemini do? (pr-comment / issue-comment / log-only)"
+        required: true
+        default: "log-only"
+      prompt:
+        description: "What do you want to ask Gemini?"
+        required: true
+        default: "Summarize this repository in a few sentences."
 
 jobs:
   gemini:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Run Gemini CLI
+        id: gemini
         uses: google-github-actions/run-gemini-cli@v0.1.12
         with:
-          prompt: "Review this pull request and provide feedback."
+          prompt: ${{ github.event.inputs.prompt }}
+          use_vertex_ai: false
+          use_gemini_code_assist: false
+          gemini_cli_version: latest
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      # Option 1: Just print to logs
+      - name: Show output in logs
+        if: ${{ github.event.inputs.action == 'log-only' }}
+        run: echo "${{ steps.gemini.outputs.response }}"
+
+      # Option 2: Post comment on PR
+      - name: Comment on PR
+        if: ${{ github.event.inputs.action == 'pr-comment' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "🤖 Gemini Feedback"
+          message: ${{ steps.gemini.outputs.response }}
+
+      # Option 3: Post comment on Issue
+      - name: Comment on Issue
+        if: ${{ github.event.inputs.action == 'issue-comment' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          body: |
+            ### 🤖 Gemini says:
+            ${{ steps.gemini.outputs.response }}
