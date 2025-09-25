@@ -206,11 +206,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             val group = SupabaseManager.getGroup(groupId!!)
             if (group != null) {
                 runOnUiThread {
-                    topProfileLayoutUsername.text = group["name"]?.toString()
+                    topProfileLayoutUsername.text = group["name"] as? String
                     @Suppress("UNCHECKED_CAST")
                     fetchMemberUsernames(group as Map<String, Any>)
                     Glide.with(applicationContext)
-                        .load(Uri.parse(group["icon"]?.toString()))
+                        .load(Uri.parse(group["icon"] as? String))
                         .into(topProfileLayoutProfileImage)
                     topProfileLayoutStatus.text = "Group"
                 }
@@ -253,13 +253,13 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         val groupId = intent.getStringExtra("uid")
         GlobalScope.launch {
             SupabaseManager.listenForNewMessages(groupId!!) { newMessage ->
-                val messageKey = (newMessage as Map<String, Any>)["key"].toString()
+                @Suppress("UNCHECKED_CAST")
+                val messageMap = newMessage as Map<String, Any>
+                val messageKey = messageMap["key"].toString()
                 if (!messageKeys.contains(messageKey)) {
                     messageKeys.add(messageKey)
-                    @Suppress("UNCHECKED_CAST")
-                    val insertPosition = _findCorrectInsertPosition(HashMap(newMessage as Map<String, Any>))
-                    @Suppress("UNCHECKED_CAST")
-                    ChatMessagesList.add(insertPosition, HashMap(newMessage as Map<String, Any>))
+                    val insertPosition = _findCorrectInsertPosition(HashMap(messageMap))
+                    ChatMessagesList.add(insertPosition, HashMap(messageMap))
                     runOnUiThread {
                         chatAdapter?.notifyItemInserted(insertPosition)
                         ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)

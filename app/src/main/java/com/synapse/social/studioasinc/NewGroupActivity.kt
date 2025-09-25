@@ -87,8 +87,9 @@ class NewGroupActivity : AppCompatActivity() {
                 if (users != null) {
                     usersList.clear()
                     for (userMap in users) {
+                        @Suppress("UNCHECKED_CAST")
                         val user = User(
-                            userMap["id"] as? String ?: "",
+                            (userMap as Map<String, Any>)["id"] as? String ?: "",
                             userMap["username"] as? String ?: "",
                             userMap["nickname"] as? String ?: "",
                             userMap["avatar"] as? String ?: ""

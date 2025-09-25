@@ -50,26 +50,29 @@ object SupabaseManager {
 
     suspend fun listenForNewMessages(
         chatId: String,
-        onNewMessage: (Map<*, *>) -> Unit
+        onNewMessage: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
         val channel = client.channel("new_messages_for_$chatId")
         client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "messages"
+            filter = "chat_id=eq.$chatId"
         }.collect {
-            onNewMessage(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewMessage(it.record as Map<String, Any>)
         }
         channel.subscribe()
     }
 
     suspend fun listenForPresenceChanges(
         channelId: String,
-        onPresenceChange: (Map<*, *>) -> Unit
+        onPresenceChange: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
         val channel = client.channel(channelId)
         channel.presence.state.collect {
-            onPresenceChange(it)
+            @Suppress("UNCHECKED_CAST")
+            onPresenceChange(it as Map<String, Any>)
         }
         channel.subscribe()
     }
@@ -83,44 +86,56 @@ object SupabaseManager {
         }
     }
 
-    suspend fun getUser(userId: String): Map<*, *>? {
+    suspend fun getUser(userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("users").select {
-            filter {
-                eq("id", userId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("users").select {
+                filter {
+                    eq("id", userId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    suspend fun getGroup(groupId: String): Map<*, *>? {
+    suspend fun getGroup(groupId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("groups").select {
-            filter {
-                eq("id", groupId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("groups").select {
+                filter {
+                    eq("id", groupId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    suspend fun getChat(chatId: String): Map<*, *>? {
+    suspend fun getChat(chatId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("chats").select {
-            filter {
-                eq("id", chatId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("chats").select {
+                filter {
+                    eq("id", chatId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    suspend fun getPost(postId: String): Map<*, *>? {
+    suspend fun getPost(postId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("posts").select {
-            filter {
-                eq("id", postId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("posts").select {
+                filter {
+                    eq("id", postId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun trackUserPresence(userId: String, presenceStatus: String) {
@@ -152,14 +167,16 @@ object SupabaseManager {
 
     suspend fun listenForReactions(
         messageId: String,
-        onNewReaction: (Map<*, *>) -> Unit
+        onNewReaction: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
         val channel = client.channel("reactions_for_$messageId")
         client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "reactions"
+            filter = "message_id=eq.$messageId"
         }.collect {
-            onNewReaction(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewReaction(it.record as Map<String, Any>)
         }
         channel.subscribe()
     }
@@ -168,16 +185,19 @@ object SupabaseManager {
         chatId: String,
         from: Long,
         to: Long
-    ): List<Map<*, *>>? {
+    ): List<Map<String, Any>>? {
         val client = getClient()
-        val response = client.postgrest.from("messages").select {
-            filter {
-                eq("chat_id", chatId)
-            }
-            order("created_at", Order.DESC)
-            range(from, to)
-        }.body<List<Map<String, Any>>>()
-        return response
+        return try {
+            client.postgrest.from("messages").select {
+                filter {
+                    eq("chat_id", chatId)
+                }
+                order("created_at", Order.DESC)
+                range(from, to)
+            }.body<List<Map<String, Any>>>()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun createPost(post: Map<String, Any>) {
@@ -187,14 +207,16 @@ object SupabaseManager {
 
     suspend fun listenForNewPosts(
         userId: String,
-        onNewPost: (Map<*, *>) -> Unit
+        onNewPost: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
         val channel = client.channel("new_posts_for_$userId")
         client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "posts"
+            filter = "user_id=eq.$userId"
         }.collect {
-            onNewPost(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewPost(it.record as Map<String, Any>)
         }
         channel.subscribe()
     }
@@ -204,14 +226,17 @@ object SupabaseManager {
         client.realtime.disconnect()
     }
 
-    suspend fun getUserByUsername(username: String): Map<*, *>? {
+    suspend fun getUserByUsername(username: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("users").select {
-            filter {
-                eq("username", username)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("users").select {
+                filter {
+                    eq("username", username)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun blockUser(blockerId: String, blockedId: String) {
@@ -224,52 +249,67 @@ object SupabaseManager {
         client.postgrest.from("groups").insert(group)
     }
 
-    suspend fun getUsers(): List<Map<*, *>>? {
+    suspend fun getUsers(): List<Map<String, Any>>? {
         val client = getClient()
-        val response = client.postgrest.from("users").select().body<List<Map<String, Any>>>()
-        return response
+        return try {
+            client.postgrest.from("users").select().body<List<Map<String, Any>>>()
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    suspend fun getLike(postId: String, userId: String): Map<*, *>? {
+    suspend fun getLike(postId: String, userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("post-likes").select {
-            filter {
-                eq("post_id", postId)
-                eq("user_id", userId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("post-likes").select {
+                filter {
+                    eq("post_id", postId)
+                    eq("user_id", userId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun getLikeCount(postId: String): Long {
         val client = getClient()
-        val response = client.postgrest.from("post-likes").select(columns = Columns.list("count"), count = Count.EXACT) {
-            filter {
-                eq("post_id", postId)
-            }
+        return try {
+            client.postgrest.from("post-likes").select(columns = Columns.list("count"), count = Count.EXACT) {
+                filter {
+                    eq("post_id", postId)
+                }
+            }.count ?: 0L
+        } catch (e: Exception) {
+            0L
         }
-        return response.count ?: 0L
     }
 
     suspend fun getCommentCount(postId: String): Long {
         val client = getClient()
-        val response = client.postgrest.from("post-comments").select(columns = Columns.list("count"), count = Count.EXACT) {
-            filter {
-                eq("post_id", postId)
-            }
+        return try {
+            client.postgrest.from("post-comments").select(columns = Columns.list("count"), count = Count.EXACT) {
+                filter {
+                    eq("post_id", postId)
+                }
+            }.count ?: 0L
+        } catch (e: Exception) {
+            0L
         }
-        return response.count ?: 0L
     }
 
-    suspend fun getFavorite(postId: String, userId: String): Map<*, *>? {
+    suspend fun getFavorite(postId: String, userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest.from("favorite-posts").select {
-            filter {
-                eq("post_id", postId)
-                eq("user_id", userId)
-            }
-        }.body<List<Map<String, Any>>>()
-        return response.firstOrNull()
+        return try {
+            client.postgrest.from("favorite-posts").select {
+                filter {
+                    eq("post_id", postId)
+                    eq("user_id", userId)
+                }
+            }.body<List<Map<String, Any>>>().firstOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun addLike(postId: String, userId: String) {
