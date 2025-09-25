@@ -42,6 +42,7 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.backend.AuthenticationService;
 import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.services.FileUploaderService;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -53,6 +54,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
 	private DatabaseService dbService;
 	private AuthenticationService authService;
+	private FileUploaderService fileUploaderService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -104,6 +106,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private void initialize(Bundle _savedInstanceState) {
 	    dbService = new DatabaseService();
 	    authService = new AuthenticationService();
+		fileUploaderService = new FileUploaderService();
 		_fab = findViewById(R.id._fab);
 		main = findViewById(R.id.main);
 		top = findViewById(R.id.top);
@@ -379,17 +382,41 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			dialog_yes_button.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					if (_uri.equals(CurrentAvatarUri)) {
-						mSendMap = new HashMap<>();
-						mSendMap.put("profile_cover_image", "null");
-						mSendMap.put("cover_image_history_type", "local");
-						dbService.getReference("skyline/users/".concat(authService.getCurrentUser().getUid())).updateChildren(mSendMap);
-						CurrentAvatarUri = "null";
-						mSendMap.clear();
-					}
-					dbService.getReference("skyline/cover-image-history/".concat(authService.getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
-					_getReference();
-					NewCustomDialog.dismiss();
+					// Re-introduce file deletion logic
+					fileUploaderService.deleteFile(_uri, new FileUploaderService.DeleteListener() {
+						@Override
+						public void onSuccess() {
+							// Deletion from storage was successful, now update the database
+							if (_uri.equals(CurrentAvatarUri)) {
+								mSendMap = new HashMap<>();
+								mSendMap.put("profile_cover_image", "null");
+								mSendMap.put("cover_image_history_type", "local");
+								dbService.getReference("skyline/users/".concat(authService.getCurrentUser().getUid())).updateChildren(mSendMap);
+								CurrentAvatarUri = "null";
+								mSendMap.clear();
+							}
+							dbService.getReference("skyline/cover-image-history/".concat(authService.getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
+							_getReference();
+							NewCustomDialog.dismiss();
+						}
+						@Override
+						public void onFailure(@NonNull String error) {
+							// Even if storage deletion fails, proceed with DB removal
+							// but log the error.
+							if (_uri.equals(CurrentAvatarUri)) {
+								mSendMap = new HashMap<>();
+								mSendMap.put("profile_cover_image", "null");
+								mSendMap.put("cover_image_history_type", "local");
+								dbService.getReference("skyline/users/".concat(authService.getCurrentUser().getUid())).updateChildren(mSendMap);
+								CurrentAvatarUri = "null";
+								mSendMap.clear();
+							}
+							dbService.getReference("skyline/cover-image-history/".concat(authService.getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
+							_getReference();
+							NewCustomDialog.dismiss();
+							Toast.makeText(ProfileCoverPhotoHistoryActivity.this, "Storage delete failed: " + error, Toast.LENGTH_SHORT).show();
+						}
+					});
 				}
 			});
 			NewCustomDialog.setCancelable(true);

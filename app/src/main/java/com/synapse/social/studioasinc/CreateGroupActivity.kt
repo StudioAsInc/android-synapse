@@ -12,8 +12,10 @@ import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.synapse.social.studioasinc.backend.AuthenticationService
 import com.synapse.social.studioasinc.backend.DatabaseService
+import com.synapse.social.studioasinc.services.FileUploaderService
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import java.io.File
 
 class CreateGroupActivity : AppCompatActivity() {
 
@@ -26,6 +28,7 @@ class CreateGroupActivity : AppCompatActivity() {
 
     private lateinit var dbService: DatabaseService
     private lateinit var authService: AuthenticationService
+    private lateinit var fileUploaderService: FileUploaderService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,7 @@ class CreateGroupActivity : AppCompatActivity() {
 
         dbService = DatabaseService()
         authService = AuthenticationService()
+        fileUploaderService = FileUploaderService()
 
         groupIcon = findViewById(R.id.group_icon)
         groupName = findViewById(R.id.group_name)
@@ -91,13 +95,18 @@ class CreateGroupActivity : AppCompatActivity() {
         if (imageUri != null) {
             val imagePath = StorageUtil.getPathFromUri(this, imageUri)
             if (imagePath != null) {
-                UploadFiles.uploadFile(imagePath, object : UploadFiles.UploadCallback {
-                    override fun onUploadComplete(imageUrl: String) {
-                        saveGroupInfo(groupId, name, imageUrl, currentUserUid)
+                val file = File(imagePath)
+                fileUploaderService.uploadFile(imagePath, file.name, object : FileUploaderService.UploadListener {
+                    override fun onProgress(percent: Int) {
+                        // Optional: Update UI with progress
                     }
 
-                    override fun onUploadError(errorMessage: String) {
-                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon", Toast.LENGTH_SHORT).show()
+                    override fun onSuccess(url: String, publicId: String) {
+                        saveGroupInfo(groupId, name, url, currentUserUid)
+                    }
+
+                    override fun onFailure(error: String) {
+                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon: $error", Toast.LENGTH_SHORT).show()
                     }
                 })
             } else {

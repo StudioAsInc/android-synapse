@@ -2,16 +2,18 @@ package com.synapse.social.studioasinc.util
 
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
-import android.net.Uri
-import com.synapse.social.studioasinc.UploadFiles
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
-import kotlinx.coroutines.*
+import com.synapse.social.studioasinc.services.FileUploaderService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.UUID
 
 object MediaUploadManager {
+
+    private val fileUploaderService = FileUploaderService()
 
     fun uploadMultipleMedia(
         mediaItems: List<MediaItem>,
@@ -71,12 +73,13 @@ object MediaUploadManager {
         localPath: String,
         onComplete: (String?) -> Unit
     ) {
-        UploadFiles.uploadFile(localPath, object : UploadFiles.UploadCallback {
-            override fun onUploadComplete(imageUrl: String) {
-                onComplete(imageUrl)
+        val file = File(localPath)
+        fileUploaderService.uploadFile(localPath, file.name, object : FileUploaderService.UploadListener {
+            override fun onProgress(percent: Int) {}
+            override fun onSuccess(url: String, publicId: String) {
+                onComplete(url)
             }
-
-            override fun onUploadError(errorMessage: String) {
+            override fun onFailure(error: String) {
                 onComplete(null)
             }
         })
@@ -89,19 +92,19 @@ object MediaUploadManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val thumbnail = generateVideoThumbnail(localPath)
-
-                UploadFiles.uploadFile(localPath, object : UploadFiles.UploadCallback {
-                    override fun onUploadComplete(videoUrl: String) {
+                val file = File(localPath)
+                fileUploaderService.uploadFile(localPath, file.name, object : FileUploaderService.UploadListener {
+                    override fun onProgress(percent: Int) {}
+                    override fun onSuccess(url: String, publicId: String) {
                         if (thumbnail != null) {
                             uploadThumbnail(thumbnail) { thumbnailUrl ->
-                                onComplete(videoUrl, thumbnailUrl)
+                                onComplete(url, thumbnailUrl)
                             }
                         } else {
-                            onComplete(videoUrl, null)
+                            onComplete(url, null)
                         }
                     }
-
-                    override fun onUploadError(errorMessage: String) {
+                    override fun onFailure(error: String) {
                         onComplete(null, null)
                     }
                 })
@@ -115,10 +118,8 @@ object MediaUploadManager {
         return try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(videoPath)
-
             val bitmap = retriever.getFrameAtTime(1000000) // 1 second in microseconds
             retriever.release()
-
             if (bitmap != null) {
                 val outputStream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
@@ -137,14 +138,13 @@ object MediaUploadManager {
     ) {
         val tempFile = File.createTempFile("thumbnail", ".jpg")
         tempFile.writeBytes(thumbnailData)
-
-        UploadFiles.uploadFile(tempFile.absolutePath, object : UploadFiles.UploadCallback {
-            override fun onUploadComplete(imageUrl: String) {
-                onComplete(imageUrl)
+        fileUploaderService.uploadFile(tempFile.absolutePath, tempFile.name, object : FileUploaderService.UploadListener {
+            override fun onProgress(percent: Int) {}
+            override fun onSuccess(url: String, publicId: String) {
+                onComplete(url)
                 tempFile.delete()
             }
-
-            override fun onUploadError(errorMessage: String) {
+            override fun onFailure(error: String) {
                 onComplete(null)
                 tempFile.delete()
             }

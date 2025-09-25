@@ -362,23 +362,22 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
     private fun _updateInbox(lastMessage: String) {
-        val groupId = intent.getStringExtra("uid")
+        val groupId = intent.getStringExtra("uid") ?: return
         dbService.getData("groups/$groupId/members", object : DatabaseService.DataListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (memberSnapshot in dataSnapshot.children) {
                         val memberUid = memberSnapshot.key
                         if (memberUid != null) {
-                            val cc = Calendar.getInstance()
                             val chatInboxSend = HashMap<String, Any>()
                             chatInboxSend["chatID"] = groupId
                             chatInboxSend["uid"] = groupId
                             chatInboxSend["last_message_uid"] = authService.getCurrentUser()!!.uid
                             chatInboxSend["last_message_text"] = lastMessage
                             chatInboxSend["last_message_state"] = "sended"
-                            chatInboxSend["push_date"] = cc.timeInMillis.toString()
+                            chatInboxSend["push_date"] = dbService.getServerTimestamp()
                             chatInboxSend["chat_type"] = "group"
-                            dbService.getReference("inbox").child(memberUid).child(groupId!!).setValue(chatInboxSend)
+                            dbService.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
                         }
                     }
                 }
