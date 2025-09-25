@@ -1,133 +1,93 @@
-name: Auto Label with Gemini
-
+name: AI Labeler
 on:
   issues:
     types: [opened, edited]
   pull_request:
-    types: [opened, edited]
-
-permissions:
-  issues: write
-  pull-requests: write
+    types: [opened, edited, synchronize]
 
 jobs:
-  auto-label:
+  label-issue:
     runs-on: ubuntu-latest
-
+    # This step runs for issues and pull requests
+    if: github.event_name == 'issues' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Generate labels with Gemini
-        id: gemini
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          cat > script.mjs <<'EOF'
-          import fs from "fs";
-
-          // Read the GitHub event payload
-          const eventPath = process.env.GITHUB_EVENT_PATH;
-          let event = {};
-          if (eventPath && fs.existsSync(eventPath)) {
-            try {
-              event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
-            } catch (e) {
-              event = {};
-            }
-          }
-
-          const title = event.issue?.title || event.pull_request?.title || "";
-          const body = event.issue?.body || event.pull_request?.body || "";
-
-          // Prompt: ask for 2-3 one-word labels, fallback to needs-triage
-          const prompt = `Suggest 2-3 short GitHub labels (one-word each, lowercase, hyphens allowed, no spaces) for this.
-Title: ${title}
-Body: ${body}
-Respond with a comma-separated list. If unsure respond with "needs-triage".`;
-
-          const apiKey = process.env.GEMINI_API_KEY || "";
-          if (!apiKey) {
-            console.error("GEMINI_API_KEY is missing.");
-            console.log(JSON.stringify(["needs-triage"]));
-            process.exit(0);
-          }
-
-          // Call Gemini (v1beta endpoint used earlier)
-          const bodyJson = {
-            contents: [{ parts: [{ text: prompt }] }]
-          };
-
-          let text = "";
-          try {
-            const res = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(bodyJson),
-              }
-            );
-            const data = await res.json();
-            text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          } catch (err) {
-            console.error("Gemini request failed:", err);
-            text = "";
-          }
-
-          // Parse labels: comma separated -> array, sanitize, keep up to 3
-          let labels = [];
-          if (text) {
-            labels = text
-              .split(",")
-              .map(l => l.trim().toLowerCase())
-              .map(l => l.replace(/\s+/g, "-")) // replace spaces with hyphen if present
-              .filter(Boolean)
-              .slice(0, 3);
-          }
-
-          if (!labels.length) {
-            labels = ["needs-triage"];
-          }
-
-          // Output JSON array to stdout (the calling step will capture it)
-          console.log(JSON.stringify(labels));
-          EOF
-
-          # run the script and set step output
-          labels=$(node script.mjs)
-          echo "labels=$labels" >> $GITHUB_OUTPUT
-
-      - name: Apply labels (using PAT secret)
+      - name: Analyze and Label with Gemini
         uses: actions/github-script@v7
         env:
-          LABELS: ${{ steps.gemini.outputs.labels }}
-          GITHUB_TOKEN: ${{ secrets.PAT }}     # use the PAT secret you requested
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           script: |
-            const labels = JSON.parse(process.env.LABELS || "[]");
-            if (!labels || labels.length === 0) {
-              console.log("No labels to apply.");
-              return;
+            const { GoogleGenAI } = require("@google/genai");
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+            // Get the title and body of the issue or PR
+            let title, body, number;
+            if (context.payload.issue) {
+              title = context.payload.issue.title;
+              body = context.payload.issue.body;
+              number = context.payload.issue.number;
+            } else {
+              title = context.payload.pull_request.title;
+              body = context.payload.pull_request.body;
+              number = context.payload.pull_request.number;
             }
+            const textToAnalyze = `Title: ${title}\n\nBody: ${body}`;
 
-            // Determine issue/pr number depending on event
-            let issue_number = context.payload.issue?.number || context.payload.pull_request?.number;
-            if (!issue_number) {
-              console.log("No issue/pr number found in context.");
-              return;
+            // Craft a precise prompt for Gemini
+            const prompt = `
+            Analyze the following GitHub issue or pull request. Your task is to suggest the most relevant labels from the list below.
+
+            <available_labels>
+            bug, documentation, enhancement, question, priority-critical, priority-high, priority-medium, priority-low, help-wanted, good-first-issue
+            </available_labels>
+
+            <analysis_instructions>
+            1. Classify the primary type using: bug, documentation, enhancement, question.
+            2. If it's a bug or enhancement, assess its priority based on urgency and impact. Choose one: priority-critical, priority-high, priority-medium, priority-low. If not applicable, skip.
+            3. If the author seems to be asking for help or the issue is simple, consider adding help-wanted or good-first-issue.
+            4. Return ONLY a valid JSON array of the chosen label names, like ["label1", "label2"]. Do not add any other text or explanation.
+            </analysis_instructions>
+
+            <issue_or_pr_content>
+            ${textToAnalyze}
+            </issue_or_pr_content>
+
+            Suggested labels JSON array:
+            `;
+
+            try {
+              const response = await ai.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: prompt,
+                // Optional: Add labels for tracking this API call in your billing
+                config: {
+                  labels: {
+                    "source": "github-actions-labeler",
+                    "workflow": "ai-labeler"
+                  }
+                }
+              });
+
+              const labelString = response.text.trim();
+              // Safely parse the JSON response from Gemini
+              const labelsToAdd = JSON.parse(labelString);
+
+              console.log(`Labels to add: ${labelsToAdd}`);
+
+              // Apply the labels using the GitHub API
+              if (labelsToAdd.length > 0) {
+                const issueType = context.payload.issue ? 'issues' : 'pulls';
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  labels: labelsToAdd
+                });
+                console.log(`Successfully added labels to #${number}.`);
+              }
+            } catch (error) {
+              console.error('Error occurred:', error);
             }
-
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-              labels: labels
-            });
-
-            console.log("Applied labels:", labels);
