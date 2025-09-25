@@ -13,6 +13,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.synapse.social.studioasinc.util.SupabaseManager
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -72,7 +73,7 @@ class CreateGroupActivity : AppCompatActivity() {
             return
         }
 
-        val currentUserUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+        val currentUserUid = SupabaseManager.getCurrentUserID()
         if (currentUserUid == null) {
             Toast.makeText(this, "Authentication error", Toast.LENGTH_SHORT).show()
             return
@@ -81,16 +82,24 @@ class CreateGroupActivity : AppCompatActivity() {
         val groupId = UUID.randomUUID().toString()
 
         if (imageUri != null) {
-            val uploadFile = UploadFiles(this)
-            uploadFile.uploadFile(imageUri.toString(), "group_icons/$groupId.jpg", object : UploadFiles.UploadCallback {
-                override fun onSuccess(url: String) {
-                    saveGroupInfo(groupId, name, url, currentUserUid)
-                }
+            val imagePath = imageUri!!.path
+            if (imagePath != null) {
+                UploadFiles.uploadFile(imagePath, "group_icons/$groupId.jpg", object : UploadFiles.UploadCallback {
+                    override fun onProgress(percent: Int) {
+                        // Optional: Update UI with progress
+                    }
 
-                override fun onError(message: String) {
-                    Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon", Toast.LENGTH_SHORT).show()
-                }
-            })
+                    override fun onSuccess(url: String, publicId: String) {
+                        saveGroupInfo(groupId, name, url, currentUserUid)
+                    }
+
+                    override fun onFailure(error: String) {
+                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon", Toast.LENGTH_SHORT).show()
+                    }
+                })
+            } else {
+                Toast.makeText(this@CreateGroupActivity, "Failed to get image path", Toast.LENGTH_SHORT).show()
+            }
         } else {
             saveGroupInfo(groupId, name, "", currentUserUid)
         }

@@ -88,10 +88,10 @@ class NewGroupActivity : AppCompatActivity() {
                     usersList.clear()
                     for (userMap in users) {
                         val user = User(
-                            uid = userMap["id"] as? String ?: "",
-                            username = userMap["username"] as? String ?: "",
-                            nickname = userMap["nickname"] as? String ?: "",
-                            avatar = userMap["avatar"] as? String ?: ""
+                            userMap["id"] as? String ?: "",
+                            userMap["username"] as? String ?: "",
+                            userMap["nickname"] as? String ?: "",
+                            userMap["avatar"] as? String ?: ""
                         )
                         usersList.add(user)
                     }

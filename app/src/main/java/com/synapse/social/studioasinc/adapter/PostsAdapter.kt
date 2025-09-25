@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.adapter
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -24,6 +25,7 @@ import com.synapse.social.studioasinc.styling.MarkdownRenderer
 import com.synapse.social.studioasinc.util.TimeUtils
 import com.synapse.social.studioasinc.util.CountUtils
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -34,7 +36,7 @@ class PostsAdapter(
     private val onMediaClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<PostsAdapter.PostViewHolder>() {
 
-    private val currentUserUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id ?: ""
+    private val currentUserUid = SupabaseManager.getCurrentUserID() ?: ""
     private val mediaPagerAdapters = mutableMapOf<Int, MediaPagerAdapter>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -321,11 +323,11 @@ class PostsAdapter(
                     userInfoCache["verify-$uid"] = user["verify"] as? String ?: "false"
                     userInfoCache["acc_type-$uid"] = user["account_type"] as? String ?: "user"
 
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         displayUserInfoFromCache(uid)
                     }
                 } else {
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         userInfoProfileImage.setImageResource(R.drawable.avatar)
                         userInfoUsername.text = "Error User"
                     }
@@ -336,7 +338,7 @@ class PostsAdapter(
         private fun loadLikeStatus(postKey: String) {
             GlobalScope.launch {
                 val like = SupabaseManager.getLike(postKey, currentUserUid)
-                (context as Activity).runOnUiThread {
+                (context as? Activity)?.runOnUiThread {
                     likeButtonIc.setImageResource(
                         if (like != null) R.drawable.post_icons_1_2
                         else R.drawable.post_icons_1_1
@@ -349,7 +351,7 @@ class PostsAdapter(
             GlobalScope.launch {
                 val likeCount = SupabaseManager.getLikeCount(postKey)
                 val commentCount = SupabaseManager.getCommentCount(postKey)
-                (context as Activity).runOnUiThread {
+                (context as? Activity)?.runOnUiThread {
                     CountUtils.setCount(likeButtonCount, likeCount.toDouble())
                     CountUtils.setCount(commentsButtonCount, commentCount.toDouble())
                 }
@@ -359,7 +361,7 @@ class PostsAdapter(
         private fun loadFavoriteStatus(postKey: String) {
             GlobalScope.launch {
                 val favorite = SupabaseManager.getFavorite(postKey, currentUserUid)
-                (context as Activity).runOnUiThread {
+                (context as? Activity)?.runOnUiThread {
                     favoritePostButton.setImageResource(
                         if (favorite != null) R.drawable.delete_favorite_post_ic
                         else R.drawable.add_favorite_post_ic
@@ -373,12 +375,12 @@ class PostsAdapter(
                 val like = SupabaseManager.getLike(post.key, currentUserUid)
                 if (like != null) {
                     SupabaseManager.removeLike(post.key, currentUserUid)
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
                     }
                 } else {
                     SupabaseManager.addLike(post.key, currentUserUid)
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
                     }
                     // Send notification
@@ -395,12 +397,12 @@ class PostsAdapter(
                 val favorite = SupabaseManager.getFavorite(postKey, currentUserUid)
                 if (favorite != null) {
                     SupabaseManager.removeFavorite(postKey, currentUserUid)
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
                     }
                 } else {
                     SupabaseManager.addFavorite(postKey, currentUserUid)
-                    (context as Activity).runOnUiThread {
+                    (context as? Activity)?.runOnUiThread {
                         favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
                     }
                 }

@@ -12,6 +12,7 @@ import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -148,7 +149,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun blockUser(uid: String?) {
         uid?.let {
-            val currentUserUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+            val currentUserUid = SupabaseManager.getCurrentUserID()
             if (currentUserUid != null) {
                 GlobalScope.launch {
                     SupabaseManager.blockUser(currentUserUid, it)

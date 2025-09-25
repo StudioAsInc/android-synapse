@@ -25,6 +25,7 @@ import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toHashMap
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
@@ -251,8 +252,8 @@ class CreatePostActivity : AppCompatActivity() {
             return
         }
 
-        val currentUser = SupabaseManager.getClient().auth.currentUserOrNull()
-        if (currentUser == null) {
+        val currentUserId = SupabaseManager.getCurrentUserID()
+        if (currentUserId == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
         }
@@ -263,7 +264,7 @@ class CreatePostActivity : AppCompatActivity() {
         val postKey = UUID.randomUUID().toString()
         val post = Post(
             key = postKey,
-            uid = currentUser.id,
+            uid = currentUserId,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",

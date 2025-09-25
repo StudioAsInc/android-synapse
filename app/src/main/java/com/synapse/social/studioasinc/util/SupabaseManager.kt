@@ -5,9 +5,20 @@ import com.synapse.social.studioasinc.R
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.GoTrue
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Count
+import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.presence.presence
 import io.ktor.client.engine.cio.CIO
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 object SupabaseManager {
 
@@ -23,8 +34,9 @@ object SupabaseManager {
             ) {
                 install(GoTrue)
                 install(Postgrest)
-                install(Realtime)
-                httpEngine = CIO.create()
+                install(Realtime) {
+                    secure = true
+                }
             }
         }
     }
@@ -33,16 +45,22 @@ object SupabaseManager {
         return client ?: throw IllegalStateException("Supabase has not been initialized.")
     }
 
+    fun getCurrentUserID(): String? {
+        return getClient().auth.currentUserOrNull()?.id
+    }
+
     suspend fun listenForNewMessages(
         chatId: String,
         onNewMessage: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
-        val channel = client.realtime.channel("new_messages_for_$chatId")
-        channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public", table = "messages") {
+        val channel = client.channel("new_messages_for_$chatId")
+        client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+            table = "messages"
             filter = "chat_id=eq.$chatId"
         }.collect {
-            onNewMessage(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewMessage(it.record as Map<String, Any>)
         }
         client.realtime.connect()
         channel.join()
@@ -53,9 +71,10 @@ object SupabaseManager {
         onPresenceChange: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
-        val channel = client.realtime.channel(channelId)
-        channel.presenceChangeFlow().collect {
-            onPresenceChange(it)
+        val channel = client.channel(channelId)
+        channel.presence.state.collect {
+            @Suppress("UNCHECKED_CAST")
+            onPresenceChange(it as Map<String, Any>)
         }
         client.realtime.connect()
         channel.join()
@@ -63,7 +82,7 @@ object SupabaseManager {
 
     suspend fun deleteMessage(messageId: String) {
         val client = getClient()
-        client.postgrest["messages"].delete {
+        client.postgrest.from("messages").delete {
             filter {
                 eq("id", messageId)
             }
@@ -72,57 +91,65 @@ object SupabaseManager {
 
     suspend fun getUser(userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["users"].select {
+        val response = client.postgrest.from("users").select {
             filter {
                 eq("id", userId)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
+    }
+
+    suspend fun getGroup(groupId: String): Map<String, Any>? {
+        val client = getClient()
+        val response = client.postgrest.from("groups").select {
+            filter {
+                eq("id", groupId)
+            }
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun getChat(chatId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["chats"].select {
+        val response = client.postgrest.from("chats").select {
             filter {
                 eq("id", chatId)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun getPost(postId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["posts"].select {
+        val response = client.postgrest.from("posts").select {
             filter {
                 eq("id", postId)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun trackUserPresence(userId: String, presenceStatus: String) {
         val client = getClient()
-        val channel = client.realtime.channel("presence_$userId")
-        channel.presence {
-            track(buildJsonObject { put("status", presenceStatus) })
-        }
+        val channel = client.channel("presence_$userId")
+        channel.presence.track(buildJsonObject { put("status", presenceStatus) })
         client.realtime.connect()
         channel.join()
     }
 
     suspend fun addMessage(message: Map<String, Any>) {
         val client = getClient()
-        client.postgrest["messages"].insert(message)
+        client.postgrest.from("messages").insert(message)
     }
 
     suspend fun addReaction(reaction: Map<String, Any>) {
         val client = getClient()
-        client.postgrest["reactions"].insert(reaction)
+        client.postgrest.from("reactions").insert(reaction)
     }
 
     suspend fun removeReaction(messageId: String, userId: String) {
         val client = getClient()
-        client.postgrest["reactions"].delete {
+        client.postgrest.from("reactions").delete {
             filter {
                 eq("message_id", messageId)
                 eq("user_id", userId)
@@ -135,11 +162,13 @@ object SupabaseManager {
         onNewReaction: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
-        val channel = client.realtime.channel("reactions_for_$messageId")
-        channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public", table = "reactions") {
+        val channel = client.channel("reactions_for_$messageId")
+        client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+            table = "reactions"
             filter = "message_id=eq.$messageId"
         }.collect {
-            onNewReaction(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewReaction(it.record as Map<String, Any>)
         }
         client.realtime.connect()
         channel.join()
@@ -151,7 +180,7 @@ object SupabaseManager {
         to: Long
     ): List<Map<String, Any>>? {
         val client = getClient()
-        val response = client.postgrest["messages"].select {
+        val response = client.postgrest.from("messages").select {
             filter {
                 eq("chat_id", chatId)
             }
@@ -163,7 +192,7 @@ object SupabaseManager {
 
     suspend fun createPost(post: Map<String, Any>) {
         val client = getClient()
-        client.postgrest["posts"].insert(post)
+        client.postgrest.from("posts").insert(post)
     }
 
     suspend fun listenForNewPosts(
@@ -171,11 +200,13 @@ object SupabaseManager {
         onNewPost: (Map<String, Any>) -> Unit
     ) {
         val client = getClient()
-        val channel = client.realtime.channel("new_posts_for_$userId")
-        channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public", table = "posts") {
+        val channel = client.channel("new_posts_for_$userId")
+        client.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+            table = "posts"
             filter = "user_id=eq.$userId"
         }.collect {
-            onNewPost(it.record)
+            @Suppress("UNCHECKED_CAST")
+            onNewPost(it.record as Map<String, Any>)
         }
         client.realtime.connect()
         channel.join()
@@ -188,80 +219,80 @@ object SupabaseManager {
 
     suspend fun getUserByUsername(username: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["users"].select {
+        val response = client.postgrest.from("users").select {
             filter {
                 eq("username", username)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun blockUser(blockerId: String, blockedId: String) {
         val client = getClient()
-        client.postgrest["blocklist"].insert(mapOf("blocker_id" to blockerId, "blocked_id" to blockedId))
+        client.postgrest.from("blocklist").insert(mapOf("blocker_id" to blockerId, "blocked_id" to blockedId))
     }
 
     suspend fun createGroup(group: Map<String, Any>) {
         val client = getClient()
-        client.postgrest["groups"].insert(group)
+        client.postgrest.from("groups").insert(group)
     }
 
     suspend fun getUsers(): List<Map<String, Any>>? {
         val client = getClient()
-        val response = client.postgrest["users"].select()
+        val response = client.postgrest.from("users").select()
         return response.data
     }
 
     suspend fun getLike(postId: String, userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["post-likes"].select {
+        val response = client.postgrest.from("post-likes").select {
             filter {
                 eq("post_id", postId)
                 eq("user_id", userId)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun getLikeCount(postId: String): Long {
         val client = getClient()
-        val response = client.postgrest["post-likes"].select(count = Count.EXACT) {
+        val response = client.postgrest.from("post-likes").select(columns = Columns.list("count"), count = Count.EXACT) {
             filter {
                 eq("post_id", postId)
             }
         }
-        return response.count
+        return response.count ?: 0L
     }
 
     suspend fun getCommentCount(postId: String): Long {
         val client = getClient()
-        val response = client.postgrest["post-comments"].select(count = Count.EXACT) {
+        val response = client.postgrest.from("post-comments").select(columns = Columns.list("count"), count = Count.EXACT) {
             filter {
                 eq("post_id", postId)
             }
         }
-        return response.count
+        return response.count ?: 0L
     }
 
     suspend fun getFavorite(postId: String, userId: String): Map<String, Any>? {
         val client = getClient()
-        val response = client.postgrest["favorite-posts"].select {
+        val response = client.postgrest.from("favorite-posts").select {
             filter {
                 eq("post_id", postId)
                 eq("user_id", userId)
             }
-        }.single()
-        return response.data
+        }
+        return response.data.firstOrNull()
     }
 
     suspend fun addLike(postId: String, userId: String) {
         val client = getClient()
-        client.postgrest["post-likes"].insert(mapOf("post_id" to postId, "user_id" to userId))
+        client.postgrest.from("post-likes").insert(mapOf("post_id" to postId, "user_id" to userId))
     }
 
     suspend fun removeLike(postId: String, userId: String) {
         val client = getClient()
-        client.postgrest["post-likes"].delete {
+        client.postgrest.from("post-likes").delete {
             filter {
                 eq("post_id", postId)
                 eq("user_id", userId)
@@ -271,12 +302,12 @@ object SupabaseManager {
 
     suspend fun addFavorite(postId: String, userId: String) {
         val client = getClient()
-        client.postgrest["favorite-posts"].insert(mapOf("post_id" to postId, "user_id" to userId))
+        client.postgrest.from("favorite-posts").insert(mapOf("post_id" to postId, "user_id" to userId))
     }
 
     suspend fun removeFavorite(postId: String, userId: String) {
         val client = getClient()
-        client.postgrest["favorite-posts"].delete {
+        client.postgrest.from("favorite-posts").delete {
             filter {
                 eq("post_id", postId)
                 eq("user_id", userId)

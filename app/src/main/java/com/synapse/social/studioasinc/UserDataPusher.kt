@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -55,7 +56,7 @@ class UserDataPusher {
 
         GlobalScope.launch {
             try {
-                SupabaseManager.getClient().postgrest["users"].insert(createUserMap)
+                SupabaseManager.getClient().postgrest.from("users").insert(createUserMap)
                 onComplete(true, null)
             } catch (e: Exception) {
                 onComplete(false, e.message)

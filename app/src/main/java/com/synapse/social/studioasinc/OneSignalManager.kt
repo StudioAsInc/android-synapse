@@ -2,6 +2,8 @@ package com.synapse.social.studioasinc
 
 import android.util.Log
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -25,7 +27,7 @@ object OneSignalManager {
 
         GlobalScope.launch {
             try {
-                SupabaseManager.getClient().postgrest["users"].update(
+                SupabaseManager.getClient().postgrest.from("users").update(
                     {
                         set("oneSignalPlayerId", playerId)
                     }

@@ -1,6 +1,8 @@
 package com.synapse.social.studioasinc.util
 
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.HashMap
@@ -40,23 +42,24 @@ object ChatMessageManager {
     ) {
         GlobalScope.launch {
             if (isGroup) {
-                SupabaseManager.getClient().postgrest[GROUP_CHATS_TABLE].insert(messageMap)
+                SupabaseManager.getClient().postgrest.from(GROUP_CHATS_TABLE).insert(messageMap)
             } else {
                 val chatId = getChatId(senderUid, recipientUid)
-                SupabaseManager.getClient().postgrest[CHATS_TABLE].insert(messageMap)
-                SupabaseManager.getClient().postgrest[USER_CHATS_TABLE].insert(mapOf("user_id" to senderUid, "chat_id" to chatId))
-                SupabaseManager.getClient().postgrest[USER_CHATS_TABLE].insert(mapOf("user_id" to recipientUid, "chat_id" to chatId))
+                SupabaseManager.getClient().postgrest.from(CHATS_TABLE).insert(messageMap)
+                SupabaseManager.getClient().postgrest.from(USER_CHATS_TABLE).insert(mapOf("user_id" to senderUid, "chat_id" to chatId))
+                SupabaseManager.getClient().postgrest.from(USER_CHATS_TABLE).insert(mapOf("user_id" to recipientUid, "chat_id" to chatId))
             }
         }
     }
 
     fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id ?: return
+        val senderUid = SupabaseManager.getCurrentUserID() ?: return
 
         GlobalScope.launch {
             if (isGroup) {
                 val group = SupabaseManager.getGroup(recipientUid)
                 if (group != null) {
+                    @Suppress("UNCHECKED_CAST")
                     val members = group["members"] as? List<String>
                     if (members != null) {
                         for (memberUid in members) {
@@ -66,7 +69,7 @@ object ChatMessageManager {
                                 lastMessage = lastMessage,
                                 isGroup = true
                             )
-                            SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(inboxUpdate)
+                            SupabaseManager.getClient().postgrest.from(INBOX_TABLE).insert(inboxUpdate)
                         }
                     }
                 }
@@ -78,7 +81,7 @@ object ChatMessageManager {
                     lastMessage = lastMessage,
                     isGroup = false
                 )
-                SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(senderInboxUpdate)
+                SupabaseManager.getClient().postgrest.from(INBOX_TABLE).insert(senderInboxUpdate)
 
                 // Update inbox for the other user
                 val recipientInboxUpdate = createInboxUpdate(
@@ -87,7 +90,7 @@ object ChatMessageManager {
                     lastMessage = lastMessage,
                     isGroup = false
                 )
-                SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(recipientInboxUpdate)
+                SupabaseManager.getClient().postgrest.from(INBOX_TABLE).insert(recipientInboxUpdate)
             }
         }
     }
@@ -98,7 +101,7 @@ object ChatMessageManager {
         lastMessage: String,
         isGroup: Boolean
     ): HashMap<String, Any> {
-        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id ?: ""
+        val senderUid = SupabaseManager.getCurrentUserID() ?: ""
         return hashMapOf(
             CHAT_ID_KEY to chatId,
             UID_KEY to conversationPartnerUid,

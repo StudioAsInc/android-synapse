@@ -25,13 +25,15 @@ import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
-import com.synapse.social.studioasinc.util.StorageUtil
+import com.synapse.social.studioasinc.StorageUtil
 import com.synapse.social.studioasinc.util.SupabaseManager
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashMap
+import java.util.UUID
 
 class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
@@ -205,10 +207,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             val group = SupabaseManager.getGroup(groupId!!)
             if (group != null) {
                 runOnUiThread {
-                    topProfileLayoutUsername.text = group["name"] as? String
-                    fetchMemberUsernames(group)
+                    topProfileLayoutUsername.text = group["name"]?.toString()
+                    @Suppress("UNCHECKED_CAST")
+                    fetchMemberUsernames(group as Map<String, Any>)
                     Glide.with(applicationContext)
-                        .load(Uri.parse(group["icon"] as? String))
+                        .load(Uri.parse(group["icon"]?.toString()))
                         .into(topProfileLayoutProfileImage)
                     topProfileLayoutStatus.text = "Group"
                 }
@@ -267,7 +270,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private fun fetchMemberUsernames(group: Map<String, Any>) {
         val members = group["members"] as? List<String>
         if (members != null) {
-            val currentUserId = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+            val currentUserId = SupabaseManager.getCurrentUserID()
             val memberUids = members.toMutableList()
             if (currentUserId != null && !memberUids.contains(currentUserId)) {
                 memberUids.add(currentUserId)
@@ -299,7 +302,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private fun _send_btn() {
         val messageText = message_et.text.toString().trim()
-        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+        val senderUid = SupabaseManager.getCurrentUserID()
         val groupId = intent.getStringExtra("uid")
 
         if (senderUid != null && messageText.isNotEmpty()) {
@@ -443,7 +446,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
     private fun _sendVoiceMessage(audioUrl: String, duration: Long) {
-        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+        val senderUid = SupabaseManager.getCurrentUserID()
         val groupId = intent.getStringExtra("uid")
         val uniqueMessageKey = UUID.randomUUID().toString()
 
