@@ -1,2 +1,19 @@
-- name: Run Gemini CLI
-  uses: google-github-actions/run-gemini-cli@v0.1.12
+name: Gemini CLI Example
+
+on:
+  workflow_dispatch:   # allows you to trigger manually
+  pull_request:        # also runs on PRs
+
+jobs:
+  gemini:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Gemini CLI
+        uses: google-github-actions/run-gemini-cli@v0.1.12
+        with:
+          prompt: "Review this pull request and provide feedback."
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
