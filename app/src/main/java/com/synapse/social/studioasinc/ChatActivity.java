@@ -1148,7 +1148,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		String myUid = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getAuth().getCurrentUser().getId();
 		androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 			try {
-				Map<String, Any?> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUser(myUid);
+				Map<String, Object> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUser(myUid);
 				runOnUiThread(() -> {
 					if (user != null) {
 						String nickname = user.get("nickname") != null ? user.get("nickname").toString() : null;
@@ -1184,7 +1184,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		String chatID = ChatMessageManager.INSTANCE.getChatId(com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getAuth().getCurrentUser().getId(), getIntent().getStringExtra(UID_KEY));
 		androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 			try {
-				List<Map<String, Any?>> messages = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getChatMessages(chatID, CHAT_PAGE_SIZE, 0);
+				List<Map<String, Object>> messages = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getChatMessages(chatID, CHAT_PAGE_SIZE, 0);
 				runOnUiThread(() -> {
 					if (!messages.isEmpty()) {
 						ChatMessagesListRecycler.setVisibility(View.VISIBLE);
@@ -1192,7 +1192,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						ChatMessagesList.clear();
 						messageKeys.clear();
 						ArrayList<HashMap<String, Object>> initialMessages = new ArrayList<>();
-						for (Map<String, Any?> message : messages) {
+						for (Map<String, Object> message : messages) {
 							initialMessages.add(new HashMap<>(message));
 							messageKeys.add(message.get(KEY_KEY).toString());
 						}
@@ -1518,12 +1518,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		String chatID = ChatMessageManager.INSTANCE.getChatId(com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getAuth().getCurrentUser().getId(), getIntent().getStringExtra(UID_KEY));
 		androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 			try {
-				List<Map<String, Any?>> messages = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getChatMessages(chatID, CHAT_PAGE_SIZE, ChatMessagesList.size());
+				List<Map<String, Object>> messages = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getChatMessages(chatID, CHAT_PAGE_SIZE, ChatMessagesList.size());
 				runOnUiThread(() -> {
 					_hideLoadMoreIndicator();
 					if (!messages.isEmpty()) {
 						ArrayList<HashMap<String, Object>> newMessages = new ArrayList<>();
-						for (Map<String, Any?> message : messages) {
+						for (Map<String, Object> message : messages) {
 							newMessages.add(new HashMap<>(message));
 							messageKeys.add(message.get(KEY_KEY).toString());
 						}
@@ -1681,7 +1681,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					handle = object_clicked.replace("@", "");
 					androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(ChatActivity.this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 						try {
-							Map<String, Any?> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUserByUsername(handle);
+							Map<String, Object> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUserByUsername(handle);
 							runOnUiThread(() -> {
 								if (user != null) {
 									if (!user.get("uid").toString().equals("null")) {
@@ -1791,7 +1791,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					if (localMessage.containsKey(REPLIED_MESSAGE_ID_KEY)) {
 						androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 							try {
-								Map<String, Any?> repliedMessage = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getMessage(localMessage.get(REPLIED_MESSAGE_ID_KEY).toString());
+								Map<String, Object> repliedMessage = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getMessage(localMessage.get(REPLIED_MESSAGE_ID_KEY).toString());
 								runOnUiThread(() -> {
 									if (repliedMessage != null) {
 										repliedMessagesCache.put(localMessage.get(REPLIED_MESSAGE_ID_KEY).toString(), new HashMap<>(repliedMessage));
@@ -2104,7 +2104,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			if (is_group) {
 				androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 					try {
-						Map<String, Any?> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUser(senderUid);
+						Map<String, Object> user = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getUser(senderUid);
 						runOnUiThread(() -> {
 							if (user != null) {
 								String nickname = user.get("nickname") != null ? user.get("nickname").toString() : "Unknown User";
@@ -2274,7 +2274,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		String groupId = getIntent().getStringExtra("uid");
 		androidx.lifecycle.LifecycleOwnerKt.getLifecycleScope(this).launch(kotlinx.coroutines.Dispatchers.getIO(), () -> {
 			try {
-				Map<String, Any?> group = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getGroup(groupId);
+				Map<String, Object> group = com.synapse.social.studioasinc.util.SupabaseManager.INSTANCE.getGroup(groupId);
 				runOnUiThread(() -> {
 					if (group != null) {
 						topProfileLayoutUsername.setText(group.get("name").toString());
