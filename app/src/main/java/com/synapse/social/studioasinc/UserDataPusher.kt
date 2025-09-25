@@ -1,8 +1,8 @@
-
 package com.synapse.social.studioasinc
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.util.SupabaseManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.HashMap
 
@@ -20,7 +20,7 @@ class UserDataPusher {
     ) {
         val getJoinTime = Calendar.getInstance()
         val createUserMap = HashMap<String, Any>()
-        createUserMap["uid"] = uid
+        createUserMap["id"] = uid
         createUserMap["email"] = email
         createUserMap["profile_cover_image"] = "null"
 
@@ -52,28 +52,14 @@ class UserDataPusher {
         createUserMap["banned"] = "false"
         createUserMap["status"] = "online"
         createUserMap["join_date"] = getJoinTime.timeInMillis.toString()
-        // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
 
-        val main = FirebaseDatabase.getInstance().getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val map = HashMap<String, Any>()
-                    map["uid"] = uid
-                    map["email"] = email
-                    map["username"] = username
-                    val pushusername = FirebaseDatabase.getInstance().getReference("synapse/username")
-                    pushusername.child(username).updateChildren(map)
-                        .addOnCompleteListener { pushTask ->
-                            if (pushTask.isSuccessful) {
-                                onComplete(true, null)
-                            } else {
-                                onComplete(false, pushTask.exception?.message)
-                            }
-                        }
-                } else {
-                    onComplete(false, task.exception?.message)
-                }
+        GlobalScope.launch {
+            try {
+                SupabaseManager.getClient().postgrest["users"].insert(createUserMap)
+                onComplete(true, null)
+            } catch (e: Exception) {
+                onComplete(false, e.message)
             }
+        }
     }
 }

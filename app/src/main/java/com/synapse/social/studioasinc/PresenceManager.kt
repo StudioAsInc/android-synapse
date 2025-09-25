@@ -1,45 +1,35 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.util.SupabaseManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
- * Manages user online presence in Firebase, writing to the correct database path.
+ * Manages user online presence in Supabase, writing to the correct database path.
  * Handles online, offline (timestamp), and chat statuses.
  */
 object PresenceManager {
 
-    // Correct database reference to the 'users' node
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
-
-    /**
-     * Returns the specific database reference for a user's status.
-     * Path: /skyline/users/{uid}/status
-     */
-    private fun getUserStatusRef(uid: String) = usersRef.child(uid).child("status")
-
     /**
      * Sets user status to "online".
-     * Registers onDisconnect to set a timestamp for last seen.
-     * @param uid The Firebase UID of the current user.
+     * @param uid The Supabase UID of the current user.
      */
     @JvmStatic
     fun goOnline(uid: String) {
-        val statusRef = getUserStatusRef(uid)
-        val activityRef = usersRef.child(uid).child("activity")
-        statusRef.setValue("online")
-        // On disconnect, set the last seen time as a timestamp string
-        statusRef.onDisconnect().setValue(System.currentTimeMillis().toString())
-        activityRef.onDisconnect().removeValue()
+        GlobalScope.launch {
+            SupabaseManager.trackUserPresence(uid, "online")
+        }
     }
 
     /**
      * Explicitly sets the user's status to a timestamp (last seen).
-     * @param uid The Firebase UID of the current user.
+     * @param uid The Supabase UID of the current user.
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        // Set the last seen time as a timestamp string
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString())
+        GlobalScope.launch {
+            SupabaseManager.trackUserPresence(uid, System.currentTimeMillis().toString())
+        }
     }
 
     /**

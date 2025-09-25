@@ -187,7 +187,6 @@ com.synapse.social.studioasinc/
 - `update_animation.json` - Update notification animation
 
 ### Web Integration
-- `firebase-presence.js` - Firebase presence integration
 - `presence-integration-example.html` - Web presence example
 
 ## CI/CD Pipeline

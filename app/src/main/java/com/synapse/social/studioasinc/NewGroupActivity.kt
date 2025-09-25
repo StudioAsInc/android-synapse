@@ -13,8 +13,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.model.User
+import com.synapse.social.studioasinc.util.SupabaseManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class NewGroupActivity : AppCompatActivity() {
 
@@ -25,8 +27,6 @@ class NewGroupActivity : AppCompatActivity() {
     private lateinit var usersAdapter: UsersAdapter
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
-
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,22 +81,30 @@ class NewGroupActivity : AppCompatActivity() {
     }
 
     private fun fetchUsers() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                usersList.clear()
-                for (userSnapshot in snapshot.children) {
-                    val user = userSnapshot.getValue(User::class.java)
-                    if (user != null) {
+        GlobalScope.launch {
+            try {
+                val users = SupabaseManager.getUsers()
+                if (users != null) {
+                    usersList.clear()
+                    for (userMap in users) {
+                        val user = User(
+                            uid = userMap["id"] as? String ?: "",
+                            username = userMap["username"] as? String ?: "",
+                            nickname = userMap["nickname"] as? String ?: "",
+                            avatar = userMap["avatar"] as? String ?: ""
+                        )
                         usersList.add(user)
                     }
+                    runOnUiThread {
+                        usersAdapter.notifyDataSetChanged()
+                    }
                 }
-                usersAdapter.notifyDataSetChanged()
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
+                }
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
-            }
-        })
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

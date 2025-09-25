@@ -2,8 +2,6 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
-    id 'com.google.firebase.crashlytics'
-    //id 'com.google.firebase.firebase-perf'
 }
 
 def keystoreProperties = new Properties()
@@ -111,17 +109,13 @@ android {
 }
 
 dependencies {
-    // Import the Firebase BoM (downgraded to avoid gRPC conflict)
-    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
-
-    // When using the BoM, don't specify versions in Firebase dependencies
-    // Re-adding -ktx suffixes as they are included in this BoM version
-    implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
-    implementation 'com.google.firebase:firebase-perf-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.3"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:functions-kt")
+    implementation("io.ktor:ktor-client-android:3.2.2")
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'
@@ -206,8 +200,3 @@ dependencies {
     // Testing
 }
 
-// Apply Google Services plugin only if credentials file exists
-def googleServicesFile = file('google-services.json')
-if (googleServicesFile.exists()) {
-    apply plugin: 'com.google.gms.google-services'
-}

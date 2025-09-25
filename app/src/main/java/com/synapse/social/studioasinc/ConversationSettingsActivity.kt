@@ -10,23 +10,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
+import com.synapse.social.studioasinc.util.SupabaseManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val blocklistRef = firebaseDatabase.getReference(REF_SKYLINE).child(REF_BLOCKLIST)
-    private lateinit var auth: FirebaseAuth
     private lateinit var userSettings: SharedPreferences
 
     companion object {
-        private const val REF_SKYLINE = "skyline"
-        private const val REF_USERS = "users"
-        private const val REF_BLOCKLIST = "blocklist"
         private const val KEY_UID = "uid"
         private const val KEY_BANNED = "banned"
         private const val KEY_AVATAR = "avatar"
@@ -44,7 +39,6 @@ class ConversationSettingsActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityConversationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        auth = FirebaseAuth.getInstance()
 
         val userId = intent.getStringExtra(KEY_UID)
         if (userId == null) {
@@ -122,16 +116,15 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun getUserReference() {
         val userId = intent.getStringExtra(KEY_UID) ?: return
-        val getUserReference = firebaseDatabase.getReference(REF_SKYLINE).child(REF_USERS).child(userId)
-
-        getUserReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    val isBanned = dataSnapshot.child(KEY_BANNED).getValue(String::class.java) == "true"
+        GlobalScope.launch {
+            val user = SupabaseManager.getUser(userId)
+            if (user != null) {
+                runOnUiThread {
+                    val isBanned = user[KEY_BANNED] as? Boolean ?: false
                     if (isBanned) {
                         binding.profilePictureIV.setImageResource(R.drawable.banned_avatar)
                     } else {
-                        val avatarUrl = dataSnapshot.child(KEY_AVATAR).getValue(String::class.java)
+                        val avatarUrl = user[KEY_AVATAR] as? String
                         if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
                             binding.profilePictureIV.setImageResource(R.drawable.avatar)
                         } else {
@@ -139,8 +132,8 @@ class ConversationSettingsActivity : AppCompatActivity() {
                         }
                     }
 
-                    val nickname = dataSnapshot.child(KEY_NICKNAME).getValue(String::class.java)
-                    val username = dataSnapshot.child(KEY_USERNAME).getValue(String::class.java)
+                    val nickname = user[KEY_NICKNAME] as? String
+                    val username = user[KEY_USERNAME] as? String
 
                     val user2nickname: String = if (nickname.isNullOrEmpty() || nickname == "null") {
                         if (username.isNullOrEmpty()) "" else "@$username"
@@ -150,18 +143,16 @@ class ConversationSettingsActivity : AppCompatActivity() {
                     binding.username.text = user2nickname
                 }
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("ConversationSettings", "Database error: ${databaseError.message}")
-            }
-        })
+        }
     }
 
     private fun blockUser(uid: String?) {
         uid?.let {
-            val blockData = hashMapOf<String, Any>(it to it)
-            auth.currentUser?.uid?.let { currentUserUid ->
-                blocklistRef.child(currentUserUid).updateChildren(blockData)
+            val currentUserUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id
+            if (currentUserUid != null) {
+                GlobalScope.launch {
+                    SupabaseManager.blockUser(currentUserUid, it)
+                }
             }
         }
     }

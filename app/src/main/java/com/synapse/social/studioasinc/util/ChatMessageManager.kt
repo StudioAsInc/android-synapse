@@ -1,21 +1,17 @@
 package com.synapse.social.studioasinc.util
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
-import java.util.Calendar
+import com.synapse.social.studioasinc.util.SupabaseManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.HashMap
 
 object ChatMessageManager {
 
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-
-    private const val SKYLINE_REF = "skyline"
-    private const val CHATS_REF = "chats"
-    private const val USER_CHATS_REF = "user-chats"
-    private const val GROUP_CHATS_REF = "group-chats"
-    private const val INBOX_REF = "inbox"
+    private const val CHATS_TABLE = "chats"
+    private const val USER_CHATS_TABLE = "user_chats"
+    private const val GROUP_CHATS_TABLE = "group_chats"
+    private const val INBOX_TABLE = "inbox"
+    private const val GROUPS_TABLE = "groups"
 
     private const val CHAT_ID_KEY = "chatID"
     private const val UID_KEY = "uid"
@@ -42,62 +38,57 @@ object ChatMessageManager {
         uniqueMessageKey: String,
         isGroup: Boolean
     ) {
-        if (isGroup) {
-            firebaseDatabase.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey)
-                .setValue(messageMap)
-        } else {
-            val chatId = getChatId(senderUid, recipientUid)
-            val fanOutObject = hashMapOf<String, Any?>(
-                "/$CHATS_REF/$chatId/$uniqueMessageKey" to messageMap,
-                "/$USER_CHATS_REF/$senderUid/$chatId" to true,
-                "/$USER_CHATS_REF/$recipientUid/$chatId" to true
-            )
-            firebaseDatabase.reference.updateChildren(fanOutObject)
+        GlobalScope.launch {
+            if (isGroup) {
+                SupabaseManager.getClient().postgrest[GROUP_CHATS_TABLE].insert(messageMap)
+            } else {
+                val chatId = getChatId(senderUid, recipientUid)
+                SupabaseManager.getClient().postgrest[CHATS_TABLE].insert(messageMap)
+                SupabaseManager.getClient().postgrest[USER_CHATS_TABLE].insert(mapOf("user_id" to senderUid, "chat_id" to chatId))
+                SupabaseManager.getClient().postgrest[USER_CHATS_TABLE].insert(mapOf("user_id" to recipientUid, "chat_id" to chatId))
+            }
         }
     }
 
     fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = auth.currentUser?.uid ?: return
+        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id ?: return
 
-        if (isGroup) {
-            val groupRef = firebaseDatabase.getReference(SKYLINE_REF).child("groups").child(recipientUid)
-            groupRef.child("members").get().addOnSuccessListener { dataSnapshot ->
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
+        GlobalScope.launch {
+            if (isGroup) {
+                val group = SupabaseManager.getGroup(recipientUid)
+                if (group != null) {
+                    val members = group["members"] as? List<String>
+                    if (members != null) {
+                        for (memberUid in members) {
                             val inboxUpdate = createInboxUpdate(
                                 chatId = recipientUid,
                                 conversationPartnerUid = recipientUid,
                                 lastMessage = lastMessage,
                                 isGroup = true
                             )
-                            firebaseDatabase.getReference(INBOX_REF).child(memberUid).child(recipientUid)
-                                .setValue(inboxUpdate)
+                            SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(inboxUpdate)
                         }
                     }
                 }
-            }
-        } else {
-            // Update inbox for the current user
-            val senderInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = recipientUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(senderUid).child(recipientUid)
-                .setValue(senderInboxUpdate)
+            } else {
+                // Update inbox for the current user
+                val senderInboxUpdate = createInboxUpdate(
+                    chatId = getChatId(senderUid, recipientUid),
+                    conversationPartnerUid = recipientUid,
+                    lastMessage = lastMessage,
+                    isGroup = false
+                )
+                SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(senderInboxUpdate)
 
-            // Update inbox for the other user
-            val recipientInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = senderUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(recipientUid).child(senderUid)
-                .setValue(recipientInboxUpdate)
+                // Update inbox for the other user
+                val recipientInboxUpdate = createInboxUpdate(
+                    chatId = getChatId(senderUid, recipientUid),
+                    conversationPartnerUid = senderUid,
+                    lastMessage = lastMessage,
+                    isGroup = false
+                )
+                SupabaseManager.getClient().postgrest[INBOX_TABLE].insert(recipientInboxUpdate)
+            }
         }
     }
 
@@ -107,7 +98,7 @@ object ChatMessageManager {
         lastMessage: String,
         isGroup: Boolean
     ): HashMap<String, Any> {
-        val senderUid = auth.currentUser?.uid ?: ""
+        val senderUid = SupabaseManager.getClient().auth.currentUserOrNull()?.id ?: ""
         return hashMapOf(
             CHAT_ID_KEY to chatId,
             UID_KEY to conversationPartnerUid,
