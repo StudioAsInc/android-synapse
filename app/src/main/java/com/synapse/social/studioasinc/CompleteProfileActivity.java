@@ -79,7 +79,7 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import com.google.firebase.database.Query;
-import com.synapse.social.studioasinc.ImageUploader;
+import com.synapse.social.studioasinc.UploadFiles;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
@@ -658,7 +658,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 				}
 				profile_image.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
+				UploadFiles.uploadFile(path, new UploadFiles.UploadCallback() {
 					@Override
 					public void onUploadComplete(String imageUrl) {
 						thedpurl = imageUrl;

@@ -27,16 +27,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.DatabaseService;
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
 import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
 
@@ -79,9 +76,7 @@ public class AuthActivity extends AppCompatActivity {
     private int sfxErrorId;
 
     // Firebase
-    private FirebaseAuth fauth;
-    private final OnCompleteListener<AuthResult> authCreateUserListener = createAuthCreateUserListener();
-    private final OnCompleteListener<AuthResult> authSignInListener = createAuthSignInListener();
+    private AuthenticationService authService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,7 +146,7 @@ public class AuthActivity extends AppCompatActivity {
 
     private void initializeFirebase() {
         FirebaseApp.initializeApp(this);
-        fauth = FirebaseAuth.getInstance();
+        authService = new AuthenticationService();
     }
 
     private void setupListeners() {
@@ -267,19 +262,18 @@ public class AuthActivity extends AppCompatActivity {
         }
 
         if (isValid) {
-            fauth.createUserWithEmailAndPassword(email, pass)
-                .addOnCompleteListener(this, authCreateUserListener);
-        }
-    }
+            authService.signUp(email, pass, new AuthenticationService.AuthListener() {
+                @Override
+                public void onSuccess(FirebaseUser user) {
+                    handleSuccessfulRegistration();
+                }
 
-    private OnCompleteListener<AuthResult> createAuthCreateUserListener() {
-        return task -> {
-            if (task.isSuccessful()) {
-                handleSuccessfulRegistration();
-            } else {
-                handleRegistrationError(task.getException());
-            }
-        };
+                @Override
+                public void onFailure(Exception exception) {
+                    handleRegistrationError(exception);
+                }
+            });
+        }
     }
 
     private void handleSuccessfulRegistration() {
@@ -309,30 +303,29 @@ public class AuthActivity extends AppCompatActivity {
         String email = email_et.getText().toString();
         String pass = pass_et.getText().toString();
 
-        fauth.signInWithEmailAndPassword(email, pass)
-            .addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    FirebaseUser user = fauth.getCurrentUser();
-                    if (user != null) {
-                        fetchUsername(user.getUid());
-                    }
-                } else {
-                    showSignInError();
+        authService.signIn(email, pass, new AuthenticationService.AuthListener() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
+                if (user != null) {
+                    fetchUsername(user.getUid());
                 }
-            });
+            }
+
+            @Override
+            public void onFailure(Exception exception) {
+                showSignInError();
+            }
+        });
     }
 
     private void fetchUsername(String uid) {
         // Update OneSignal Player ID on sign-in
         updateOneSignalPlayerId(uid);
         
-        DatabaseReference usernameRef = FirebaseDatabase.getInstance().getReference()
-                .child("skyline")
-                .child("users")
-                .child(uid)
-                .child("username");
+        DatabaseService dbService = new DatabaseService();
+        String path = "skyline/users/" + uid + "/username";
 
-        usernameRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        dbService.getData(path, new DatabaseService.DataListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 String username = dataSnapshot.getValue(String.class);
@@ -372,15 +365,6 @@ public class AuthActivity extends AppCompatActivity {
         aiResponseTextView_1.startTyping("Hmm, that password doesn't match. Try again?");
     }
 
-    private OnCompleteListener<AuthResult> createAuthSignInListener() {
-        return task -> {
-            if (task.isSuccessful()) {
-                Intent intent = new Intent(AuthActivity.this, HomeActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        };
-    }
 
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);

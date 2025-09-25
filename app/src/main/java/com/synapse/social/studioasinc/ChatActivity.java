@@ -74,21 +74,13 @@ import android.view.MenuItem;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FirebaseStorage;
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.FadeEditText;
 import com.synapse.social.studioasinc.FileUtil;
@@ -97,6 +89,8 @@ import com.synapse.social.studioasinc.StorageUtil;
 import com.synapse.social.studioasinc.UploadFiles;
 import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
 
 import java.io.File;
@@ -132,10 +126,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private static final String PUSH_DATE_KEY = "push_date";
 	private static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
 	private static final String ATTACHMENTS_KEY = "attachments";
-	private static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
-	private static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
-	private static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
-	private static final String CHAT_ID_KEY = "chatID";
 
 	private static final String MESSAGE_TYPE = "MESSAGE";
 	private static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
@@ -148,15 +138,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
+    private DatabaseService dbService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private MediaRecorder AudioMessageRecorder;
 	private HashMap<String, Object> ChatSendMap = new HashMap<>();
-	private HashMap<String, Object> ChatInboxSend = new HashMap<>();
 	private double recordMs = 0;
-	private HashMap<String, Object> ChatInboxSend2 = new HashMap<>();
 	private String SecondUserAvatar = "";
 	private HashMap<String, Object> typingSnd = new HashMap<>();
 	private String ReplyMessageID = "";
@@ -167,17 +154,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private boolean is_group = false;
 	private String object_clicked = "";
 	private String handle = "";
-	private HashMap<String, Object> block = new HashMap<>();
-	private double block_switch = 0;
 	private String path = "";
 	private String AndroidDevelopersBlogURL = "";
 	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
 	private boolean isLoading = false;
-	private ChildEventListener _chat_child_listener;
-	private DatabaseReference chatMessagesRef;
-	private ValueEventListener _userStatusListener;
-	private DatabaseReference userRef;
+	private DatabaseService.ChildListener _chat_child_listener;
+	private DatabaseService.DataListener _userStatusListener;
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
@@ -232,13 +215,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private boolean isRecording = false;
 
 	private Intent intent = new Intent();
-	private DatabaseReference main = _firebase.getReference(SKYLINE_REF);
-	private FirebaseAuth auth;
+	private AuthenticationService authService;
 	private TimerTask loadTimer;
 	private Calendar cc = Calendar.getInstance();
 	private Vibrator vbr;
-	private DatabaseReference blocklist = _firebase.getReference(SKYLINE_REF).child(BLOCKLIST_REF);
-	private ChildEventListener _blocklist_child_listener;
+	private DatabaseService.ChildListener _blocklist_child_listener;
 	private SharedPreferences blocked;
 	private SharedPreferences theme;
 	private Intent i = new Intent();
@@ -274,6 +255,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
+	    dbService = new DatabaseService();
 		relativelayout1 = findViewById(R.id.relativelayout1);
 		ivBGimage = findViewById(R.id.ivBGimage);
 		body = findViewById(R.id.body);
@@ -316,7 +298,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
-		auth = FirebaseAuth.getInstance();
+		authService = new AuthenticationService();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		blocked = getSharedPreferences("block", Activity.MODE_PRIVATE);
 		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
@@ -334,10 +316,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 				// Clear the attachment draft from SharedPreferences
 				SharedPreferences drafts = getSharedPreferences("chat_drafts", Context.MODE_PRIVATE);
-				String chatId = ChatMessageManager.INSTANCE.getChatId(FirebaseAuth.getInstance().getCurrentUser().getUid(), getIntent().getStringExtra("uid"));
+				String chatId = ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra("uid"));
 				drafts.edit().remove(chatId + "_attachments").apply();
-				if (auth.getCurrentUser() != null) {
-					PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
+				if (authService.getCurrentUser() != null) {
+					PresenceManager.setActivity(authService.getCurrentUser().getUid(), "Idle");
 				}
 			}
 		});
@@ -403,7 +385,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 							for (int i = startIndex; i <= endIndex; i++) {
 								HashMap<String, Object> message = ChatMessagesList.get(i);
-								String sender = message.get(UID_KEY).toString().equals(auth.getCurrentUser().getUid()) ? "Me" : SecondUserName;
+								String sender = message.get(UID_KEY).toString().equals(authService.getCurrentUser().getUid()) ? "Me" : SecondUserName;
 								contextBuilder.append(sender).append(": ").append(message.get(MESSAGE_TEXT_KEY).toString()).append("\n");
 							}
 
@@ -439,18 +421,18 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
 				final String _charSeq = _param1.toString();
-				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-				DatabaseReference typingRef = _firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF);
+				String chatID = ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				String typingPath = "chats/" + chatID + "/" + TYPING_MESSAGE_REF;
 				if (_charSeq.length() == 0) {
-					typingRef.removeValue();
+				    dbService.getReference(typingPath).removeValue();
 					_TransitionManager(message_input_overall_container, 150);
 					toolContainer.setVisibility(View.VISIBLE);
 					message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 				} else {
 					typingSnd = new HashMap<>();
-					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
+					typingSnd.put(UID_KEY, authService.getCurrentUser().getUid());
 					typingSnd.put("typingMessageStatus", "true");
-					typingRef.updateChildren(typingSnd);
+					dbService.getReference(typingPath).updateChildren(typingSnd);
 					_TransitionManager(message_input_overall_container, 150);
 					toolContainer.setVisibility(View.GONE);
 					message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
@@ -501,7 +483,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		});
 
-		_blocklist_child_listener = new ChildEventListener() {
+		_blocklist_child_listener = new DatabaseService.ChildListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				handleBlocklistUpdate(_param1);
@@ -546,7 +528,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		SecondUserAvatar = "null";
 		ReplyMessageID = "null";
 		path = "";
-		block_switch = 0;
 		// Set the Layout Manager
 		LinearLayoutManager ChatRecyclerLayoutManager = new LinearLayoutManager(this);
 		ChatRecyclerLayoutManager.setReverseLayout(false);
@@ -569,17 +550,18 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		
 		// CRITICAL FIX: Set up Firebase reference to listen to the correct chat node
 		// We need to listen to the chat node where messages are being sent/received
-		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		String currentUserUid = authService.getCurrentUser().getUid();
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
+		String chatMessagesPath;
 		if (is_group) {
-			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
+		    chatMessagesPath = "skyline/group-chats/" + otherUserUid;
 		} else {
 			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
-			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
+			chatMessagesPath = CHATS_REF + "/" + chatID;
 		}
 		
 		// Set up user reference
-		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
+		String userPath = SKYLINE_REF + "/" + USERS_REF + "/" + otherUserUid;
 		userProfileUpdater = new com.synapse.social.studioasinc.util.UserProfileUpdater(
 				this,
 				topProfileLayoutProfileImage,
@@ -756,32 +738,30 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onPause() {
 		super.onPause();
-		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
+		if (authService.getCurrentUser() != null) {
+			String chatID = ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			dbService.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		blocklist.addChildEventListener(_blocklist_child_listener);
+		dbService.addChildEventListener(BLOCKLIST_REF, _blocklist_child_listener);
 
 		// Reattach chat listener to ensure we receive real-time messages
 		// This fixes the issue where messages sent while screen is off don't appear
 		// Check each listener independently to avoid one blocking the other
-		if (chatMessagesRef != null && ChatMessagesList != null && chatAdapter != null) {
+		if (ChatMessagesList != null && chatAdapter != null) {
 			_attachChatListener();
 		}
 		
-		if (userRef != null) {
-			_attachUserStatusListener();
-		}
+		_attachUserStatusListener();
 
 		// Set user status to indicate they are in this chat
-		if (auth.getCurrentUser() != null) {
+		if (authService.getCurrentUser() != null) {
 			String recipientUid = getIntent().getStringExtra("uid");
-			PresenceManager.setChattingWith(auth.getCurrentUser().getUid(), recipientUid);
+			PresenceManager.setChattingWith(authService.getCurrentUser().getUid(), recipientUid);
 		}
 	}
 
@@ -790,10 +770,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		super.onStop();
 		_detachChatListener();
 		_detachUserStatusListener();
-		blocklist.removeEventListener(_blocklist_child_listener);
-		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
+		dbService.removeChildEventListener(BLOCKLIST_REF, _blocklist_child_listener);
+		if (authService.getCurrentUser() != null) {
+			String chatID = ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			dbService.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
 
@@ -802,10 +782,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		super.onDestroy();
 		
 		// Clean up typing indicator
-		if (auth.getCurrentUser() != null) {
+		if (authService.getCurrentUser() != null) {
 			try {
-				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-				_firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
+				String chatID = ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				dbService.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 			} catch (Exception e) {
 				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
 			}
@@ -818,7 +798,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		// Clean up blocklist listener
 		if (_blocklist_child_listener != null) {
 			try {
-				blocklist.removeEventListener(_blocklist_child_listener);
+			    dbService.removeChildEventListener(BLOCKLIST_REF, _blocklist_child_listener);
 			} catch (Exception e) {
 				Log.e("ChatActivity", "Error removing blocklist listener: " + e.getMessage());
 			}
@@ -929,12 +909,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			return;
 		}
 
-		DatabaseReference chatRef = chatMessagesRef;
+		String chatMessagesPath = CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 
 		for (String messageKey : repliedIdsToFetch) {
 			repliedMessagesCache.put(messageKey, new HashMap<>());
 
-			chatRef.child(messageKey).addListenerForSingleValueEvent(new ValueEventListener() {
+			dbService.getData(chatMessagesPath + "/" + messageKey, new DatabaseService.DataListener() {
 				@Override
 				public void onDataChange(@NonNull DataSnapshot snapshot) {
 					if (snapshot.exists()) {
@@ -997,7 +977,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 
 		final HashMap<String, Object> messageData = _data.get(_position);
-		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+		FirebaseUser currentUser = authService.getCurrentUser();
 		String senderUid = messageData.get(UID_KEY) != null ? String.valueOf(messageData.get(UID_KEY)) : null;
 		final boolean isMine = currentUser != null && senderUid != null && senderUid.equals(currentUser.getUid());
 		final String messageText = messageData.get(MESSAGE_TEXT_KEY) != null ? messageData.get(MESSAGE_TEXT_KEY).toString() : "";
@@ -1053,7 +1033,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			editText.setText(messageText);
 			dialog.setPositiveButton("Save", (d, w) -> {
 				String newText = editText.getText().toString();
-				FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
+				FirebaseUser cu = authService.getCurrentUser();
 				String myUid = cu != null ? cu.getUid() : null;
 				if (myUid == null) {
 					return;
@@ -1064,8 +1044,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					return;
 				}
 				String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
-				DatabaseReference msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey);
-				msgRef.child(MESSAGE_TEXT_KEY).setValue(newText);
+				String msgPath = CHATS_REF + "/" + chatID + "/" + msgKey + "/" + MESSAGE_TEXT_KEY;
+				dbService.setValue(msgPath, newText);
 			});
 			dialog.setNegativeButton("Cancel", null);
 			AlertDialog shownDialog = dialog.show();
@@ -1188,8 +1168,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		// The user profile data is now fetched via a persistent listener attached in onStart,
 		// so the addListenerForSingleValueEvent call is no longer needed here.
 
-		DatabaseReference getFirstUserName = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getFirstUserName.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getData(SKYLINE_REF + "/" + USERS_REF + "/" + authService.getCurrentUser().getUid(), new DatabaseService.DataListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				try {
@@ -1230,9 +1209,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getChatMessagesRef() {
+	    String chatMessagesPath = CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 		// Initial load
-		Query getChatsMessages = chatMessagesRef.limitToLast(CHAT_PAGE_SIZE);
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
+		Query getChatsMessages = dbService.getReference(chatMessagesPath).limitToLast(CHAT_PAGE_SIZE);
+		dbService.getData(getChatsMessages, new DatabaseService.DataListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				try {
@@ -1301,7 +1281,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	private void _attachChatListener() {
 		// Extra safety: ensure all required dependencies are available
-		if (chatMessagesRef == null || ChatMessagesList == null || chatAdapter == null) {
+		if (ChatMessagesList == null || chatAdapter == null) {
 			Log.w("ChatActivity", "Cannot attach chat listener - missing dependencies");
 			return;
 		}
@@ -1309,14 +1289,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		// Ensure idempotency: remove existing listener if it exists but isn't null
 		if (_chat_child_listener != null) {
 			try {
-				chatMessagesRef.removeEventListener(_chat_child_listener);
+			    dbService.removeChildEventListener(CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)), _chat_child_listener);
 			} catch (Exception e) {
 				Log.w("ChatActivity", "Error removing existing chat listener: " + e.getMessage());
 			}
 			_chat_child_listener = null;
 		}
 		
-		_chat_child_listener = new ChildEventListener() {
+		_chat_child_listener = new DatabaseService.ChildListener() {
 				@Override
 				public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
 					Log.d("ChatActivity", "=== FIREBASE LISTENER: onChildAdded ===");
@@ -1468,7 +1448,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					Log.e("ChatActivity", "Chat listener cancelled: " + error.getMessage());
 				}
 			};
-		chatMessagesRef.addChildEventListener(_chat_child_listener);
+		dbService.addChildEventListener(CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)), _chat_child_listener);
 	}
 
 	/**
@@ -1607,29 +1587,26 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	private void _detachChatListener() {
 		if (_chat_child_listener != null) {
-			chatMessagesRef.removeEventListener(_chat_child_listener);
+		    dbService.removeChildEventListener(CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)), _chat_child_listener);
 			_chat_child_listener = null;
 		}
 	}
 
 	private void _attachUserStatusListener() {
 		// Extra safety: ensure userRef is available
-		if (userRef == null) {
-			Log.w("ChatActivity", "Cannot attach user status listener - userRef is null");
-			return;
-		}
+		String userPath = SKYLINE_REF + "/" + USERS_REF + "/" + getIntent().getStringExtra(UID_KEY);
 		
 		// Ensure idempotency: remove existing listener if it exists
 		if (_userStatusListener != null) {
 			try {
-				userRef.removeEventListener(_userStatusListener);
+			    dbService.removeValueEventListener(userPath, _userStatusListener);
 			} catch (Exception e) {
 				Log.w("ChatActivity", "Error removing existing user status listener: " + e.getMessage());
 			}
 			_userStatusListener = null;
 		}
 		
-		_userStatusListener = new ValueEventListener() {
+		_userStatusListener = new DatabaseService.DataListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if (dataSnapshot.exists()) {
@@ -1648,12 +1625,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				Log.e("ChatActivity", "Failed to get user reference: " + databaseError.getMessage());
 			}
 		};
-		userRef.addValueEventListener(_userStatusListener);
+		dbService.addValueEventListener(userPath, _userStatusListener);
 	}
 
 	private void _detachUserStatusListener() {
 		if (_userStatusListener != null) {
-			userRef.removeEventListener(_userStatusListener);
+		    String userPath = SKYLINE_REF + "/" + USERS_REF + "/" + getIntent().getStringExtra(UID_KEY);
+			dbService.removeValueEventListener(userPath, _userStatusListener);
 			_userStatusListener = null;
 		}
 	}
@@ -1740,12 +1718,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		isLoading = true;
 		_showLoadMoreIndicator();
 
-		Query getChatsMessages = chatMessagesRef
+		Query getChatsMessages = dbService.getReference(CHATS_REF + "/" + ChatMessageManager.INSTANCE.getChatId(authService.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY)))
 		.orderByKey()
 		.endBefore(oldestMessageKey)
 		.limitToLast(CHAT_PAGE_SIZE);
 
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getData(getChatsMessages, new DatabaseService.DataListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				_hideLoadMoreIndicator();
@@ -1840,21 +1818,21 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		zorry.setPositiveButton("Delete", (dialog, which) -> {
 			locallyDeletedMessages.add(messageKey);
 
-			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-			final String otherUid = getIntent().getStringExtra(UID_KEY);
+			final String myUid = authService.getCurrentUser().getUid();
+			final String otherUid = getIntent().getStringExtra("uid");
 			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
-			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
+			final String chatPath = CHATS_REF + "/" + chatID;
 
-			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
+			dbService.getReference(chatPath).child(messageKey).removeValue().addOnCompleteListener(task -> {
 				if (task.isSuccessful()) {
-					chatRef.limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
+					dbService.getReference(chatPath).limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot snapshot) {
 							if (!snapshot.exists()) {
-								_firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
-								_firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
+							    dbService.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
+								dbService.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
+								dbService.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
+								dbService.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
 							}
 						}
 						@Override
@@ -1967,8 +1945,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					int end = sp.getSpanEnd(this);
 					object_clicked = sp.subSequence(start,end).toString();
 					handle = object_clicked.replace("@", "");
-					DatabaseReference getReference = _firebase.getReference(USERNAME_REF).child(handle);
-					getReference.addListenerForSingleValueEvent(new ValueEventListener() {
+					String path = USERNAME_REF + "/" + handle;
+					dbService.getData(path, new DatabaseService.DataListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 							if(dataSnapshot.exists()) {
@@ -2004,7 +1982,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	public void _send_btn() {
 		final String messageText = message_et.getText().toString().trim();
-		final String senderUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		final String senderUid = authService.getCurrentUser().getUid();
 		final String recipientUid = getIntent().getStringExtra("uid");
 
 		// The logic is now self-contained in proceedWithMessageSending.
@@ -2013,8 +1991,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void proceedWithMessageSending(String messageText, String senderUid, String recipientUid) {
-		if (auth.getCurrentUser() != null) {
-			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
+		if (authService.getCurrentUser() != null) {
+			PresenceManager.setActivity(authService.getCurrentUser().getUid(), "Idle");
 		}
 		
 		if (attactmentmap.isEmpty() && messageText.isEmpty()) {
@@ -2022,7 +2000,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			return;
 		}
 
-		final String uniqueMessageKey = main.push().getKey();
+		final String uniqueMessageKey = dbService.getReference("chats").push().getKey();
 		final HashMap<String, Object> messageToSend = new HashMap<>();
 		String lastMessageForInbox;
 
@@ -2061,7 +2039,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		messageToSend.put(MESSAGE_STATE_KEY, "sended");
 		if (!ReplyMessageID.equals("null")) messageToSend.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
 		messageToSend.put(KEY_KEY, uniqueMessageKey);
-		messageToSend.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
+		messageToSend.put(PUSH_DATE_KEY, System.currentTimeMillis());
 
 		// --- Immediate Actions: Update UI and send to DB ---
 		ChatMessageManager.INSTANCE.sendMessageToDb(
@@ -2110,8 +2088,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		final String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
 		final String notificationMessage = senderDisplayName + ": " + lastMessageForInbox;
 
-		_firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
-			.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getData(SKYLINE_REF + "/" + USERS_REF + "/" + recipientUid, new DatabaseService.DataListener() {
 				@Override
 				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 					String recipientOneSignalPlayerId = "missing_id";
@@ -2135,10 +2112,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _Block(final String _uid) {
-		block = new HashMap<>();
+	    HashMap<String, Object> block = new HashMap<>();
 		block.put(_uid, "true");
-		blocklist.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(block);
-		block.clear();
+		dbService.getReference(BLOCKLIST_REF).child(authService.getCurrentUser().getUid()).updateChildren(block);
 	}
 
 
@@ -2150,11 +2126,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _Unblock_this_user() {
-		DatabaseReference blocklistRef = FirebaseDatabase.getInstance().getReference("skyline/blocklist");
-		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		String myUid = authService.getCurrentUser().getUid();
 		String uidToRemove = getIntent().getStringExtra("uid");
 
-		blocklistRef.child(myUid).child(uidToRemove).removeValue()
+		dbService.getReference(BLOCKLIST_REF).child(myUid).child(uidToRemove).removeValue()
 		.addOnSuccessListener(aVoid -> {
 			// Create a new intent to restart the activity
 			Intent intent = getIntent();
@@ -2217,8 +2192,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _startUploadForItem(final double _position) {
-		if (auth.getCurrentUser() != null) {
-			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Sending an attachment");
+		if (authService.getCurrentUser() != null) {
+			PresenceManager.setActivity(authService.getCurrentUser().getUid(), "Sending an attachment");
 		}
 		// Use the correct parameter name '_position' as defined by your More Block
 		final int itemPosition = (int) _position;
@@ -2397,8 +2372,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ReplyMessageID = messageData.get(KEY_KEY).toString();
 
 		if (is_group) {
-			DatabaseReference userRef = _firebase.getReference("skyline/users").child(messageData.get("uid").toString());
-			userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+		    String path = "skyline/users/" + messageData.get("uid").toString();
+			dbService.getData(path, new DatabaseService.DataListener() {
 				@Override
 				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 					if (dataSnapshot.exists()) {
@@ -2424,7 +2399,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			});
 		}
 
-		if (messageData.get(UID_KEY).toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+		if (messageData.get(UID_KEY).toString().equals(authService.getCurrentUser().getUid())) {
 			mMessageReplyLayoutBodyRightUsername.setText(FirstUserName);
 		} else {
 			mMessageReplyLayoutBodyRightUsername.setText(SecondUserName);
@@ -2577,8 +2552,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	public void _getGroupReference() {
-		DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
-		groupRef.addValueEventListener(new ValueEventListener() {
+	    String path = "groups/" + getIntent().getStringExtra("uid");
+		dbService.addValueEventListener(path, new DatabaseService.DataListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 				if (dataSnapshot.exists()) {
@@ -2798,7 +2773,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			return;
 		}
 
-		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		String myUid = authService.getCurrentUser().getUid();
 		String otherUid = getIntent().getStringExtra(UID_KEY);
 
 		if (_childKey.equals(otherUid)) {
@@ -2821,10 +2796,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private String getSenderNameForMessage(HashMap<String, Object> message) {
-		if (message == null || message.get(UID_KEY) == null || auth.getCurrentUser() == null) {
+		if (message == null || message.get(UID_KEY) == null || authService.getCurrentUser() == null) {
 			return "Unknown";
 		}
-		boolean isMyMessage = message.get(UID_KEY).toString().equals(auth.getCurrentUser().getUid());
+		boolean isMyMessage = message.get(UID_KEY).toString().equals(authService.getCurrentUser().getUid());
 		return isMyMessage ? FirstUserName : SecondUserName;
 	}
 
@@ -2891,9 +2866,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void _sendVoiceMessage(String audioUrl, long duration) {
-		final String senderUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+		final String senderUid = authService.getCurrentUser().getUid();
 		final String recipientUid = getIntent().getStringExtra("uid");
-		String uniqueMessageKey = main.push().getKey();
+		String uniqueMessageKey = dbService.getReference("chats").push().getKey();
 
 		ChatSendMap = new HashMap<>();
 		ChatSendMap.put(UID_KEY, senderUid);
@@ -2903,7 +2878,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatSendMap.put(MESSAGE_STATE_KEY, "sended");
 		if (!ReplyMessageID.equals("null")) ChatSendMap.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
 		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
-		ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
+		ChatSendMap.put(PUSH_DATE_KEY, System.currentTimeMillis());
 
 		ChatMessageManager.INSTANCE.sendMessageToDb(
 				(HashMap<String, Object>) ChatSendMap,
@@ -2935,13 +2910,15 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		private final ArrayList<HashMap<String, Object>> data;
 		private final Context context;
 		private final boolean isGroup;
-		private final FirebaseDatabase firebase;
+		private final DatabaseService dbService;
+		private final AuthenticationService authService;
 
-		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, FirebaseDatabase firebase) {
+		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, DatabaseService dbService, AuthenticationService authService) {
 			this.data = arr;
 			this.context = context;
 			this.isGroup = isGroup;
-			this.firebase = firebase;
+			this.dbService = dbService;
+			this.authService = authService;
 		}
 
 		@Override
@@ -2958,11 +2935,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			View view = holder.itemView;
 			final TextView sender_name = view.findViewById(R.id.sender_name);
 
-			if (isGroup && !data.get(position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+			if (isGroup && !data.get(position).get("uid").toString().equals(authService.getCurrentUser().getUid())) {
 				sender_name.setVisibility(View.VISIBLE);
 				final String senderUid = data.get(position).get("uid").toString();
-				DatabaseReference userRef = firebase.getReference("skyline/users").child(senderUid);
-				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+				dbService.getData("skyline/users/" + senderUid, new DatabaseService.DataListener() {
 					@Override
 					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 						if (dataSnapshot.exists()) {

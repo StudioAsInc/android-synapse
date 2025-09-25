@@ -76,7 +76,7 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.appcompat.widget.SwitchCompat;
-import com.synapse.social.studioasinc.ImageUploader;
+import com.synapse.social.studioasinc.UploadFiles;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import android.content.ClipData;
@@ -346,7 +346,7 @@ public class EditPostActivity extends AppCompatActivity {
 		
 		if (imageChanged && hasImage) {
 			// Upload new image first, then update post
-			ImageUploader.uploadImage(selectedImagePath, new ImageUploader.UploadCallback() {
+			UploadFiles.uploadFile(selectedImagePath, new UploadFiles.UploadCallback() {
 				@Override
 				public void onUploadComplete(String imageUrl) {
 					_updatePostInDatabase(imageUrl);

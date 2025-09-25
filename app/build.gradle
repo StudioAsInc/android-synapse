@@ -2,8 +2,6 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
-    id 'com.google.firebase.crashlytics'
-    //id 'com.google.firebase.firebase-perf'
 }
 
 def keystoreProperties = new Properties()
@@ -118,10 +116,6 @@ dependencies {
     // Re-adding -ktx suffixes as they are included in this BoM version
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
-    implementation 'com.google.firebase:firebase-perf-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'

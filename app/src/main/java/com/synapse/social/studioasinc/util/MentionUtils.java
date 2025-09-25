@@ -10,12 +10,12 @@ import android.widget.TextView;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.ProfileActivity;
 import com.synapse.social.studioasinc.R;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.QueryService;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +24,8 @@ import java.util.ArrayList;
 public class MentionUtils {
 
     public static void handleMentions(Context context, TextView textView, String text) {
+        DatabaseService dbService = new DatabaseService();
+        QueryService queryService = new QueryService(dbService);
         SpannableString spannableString = new SpannableString(text);
         Pattern pattern = Pattern.compile("@(\\w+)");
         Matcher matcher = pattern.matcher(text);
@@ -37,9 +39,8 @@ public class MentionUtils {
                 ClickableSpan clickableSpan = new ClickableSpan() {
                     @Override
                     public void onClick(View widget) {
-                        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
-                        Query query = usersRef.orderByChild("username").equalTo(username);
-                        query.addListenerForSingleValueEvent(new ValueEventListener() {
+                        Query query = dbService.getReference("skyline/users").orderByChild("username").equalTo(username);
+                        queryService.fetch(query, new ValueEventListener() {
                             @Override
                             public void onDataChange(DataSnapshot dataSnapshot) {
                                 if (dataSnapshot.exists()) {
@@ -77,6 +78,7 @@ public class MentionUtils {
 
     public static void sendMentionNotifications(String text, String postKey, String commentKey, String contentType) {
         if (text == null) return;
+        DatabaseService dbService = new DatabaseService();
 
         Pattern pattern = Pattern.compile("@(\\w+)");
         Matcher matcher = pattern.matcher(text);
@@ -93,10 +95,7 @@ public class MentionUtils {
             return;
         }
 
-        // This is not ideal, but Firebase Realtime Database doesn't support "in" queries.
-        // For a large user base, this should be handled by a backend service.
-        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
-        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        dbService.getData("skyline/users", new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
