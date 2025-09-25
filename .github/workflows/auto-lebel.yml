@@ -6,9 +6,14 @@ on:
   pull_request:
     types: [opened, edited]
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   auto-label:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -18,60 +23,111 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install node-fetch@3
-
       - name: Generate labels with Gemini
         id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           cat > script.mjs <<'EOF'
-          import fetch from "node-fetch";
+          import fs from "fs";
 
-          const event = process.env.GITHUB_EVENT_PATH ? require(process.env.GITHUB_EVENT_PATH) : {};
+          // Read the GitHub event payload
+          const eventPath = process.env.GITHUB_EVENT_PATH;
+          let event = {};
+          if (eventPath && fs.existsSync(eventPath)) {
+            try {
+              event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+            } catch (e) {
+              event = {};
+            }
+          }
+
           const title = event.issue?.title || event.pull_request?.title || "";
           const body = event.issue?.body || event.pull_request?.body || "";
 
-          const prompt = `Suggest 2-3 short GitHub labels (one word each) for this:\nTitle: ${title}\nBody: ${body}\nRespond with a comma-separated list.`;
+          // Prompt: ask for 2-3 one-word labels, fallback to needs-triage
+          const prompt = `Suggest 2-3 short GitHub labels (one-word each, lowercase, hyphens allowed, no spaces) for this.
+Title: ${title}
+Body: ${body}
+Respond with a comma-separated list. If unsure respond with "needs-triage".`;
 
-          const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
-            })
-          });
+          const apiKey = process.env.GEMINI_API_KEY || "";
+          if (!apiKey) {
+            console.error("GEMINI_API_KEY is missing.");
+            console.log(JSON.stringify(["needs-triage"]));
+            process.exit(0);
+          }
 
-          const data = await response.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const labels = text.split(",").map(l => l.trim()).filter(Boolean);
+          // Call Gemini (v1beta endpoint used earlier)
+          const bodyJson = {
+            contents: [{ parts: [{ text: prompt }] }]
+          };
 
-          console.log("::set-output name=labels::" + JSON.stringify(labels));
+          let text = "";
+          try {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bodyJson),
+              }
+            );
+            const data = await res.json();
+            text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          } catch (err) {
+            console.error("Gemini request failed:", err);
+            text = "";
+          }
+
+          // Parse labels: comma separated -> array, sanitize, keep up to 3
+          let labels = [];
+          if (text) {
+            labels = text
+              .split(",")
+              .map(l => l.trim().toLowerCase())
+              .map(l => l.replace(/\s+/g, "-")) // replace spaces with hyphen if present
+              .filter(Boolean)
+              .slice(0, 3);
+          }
+
+          if (!labels.length) {
+            labels = ["needs-triage"];
+          }
+
+          // Output JSON array to stdout (the calling step will capture it)
+          console.log(JSON.stringify(labels));
           EOF
 
-          node script.mjs
+          # run the script and set step output
+          labels=$(node script.mjs)
+          echo "labels=$labels" >> $GITHUB_OUTPUT
 
-      - name: Apply labels
-        if: steps.gemini.outputs.labels != ''
+      - name: Apply labels (using PAT secret)
         uses: actions/github-script@v7
+        env:
+          LABELS: ${{ steps.gemini.outputs.labels }}
+          GITHUB_TOKEN: ${{ secrets.PAT }}     # use the PAT secret you requested
         with:
           script: |
             const labels = JSON.parse(process.env.LABELS || "[]");
-            if (labels.length > 0) {
-              if (context.eventName === "issues") {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  labels: labels
-                });
-              } else if (context.eventName === "pull_request") {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                  labels: labels
-                });
-              }
+            if (!labels || labels.length === 0) {
+              console.log("No labels to apply.");
+              return;
             }
-        env:
-          LABELS: ${{ steps.gemini.outputs.labels }}
+
+            // Determine issue/pr number depending on event
+            let issue_number = context.payload.issue?.number || context.payload.pull_request?.number;
+            if (!issue_number) {
+              console.log("No issue/pr number found in context.");
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              labels: labels
+            });
+
+            console.log("Applied labels:", labels);
