@@ -25,7 +25,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.GenericTypeIndicator
-import com.google.firebase.database.ServerValue
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.backend.AuthenticationService
 import com.synapse.social.studioasinc.backend.DatabaseService
@@ -33,6 +32,8 @@ import com.synapse.social.studioasinc.backend.UserService
 import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashMap
+import com.synapse.social.studioasinc.StorageUtil
+import com.synapse.social.studioasinc.AsyncUploadService
 
 class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
@@ -137,7 +138,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         chatRecyclerLayoutManager.stackFromEnd = true
         ChatMessagesListRecycler.layoutManager = chatRecyclerLayoutManager
 
-        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this)
+        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this, dbService, authService)
         chatAdapter?.setHasStableIds(true)
         chatAdapter?.setGroupChat(true) // This is a group chat
         ChatMessagesListRecycler.adapter = chatAdapter
@@ -369,14 +370,13 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                     for (memberSnapshot in dataSnapshot.children) {
                         val memberUid = memberSnapshot.key
                         if (memberUid != null) {
-                            val cc = Calendar.getInstance()
                             val chatInboxSend = HashMap<String, Any>()
                             chatInboxSend["chatID"] = groupId
                             chatInboxSend["uid"] = groupId
                             chatInboxSend["last_message_uid"] = authService.getCurrentUser()!!.uid
                             chatInboxSend["last_message_text"] = lastMessage
                             chatInboxSend["last_message_state"] = "sended"
-                            chatInboxSend["push_date"] = cc.timeInMillis.toString()
+                            chatInboxSend["push_date"] = dbService.getServerTimestamp()
                             chatInboxSend["chat_type"] = "group"
                             dbService.getReference("inbox").child(memberUid).child(groupId!!).setValue(chatInboxSend)
                         }

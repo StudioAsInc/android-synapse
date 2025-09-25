@@ -12,9 +12,13 @@ class QueryService(private val dbService: DatabaseService) {
     fun fetchWithOrder(
         path: String,
         orderBy: String,
+        equalTo: String?,
         listener: DatabaseService.DataListener
     ) {
-        val query = dbService.getReference(path).orderByChild(orderBy)
+        var query: Query = dbService.getReference(path).orderByChild(orderBy)
+        if (equalTo != null) {
+            query = query.equalTo(equalTo)
+        }
         fetch(query, listener)
     }
 
@@ -30,6 +34,27 @@ class QueryService(private val dbService: DatabaseService) {
             query = query.equalTo(equalTo)
         }
         query = query.limitToLast(limit)
+        fetch(query, listener)
+    }
+
+    fun fetchUsersStartingWith(
+        username: String,
+        limit: Int,
+        listener: DatabaseService.DataListener
+    ) {
+        val query = dbService.getReference("skyline/users")
+            .orderByChild("username")
+            .startAt(username)
+            .endAt(username + "\uf8ff")
+            .limitToFirst(limit)
+        fetch(query, listener)
+    }
+
+    fun fetchAllUsers(
+        limit: Int,
+        listener: DatabaseService.DataListener
+    ) {
+        val query = dbService.getReference("skyline/users").limitToLast(limit)
         fetch(query, listener)
     }
 }

@@ -73,7 +73,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.textfield.TextInputLayout;
-import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseUser;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
@@ -236,7 +235,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			setContentView(R.layout.activity_chat);
 		}
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
@@ -539,7 +537,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatMessagesListRecycler.setClickable(true);
 		
 		// Create, configure, and set the new ChatAdapter
-		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this);
+		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this, dbService, authService);
 		chatAdapter.setHasStableIds(true);
 		ChatMessagesListRecycler.setAdapter(chatAdapter);
 		
@@ -1825,11 +1823,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			dbService.getReference(chatPath).child(messageKey).removeValue().addOnCompleteListener(task -> {
 				if (task.isSuccessful()) {
-					dbService.getReference(chatPath).limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
+					Query query = dbService.getReference(chatPath).limitToFirst(1);
+					dbService.getData(query, new DatabaseService.DataListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot snapshot) {
 							if (!snapshot.exists()) {
-							    dbService.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
+								dbService.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
 								dbService.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
 								dbService.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
 								dbService.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
@@ -2039,7 +2038,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		messageToSend.put(MESSAGE_STATE_KEY, "sended");
 		if (!ReplyMessageID.equals("null")) messageToSend.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
 		messageToSend.put(KEY_KEY, uniqueMessageKey);
-		messageToSend.put(PUSH_DATE_KEY, System.currentTimeMillis());
+		messageToSend.put(PUSH_DATE_KEY, dbService.getServerTimestamp());
 
 		// --- Immediate Actions: Update UI and send to DB ---
 		ChatMessageManager.INSTANCE.sendMessageToDb(
@@ -2730,7 +2729,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 		Gemini gemini = builder.build();
 
-		gemini.sendPrompt(params.prompt, new Gemini.GeminiCallback() {
+		gemini.sendPrompt(prompt, new Gemini.GeminiCallback() {
 			@Override
 			public void onSuccess(String response) {
 				runOnUiThread(() -> {
@@ -2878,7 +2877,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatSendMap.put(MESSAGE_STATE_KEY, "sended");
 		if (!ReplyMessageID.equals("null")) ChatSendMap.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
 		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
-		ChatSendMap.put(PUSH_DATE_KEY, System.currentTimeMillis());
+		ChatSendMap.put(PUSH_DATE_KEY, dbService.getServerTimestamp());
 
 		ChatMessageManager.INSTANCE.sendMessageToDb(
 				(HashMap<String, Object>) ChatSendMap,
@@ -2903,78 +2902,5 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public String getRecipientUid() {
 		return getIntent().getStringExtra("uid");
-	}
-
-	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {
-
-		private final ArrayList<HashMap<String, Object>> data;
-		private final Context context;
-		private final boolean isGroup;
-		private final DatabaseService dbService;
-		private final AuthenticationService authService;
-
-		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, DatabaseService dbService, AuthenticationService authService) {
-			this.data = arr;
-			this.context = context;
-			this.isGroup = isGroup;
-			this.dbService = dbService;
-			this.authService = authService;
-		}
-
-		@Override
-		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-			LayoutInflater inflater = LayoutInflater.from(context);
-			View v = inflater.inflate(R.layout.chat_msg_cv_synapse, null);
-			RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-			v.setLayoutParams(lp);
-			return new ViewHolder(v);
-		}
-
-		@Override
-		public void onBindViewHolder(ViewHolder holder, final int position) {
-			View view = holder.itemView;
-			final TextView sender_name = view.findViewById(R.id.sender_name);
-
-			if (isGroup && !data.get(position).get("uid").toString().equals(authService.getCurrentUser().getUid())) {
-				sender_name.setVisibility(View.VISIBLE);
-				final String senderUid = data.get(position).get("uid").toString();
-				dbService.getData("skyline/users/" + senderUid, new DatabaseService.DataListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if (dataSnapshot.exists()) {
-							String nickname = dataSnapshot.child("nickname").getValue(String.class);
-							String username = dataSnapshot.child("username").getValue(String.class);
-							if (nickname != null && !"null".equals(nickname)) {
-								sender_name.setText(nickname);
-							} else if (username != null && !"null".equals(username)) {
-								sender_name.setText("@" + username);
-							} else {
-								sender_name.setText("Unknown User");
-							}
-						} else {
-							sender_name.setText("Unknown User");
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-						sender_name.setText("Unknown User");
-					}
-				});
-			} else {
-				sender_name.setVisibility(View.GONE);
-			}
-		}
-
-		@Override
-		public int getItemCount() {
-			return data.size();
-		}
-
-		public static class ViewHolder extends RecyclerView.ViewHolder {
-			public ViewHolder(View v) {
-				super(v);
-			}
-		}
 	}
 }
