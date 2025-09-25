@@ -113,9 +113,9 @@ dependencies {
     implementation(platform("io.github.jan-tennert.supabase:bom:3.2.3"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
-    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
     implementation("io.github.jan-tennert.supabase:functions-kt")
-    implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.ktor:ktor-client-android:3.1.1")
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'
@@ -144,9 +144,6 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.10.3'
     implementation 'androidx.paging:paging-runtime-ktx:3.3.6'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-
-    // Google Play services
-    implementation 'com.google.android.gms:play-services-auth:21.4.0'
 
     // Image Loading
     implementation 'com.github.bumptech.glide:glide:5.0.0-rc01'

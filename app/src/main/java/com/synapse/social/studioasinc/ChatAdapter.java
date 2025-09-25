@@ -24,11 +24,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +31,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import androidx.gridlayout.widget.GridLayout;
 import android.widget.RelativeLayout;
-import com.google.firebase.database.GenericTypeIndicator;
 import android.view.MotionEvent;
 import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -179,7 +173,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private void bindCommonMessageProperties(BaseMessageViewHolder holder, int position) {
         HashMap<String, Object> data = _data.get(position);
-        String myUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+        String myUid = SupabaseManager.INSTANCE.getCurrentUserID() != null ? SupabaseManager.INSTANCE.getCurrentUserID() : "";
         String msgUid = data != null && data.get("uid") != null ? String.valueOf(data.get("uid")) : "";
         boolean isMyMessage = msgUid.equals(myUid);
         
@@ -322,7 +316,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                             }
 
                             if (holder.mRepliedMessageLayoutUsername != null) {
-                                String username = repliedUid != null && repliedUid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid()) ? firstUserName : secondUserName;
+                                String username = repliedUid != null && repliedUid.equals(SupabaseManager.INSTANCE.getCurrentUserID()) ? firstUserName : secondUserName;
                                 holder.mRepliedMessageLayoutUsername.setText(username);
                                 holder.mRepliedMessageLayoutUsername.setTextColor(isMyMessage ? _context.getResources().getColor(R.color.md_theme_onPrimaryContainer, null) : _context.getResources().getColor(R.color.md_theme_onSurface, null));
                             }
@@ -437,9 +431,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             String otherUserUid = listener.getRecipientUid();
             
             String messageKey = String.valueOf(data.get("key"));
-            FirebaseDatabase.getInstance().getReference("skyline/chats").child(otherUserUid).child(myUid).child(messageKey).child("message_state").setValue("seen");
-            FirebaseDatabase.getInstance().getReference("skyline/chats").child(myUid).child(otherUserUid).child(messageKey).child("message_state").setValue("seen");
-            FirebaseDatabase.getInstance().getReference("skyline/inbox").child(otherUserUid).child(myUid).child("last_message_state").setValue("seen");
         }
         
         // Consolidated long click listener for the message context menu.
