@@ -1,16 +1,20 @@
 package com.synapse.social.studioasinc.backend
 
 import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IUser
 
-class AuthenticationService {
+class AuthenticationService : IAuthenticationService {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
-    fun getCurrentUser(): FirebaseUser? {
-        return auth.currentUser
+    override fun getCurrentUser(): IUser? {
+        return auth.currentUser?.let { firebaseUser ->
+            object : IUser {
+                override fun getUid(): String = firebaseUser.uid
+            }
+        }
     }
 
     fun signOut() {
@@ -18,6 +22,6 @@ class AuthenticationService {
     }
 
     fun deleteUser(listener: OnCompleteListener<Void>) {
-        getCurrentUser()?.delete()?.addOnCompleteListener(listener)
+        auth.currentUser?.delete()?.addOnCompleteListener(listener)
     }
 }

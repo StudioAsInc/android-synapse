@@ -22,23 +22,28 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.SignInService;
+import com.synapse.social.studioasinc.backend.SignUpService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.ISignInService;
+import com.synapse.social.studioasinc.backend.interfaces.ISignUpService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthResult;
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IUser;
 
 public class AuthActivity extends AppCompatActivity {
 
@@ -78,10 +83,13 @@ public class AuthActivity extends AppCompatActivity {
     private int sfxUserInputEndId;
     private int sfxErrorId;
 
-    // Firebase
-    private FirebaseAuth fauth;
-    private final OnCompleteListener<AuthResult> authCreateUserListener = createAuthCreateUserListener();
-    private final OnCompleteListener<AuthResult> authSignInListener = createAuthSignInListener();
+    // Backend Services
+    private IAuthenticationService authService;
+    private IDatabaseService dbService;
+    private ISignInService signInService;
+    private ISignUpService signUpService;
+
+    private final ICompletionListener<IAuthResult> authCreateUserListener = createAuthCreateUserListener();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,7 +99,7 @@ public class AuthActivity extends AppCompatActivity {
         initializeServices();
         setupWindowFlags();
         setupListeners();
-        initializeFirebase();
+        initializeBackend();
         startIntroAnimation();
     }
 
@@ -144,14 +152,17 @@ public class AuthActivity extends AppCompatActivity {
     private void setupWindowFlags() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             Window window = getWindow();
-            window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, 
+            window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                           WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
     }
 
-    private void initializeFirebase() {
+    private void initializeBackend() {
         FirebaseApp.initializeApp(this);
-        fauth = FirebaseAuth.getInstance();
+        authService = new AuthenticationService();
+        dbService = new DatabaseService();
+        signInService = new SignInService();
+        signUpService = new SignUpService();
     }
 
     private void setupListeners() {
@@ -267,17 +278,16 @@ public class AuthActivity extends AppCompatActivity {
         }
 
         if (isValid) {
-            fauth.createUserWithEmailAndPassword(email, pass)
-                .addOnCompleteListener(this, authCreateUserListener);
+            signUpService.signUp(email, pass, authCreateUserListener);
         }
     }
 
-    private OnCompleteListener<AuthResult> createAuthCreateUserListener() {
-        return task -> {
-            if (task.isSuccessful()) {
+    private ICompletionListener<IAuthResult> createAuthCreateUserListener() {
+        return (result, error) -> {
+            if (result != null && result.isSuccessful()) {
                 handleSuccessfulRegistration();
             } else {
-                handleRegistrationError(task.getException());
+                handleRegistrationError(error);
             }
         };
     }
@@ -309,32 +319,26 @@ public class AuthActivity extends AppCompatActivity {
         String email = email_et.getText().toString();
         String pass = pass_et.getText().toString();
 
-        fauth.signInWithEmailAndPassword(email, pass)
-            .addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    FirebaseUser user = fauth.getCurrentUser();
-                    if (user != null) {
-                        fetchUsername(user.getUid());
-                    }
-                } else {
-                    showSignInError();
+        signInService.signIn(email, pass, (result, error) -> {
+            if (result != null && result.isSuccessful()) {
+                IUser user = authService.getCurrentUser();
+                if (user != null) {
+                    fetchUsername(user.getUid());
                 }
-            });
+            } else {
+                showSignInError();
+            }
+        });
     }
 
     private void fetchUsername(String uid) {
         // Update OneSignal Player ID on sign-in
         updateOneSignalPlayerId(uid);
-        
-        DatabaseReference usernameRef = FirebaseDatabase.getInstance().getReference()
-                .child("skyline")
-                .child("users")
-                .child(uid)
-                .child("username");
 
-        usernameRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        String path = "skyline/users/" + uid + "/username";
+        dbService.getData(path, new IDataListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            public void onDataChange(IDataSnapshot dataSnapshot) {
                 String username = dataSnapshot.getValue(String.class);
                 if (username != null) {
                     showWelcomeMessage("You are @" + username + " right? No further steps, Let's go...");
@@ -345,7 +349,7 @@ public class AuthActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+            public void onCancelled(IDatabaseError databaseError) {
                 showWelcomeMessage("I recognize you! Let's go...");
                 navigateToHomeAfterDelay();
             }
@@ -372,15 +376,6 @@ public class AuthActivity extends AppCompatActivity {
         aiResponseTextView_1.startTyping("Hmm, that password doesn't match. Try again?");
     }
 
-    private OnCompleteListener<AuthResult> createAuthSignInListener() {
-        return task -> {
-            if (task.isSuccessful()) {
-                Intent intent = new Intent(AuthActivity.this, HomeActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        };
-    }
 
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);

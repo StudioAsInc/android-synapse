@@ -62,7 +62,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -86,7 +85,6 @@ import java.net.MalformedURLException;
 public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
