@@ -12,6 +12,8 @@ import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.synapse.social.studioasinc.backend.AuthenticationService
 import com.synapse.social.studioasinc.backend.DatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
 import java.io.File
@@ -25,8 +27,8 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private lateinit var dbService: DatabaseService
-    private lateinit var authService: AuthenticationService
+    private lateinit var dbService: IDatabaseService
+    private lateinit var authService: IAuthenticationService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,13 +79,14 @@ class CreateGroupActivity : AppCompatActivity() {
             return
         }
 
-        val currentUserUid = authService.getCurrentUser()?.uid
+        val currentUserUid = authService.getCurrentUser()?.getUid()
         if (currentUserUid == null) {
             Toast.makeText(this, "Authentication error", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val groupId = dbService.getReference("groups").push().key ?: ""
+        val groupRef = dbService.getReference("groups")
+        val groupId = groupRef.push().key ?: ""
         if (groupId.isEmpty()) {
             Toast.makeText(this, "Failed to create group", Toast.LENGTH_SHORT).show()
             return
@@ -128,7 +131,8 @@ class CreateGroupActivity : AppCompatActivity() {
             "members" to members.associateWith { true }
         )
 
-        dbService.getReference("groups").child(groupId).setValue(group)
+        val groupRef = dbService.getReference("groups").child(groupId)
+        dbService.setValue(groupRef, group)
             .addOnSuccessListener {
                 Toast.makeText(this, "Group created successfully", Toast.LENGTH_SHORT).show()
                 val intent = Intent(this, ChatGroupActivity::class.java)

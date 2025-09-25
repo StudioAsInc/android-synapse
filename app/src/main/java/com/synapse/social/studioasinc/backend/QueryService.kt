@@ -1,10 +1,12 @@
 package com.synapse.social.studioasinc.backend
 
 import com.google.firebase.database.Query
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
-class QueryService(private val dbService: DatabaseService) {
+class QueryService(private val dbService: IDatabaseService) {
 
-    fun fetch(query: Query, listener: DatabaseService.DataListener) {
+    fun fetch(query: Query, listener: IDataListener) {
         dbService.getData(query, listener)
     }
 
@@ -12,7 +14,7 @@ class QueryService(private val dbService: DatabaseService) {
         path: String,
         orderBy: String,
         equalTo: String?,
-        listener: DatabaseService.DataListener
+        listener: IDataListener
     ) {
         var query: Query = dbService.getReference(path).orderByChild(orderBy)
         if (equalTo != null) {
@@ -26,7 +28,7 @@ class QueryService(private val dbService: DatabaseService) {
         orderBy: String,
         limit: Int,
         equalTo: String? = null,
-        listener: DatabaseService.DataListener
+        listener: IDataListener
     ) {
         var query: Query = dbService.getReference(path).orderByChild(orderBy)
         if (equalTo != null) {
@@ -39,7 +41,7 @@ class QueryService(private val dbService: DatabaseService) {
     fun fetchUsersStartingWith(
         username: String,
         limit: Int,
-        listener: DatabaseService.DataListener
+        listener: IDataListener
     ) {
         val query = dbService.getReference("skyline/users")
             .orderByChild("username")
@@ -51,7 +53,7 @@ class QueryService(private val dbService: DatabaseService) {
 
     fun fetchAllUsers(
         limit: Int,
-        listener: DatabaseService.DataListener
+        listener: IDataListener
     ) {
         val query = dbService.getReference("skyline/users").limitToLast(limit)
         fetch(query, listener)
