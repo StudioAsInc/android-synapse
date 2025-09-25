@@ -1,22 +1,24 @@
 package com.synapse.social.studioasinc.backend
 
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
-class UserService(private val dbService: DatabaseService) {
+class UserService(private val dbService: IDatabaseService) {
 
     interface UserProfileListener {
-        fun onProfileReceived(profile: DataSnapshot?)
-        fun onError(databaseError: DatabaseError)
+        fun onProfileReceived(profile: IDataSnapshot?)
+        fun onError(databaseError: IDatabaseError)
     }
 
     fun getUserProfile(uid: String, listener: UserProfileListener) {
-        dbService.getData("skyline/users/$uid", object : DatabaseService.DataListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData("skyline/users/$uid", object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 listener.onProfileReceived(dataSnapshot)
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 listener.onError(databaseError)
             }
         })

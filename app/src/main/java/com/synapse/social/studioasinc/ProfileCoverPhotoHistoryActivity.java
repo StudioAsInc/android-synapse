@@ -62,7 +62,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -86,7 +85,6 @@ import java.net.MalformedURLException;
 public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -125,7 +123,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
 	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private StorageReference storage = _firebase_storage.getReference("/");
 	private OnCompleteListener<Uri> _storage_upload_success_listener;
 	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _storage_download_success_listener;
 	private OnSuccessListener _storage_delete_success_listener;
@@ -620,7 +617,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 						mSendMap.clear();
 					}
 					if (_type.equals("local")) {
-						_firebase_storage.getReferenceFromUrl(_uri).delete().addOnSuccessListener(_storage_delete_success_listener).addOnFailureListener(_storage_failure_listener);
+						// Firebase Storage removal requested
 					}
 					maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
 					_getReference();

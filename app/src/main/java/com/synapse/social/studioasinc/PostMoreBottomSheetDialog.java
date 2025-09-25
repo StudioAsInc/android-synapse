@@ -286,9 +286,6 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
                 @Override
                 public void onClick(View _view) {
                     deletePostDatas(key);
-                    if (postImg != null && !postImg.isEmpty()) {
-                        //    _DeleteFirebaseStorage(postImg);
-                    }
                     SketchwareUtil.showMessage(getActivity(), getResources().getString(R.string.post_deleted_toast));
                     NewCustomDialog.dismiss();
                     dialog.dismiss();
