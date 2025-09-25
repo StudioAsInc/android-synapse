@@ -44,3 +44,5 @@ Thumbs.db
 
 # Android SDK (should never be committed)
 android-sdk/
+.gemini/
+gha-creds-*.json
