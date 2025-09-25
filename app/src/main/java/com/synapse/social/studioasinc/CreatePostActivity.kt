@@ -25,7 +25,6 @@ import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toHashMap
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import com.synapse.social.studioasinc.util.SupabaseManager
-import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*

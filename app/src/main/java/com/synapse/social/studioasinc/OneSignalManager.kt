@@ -2,8 +2,6 @@ package com.synapse.social.studioasinc
 
 import android.util.Log
 import com.synapse.social.studioasinc.util.SupabaseManager
-import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 

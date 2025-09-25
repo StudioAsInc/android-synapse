@@ -27,7 +27,6 @@ import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import com.synapse.social.studioasinc.StorageUtil
 import com.synapse.social.studioasinc.util.SupabaseManager
-import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.ArrayList
@@ -227,7 +226,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             if (messages != null && messages.isNotEmpty()) {
                 val initialMessages = ArrayList<HashMap<String, Any>>()
                 for (message in messages) {
-                    val messageData = HashMap(message)
+                    @Suppress("UNCHECKED_CAST")
+                    val messageData = HashMap(message as Map<String, Any>)
                     initialMessages.add(messageData)
                     messageKeys.add(messageData["key"].toString())
                 }
@@ -253,11 +253,13 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         val groupId = intent.getStringExtra("uid")
         GlobalScope.launch {
             SupabaseManager.listenForNewMessages(groupId!!) { newMessage ->
-                val messageKey = newMessage["key"].toString()
+                val messageKey = (newMessage as Map<String, Any>)["key"].toString()
                 if (!messageKeys.contains(messageKey)) {
                     messageKeys.add(messageKey)
-                    val insertPosition = _findCorrectInsertPosition(HashMap(newMessage))
-                    ChatMessagesList.add(insertPosition, HashMap(newMessage))
+                    @Suppress("UNCHECKED_CAST")
+                    val insertPosition = _findCorrectInsertPosition(HashMap(newMessage as Map<String, Any>))
+                    @Suppress("UNCHECKED_CAST")
+                    ChatMessagesList.add(insertPosition, HashMap(newMessage as Map<String, Any>))
                     runOnUiThread {
                         chatAdapter?.notifyItemInserted(insertPosition)
                         ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
@@ -267,7 +269,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         }
     }
 
-    private fun fetchMemberUsernames(group: Map<String, Any>) {
+    private fun fetchMemberUsernames(group: Map<*, *>) {
         val members = group["members"] as? List<String>
         if (members != null) {
             val currentUserId = SupabaseManager.getCurrentUserID()

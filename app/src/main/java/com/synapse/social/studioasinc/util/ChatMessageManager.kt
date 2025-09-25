@@ -1,8 +1,6 @@
 package com.synapse.social.studioasinc.util
 
 import com.synapse.social.studioasinc.util.SupabaseManager
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.HashMap

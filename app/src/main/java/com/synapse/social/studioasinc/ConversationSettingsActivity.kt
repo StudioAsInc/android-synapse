@@ -12,7 +12,6 @@ import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
 import com.synapse.social.studioasinc.util.SupabaseManager
-import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
