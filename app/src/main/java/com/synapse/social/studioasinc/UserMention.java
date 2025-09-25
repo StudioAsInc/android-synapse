@@ -7,15 +7,16 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.PopupWindow;
 
-import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter;
-import com.synapse.social.studioasinc.backend.DatabaseService;
-import com.synapse.social.studioasinc.backend.QueryService;
 import com.synapse.social.studioasinc.model.User;
 
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
     private final EditText editText;
     private final Context context;
-    private final QueryService queryService;
+    private final DatabaseReference usersRef;
     private PopupWindow popupWindow;
     private SearchUserAdapter searchUserAdapter;
     private final List<User> userList = new ArrayList<>();
@@ -35,8 +36,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
     public UserMention(EditText editText, View sendButton) {
         this.editText = editText;
         this.context = editText.getContext();
-        DatabaseService dbService = new DatabaseService();
-        this.queryService = new QueryService(dbService);
+        this.usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
         this.sendButton = sendButton;
         setupPopupWindow();
     }
@@ -100,9 +100,14 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
     }
 
     private void searchUsers(String query) {
-        queryService.fetchUsersStartingWith(query, 10, new DatabaseService.DataListener() {
+        Query searchQuery = usersRef.orderByChild("username")
+                .startAt(query)
+                .endAt(query + "\uf8ff")
+                .limitToFirst(10);
+
+        searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            public void onDataChange(DataSnapshot dataSnapshot) {
                 userList.clear();
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     User user = snapshot.getValue(User.class);
@@ -115,7 +120,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+            public void onCancelled(DatabaseError databaseError) {
                 // Handle error
             }
         });

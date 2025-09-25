@@ -37,8 +37,8 @@ class DatabaseService {
         return getReference(path).setValue(value)
     }
 
-    fun updateChildren(updates: Map<String, Any?>): Task<Void> {
-        return database.reference.updateChildren(updates)
+    fun updateChildren(path: String, updates: Map<String, Any?>): Task<Void> {
+        return getReference(path).updateChildren(updates)
     }
 
     fun getData(path: String, listener: DataListener) {

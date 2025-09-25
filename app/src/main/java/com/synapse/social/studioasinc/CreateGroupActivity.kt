@@ -14,6 +14,7 @@ import com.synapse.social.studioasinc.backend.AuthenticationService
 import com.synapse.social.studioasinc.backend.DatabaseService
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import java.io.File
 
 class CreateGroupActivity : AppCompatActivity() {
 
@@ -91,13 +92,18 @@ class CreateGroupActivity : AppCompatActivity() {
         if (imageUri != null) {
             val imagePath = StorageUtil.getPathFromUri(this, imageUri)
             if (imagePath != null) {
-                UploadFiles.uploadFile(imagePath, object : UploadFiles.UploadCallback {
-                    override fun onUploadComplete(imageUrl: String) {
-                        saveGroupInfo(groupId, name, imageUrl, currentUserUid)
+                val file = File(imagePath)
+                UploadFiles.uploadFile(imagePath, file.name, object : UploadFiles.UploadCallback {
+                    override fun onProgress(percent: Int) {
+                        // Handle progress if needed
                     }
 
-                    override fun onUploadError(errorMessage: String) {
-                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon", Toast.LENGTH_SHORT).show()
+                    override fun onSuccess(url: String, publicId: String) {
+                        saveGroupInfo(groupId, name, url, currentUserUid)
+                    }
+
+                    override fun onFailure(error: String) {
+                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon: $error", Toast.LENGTH_SHORT).show()
                     }
                 })
             } else {
@@ -114,7 +120,7 @@ class CreateGroupActivity : AppCompatActivity() {
             members.add(adminUid)
         }
 
-        val group = hashMapOf(
+        val group = hashMapOf<String, Any>(
             "groupId" to groupId,
             "name" to name,
             "icon" to iconUrl,
@@ -125,7 +131,6 @@ class CreateGroupActivity : AppCompatActivity() {
         dbService.getReference("groups").child(groupId).setValue(group)
             .addOnSuccessListener {
                 Toast.makeText(this, "Group created successfully", Toast.LENGTH_SHORT).show()
-                // Navigate to the group chat activity
                 val intent = Intent(this, ChatGroupActivity::class.java)
                 intent.putExtra("uid", groupId)
                 startActivity(intent)

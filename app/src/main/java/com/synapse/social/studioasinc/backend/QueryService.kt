@@ -1,7 +1,6 @@
 package com.synapse.social.studioasinc.backend
 
 import com.google.firebase.database.Query
-import com.synapse.social.studioasinc.backend.DatabaseService
 
 class QueryService(private val dbService: DatabaseService) {
 

@@ -15,20 +15,20 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.RequestNetwork;
 import com.synapse.social.studioasinc.RequestNetworkController;
-import com.synapse.social.studioasinc.backend.DatabaseService;
-import com.synapse.social.studioasinc.backend.QueryService;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ReelsFragment extends Fragment {
 
-    private QueryService queryService;
-    private DatabaseService dbService;
+    private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
     public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
     private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
     private SwipeRefreshLayout middleRelativeTopSwipe;
@@ -51,8 +51,6 @@ public class ReelsFragment extends Fragment {
     }
 
     private void initialize(View view) {
-        dbService = new DatabaseService();
-        queryService = new QueryService(dbService);
         middleRelativeTopSwipe = view.findViewById(R.id.middleRelativeTopSwipe);
         loadedBody = view.findViewById(R.id.loadedBody);
         videosRecyclerView = view.findViewById(R.id.videosRecyclerView);
@@ -64,7 +62,8 @@ public class ReelsFragment extends Fragment {
             @Override
             public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
                 loadedBody.setVisibility(View.VISIBLE);
-                queryService.fetchWithLimit("skyline/line-posts", "post_type", 50, "LINE_VIDEO", new DatabaseService.DataListener() {
+                Query getLineVideosRef = FirebaseDatabase.getInstance().getReference("skyline/line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
+                getLineVideosRef.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot _dataSnapshot) {
                         lineVideosListMap.clear();
