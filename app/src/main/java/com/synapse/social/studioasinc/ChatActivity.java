@@ -100,6 +100,7 @@ import com.synapse.social.studioasinc.util.ChatMessageManager;
 import com.synapse.social.studioasinc.MessageSendingHandler;
 import com.synapse.social.studioasinc.MessageInteractionHandler;
 import com.synapse.social.studioasinc.AiFeatureHandler;
+import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import static com.synapse.social.studioasinc.ChatConstants.*;
 
 
@@ -153,14 +154,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
 	private java.util.Set<String> locallyDeletedMessages = new java.util.HashSet<>();
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
-	private ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
+	public ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
 	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
 	private ImageView ivBGimage;
 	private LinearLayout body;
 	private LinearLayout appBar;
 	private LinearLayout middle;
-	private RelativeLayout attachmentLayoutListHolder;
+	public RelativeLayout attachmentLayoutListHolder;
 	private LinearLayout mMessageReplyLayout;
 	private LinearLayout message_input_overall_container;
 	private TextView blocked_txt;
@@ -181,7 +182,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private TextView noChatText;
 	private RecyclerView ChatMessagesListRecycler;
 	private CardView card_attactmentListRVHolder;
-	private RecyclerView rv_attacmentList;
+	public RecyclerView rv_attacmentList;
 	private LinearLayout mMessageReplyLayoutBody;
 	private LinearLayout mMessageReplyLayoutSpace;
 	private ImageView mMessageReplyLayoutBodyIc;
@@ -215,6 +216,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private SharedPreferences appSettings;
 	private Gemini gemini;
     private AiFeatureHandler aiFeatureHandler;
+    private ActivityResultHandler activityResultHandler;
 
 
 	@Override
@@ -552,6 +554,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 SecondUserName
         );
 
+        activityResultHandler = new ActivityResultHandler(this);
+
 		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
@@ -631,89 +635,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	protected void onActivityResult(int _requestCode, int _resultCode, Intent _data) {
 		super.onActivityResult(_requestCode, _resultCode, _data);
-		if (_requestCode == REQ_CD_IMAGE_PICKER && _resultCode == Activity.RESULT_OK) {
-			if (_data != null) {
-				ArrayList<String> resolvedFilePaths = new ArrayList<>();
-				
-				try {
-					if (_data.getClipData() != null) {
-						for (int i = 0; i < _data.getClipData().getItemCount(); i++) {
-							Uri fileUri = _data.getClipData().getItemAt(i).getUri();
-							String path = StorageUtil.getPathFromUri(getApplicationContext(), fileUri);
-							if (path != null && !path.isEmpty()) {
-								resolvedFilePaths.add(path);
-							} else {
-								Log.w("ChatActivity", "Failed to resolve file path for clip data item " + i);
-							}
-						}
-					} else if (_data.getData() != null) {
-						Uri fileUri = _data.getData();
-						String path = StorageUtil.getPathFromUri(getApplicationContext(), fileUri);
-						if (path != null && !path.isEmpty()) {
-							resolvedFilePaths.add(path);
-						} else {
-							Log.w("ChatActivity", "Failed to resolve file path for single data");
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing file picker result: " + e.getMessage());
-					Toast.makeText(this, "Error processing selected files", Toast.LENGTH_SHORT).show();
-					return;
-				}
-
-				if (!resolvedFilePaths.isEmpty()) {
-					attachmentLayoutListHolder.setVisibility(View.VISIBLE);
-
-					int startingPosition = attactmentmap.size();
-
-					for (String filePath : resolvedFilePaths) {
-						try {
-							HashMap<String, Object> itemMap = new HashMap<>();
-							itemMap.put("localPath", filePath);
-							itemMap.put("uploadState", "pending");
-
-							// Get image dimensions safely
-							BitmapFactory.Options options = new BitmapFactory.Options();
-							options.inJustDecodeBounds = true;
-							try {
-								BitmapFactory.decodeFile(filePath, options);
-								itemMap.put("width", options.outWidth > 0 ? options.outWidth : 100);
-								itemMap.put("height", options.outHeight > 0 ? options.outHeight : 100);
-							} catch (Exception e) {
-								Log.w("ChatActivity", "Could not decode image dimensions for: " + filePath);
-								itemMap.put("width", 100);
-								itemMap.put("height", 100);
-							}
-
-							attactmentmap.add(itemMap);
-						} catch (Exception e) {
-							Log.e("ChatActivity", "Error processing file: " + filePath + ", Error: " + e.getMessage());
-						}
-					}
-
-					// Notify adapter of changes
-					if (rv_attacmentList.getAdapter() != null) {
-						rv_attacmentList.getAdapter().notifyItemRangeInserted(startingPosition, resolvedFilePaths.size());
-					}
-
-					// Start upload for each item
-					for (int i = 0; i < resolvedFilePaths.size(); i++) {
-						try {
-							_startUploadForItem(startingPosition + i);
-						} catch (Exception e) {
-							Log.e("ChatActivity", "Error starting upload for item " + i + ": " + e.getMessage());
-						}
-					}
-				} else {
-					Log.w("ChatActivity", "No valid file paths resolved from file picker");
-					Toast.makeText(this, "No valid files selected", Toast.LENGTH_SHORT).show();
-				}
-			}
-		}
-		switch (_requestCode) {
-			default:
-				break;
-		}
+		activityResultHandler.handleResult(_requestCode, _resultCode, _data);
 	}
 
 
