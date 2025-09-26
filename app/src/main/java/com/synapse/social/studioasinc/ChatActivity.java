@@ -217,6 +217,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private Gemini gemini;
     private AiFeatureHandler aiFeatureHandler;
     private ActivityResultHandler activityResultHandler;
+    private ChatKeyboardHandler chatKeyboardHandler;
+    private VoiceMessageHandler voiceMessageHandler;
 
 
 	@Override
@@ -360,64 +362,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		});
 
-		message_et.addTextChangedListener(new TextWatcher() {
-			@Override
-			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				final String _charSeq = _param1.toString();
-				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-				DatabaseReference typingRef = _firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF);
-				if (_charSeq.length() == 0) {
-					typingRef.removeValue();
-					_TransitionManager(message_input_overall_container, 150);
-					toolContainer.setVisibility(View.VISIBLE);
-					message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
-				} else {
-					typingSnd = new HashMap<>();
-					typingSnd.put(UID_KEY, auth.getCurrentUser().getUid());
-					typingSnd.put("typingMessageStatus", "true");
-					typingRef.updateChildren(typingSnd);
-					_TransitionManager(message_input_overall_container, 150);
-					toolContainer.setVisibility(View.GONE);
-					message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
-				}
-			}
+		// TextWatcher logic moved to ChatKeyboardHandler
 
-			@Override
-			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-
-			}
-
-			@Override
-			public void afterTextChanged(Editable _param1) {
-				if (message_et.getLineCount() > 1) {
-					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input_expanded);
-				} else {
-					message_input_outlined_round.setBackgroundResource(R.drawable.bg_message_input);
-				}
-			}
-		});
-
-		btn_voice_message.setOnTouchListener(new View.OnTouchListener() {
-			@Override
-			public boolean onTouch(View v, android.view.MotionEvent event) {
-				switch (event.getAction()) {
-					case android.view.MotionEvent.ACTION_DOWN:
-						if (ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-							_AudioRecorderStart();
-							Toast.makeText(getApplicationContext(), "Recording...", Toast.LENGTH_SHORT).show();
-						} else {
-							ActivityCompat.requestPermissions(ChatActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, 1000);
-						}
-						return true;
-					case android.view.MotionEvent.ACTION_UP:
-						// Slide to cancel not implemented as per user's request to avoid major UI changes if it was too complex.
-						_AudioRecorderStop();
-						uploadAudioFile();
-						return true;
-				}
-				return false;
-			}
-		});
+		// Voice message handler logic moved to VoiceMessageHandler
 
 		galleryBtn.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -555,6 +502,19 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
 
         activityResultHandler = new ActivityResultHandler(this);
+
+        chatKeyboardHandler = new ChatKeyboardHandler(
+                this,
+                message_et,
+                toolContainer,
+                btn_sendMessage,
+                message_input_outlined_round,
+                message_input_overall_container
+        );
+        chatKeyboardHandler.setup();
+
+        voiceMessageHandler = new VoiceMessageHandler(this, messageSendingHandler);
+        voiceMessageHandler.setupVoiceButton(btn_voice_message);
 
 		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
@@ -1419,63 +1379,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	public void _AudioRecorderStart() {
-		cc = Calendar.getInstance();
-		recordMs = 0;
-		AudioMessageRecorder = new MediaRecorder();
-
-		File getCacheDir = getExternalCacheDir();
-		String getCacheDirName = "audio_records";
-		File getCacheFolder = new File(getCacheDir, getCacheDirName);
-		getCacheFolder.mkdirs();
-		File getRecordFile = new File(getCacheFolder, cc.getTimeInMillis() + ".mp3");
-		audioFilePath = getRecordFile.getAbsolutePath();
-
-		AudioMessageRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-		AudioMessageRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-		AudioMessageRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-		AudioMessageRecorder.setAudioEncodingBitRate(320000);
-		AudioMessageRecorder.setOutputFile(audioFilePath);
-
-		try {
-			AudioMessageRecorder.prepare();
-			AudioMessageRecorder.start();
-			isRecording = true;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		vbr.vibrate((long)(48));
-		recordRunnable = new Runnable() {
-			@Override
-			public void run() {
-				recordMs += 500;
-				recordHandler.postDelayed(this, 500);
-			}
-		};
-		recordHandler.postDelayed(recordRunnable, 500);
-
-	}
-
-
-	public void _AudioRecorderStop() {
-		if (isRecording) {
-			if (AudioMessageRecorder != null) {
-				try {
-					AudioMessageRecorder.stop();
-					AudioMessageRecorder.release();
-				} catch (RuntimeException e) {
-					Log.e("ChatActivity", "Error stopping media recorder: " + e.getMessage());
-				}
-				AudioMessageRecorder = null;
-			}
-			isRecording = false;
-			vbr.vibrate((long)(48));
-			if (recordHandler != null && recordRunnable != null) {
-				recordHandler.removeCallbacks(recordRunnable);
-			}
-		}
-	}
+	// _AudioRecorderStart and _AudioRecorderStop logic moved to VoiceMessageHandler
 
 
 	public String _getDurationString(final long _durationInMillis) {
@@ -2263,29 +2167,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 //	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }
 
-	private void uploadAudioFile() {
-		if (audioFilePath != null && !audioFilePath.isEmpty()) {
-			File file = new File(audioFilePath);
-			if (file.exists()) {
-				AsyncUploadService.uploadWithNotification(this, audioFilePath, file.getName(), new AsyncUploadService.UploadProgressListener() {
-					@Override
-					public void onProgress(String filePath, int percent) {
-						// You can optionally show progress here
-					}
-
-					@Override
-					public void onSuccess(String filePath, String url, String publicId) {
-						messageSendingHandler.sendVoiceMessage(url, (long) recordMs, ReplyMessageID, mMessageReplyLayout);
-					}
-
-					@Override
-					public void onFailure(String filePath, String error) {
-						Toast.makeText(getApplicationContext(), "Failed to upload audio.", Toast.LENGTH_SHORT).show();
-					}
-				});
-			}
-		}
-	}
+	// uploadAudioFile logic moved to VoiceMessageHandler
 
 	@Override
 	public String getRecipientUid() {
