@@ -21,6 +21,19 @@ import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.ArrayList
 import java.util.HashMap
 import android.widget.RelativeLayout
+import com.synapse.social.studioasinc.ChatConstants.SKYLINE_REF
+import com.synapse.social.studioasinc.ChatConstants.TYPE_KEY
+import com.synapse.social.studioasinc.ChatConstants.ATTACHMENT_MESSAGE_TYPE
+import com.synapse.social.studioasinc.ChatConstants.ATTACHMENTS_KEY
+import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TYPE
+import com.synapse.social.studioasinc.ChatConstants.UID_KEY
+import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
+import com.synapse.social.studioasinc.ChatConstants.MESSAGE_STATE_KEY
+import com.synapse.social.studioasinc.ChatConstants.REPLIED_MESSAGE_ID_KEY
+import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
+import com.synapse.social.studioasinc.ChatConstants.PUSH_DATE_KEY
+import com.synapse.social.studioasinc.ChatConstants.USERS_REF
+import com.synapse.social.studioasinc.ChatConstants.VOICE_MESSAGE_TYPE
 
 class MessageSendingHandler(
     private val context: Context,
@@ -38,7 +51,7 @@ class MessageSendingHandler(
     private val isGroup: Boolean
 ) {
 
-    private val main = _firebase.getReference(ChatActivity.SKYLINE_REF)
+    private val main = _firebase.getReference(SKYLINE_REF)
 
     fun setFirstUserName(name: String) {
         this.firstUserName = name
@@ -91,20 +104,20 @@ class MessageSendingHandler(
                 return
             }
 
-            messageToSend[ChatActivity.TYPE_KEY] = ChatActivity.ATTACHMENT_MESSAGE_TYPE
-            messageToSend[ChatActivity.ATTACHMENTS_KEY] = successfulAttachments
+            messageToSend[TYPE_KEY] = ATTACHMENT_MESSAGE_TYPE
+            messageToSend[ATTACHMENTS_KEY] = successfulAttachments
             lastMessageForInbox = if (messageText.isEmpty()) "${successfulAttachments.size} attachment(s)" else messageText
         } else { // Text-only message
-            messageToSend[ChatActivity.TYPE_KEY] = ChatActivity.MESSAGE_TYPE
+            messageToSend[TYPE_KEY] = MESSAGE_TYPE
             lastMessageForInbox = messageText
         }
 
-        messageToSend[ChatActivity.UID_KEY] = senderUid
-        messageToSend[ChatActivity.MESSAGE_TEXT_KEY] = messageText
-        messageToSend[ChatActivity.MESSAGE_STATE_KEY] = "sended"
-        if (replyMessageID != "null") messageToSend[ChatActivity.REPLIED_MESSAGE_ID_KEY] = replyMessageID
-        messageToSend[ChatActivity.KEY_KEY] = uniqueMessageKey
-        messageToSend[ChatActivity.PUSH_DATE_KEY] = ServerValue.TIMESTAMP
+        messageToSend[UID_KEY] = senderUid
+        messageToSend[MESSAGE_TEXT_KEY] = messageText
+        messageToSend[MESSAGE_STATE_KEY] = "sended"
+        if (replyMessageID != "null") messageToSend[REPLIED_MESSAGE_ID_KEY] = replyMessageID
+        messageToSend[KEY_KEY] = uniqueMessageKey
+        messageToSend[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
         ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
@@ -132,7 +145,7 @@ class MessageSendingHandler(
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
 
-        _firebase.getReference(ChatActivity.SKYLINE_REF).child(ChatActivity.USERS_REF).child(recipientUid)
+        _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     var recipientOneSignalPlayerId = "missing_id"
@@ -157,14 +170,14 @@ class MessageSendingHandler(
         val uniqueMessageKey = main.push().key ?: ""
 
         val chatSendMap = HashMap<String, Any>()
-        chatSendMap[ChatActivity.UID_KEY] = senderUid
-        chatSendMap[ChatActivity.TYPE_KEY] = ChatActivity.VOICE_MESSAGE_TYPE
+        chatSendMap[UID_KEY] = senderUid
+        chatSendMap[TYPE_KEY] = VOICE_MESSAGE_TYPE
         chatSendMap["audio_url"] = audioUrl
         chatSendMap["audio_duration"] = duration
-        chatSendMap[ChatActivity.MESSAGE_STATE_KEY] = "sended"
-        if (replyMessageID != "null") chatSendMap[ChatActivity.REPLIED_MESSAGE_ID_KEY] = replyMessageID
-        chatSendMap[ChatActivity.KEY_KEY] = uniqueMessageKey
-        chatSendMap[ChatActivity.PUSH_DATE_KEY] = ServerValue.TIMESTAMP
+        chatSendMap[MESSAGE_STATE_KEY] = "sended"
+        if (replyMessageID != "null") chatSendMap[REPLIED_MESSAGE_ID_KEY] = replyMessageID
+        chatSendMap[KEY_KEY] = uniqueMessageKey
+        chatSendMap[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
         ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
