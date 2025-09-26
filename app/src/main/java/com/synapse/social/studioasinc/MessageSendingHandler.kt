@@ -20,14 +20,18 @@ import com.synapse.social.studioasinc.PresenceManager
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.ArrayList
 import java.util.HashMap
+import android.widget.RelativeLayout
 
 class MessageSendingHandler(
     private val context: Context,
     private val auth: FirebaseAuth,
     private val _firebase: FirebaseDatabase,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
+    private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val chatAdapter: ChatAdapter,
     private val chatMessagesListRecycler: RecyclerView,
+    private val rv_attacmentList: RecyclerView,
+    private val attachmentLayoutListHolder: RelativeLayout,
     private val messageKeys: MutableSet<String>,
     private val recipientUid: String,
     private var firstUserName: String,
@@ -40,11 +44,11 @@ class MessageSendingHandler(
         this.firstUserName = name
     }
 
-    fun sendButtonAction(messageEt: EditText, replyMessageID: String, attactmentmap: ArrayList<HashMap<String, Any>>, mMessageReplyLayout: LinearLayout) {
+    fun sendButtonAction(messageEt: EditText, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
         val messageText = messageEt.text.toString().trim()
         val senderUid = auth.currentUser?.uid ?: return
 
-        proceedWithMessageSending(messageText, senderUid, recipientUid, replyMessageID, attactmentmap, messageEt, mMessageReplyLayout)
+        proceedWithMessageSending(messageText, senderUid, recipientUid, replyMessageID, messageEt, mMessageReplyLayout)
     }
 
     private fun proceedWithMessageSending(
@@ -52,7 +56,6 @@ class MessageSendingHandler(
         senderUid: String,
         recipientUid: String,
         replyMessageID: String,
-        attactmentmap: ArrayList<HashMap<String, Any>>,
         messageEt: EditText,
         mMessageReplyLayout: LinearLayout
     ) {
@@ -120,6 +123,9 @@ class MessageSendingHandler(
 
         messageEt.setText("")
         mMessageReplyLayout.visibility = View.GONE
+        if (attactmentmap.isNotEmpty()) {
+            resetAttachmentState()
+        }
 
         // --- Background Action: Fetch recipient's notification ID and send notification ---
         val chatId = ChatMessageManager.getChatId(senderUid, recipientUid)
@@ -171,5 +177,14 @@ class MessageSendingHandler(
         ChatMessageManager.updateInbox("Voice Message", recipientUid, isGroup, null)
 
         mMessageReplyLayout.visibility = View.GONE
+    }
+
+    private fun resetAttachmentState() {
+        attachmentLayoutListHolder.visibility = View.GONE
+        val oldSize = attactmentmap.size
+        if (oldSize > 0) {
+            attactmentmap.clear()
+            rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
+        }
     }
 }
