@@ -63,7 +63,7 @@ class VoiceMessageHandler(
         recordMs = 0
         AudioMessageRecorder = MediaRecorder()
 
-        val getCacheDir = activity.externalCacheDir
+        val getCacheDir = activity.externalCacheDir ?: activity.cacheDir
         val getCacheDirName = "audio_records"
         val getCacheFolder = File(getCacheDir, getCacheDirName)
         getCacheFolder.mkdirs()
