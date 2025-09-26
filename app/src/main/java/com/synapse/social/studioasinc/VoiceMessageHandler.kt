@@ -105,7 +105,7 @@ class VoiceMessageHandler(
     }
 
     private fun uploadAudioFile() {
-        if (audioFilePath != null && audioFilePath!!.isNotEmpty()) {
+        if (audioFilePath != null && audioFilePath.isNotEmpty()) {
             val file = File(audioFilePath!!)
             if (file.exists()) {
                 AsyncUploadService.uploadWithNotification(
