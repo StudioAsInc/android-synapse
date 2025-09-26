@@ -114,34 +114,36 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 
 
-public class ChatActivity extends AppCompatActivity implements ChatAdapterListener {
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener {
 
 	// Constants
-	private static final String SKYLINE_REF = "skyline";
-	private static final String USERS_REF = "users";
-	private static final String CHATS_REF = "chats";
-	private static final String USER_CHATS_REF = "user-chats";
-	private static final String INBOX_REF = "inbox";
-	private static final String BLOCKLIST_REF = "blocklist";
-	private static final String TYPING_MESSAGE_REF = "typing-message";
-	private static final String USERNAME_REF = "username";
+	public static final String SKYLINE_REF = "skyline";
+	public static final String USERS_REF = "users";
+	public static final String CHATS_REF = "chats";
+	public static final String USER_CHATS_REF = "user-chats";
+	public static final String INBOX_REF = "inbox";
+	public static final String BLOCKLIST_REF = "blocklist";
+	public static final String TYPING_MESSAGE_REF = "typing-message";
+	public static final String USERNAME_REF = "username";
 
-	private static final String UID_KEY = "uid";
-	private static final String ORIGIN_KEY = "origin";
-	private static final String KEY_KEY = "key";
-	private static final String MESSAGE_TEXT_KEY = "message_text";
-	private static final String TYPE_KEY = "TYPE";
-	private static final String MESSAGE_STATE_KEY = "message_state";
-	private static final String PUSH_DATE_KEY = "push_date";
-	private static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
-	private static final String ATTACHMENTS_KEY = "attachments";
-	private static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
-	private static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
-	private static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
-	private static final String CHAT_ID_KEY = "chatID";
+	public static final String UID_KEY = "uid";
+	public static final String ORIGIN_KEY = "origin";
+	public static final String KEY_KEY = "key";
+	public static final String MESSAGE_TEXT_KEY = "message_text";
+	public static final String TYPE_KEY = "TYPE";
+	public static final String MESSAGE_STATE_KEY = "message_state";
+	public static final String PUSH_DATE_KEY = "push_date";
+	public static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
+	public static final String ATTACHMENTS_KEY = "attachments";
+	public static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
+	public static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
+	public static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
+	public static final String CHAT_ID_KEY = "chatID";
 
-	private static final String MESSAGE_TYPE = "MESSAGE";
-	private static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
+	public static final String MESSAGE_TYPE = "MESSAGE";
+	public static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
+	public static final String VOICE_MESSAGE_TYPE = "VOICE_MESSAGE";
+
 
 	private static final String GEMINI_MODEL = "gemini-2.5-flash-lite";
 	private static final String GEMINI_EXPLANATION_MODEL = "gemini-2.5-flash";
@@ -611,18 +613,15 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
         messageInteractionHandler = new MessageInteractionHandler(
                 this,
+                this,
                 auth,
                 _firebase,
                 ChatMessagesList,
                 ChatMessagesListRecycler,
                 vbr,
-                ReplyMessageID,
-                mMessageReplyLayout,
-                mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage,
+                aiFeatureHandler,
                 FirstUserName,
-                SecondUserName,
-                aiFeatureHandler
+                SecondUserName
         );
 
 		// Initialize with custom settings
@@ -2417,6 +2416,27 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	private com.synapse.social.studioasinc.util.UserProfileUpdater userProfileUpdater;
+
+
+	@Override
+	public void onReplySelected(String messageId) {
+		ReplyMessageID = messageId;
+		for (HashMap<String, Object> messageData : ChatMessagesList) {
+			if (messageId.equals(messageData.get(KEY_KEY))) {
+				boolean isMyMessage = auth.getCurrentUser().getUid().equals(messageData.get(UID_KEY).toString());
+				mMessageReplyLayoutBodyRightUsername.setText(isMyMessage ? FirstUserName : SecondUserName);
+				mMessageReplyLayoutBodyRightMessage.setText(messageData.get(MESSAGE_TEXT_KEY).toString());
+				mMessageReplyLayout.setVisibility(View.VISIBLE);
+				vbr.vibrate(48);
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void onDeleteMessage(HashMap<String, Object> messageData) {
+		_DeleteMessageDialog(messageData);
+	}
 
 
 //	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }

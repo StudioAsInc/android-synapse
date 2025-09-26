@@ -1,10 +1,10 @@
 package com.synapse.social.studioasinc
 
-import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -14,37 +14,25 @@ import android.view.WindowManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupWindow
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.synapse.social.studioasinc.BaseMessageViewHolder
-import com.synapse.social.studioasinc.ChatActivity
-import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
-import kotlin.math.max
-import kotlin.math.min
 
 internal class MessageInteractionHandler(
     private val activity: AppCompatActivity,
+    private val listener: ChatInteractionListener,
     private val auth: FirebaseAuth,
     private val _firebase: FirebaseDatabase,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val chatMessagesListRecycler: RecyclerView,
     private val vbr: android.os.Vibrator,
-    private var replyMessageID: String,
-    private val mMessageReplyLayout: LinearLayout,
-    private val mMessageReplyLayoutBodyRightUsername: TextView,
-    private val mMessageReplyLayoutBodyRightMessage: TextView,
+    private val aiFeatureHandler: AiFeatureHandler,
     private var firstUserName: String,
-    private var secondUserName: String,
-    private val aiFeatureHandler: AiFeatureHandler
+    private var secondUserName: String
 ) {
 
     fun setFirstUserName(name: String) {
@@ -62,9 +50,9 @@ internal class MessageInteractionHandler(
 
         val messageData = chatMessagesList[position]
         val currentUser = auth.currentUser
-        val senderUid = messageData["uid"]?.toString()
+        val senderUid = messageData[ChatActivity.UID_KEY]?.toString()
         val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
-        val messageText = messageData["message_text"]?.toString() ?: ""
+        val messageText = messageData[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val popupView = inflater.inflate(R.layout.chat_msg_options_popup_cv_synapse, null)
@@ -84,10 +72,7 @@ internal class MessageInteractionHandler(
         summaryLayout.visibility = if (messageText.length > 200) View.VISIBLE else View.GONE
 
         replyLayout.setOnClickListener {
-            replyMessageID = messageData["key"].toString()
-            mMessageReplyLayoutBodyRightUsername.text = if (isMine) firstUserName else secondUserName
-            mMessageReplyLayoutBodyRightMessage.text = messageText
-            mMessageReplyLayout.visibility = View.VISIBLE
+            listener.onReplySelected(messageData[ChatActivity.KEY_KEY].toString())
             vbr.vibrate(48)
             popupWindow.dismiss()
         }
@@ -101,7 +86,7 @@ internal class MessageInteractionHandler(
         }
 
         deleteLayout.setOnClickListener {
-            (activity as ChatActivity)._DeleteMessageDialog(messageData)
+            listener.onDeleteMessage(messageData)
             popupWindow.dismiss()
         }
 
@@ -117,12 +102,12 @@ internal class MessageInteractionHandler(
                 val cu = auth.currentUser
                 val myUid = cu?.uid
                 if (myUid == null) return@setPositiveButton
-                val otherUid = activity.intent.getStringExtra("uid")
-                val msgKey = messageData["key"]?.toString()
+                val otherUid = activity.intent.getStringExtra(ChatActivity.UID_KEY)
+                val msgKey = messageData[ChatActivity.KEY_KEY]?.toString()
                 if (otherUid == null || msgKey == null) return@setPositiveButton
                 val chatID = ChatMessageManager.getChatId(myUid, otherUid)
-                val msgRef = _firebase.getReference("chats").child(chatID).child(msgKey)
-                msgRef.child("message_text").setValue(newText)
+                val msgRef = _firebase.getReference(ChatActivity.CHATS_REF).child(chatID).child(msgKey)
+                msgRef.child(ChatActivity.MESSAGE_TEXT_KEY).setValue(newText)
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -158,8 +143,17 @@ internal class MessageInteractionHandler(
         val location = IntArray(2)
         view.getLocationOnScreen(location)
 
-        val x = location[0] + view.width / 2 - popupWidth / 2
-        val y = location[1] - popupHeight - 8
+        val xInitial = location[0] + view.width / 2 - popupWidth / 2
+        val yAbove = location[1] - popupHeight - 8
+        val yBelow = location[1] + view.height + 8
+
+        val visibleFrame = Rect()
+        view.getWindowVisibleDisplayFrame(visibleFrame)
+
+        val x = xInitial.coerceIn(visibleFrame.left + 16, visibleFrame.right - popupWidth - 16)
+        var y = if (yAbove >= visibleFrame.top + 16) yAbove else yBelow
+        y = y.coerceIn(visibleFrame.top + 16, visibleFrame.bottom - popupHeight - 16)
+
 
         popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         popupWindow.isOutsideTouchable = true
@@ -168,13 +162,13 @@ internal class MessageInteractionHandler(
 
     private fun buildExplanationPrompt(position: Int, messageText: String, messageData: HashMap<String, Any>): String {
         val beforeContext = StringBuilder()
-        val startIndex = maxOf(0, position - 5)
+        val startIndex = kotlin.math.max(0, position - 5)
         for (i in startIndex until position) {
             appendMessageToContext(beforeContext, chatMessagesList[i])
         }
 
         val afterContext = StringBuilder()
-        val endIndex = minOf(chatMessagesList.size, position + 2 + 1)
+        val endIndex = kotlin.math.min(chatMessagesList.size, position + 3)
         for (i in position + 1 until endIndex) {
             appendMessageToContext(afterContext, chatMessagesList[i])
         }
@@ -192,26 +186,15 @@ internal class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message["uid"].toString() == auth.currentUser?.uid
+        val isMyMessage = message[ChatActivity.UID_KEY].toString() == auth.currentUser?.uid
         return if (isMyMessage) firstUserName else secondUserName
     }
 
     private fun appendMessageToContext(contextBuilder: StringBuilder, message: HashMap<String, Any>) {
-        val messageText = message["message_text"]?.toString() ?: ""
+        val messageText = message[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
         contextBuilder.append(getSenderNameForMessage(message))
             .append(": ")
             .append(messageText)
             .append("\n")
     }
-
-    private data class AiFeatureParams(
-        val prompt: String,
-        val systemInstruction: String,
-        val model: String,
-        val bottomSheetTitle: String,
-        val logTag: String,
-        val errorMessage: String,
-        val viewHolder: BaseMessageViewHolder,
-        val maxTokens: Int?
-    )
 }

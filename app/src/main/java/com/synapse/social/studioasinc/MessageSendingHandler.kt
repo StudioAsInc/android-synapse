@@ -38,7 +38,7 @@ class MessageSendingHandler(
     private val isGroup: Boolean
 ) {
 
-    private val main = _firebase.getReference("skyline")
+    private val main = _firebase.getReference(ChatActivity.SKYLINE_REF)
 
     fun setFirstUserName(name: String) {
         this.firstUserName = name
@@ -91,20 +91,20 @@ class MessageSendingHandler(
                 return
             }
 
-            messageToSend["TYPE"] = "ATTACHMENT_MESSAGE"
-            messageToSend["attachments"] = successfulAttachments
+            messageToSend[ChatActivity.TYPE_KEY] = ChatActivity.ATTACHMENT_MESSAGE_TYPE
+            messageToSend[ChatActivity.ATTACHMENTS_KEY] = successfulAttachments
             lastMessageForInbox = if (messageText.isEmpty()) "${successfulAttachments.size} attachment(s)" else messageText
         } else { // Text-only message
-            messageToSend["TYPE"] = "MESSAGE"
+            messageToSend[ChatActivity.TYPE_KEY] = ChatActivity.MESSAGE_TYPE
             lastMessageForInbox = messageText
         }
 
-        messageToSend["uid"] = senderUid
-        messageToSend["message_text"] = messageText
-        messageToSend["message_state"] = "sended"
-        if (replyMessageID != "null") messageToSend["replied_message_id"] = replyMessageID
-        messageToSend["key"] = uniqueMessageKey
-        messageToSend["push_date"] = ServerValue.TIMESTAMP
+        messageToSend[ChatActivity.UID_KEY] = senderUid
+        messageToSend[ChatActivity.MESSAGE_TEXT_KEY] = messageText
+        messageToSend[ChatActivity.MESSAGE_STATE_KEY] = "sended"
+        if (replyMessageID != "null") messageToSend[ChatActivity.REPLIED_MESSAGE_ID_KEY] = replyMessageID
+        messageToSend[ChatActivity.KEY_KEY] = uniqueMessageKey
+        messageToSend[ChatActivity.PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
         ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
@@ -132,7 +132,7 @@ class MessageSendingHandler(
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
 
-        _firebase.getReference("skyline/users").child(recipientUid)
+        _firebase.getReference(ChatActivity.SKYLINE_REF).child(ChatActivity.USERS_REF).child(recipientUid)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     var recipientOneSignalPlayerId = "missing_id"
@@ -157,14 +157,14 @@ class MessageSendingHandler(
         val uniqueMessageKey = main.push().key ?: ""
 
         val chatSendMap = HashMap<String, Any>()
-        chatSendMap["uid"] = senderUid
-        chatSendMap["TYPE"] = "VOICE_MESSAGE"
+        chatSendMap[ChatActivity.UID_KEY] = senderUid
+        chatSendMap[ChatActivity.TYPE_KEY] = ChatActivity.VOICE_MESSAGE_TYPE
         chatSendMap["audio_url"] = audioUrl
         chatSendMap["audio_duration"] = duration
-        chatSendMap["message_state"] = "sended"
-        if (replyMessageID != "null") chatSendMap["replied_message_id"] = replyMessageID
-        chatSendMap["key"] = uniqueMessageKey
-        chatSendMap["push_date"] = ServerValue.TIMESTAMP
+        chatSendMap[ChatActivity.MESSAGE_STATE_KEY] = "sended"
+        if (replyMessageID != "null") chatSendMap[ChatActivity.REPLIED_MESSAGE_ID_KEY] = replyMessageID
+        chatSendMap[ChatActivity.KEY_KEY] = uniqueMessageKey
+        chatSendMap[ChatActivity.PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
         ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
