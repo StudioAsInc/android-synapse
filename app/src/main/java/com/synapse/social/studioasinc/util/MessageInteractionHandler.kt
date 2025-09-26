@@ -26,9 +26,9 @@ import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.BaseMessageViewHolder
 import com.synapse.social.studioasinc.ChatActivity
 import com.synapse.social.studioasinc.R
-import com.service.studioasinc.AI.Gemini
-import com.synapse.social.studioasinc.ContentDisplayBottomSheetDialogFragment
 import java.util.HashMap
+import kotlin.math.max
+import kotlin.math.min
 
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
@@ -42,7 +42,8 @@ class MessageInteractionHandler(
     private val mMessageReplyLayoutBodyRightUsername: TextView,
     private val mMessageReplyLayoutBodyRightMessage: TextView,
     private var firstUserName: String,
-    private var secondUserName: String
+    private var secondUserName: String,
+    private val aiFeatureHandler: AiFeatureHandler
 ) {
 
     fun setFirstUserName(name: String) {
@@ -135,7 +136,7 @@ class MessageInteractionHandler(
             val prompt = "Summarize the following text in a few sentences:\n\n$messageText"
             val vh = chatMessagesListRecycler.findViewHolderForAdapterPosition(position)
             if (vh is BaseMessageViewHolder) {
-                callGeminiForSummary(prompt, vh)
+                aiFeatureHandler.callGeminiForSummary(prompt, vh)
             }
             popupWindow.dismiss()
         }
@@ -144,7 +145,7 @@ class MessageInteractionHandler(
             val prompt = buildExplanationPrompt(position, messageText, messageData)
             val vh = chatMessagesListRecycler.findViewHolderForAdapterPosition(position)
             if (vh is BaseMessageViewHolder) {
-                callGeminiForExplanation(prompt, vh)
+                aiFeatureHandler.callGeminiForExplanation(prompt, vh)
             }
             popupWindow.dismiss()
         }
@@ -162,68 +163,6 @@ class MessageInteractionHandler(
         popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         popupWindow.isOutsideTouchable = true
         popupWindow.showAtLocation(view, Gravity.NO_GRAVITY, x, y)
-    }
-
-    private fun callGeminiForSummary(prompt: String, viewHolder: BaseMessageViewHolder) {
-        val params = AiFeatureParams(
-            prompt,
-            activity.getString(R.string.gemini_system_instruction_summary),
-            "gemini-2.5-flash-lite",
-            activity.getString(R.string.gemini_summary_title),
-            "GeminiSummary",
-            activity.getString(R.string.gemini_error_summary),
-            viewHolder,
-            null
-        )
-        callGeminiForAiFeature(params)
-    }
-
-    private fun callGeminiForExplanation(prompt: String, viewHolder: BaseMessageViewHolder) {
-        val params = AiFeatureParams(
-            prompt,
-            activity.getString(R.string.gemini_system_instruction_explanation),
-            "gemini-2.5-flash",
-            activity.getString(R.string.gemini_explanation_title),
-            "GeminiExplanation",
-            activity.getString(R.string.gemini_error_explanation),
-            viewHolder,
-            1000
-        )
-        callGeminiForAiFeature(params)
-    }
-
-    private fun callGeminiForAiFeature(params: AiFeatureParams) {
-        val builder = Gemini.Builder(activity)
-            .model(params.model)
-            .showThinking(true)
-            .systemInstruction(params.systemInstruction)
-
-        params.maxTokens?.let { builder.maxTokens(it) }
-
-        val gemini = builder.build()
-
-        gemini.sendPrompt(params.prompt, object : Gemini.GeminiCallback {
-            override fun onSuccess(response: String) {
-                activity.runOnUiThread {
-                    params.viewHolder.stopShimmer()
-                    val bottomSheet = ContentDisplayBottomSheetDialogFragment.newInstance(response, params.bottomSheetTitle)
-                    bottomSheet.show(activity.supportFragmentManager, bottomSheet.tag)
-                }
-            }
-
-            override fun onError(error: String) {
-                activity.runOnUiThread {
-                    params.viewHolder.stopShimmer()
-                    Toast.makeText(activity, "${params.errorMessage}$error", Toast.LENGTH_SHORT).show()
-                }
-            }
-
-            override fun onThinking() {
-                activity.runOnUiThread {
-                    params.viewHolder.startShimmer()
-                }
-            }
-        })
     }
 
     private fun buildExplanationPrompt(position: Int, messageText: String, messageData: HashMap<String, Any>): String {

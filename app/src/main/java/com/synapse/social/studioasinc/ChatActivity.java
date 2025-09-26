@@ -429,7 +429,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		btn_sendMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				_send_btn();
+                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, attactmentmap, mMessageReplyLayout);
 			}
 		});
 
@@ -600,6 +600,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 is_group
         );
 
+        AiFeatureHandler aiFeatureHandler = new AiFeatureHandler(this);
+
         messageInteractionHandler = new MessageInteractionHandler(
                 this,
                 auth,
@@ -612,7 +614,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 mMessageReplyLayoutBodyRightUsername,
                 mMessageReplyLayoutBodyRightMessage,
                 FirstUserName,
-                SecondUserName
+                SecondUserName,
+                aiFeatureHandler
         );
 
 		// Initialize with custom settings
@@ -1797,10 +1800,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
     private MessageSendingHandler messageSendingHandler;
-
-    public void _send_btn() {
-        messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, attactmentmap, mMessageReplyLayout);
-    }
 
 
 	public void _Block(final String _uid) {

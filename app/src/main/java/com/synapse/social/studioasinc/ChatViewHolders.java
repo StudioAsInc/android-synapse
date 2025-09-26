@@ -29,7 +29,7 @@ import com.google.android.material.button.MaterialButton;
 
 import com.synapse.social.studioasinc.animations.ShimmerFrameLayout;
 
-class BaseMessageViewHolder extends RecyclerView.ViewHolder {
+public class BaseMessageViewHolder extends RecyclerView.ViewHolder {
     LinearLayout body, message_layout, messageBG, my_message_info, mRepliedMessageLayoutLeftBar;
     CardView mProfileCard;
     ImageView mProfileImage, message_state;
