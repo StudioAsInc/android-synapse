@@ -60,7 +60,6 @@ import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.service.studioasinc.AI.Gemini;
-import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
 
@@ -256,8 +255,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
 		appSettings = getSharedPreferences("appSettings", Activity.MODE_PRIVATE);
 
-		// Attachment handling logic moved to AttachmentHandler
-
 		back.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -302,12 +299,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		});
 
-		// TextWatcher logic moved to ChatKeyboardHandler
-
-		// Voice message handler logic moved to VoiceMessageHandler
-
-		// Attachment handling logic moved to AttachmentHandler
-
 		_blocklist_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
@@ -343,7 +334,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	private void initializeLogic() {
 		is_group = getIntent().getBooleanExtra("isGroup", false);
-		// Load and apply chat background
 		SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
 		String backgroundUrl = themePrefs.getString("chat_background_url", null);
 		if (backgroundUrl != null && !backgroundUrl.isEmpty()) {
@@ -354,28 +344,22 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ReplyMessageID = "null";
 		path = "";
 		block_switch = 0;
-		// Set the Layout Manager
 		LinearLayoutManager ChatRecyclerLayoutManager = new LinearLayoutManager(this);
 		ChatRecyclerLayoutManager.setReverseLayout(false);
 		ChatRecyclerLayoutManager.setStackFromEnd(true);
 		ChatMessagesListRecycler.setLayoutManager(ChatRecyclerLayoutManager);
 
-		// CRITICAL FIX: Configure RecyclerView to allow long press events
 		ChatMessagesListRecycler.setLongClickable(true);
 		ChatMessagesListRecycler.setClickable(true);
 		
-		// Create, configure, and set the new ChatAdapter
 		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this);
 		chatAdapter.setHasStableIds(true);
 		ChatMessagesListRecycler.setAdapter(chatAdapter);
 		
-		// CRITICAL FIX: Ensure RecyclerView is properly configured for smooth updates
 		ChatMessagesListRecycler.setItemViewCacheSize(50);
 		ChatMessagesListRecycler.setDrawingCacheEnabled(true);
 		ChatMessagesListRecycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
 		
-		// CRITICAL FIX: Set up Firebase reference to listen to the correct chat node
-		// We need to listen to the chat node where messages are being sent/received
 		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
 		if (is_group) {
@@ -385,7 +369,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
 		}
 		
-		// Set up user reference
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
 
         messageSendingHandler = new MessageSendingHandler(
@@ -430,7 +413,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
         activityResultHandler = new ActivityResultHandler(this);
 
-		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
 		.responseType("text")
@@ -444,7 +426,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		.responseTextView(message_et)
 		.build();
 		_setupSwipeToReply();
-		// Attachment RecyclerView setup moved to AttachmentHandler
+
 		if (is_group) {
 			_getGroupReference();
 		} else {
@@ -460,7 +442,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
 
 		}
-		// Scroll listener logic moved to ChatScrollListener
 
         chatKeyboardHandler = new ChatKeyboardHandler(
                 this,
@@ -505,7 +486,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
         attachmentHandler.setup();
 
-		// Attach listeners after all references are safely initialized.
 		_attachChatListener();
 		_attachUserStatusListener();
 	}
@@ -1579,24 +1559,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	public void resetAttachmentState() {
-		Log.d("ChatActivity", "=== RESETTING ATTACHMENT STATE ===");
-		
-		if (attachmentLayoutListHolder != null) {
-			attachmentLayoutListHolder.setVisibility(View.GONE);
-		}
-		
-		if (rv_attacmentList.getAdapter() != null) {
-			int oldSize = attactmentmap.size();
-			if (oldSize > 0) {
-				attactmentmap.clear();
-				rv_attacmentList.getAdapter().notifyItemRangeRemoved(0, oldSize);
-			}
-		}
-		
-		path = "";
-		
-		Log.d("ChatActivity", "Attachment state reset complete - Map size: " + attactmentmap.size() + ", Path: '" + path + "'");
-		Log.d("ChatActivity", "=== ATTACHMENT STATE RESET COMPLETE ===");
+		attachmentHandler.resetAttachmentState();
+        path = "";
 	}
 
 

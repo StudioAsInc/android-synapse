@@ -34,7 +34,7 @@ class AttachmentHandler(
             }
 
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
-            val chatId = ChatMessageManager.INSTANCE.getChatId(
+            val chatId = ChatMessageManager.getChatId(
                 auth.currentUser!!.uid,
                 activity.intent.getStringExtra("uid")
             )
@@ -69,7 +69,16 @@ class AttachmentHandler(
         activity._startUploadForItem(position.toDouble())
     }
 
-    fun resetAttachmentState() {
-        activity.resetAttachmentState()
+    public fun resetAttachmentState() {
+        if (attachmentLayoutListHolder != null) {
+            attachmentLayoutListHolder.visibility = View.GONE
+        }
+        if (rv_attacmentList.adapter != null) {
+            val oldSize = attactmentmap.size
+            if (oldSize > 0) {
+                attactmentmap.clear()
+                rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
+            }
+        }
     }
 }
