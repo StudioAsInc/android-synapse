@@ -433,7 +433,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		btn_sendMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, attactmentmap, mMessageReplyLayout);
+                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
 			}
 		});
 
