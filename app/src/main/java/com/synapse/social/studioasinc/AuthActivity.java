@@ -32,12 +32,8 @@ import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
 import com.synapse.social.studioasinc.backend.AuthenticationService;
 import com.synapse.social.studioasinc.backend.DatabaseService;
-import com.synapse.social.studioasinc.backend.SignInService;
-import com.synapse.social.studioasinc.backend.SignUpService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.ISignInService;
-import com.synapse.social.studioasinc.backend.interfaces.ISignUpService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult;
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
@@ -86,8 +82,6 @@ public class AuthActivity extends AppCompatActivity {
     // Backend Services
     private IAuthenticationService authService;
     private IDatabaseService dbService;
-    private ISignInService signInService;
-    private ISignUpService signUpService;
 
     private final ICompletionListener<IAuthResult> authCreateUserListener = createAuthCreateUserListener();
 
@@ -161,8 +155,6 @@ public class AuthActivity extends AppCompatActivity {
         FirebaseApp.initializeApp(this);
         authService = new AuthenticationService();
         dbService = new DatabaseService();
-        signInService = new SignInService();
-        signUpService = new SignUpService();
     }
 
     private void setupListeners() {
@@ -278,7 +270,7 @@ public class AuthActivity extends AppCompatActivity {
         }
 
         if (isValid) {
-            signUpService.signUp(email, pass, authCreateUserListener);
+            authService.signUp(email, pass, authCreateUserListener);
         }
     }
 
@@ -319,7 +311,7 @@ public class AuthActivity extends AppCompatActivity {
         String email = email_et.getText().toString();
         String pass = pass_et.getText().toString();
 
-        signInService.signIn(email, pass, (result, error) -> {
+        authService.signIn(email, pass, (result, error) -> {
             if (result != null && result.isSuccessful()) {
                 IUser user = authService.getCurrentUser();
                 if (user != null) {
@@ -336,7 +328,7 @@ public class AuthActivity extends AppCompatActivity {
         updateOneSignalPlayerId(uid);
 
         String path = "skyline/users/" + uid + "/username";
-        dbService.getData(path, new IDataListener() {
+        dbService.getData(dbService.getReference(path), new IDataListener() {
             @Override
             public void onDataChange(IDataSnapshot dataSnapshot) {
                 String username = dataSnapshot.getValue(String.class);

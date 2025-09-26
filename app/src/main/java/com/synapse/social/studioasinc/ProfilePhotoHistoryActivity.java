@@ -63,10 +63,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.OnProgressListener;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -132,12 +128,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
 	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private OnCompleteListener<Uri> _storage_upload_success_listener;
-	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _storage_download_success_listener;
-	private OnSuccessListener _storage_delete_success_listener;
-	private OnProgressListener _storage_upload_progress_listener;
-	private OnProgressListener _storage_download_progress_listener;
-	private OnFailureListener _storage_failure_listener;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private AlertDialog.Builder Dialogs;
@@ -243,52 +233,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		};
 		maindb.addChildEventListener(_maindb_child_listener);
 
-		_storage_upload_progress_listener = new OnProgressListener<UploadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(UploadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-
-			}
-		};
-
-		_storage_download_progress_listener = new OnProgressListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(FileDownloadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-
-			}
-		};
-
-		_storage_upload_success_listener = new OnCompleteListener<Uri>() {
-			@Override
-			public void onComplete(Task<Uri> _param1) {
-				final String _downloadUrl = _param1.getResult().toString();
-
-			}
-		};
-
-		_storage_download_success_listener = new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onSuccess(FileDownloadTask.TaskSnapshot _param1) {
-				final long _totalByteCount = _param1.getTotalByteCount();
-
-			}
-		};
-
-		_storage_delete_success_listener = new OnSuccessListener() {
-			@Override
-			public void onSuccess(Object _param1) {
-
-			}
-		};
-
-		_storage_failure_listener = new OnFailureListener() {
-			@Override
-			public void onFailure(Exception _param1) {
-				final String _message = _param1.getMessage();
-
-			}
-		};
 
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
