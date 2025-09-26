@@ -248,6 +248,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private Intent i = new Intent();
 	private SharedPreferences appSettings;
 	private Gemini gemini;
+    private AiFeatureHandler aiFeatureHandler;
+
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
