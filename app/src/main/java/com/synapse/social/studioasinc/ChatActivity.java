@@ -379,56 +379,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		btn_sendMessage.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
-				if (!message_et.getText().toString().isEmpty()) {
-					String prompt = "Fix grammar, punctuation, and clarity without changing meaning. " +
-					"Preserve original formatting (line breaks, lists, markdown). " +
-					"Censor profanity by replacing letters with asterisks. " +
-					"Return ONLY the corrected RAW text.\n```"
-					.concat(message_et.getText().toString())
-					.concat("```");
-					callGemini(prompt, true);
-				} else {
-					if (ReplyMessageID != null && !ReplyMessageID.equals("null")) {
-						int repliedMessageIndex = -1;
-						for (int i = 0; i < ChatMessagesList.size(); i++) {
-							if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(ReplyMessageID)) {
-								repliedMessageIndex = i;
-								break;
-							}
-						}
-
-						if (repliedMessageIndex != -1) {
-							StringBuilder contextBuilder = new StringBuilder();
-							contextBuilder.append("You are helping 'Me' to write a reply in a conversation with '").append(SecondUserName).append("'.\n");
-							contextBuilder.append("Here is the recent chat history:\n---\n");
-
-							int startIndex = Math.max(0, repliedMessageIndex - 10);
-							int endIndex = Math.min(ChatMessagesList.size() - 1, repliedMessageIndex + 10);
-
-							for (int i = startIndex; i <= endIndex; i++) {
-								HashMap<String, Object> message = ChatMessagesList.get(i);
-								String sender = message.get(UID_KEY).toString().equals(auth.getCurrentUser().getUid()) ? "Me" : SecondUserName;
-								contextBuilder.append(sender).append(": ").append(message.get(MESSAGE_TEXT_KEY).toString()).append("\n");
-							}
-
-							contextBuilder.append("---\n");
-
-							String repliedMessageSender = mMessageReplyLayoutBodyRightUsername.getText().toString();
-							String repliedMessageText = mMessageReplyLayoutBodyRightMessage.getText().toString();
-
-							contextBuilder.append("I need to reply to this message from '").append(repliedMessageSender).append("': \"").append(repliedMessageText).append("\"\n");
-							contextBuilder.append("Based on the conversation history, please suggest a short, relevant reply from 'Me'.");
-
-							String prompt = contextBuilder.toString();
-							callGemini(prompt, false);
-						}
-					} else {
-						// Fallback for non-reply long-press
-						String prompt = "Suggest a generic, friendly greeting.";
-						callGemini(prompt, false);
-					}
-				}
-				return true;
+				return aiFeatureHandler.handleSendButtonLongClick(ReplyMessageID);
 			}
 		});
 
@@ -609,7 +560,16 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 is_group
         );
 
-        AiFeatureHandler aiFeatureHandler = new AiFeatureHandler(this);
+        aiFeatureHandler = new AiFeatureHandler(
+                this,
+                gemini,
+                message_et,
+                ChatMessagesList,
+                auth,
+                SecondUserName,
+                mMessageReplyLayoutBodyRightUsername,
+                mMessageReplyLayoutBodyRightMessage
+        );
 
         messageInteractionHandler = new MessageInteractionHandler(
                 this,
@@ -2336,34 +2296,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		Intent intent = new Intent(getApplicationContext(), activityClass);
 		intent.putExtra(UID_KEY, getIntent().getStringExtra(UID_KEY));
 		startActivity(intent);
-	}
-
-	private void callGemini(String prompt, boolean showThinking) {
-		gemini.setModel(GEMINI_MODEL);
-		gemini.setShowThinking(showThinking);
-		gemini.setSystemInstruction(
-		"You are a concise text assistant. Always return ONLY the transformed text (no explanation, no labels). " +
-		"Preserve original formatting. Censor profanity by replacing letters with asterisks (e.g., s***t). " +
-		"Keep the language and tone of the input unless asked to change it."
-		);
-		gemini.sendPrompt(prompt, new Gemini.GeminiCallback() {
-			@Override
-			public void onSuccess(String response) {
-				runOnUiThread(() -> message_et.setText(response));
-			}
-
-			@Override
-			public void onError(String error) {
-				runOnUiThread(() -> message_et.setText("Error: " + error));
-			}
-
-			@Override
-			public void onThinking() {
-				if (showThinking) {
-					runOnUiThread(() -> message_et.setText(gemini.getThinkingText()));
-				}
-			}
-		});
 	}
 
 	private void handleBlocklistUpdate(DataSnapshot dataSnapshot) {
