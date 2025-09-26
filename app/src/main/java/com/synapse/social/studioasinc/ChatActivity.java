@@ -2,49 +2,30 @@ package com.synapse.social.studioasinc;
 
 import android.Manifest;
 import android.app.Activity;
-import androidx.appcompat.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.graphics.Typeface;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Vibrator;
-import android.text.Editable;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.TextPaint;
 import android.text.TextUtils;
-import android.text.TextWatcher;
-import android.text.method.ScrollingMovementMethod;
-import android.text.style.ClickableSpan;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListPopupWindow;
-import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -64,57 +45,33 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import androidx.appcompat.widget.PopupMenu;
-import android.view.Menu;
-import android.view.MenuItem;
-import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.service.studioasinc.AI.Gemini;
-import com.synapse.social.studioasinc.FadeEditText;
-import com.synapse.social.studioasinc.FileUtil;
-import com.synapse.social.studioasinc.SketchwareUtil;
-import com.synapse.social.studioasinc.StorageUtil;
-import com.synapse.social.studioasinc.UploadFiles;
-import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
-import com.synapse.social.studioasinc.util.ChatMessageManager;
-import com.synapse.social.studioasinc.MessageSendingHandler;
-import com.synapse.social.studioasinc.MessageInteractionHandler;
-import com.synapse.social.studioasinc.AiFeatureHandler;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
-import static com.synapse.social.studioasinc.ChatConstants.*;
-
+import com.synapse.social.studioasinc.util.ChatMessageManager;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Timer;
 import java.util.TimerTask;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 
+import static com.synapse.social.studioasinc.ChatConstants.*;
 
 public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener {
 
@@ -123,7 +80,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
-	private MediaRecorder AudioMessageRecorder;
 	private HashMap<String, Object> ChatSendMap = new HashMap<>();
 	private HashMap<String, Object> ChatInboxSend = new HashMap<>();
 	private double recordMs = 0;
@@ -198,9 +154,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private ImageView close_attachments_btn;
 	private View divider_mic_camera;
 	private ImageView galleryBtn;
-
-	private String audioFilePath = "";
-	private boolean isRecording = false;
 
 	private Intent intent = new Intent();
 	private DatabaseReference main = _firebase.getReference(SKYLINE_REF);
@@ -426,7 +379,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		if (is_group) {
 			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
 		} else {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
+			String chatID = ChatMessageManager.getChatId(currentUserUid, otherUserUid);
 			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
 		}
 		
@@ -475,35 +428,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
         activityResultHandler = new ActivityResultHandler(this);
 
-        chatKeyboardHandler = new ChatKeyboardHandler(
-                this,
-                message_et,
-                toolContainer,
-                btn_sendMessage,
-                message_input_outlined_round,
-                message_input_overall_container,
-                auth
-        );
-        chatKeyboardHandler.setup();
-
-        voiceMessageHandler = new VoiceMessageHandler(this, this);
-        voiceMessageHandler.setupVoiceButton(btn_voice_message);
-
-        chatUIUpdater = new ChatUIUpdater(
-                this,
-                noChatText,
-                ChatMessagesListRecycler,
-                topProfileLayoutProfileImage,
-                topProfileLayoutUsername,
-                topProfileLayoutStatus,
-                topProfileLayoutGenderBadge,
-                topProfileLayoutVerifiedBadge,
-                mMessageReplyLayout,
-                mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage,
-                auth
-        );
-
 		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
@@ -536,23 +460,52 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 		// Scroll listener logic moved to ChatScrollListener
 
+        chatKeyboardHandler = new ChatKeyboardHandler(
+                this,
+                message_et,
+                toolContainer,
+                btn_sendMessage,
+                message_input_outlined_round,
+                message_input_overall_container,
+                auth
+        );
+        chatKeyboardHandler.setup();
+
+        voiceMessageHandler = new VoiceMessageHandler(this, this);
+        voiceMessageHandler.setupVoiceButton(btn_voice_message);
+
+        chatUIUpdater = new ChatUIUpdater(
+                this,
+                noChatText,
+                ChatMessagesListRecycler,
+                topProfileLayoutProfileImage,
+                topProfileLayoutUsername,
+                topProfileLayoutStatus,
+                topProfileLayoutGenderBadge,
+                topProfileLayoutVerifiedBadge,
+                mMessageReplyLayout,
+                mMessageReplyLayoutBodyRightUsername,
+                mMessageReplyLayoutBodyRightMessage,
+                auth
+        );
+
+        chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
+        ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
+
+        attachmentHandler = new AttachmentHandler(
+                this,
+                attachmentLayoutListHolder,
+                rv_attacmentList,
+                attactmentmap,
+                close_attachments_btn,
+                galleryBtn,
+                auth
+        );
+        attachmentHandler.setup();
+
 		// Attach listeners after all references are safely initialized.
 		_attachChatListener();
 		_attachUserStatusListener();
-
-		chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
-		ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
-
-		attachmentHandler = new AttachmentHandler(
-				this,
-				attachmentLayoutListHolder,
-				rv_attacmentList,
-				attactmentmap,
-				close_attachments_btn,
-				galleryBtn,
-				auth
-		);
-		attachmentHandler.setup();
 	}
 
 	@Override
@@ -566,7 +519,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void onPause() {
 		super.onPause();
 		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -576,9 +529,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		super.onStart();
 		blocklist.addChildEventListener(_blocklist_child_listener);
 
-		// Reattach chat listener to ensure we receive real-time messages
-		// This fixes the issue where messages sent while screen is off don't appear
-		// Check each listener independently to avoid one blocking the other
 		if (chatMessagesRef != null && ChatMessagesList != null && chatAdapter != null) {
 			_attachChatListener();
 		}
@@ -587,7 +537,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			_attachUserStatusListener();
 		}
 
-		// Set user status to indicate they are in this chat
 		if (auth.getCurrentUser() != null) {
 			String recipientUid = getIntent().getStringExtra("uid");
 			PresenceManager.setChattingWith(auth.getCurrentUser().getUid(), recipientUid);
@@ -601,7 +550,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -610,21 +559,18 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void onDestroy() {
 		super.onDestroy();
 		
-		// Clean up typing indicator
 		if (auth.getCurrentUser() != null) {
 			try {
-				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 				_firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 			} catch (Exception e) {
 				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
 			}
 		}
 		
-		// Clean up Firebase listeners
 		_detachChatListener();
 		_detachUserStatusListener();
 		
-		// Clean up blocklist listener
 		if (_blocklist_child_listener != null) {
 			try {
 				blocklist.removeEventListener(_blocklist_child_listener);
@@ -633,27 +579,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		}
 		
-		// Clean up timers
 		if (recordHandler != null && recordRunnable != null) {
 			recordHandler.removeCallbacks(recordRunnable);
 		}
 		
-		// Clean up media recorder
-		if (AudioMessageRecorder != null) {
-			try {
-				if (isRecording) {
-					AudioMessageRecorder.stop();
-				}
-				AudioMessageRecorder.release();
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error cleaning up media recorder in onDestroy: " + e.getMessage());
-			} finally {
-				AudioMessageRecorder = null;
-				isRecording = false;
-			}
-		}
-		
-		// Clear lists to prevent memory leaks
 		if (ChatMessagesList != null) {
 			ChatMessagesList.clear();
 		}
@@ -661,7 +590,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			attactmentmap.clear();
 		}
 		
-		// Clean up progress dialog
 		if (SynapseLoadingDialog != null && SynapseLoadingDialog.isShowing()) {
 			try {
 				SynapseLoadingDialog.dismiss();
@@ -671,12 +599,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			SynapseLoadingDialog = null;
 		}
 		
-		// Clean up adapters
 		if (chatAdapter != null) {
 			chatAdapter = null;
 		}
 		
-		// Clean up RecyclerViews
 		if (ChatMessagesListRecycler != null) {
 			ChatMessagesListRecycler.setAdapter(null);
 		}
@@ -684,7 +610,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			rv_attacmentList.setAdapter(null);
 		}
 		
-		// Cancel all active uploads and clear notifications
 		AsyncUploadService.cancelAllUploads(this);
 	}
 
@@ -860,9 +785,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getUserReference() {
-		// The user profile data is now fetched via a persistent listener attached in onStart,
-		// so the addListenerForSingleValueEvent call is no longer needed here.
-
 		DatabaseReference getFirstUserName = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
 		getFirstUserName.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
@@ -911,7 +833,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getChatMessagesRef() {
-		// Initial load
 		Query getChatsMessages = chatMessagesRef.limitToLast(CHAT_PAGE_SIZE);
 		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
@@ -919,7 +840,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				try {
 					if(dataSnapshot.exists()) {
 						chatUIUpdater.updateNoChatVisibility(false);
-						// We clear the list and keyset here before the initial load
 						ChatMessagesList.clear();
 						messageKeys.clear();
 						ArrayList<HashMap<String, Object>> initialMessages = new ArrayList<>();
@@ -939,14 +859,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						}
 
 						if (!initialMessages.isEmpty()) {
-							// CRITICAL FIX: Sort initial messages by timestamp to ensure proper order
 							initialMessages.sort((msg1, msg2) -> {
 								long time1 = _getMessageTimestamp(msg1);
 								long time2 = _getMessageTimestamp(msg2);
 								return Long.compare(time1, time2);
 							});
 							
-							// Safely get the oldest message key
 							HashMap<String, Object> oldestMessage = initialMessages.get(0);
 							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
 								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
@@ -977,13 +895,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void _attachChatListener() {
-		// Extra safety: ensure all required dependencies are available
 		if (chatMessagesRef == null || ChatMessagesList == null || chatAdapter == null) {
 			Log.w("ChatActivity", "Cannot attach chat listener - missing dependencies");
 			return;
 		}
 		
-		// Ensure idempotency: remove existing listener if it exists but isn't null
 		if (_chat_child_listener != null) {
 			try {
 				chatMessagesRef.removeEventListener(_chat_child_listener);
@@ -1009,7 +925,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 							Log.d("ChatActivity", "New message received from Firebase - Type: " + messageType + ", Key: " + messageKey);
 							
 							if (!messageKeys.contains(messageKey)) {
-								// This is a truly new message from Firebase. Add it.
 								messageKeys.add(messageKey);
 								_safeUpdateRecyclerView();
 								
@@ -1034,8 +949,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 									_fetchRepliedMessages(singleMessageList);
 								}
 							} else {
-								// The message was sent locally and is now confirmed by the server.
-								// We must move it to its correct chronological position.
 								int oldPosition = -1;
 								for (int i = 0; i < ChatMessagesList.size(); i++) {
 									if (messageKey.equals(ChatMessagesList.get(i).get(KEY_KEY))) {
@@ -1048,19 +961,16 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 									newMessage.remove("isLocalMessage");
 									int newPosition = _findCorrectInsertPosition(newMessage);
 
-									// If the position hasn't changed, just update the item.
 									if (oldPosition == newPosition) {
 										ChatMessagesList.set(oldPosition, newMessage);
 										if (chatAdapter != null) {
 											chatAdapter.notifyItemChanged(oldPosition);
 										}
 									} else {
-										// Otherwise, move the item to its new correct position.
 										ChatMessagesList.remove(oldPosition);
 										ChatMessagesList.add(newPosition, newMessage);
 										if (chatAdapter != null) {
 											chatAdapter.notifyItemMoved(oldPosition, newPosition);
-											// Also notify item changed for timestamp/bubble shape updates
 											chatAdapter.notifyItemChanged(newPosition);
 										}
 									}
@@ -1082,15 +992,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						if (updatedMessage != null && updatedMessage.get(KEY_KEY) != null) {
 							String key = updatedMessage.get(KEY_KEY).toString();
 							
-							// Find the exact position of the message to update
 							for (int i = 0; i < ChatMessagesList.size(); i++) {
 								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
 									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(key)) {
 									
-									// Update the message in the list
 									ChatMessagesList.set(i, updatedMessage);
 									
-									// Notify adapter of the specific item change
 									if (chatAdapter != null) {
 										chatAdapter.notifyItemChanged(i);
 									}
@@ -1110,26 +1017,21 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 								locallyDeletedMessages.remove(removedKey);
 								return;
 							}
-							// Find and remove the message by key (not by position)
 							for (int i = 0; i < ChatMessagesList.size(); i++) {
 								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
 									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(removedKey)) {
 									
-									// Remove the message from the list
 									ChatMessagesList.remove(i);
 									messageKeys.remove(removedKey);
 									
-									// Notify adapter of the removal
 									if (chatAdapter != null) {
 										chatAdapter.notifyItemRemoved(i);
 										
-										// Update the last item's timestamp if needed
 										if (!ChatMessagesList.isEmpty() && i < ChatMessagesList.size()) {
 											chatAdapter.notifyItemChanged(Math.min(i, ChatMessagesList.size() - 1));
 										}
 									}
 									
-									// Check if list is empty
 									if (ChatMessagesList.isEmpty()) {
 										_safeUpdateRecyclerView();
 									}
@@ -1148,35 +1050,24 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		chatMessagesRef.addChildEventListener(_chat_child_listener);
 	}
 
-	/**
-	 * CRITICAL FIX: Find the correct position to insert a new message based on timestamp
-	 * This ensures messages are always in chronological order
-	 */
 	private int _findCorrectInsertPosition(HashMap<String, Object> newMessage) {
 		if (ChatMessagesList.isEmpty()) {
 			return 0;
 		}
 		
-		// Get the timestamp of the new message
 		long newMessageTime = _getMessageTimestamp(newMessage);
 		
-		// Find the correct position by comparing timestamps
 		for (int i = 0; i < ChatMessagesList.size(); i++) {
 			long existingMessageTime = _getMessageTimestamp(ChatMessagesList.get(i));
 			
-			// If new message is older than or equal to existing message, insert before it
 			if (newMessageTime <= existingMessageTime) {
 				return i;
 			}
 		}
 		
-		// If new message is the newest, add to the end
 		return ChatMessagesList.size();
 	}
 	
-	/**
-	 * Helper method to extract timestamp from message
-	 */
 	private long _getMessageTimestamp(HashMap<String, Object> message) {
 		try {
 			Object pushDateObj = message.get("push_date");
@@ -1193,9 +1084,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		return System.currentTimeMillis();
 	}
 	
-	/**
-	 * CRITICAL FIX: Force refresh the RecyclerView when needed
-	 */
 	private void _forceRefreshRecyclerView() {
 		if (chatAdapter != null && ChatMessagesListRecycler != null) {
 			ChatMessagesListRecycler.post(() -> {
@@ -1204,9 +1092,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 	
-	/**
-	 * CRITICAL FIX: Safely update the RecyclerView with proper error handling
-	 */
 	private void _safeUpdateRecyclerView() {
 		try {
 			if (chatAdapter != null && ChatMessagesListRecycler != null) {
@@ -1223,9 +1108,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 	
-	/**
-	 * CRITICAL FIX: Reorder messages if they are out of chronological order
-	 */
 	private void _reorderMessagesIfNeeded() {
 		try {
 			if (ChatMessagesList.size() > 1) {
@@ -1258,18 +1140,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	/**
-	 * Scrolls the RecyclerView to the bottom smoothly
-	 */
 	private void scrollToBottom() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.smoothScrollToPosition(ChatMessagesList.size() - 1);
 		}
 	}
 
-	/**
-	 * Scrolls the RecyclerView to the bottom immediately
-	 */
 	private void scrollToBottomImmediate() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
@@ -1284,13 +1160,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void _attachUserStatusListener() {
-		// Extra safety: ensure userRef is available
 		if (userRef == null) {
 			Log.w("ChatActivity", "Cannot attach user status listener - userRef is null");
 			return;
 		}
 		
-		// Ensure idempotency: remove existing listener if it exists
 		if (_userStatusListener != null) {
 			try {
 				userRef.removeEventListener(_userStatusListener);
@@ -1315,7 +1189,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					} else {
 						SecondUserName = "Unknown User";
 					}
+                    SecondUserAvatar = dataSnapshot.child("avatar_url").getValue(String.class);
 
+					if (chatAdapter != null) {
+						chatAdapter.setSecondUserName(SecondUserName);
+						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
+					}
                     if (messageInteractionHandler != null) {
                         messageInteractionHandler.setSecondUserName(SecondUserName);
                     }
@@ -1337,9 +1216,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	// _AudioRecorderStart and _AudioRecorderStop logic moved to VoiceMessageHandler
-
-
 	public String _getDurationString(final long _durationInMillis) {
 		long seconds = _durationInMillis / 1000;
 		long minutes = seconds / 60;
@@ -1356,7 +1232,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getOldChatMessagesRef() {
-		// CRITICAL FIX: Robust pagination check - prevent loading when no more messages
 		if (isLoading || oldestMessageKey == null || oldestMessageKey.isEmpty() || oldestMessageKey.equals("null")) {
 			return;
 		}
@@ -1379,7 +1254,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 							try {
 								HashMap<String, Object> messageData = _data.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
 								if (messageData != null && messageData.containsKey(KEY_KEY) && messageData.get(KEY_KEY) != null) {
-									// CRITICAL FIX: Check if message already exists using the Set
 									if (!messageKeys.contains(messageData.get(KEY_KEY).toString())) {
 										newMessages.add(messageData);
 										messageKeys.add(messageData.get(KEY_KEY).toString());
@@ -1393,14 +1267,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						}
 
 						if (!newMessages.isEmpty()) {
-							// CRITICAL FIX: Sort messages by timestamp before adding
 							newMessages.sort((msg1, msg2) -> {
 								long time1 = _getMessageTimestamp(msg1);
 								long time2 = _getMessageTimestamp(msg2);
 								return Long.compare(time1, time2);
 							});
 							
-							// CRITICAL FIX: Update oldest message key for next pagination
 							HashMap<String, Object> oldestMessage = newMessages.get(0);
 							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
 								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
@@ -1412,21 +1284,17 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 								View firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition);
 								int topOffset = (firstVisibleView != null) ? firstVisibleView.getTop() : 0;
 
-								// CRITICAL FIX: Insert messages at the beginning in correct order
 								ChatMessagesList.addAll(0, newMessages);
 								if (chatAdapter != null) {
 									chatAdapter.notifyItemRangeInserted(0, newMessages.size());
 								}
 
-								// Restore scroll position to the item that was previously at the top
 								if (firstVisibleView != null) {
 									layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size(), topOffset);
 								}
 								_fetchRepliedMessages(newMessages);
 							}
 						} else {
-							// CRITICAL FIX: No more messages to load, set oldestMessageKey to null
-							// and ensure UI state is properly reset
 							oldestMessageKey = null;
 							_hideLoadMoreIndicator();
 							Log.d("ChatActivity", "No more messages to load, pagination complete");
@@ -1443,7 +1311,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			public void onCancelled(@NonNull DatabaseError databaseError) {
 				_hideLoadMoreIndicator();
 				isLoading = false;
-				// CRITICAL FIX: Don't reset oldestMessageKey on error to allow retry
 				Log.e("ChatActivity", "Error processing old messages: " + databaseError.getMessage());
 			}
 		});
@@ -1465,7 +1332,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 			final String otherUid = getIntent().getStringExtra(UID_KEY);
-			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
+			final String chatID = ChatMessageManager.getChatId(myUid, otherUid);
 			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
 
 			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
@@ -1512,11 +1379,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_view.setSelected(true);
 	}
 
-
-
-
-
-
     private MessageSendingHandler messageSendingHandler;
 
 
@@ -1542,15 +1404,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 		blocklistRef.child(myUid).child(uidToRemove).removeValue()
 		.addOnSuccessListener(aVoid -> {
-			// Create a new intent to restart the activity
 			Intent intent = getIntent();
-			// Optional: Add flags to clear the activity stack if needed
 			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
 			finish();
 			startActivity(intent);
 		})
 		.addOnFailureListener(e -> {
-			// Handle any errors here
 			Log.e("UnblockUser", "Failed to unblock user", e);
 		});
 	}
@@ -1572,8 +1431,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
 
-
-			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
 		} else {
 			if (SynapseLoadingDialog != null){
 				SynapseLoadingDialog.dismiss();
@@ -1606,16 +1463,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		if (auth.getCurrentUser() != null) {
 			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Sending an attachment");
 		}
-		// Use the correct parameter name '_position' as defined by your More Block
 		final int itemPosition = (int) _position;
 
-		// Safety check for position bounds
 		if (itemPosition < 0 || itemPosition >= attactmentmap.size()) {
 			Log.e("ChatActivity", "Invalid position for upload: " + itemPosition + ", size: " + attactmentmap.size());
 			return;
 		}
 
-		// Check for internet connection first.
 		if (!SketchwareUtil.isConnected(getApplicationContext())) {
 			try {
 				HashMap<String, Object> itemMap = attactmentmap.get(itemPosition);
@@ -1688,13 +1542,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						HashMap<String, Object> mapToUpdate = attactmentmap.get(itemPosition);
 						if (mapToUpdate != null && filePath.equals(mapToUpdate.get("localPath"))) {
 							mapToUpdate.put("uploadState", "success");
-							mapToUpdate.put("cloudinaryUrl", url); // Keep this key for consistency in _send_btn
+							mapToUpdate.put("cloudinaryUrl", url);
 							mapToUpdate.put("publicId", publicId);
 							if (rv_attacmentList.getAdapter() != null) {
 								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
 							}
 
-							// Set the URL to the 'path' variable instead of message_et
 							path = url;
 						}
 					}
@@ -1723,19 +1576,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		});
 	}
 
-
-	/**
-	 * CRITICAL FIX: Reset attachment state completely to prevent issues with subsequent messages
-	 */
 	public void resetAttachmentState() {
 		Log.d("ChatActivity", "=== RESETTING ATTACHMENT STATE ===");
 		
-		// Hide the attachment layout
 		if (attachmentLayoutListHolder != null) {
 			attachmentLayoutListHolder.setVisibility(View.GONE);
 		}
 		
-		// Update the attachment list adapter
 		if (rv_attacmentList.getAdapter() != null) {
 			int oldSize = attactmentmap.size();
 			if (oldSize > 0) {
@@ -1744,7 +1591,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		}
 		
-		// Reset the path variable
 		path = "";
 		
 		Log.d("ChatActivity", "Attachment state reset complete - Map size: " + attactmentmap.size() + ", Path: '" + path + "'");
@@ -1760,7 +1606,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			ChatMessagesList.add(0, loadingMap);
 			if (chatAdapter != null) {
 				chatAdapter.notifyItemInserted(0);
-				// Notify the next item as well, as its view might need to change (e.g. remove avatar)
 				if (ChatMessagesList.size() > 1) {
 					chatAdapter.notifyItemChanged(1);
 				}
@@ -1787,44 +1632,38 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _setupSwipeToReply() {
-		// This helper class handles drawing the swipe background and icon.
 		ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
 			@Override
 			public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
-				return false; // We don't want to handle drag & drop
+				return false;
 			}
 
 			@Override
 			public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
 				int position = viewHolder.getAdapterPosition();
 				if (position < 0 || position >= ChatMessagesList.size()) {
-					return; // Invalid position, do nothing.
+					return;
 				}
 
-				// Get the item and check if it's a real message with a key.
 				HashMap<String, Object> messageData = ChatMessagesList.get(position);
 				if (messageData == null || !messageData.containsKey("key") || messageData.get("key") == null) {
-					// This is not a real message (e.g., typing indicator, loading view).
-					// We just notify the adapter to redraw the item back to its original state.
 					chatAdapter.notifyItemChanged(position);
 					return;
 				}
 
-				// If it's a real message, proceed with the reply UI.
 				_showReplyUI(position);
-				// Smoothly reset the swiped item back into place
 				viewHolder.itemView.animate().translationX(0).setDuration(150).start();
 				chatAdapter.notifyItemChanged(position);
 			}
 
 			@Override
 			public boolean isItemViewSwipeEnabled() {
-				return true; // Enable swipe
+				return true;
 			}
 
 			@Override
 			public boolean isLongPressDragEnabled() {
-				return false; // Disable long press drag to allow our custom long press
+				return false;
 			}
 
 			@Override
@@ -1834,7 +1673,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
 					Drawable icon = ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_reply);
 					if (icon != null) {
-						// Neutral icon color, no background rectangle
 						icon.setColorFilter(0xFF616161, PorterDuff.Mode.SRC_IN);
 
 						int iconMargin = (itemView.getHeight() - icon.getIntrinsicHeight()) / 2;
@@ -1846,12 +1684,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						float progress = Math.min(1f, Math.abs(dX) / threshold);
 						icon.setAlpha((int) (Math.max(0.25f, progress) * 255));
 
-						if (dX > 0) { // Swiping to the right
+						if (dX > 0) {
 							int iconLeft = itemView.getLeft() + iconMargin;
 							int iconRight = itemView.getLeft() + iconMargin + icon.getIntrinsicWidth();
 							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
 							icon.draw(c);
-						} else { // Swiping to the left
+						} else {
 							int iconRight = itemView.getRight() - iconMargin;
 							int iconLeft = itemView.getRight() - iconMargin - icon.getIntrinsicWidth();
 							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
@@ -1859,7 +1697,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						}
 					}
 
-					// Damped translation for a smoother feel (no alpha fade)
 					float dampedDx = dX * 0.75f;
 					itemView.setTranslationX(dampedDx);
 					itemView.setAlpha(1.0f);
@@ -1870,12 +1707,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			@Override
 			public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
-				return 0.25f; // require ~25% swipe to trigger
+				return 0.25f;
 			}
 
 			@Override
 			public float getSwipeEscapeVelocity(float defaultValue) {
-				return defaultValue * 1.5f; // slightly higher to avoid accidental triggers
+				return defaultValue * 1.5f;
 			}
 
 			@Override
@@ -1898,25 +1735,21 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void scrollToMessage(final String _messageKey) {
 		final int position = _findMessagePosition(_messageKey);
 		if (position != -1) {
-			// CRITICAL FIX: Scroll to message with animation and highlight effect
 			ChatMessagesListRecycler.smoothScrollToPosition(position);
 			
-			// Add highlight animation after scroll completes
 			new Handler().postDelayed(() -> {
-				// CRITICAL FIX: Check if activity is still valid before highlighting
 				if (!isFinishing() && !isDestroyed() && ChatMessagesListRecycler != null) {
 					RecyclerView.ViewHolder viewHolder = ChatMessagesListRecycler.findViewHolderForAdapterPosition(position);
 					if (viewHolder != null) {
 						_highlightMessage(viewHolder.itemView);
 					}
 				}
-			}, 500); // Wait for scroll to complete
+			}, 500);
 		} else {
 			Toast.makeText(getApplicationContext(), "Original message not found", Toast.LENGTH_SHORT).show();
 		}
 	}
 	
-	// CRITICAL FIX: Helper method to find message position
 	private int _findMessagePosition(String messageKey) {
 		for (int i = 0; i < ChatMessagesList.size(); i++) {
 			if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(messageKey)) {
@@ -1949,21 +1782,16 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_getChatMessagesRef();
 	}
 
-	// CRITICAL FIX: Add highlight animation for replied messages with NPE protection
 	private void _highlightMessage(View messageView) {
-		// CRITICAL FIX: Check if activity is finishing to prevent crashes
 		if (isFinishing() || isDestroyed()) {
 			return;
 		}
 		
-		// Store original background safely
 		Drawable originalBackground = messageView.getBackground();
 		
-		// Create highlight animation
 		ValueAnimator highlightAnimator = ValueAnimator.ofFloat(0f, 1f);
 		highlightAnimator.setDuration(800);
 		highlightAnimator.addUpdateListener(animation -> {
-			// CRITICAL FIX: Check if activity is still valid during animation
 			if (isFinishing() || isDestroyed() || messageView == null) {
 				animation.cancel();
 				return;
@@ -1971,22 +1799,19 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			
 			float progress = (Float) animation.getAnimatedValue();
 			
-			// Create a pulsing highlight effect
 			int alpha = (int) (100 * (1 - progress));
-			int color = Color.argb(alpha, 107, 76, 255); // Purple with fading alpha
+			int color = Color.argb(alpha, 107, 76, 255);
 			
 			GradientDrawable highlightDrawable = new GradientDrawable();
 			highlightDrawable.setColor(color);
-			highlightDrawable.setCornerRadius(dpToPx(27)); // Match message bubble corner radius
+			highlightDrawable.setCornerRadius(dpToPx(27));
 			
-			// CRITICAL FIX: Use setBackgroundDrawable for better compatibility
 			messageView.setBackgroundDrawable(highlightDrawable);
 		});
 		
 		highlightAnimator.addListener(new AnimatorListenerAdapter() {
 			@Override
 			public void onAnimationEnd(Animator animation) {
-				// CRITICAL FIX: Safely restore original background
 				if (!isFinishing() && !isDestroyed() && messageView != null) {
 					messageView.setBackgroundDrawable(originalBackground);
 				}
@@ -1997,7 +1822,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 	
 	private int dpToPx(int dp) {
-		// CRITICAL FIX: Safe dp to px conversion with null checks
 		try {
 			if (getResources() != null && getResources().getDisplayMetrics() != null) {
 				return (int) (dp * getResources().getDisplayMetrics().density);
@@ -2005,7 +1829,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		} catch (Exception e) {
 			Log.e("ChatActivity", "Error converting dp to px: " + e.getMessage());
 		}
-		return dp; // Fallback to dp value
+		return dp;
 	}
 
 	private void startActivityWithUid(Class<?> activityClass) {
@@ -2062,7 +1886,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				.append("\n");
 	}
 
-
 	@Override
 	public void onReplySelected(String messageId) {
 		ReplyMessageID = messageId;
@@ -2081,6 +1904,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	@Override
+	public String getRecipientUid() {
+		return getIntent().getStringExtra("uid");
+	}
+
+	@Override
 	public void onVoiceMessageRecorded(String url, long duration) {
 		messageSendingHandler.sendVoiceMessage(url, duration, ReplyMessageID, mMessageReplyLayout);
 	}
@@ -2091,16 +1919,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	public String getOldestMessageKey() {
 		return oldestMessageKey;
-	}
-
-
-//	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }
-
-	// uploadAudioFile logic moved to VoiceMessageHandler
-
-	@Override
-	public String getRecipientUid() {
-		return getIntent().getStringExtra("uid");
 	}
 
 	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {

@@ -54,12 +54,10 @@ class ChatUIUpdater(
         topProfileLayoutStatus.text = status ?: "Offline"
 
         if (gender != null && gender == "male") {
-            topProfileLayoutGenderBadge.setImageResource(R.drawable.ic_male_white)
-            topProfileLayoutGenderBadge.visibility = View.VISIBLE
-        } else if (gender != null && gender == "female") {
-            topProfileLayoutGenderBadge.setImageResource(R.drawable.ic_female_white)
+            topProfileLayoutGenderBadge.setImageResource(R.drawable.ic_male)
             topProfileLayoutGenderBadge.visibility = View.VISIBLE
         } else {
+            // NOTE: ic_female.xml does not exist in the drawables. Hiding the badge for now.
             topProfileLayoutGenderBadge.visibility = View.GONE
         }
 
