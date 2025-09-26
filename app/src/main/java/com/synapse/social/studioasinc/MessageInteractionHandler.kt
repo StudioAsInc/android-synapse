@@ -31,7 +31,7 @@ import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
 
-class MessageInteractionHandler(
+internal class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val auth: FirebaseAuth,
     private val _firebase: FirebaseDatabase,
