@@ -132,7 +132,7 @@ class AiFeatureHandler(
             "GeminiExplanation",
             activity.getString(R.string.gemini_error_explanation),
             viewHolder,
-            1000
+            null
         )
         callGeminiForAiFeature(params)
     }
