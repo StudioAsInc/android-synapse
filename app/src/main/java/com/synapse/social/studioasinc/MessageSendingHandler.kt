@@ -119,7 +119,7 @@ class MessageSendingHandler(
         messageToSend[KEY_KEY] = uniqueMessageKey
         messageToSend[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
-        ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
+        ChatMessageManager.Companion.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
         val localMessage = HashMap(messageToSend)
         localMessage["isLocalMessage"] = true
@@ -132,7 +132,7 @@ class MessageSendingHandler(
 
         chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
 
-        ChatMessageManager.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
+        ChatMessageManager.Companion.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
 
         messageEt.setText("")
         mMessageReplyLayout.visibility = View.GONE
@@ -141,7 +141,7 @@ class MessageSendingHandler(
         }
 
         // --- Background Action: Fetch recipient's notification ID and send notification ---
-        val chatId = ChatMessageManager.getChatId(senderUid, recipientUid)
+        val chatId = ChatMessageManager.Companion.getChatId(senderUid, recipientUid)
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
 
@@ -179,7 +179,7 @@ class MessageSendingHandler(
         chatSendMap[KEY_KEY] = uniqueMessageKey
         chatSendMap[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
-        ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
+        ChatMessageManager.Companion.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
         chatSendMap["isLocalMessage"] = true
         messageKeys.add(uniqueMessageKey)
@@ -187,7 +187,7 @@ class MessageSendingHandler(
         chatAdapter.notifyItemInserted(chatMessagesList.size - 1)
         chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
 
-        ChatMessageManager.updateInbox("Voice Message", recipientUid, isGroup, null)
+        ChatMessageManager.Companion.updateInbox("Voice Message", recipientUid, isGroup, null)
 
         mMessageReplyLayout.visibility = View.GONE
     }
