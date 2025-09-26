@@ -33,6 +33,12 @@ private class FirebaseDbReferenceWrapper(val dbRef: DatabaseReference) : IDataba
     override fun limitToFirst(limit: Int): IQuery = queryWrapper.limitToFirst(limit)
     override fun startAt(value: String): IQuery = queryWrapper.startAt(value)
     override fun endAt(value: String): IQuery = queryWrapper.endAt(value)
+
+    // --- IDatabaseReference specific methods ---
+    override fun child(path: String): IDatabaseReference = FirebaseDbReferenceWrapper(dbRef.child(path))
+    override fun push(): IDatabaseReference = FirebaseDbReferenceWrapper(dbRef.push())
+    override val key: String?
+        get() = dbRef.key
 }
 
 /**

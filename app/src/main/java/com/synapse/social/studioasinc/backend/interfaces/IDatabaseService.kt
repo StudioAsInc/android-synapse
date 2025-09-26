@@ -13,7 +13,22 @@ interface IQuery {
 }
 
 /** A generic representation of a database reference, which is also a basic query. */
-interface IDatabaseReference : IQuery
+interface IDatabaseReference : IQuery {
+    /**
+     * Gets a reference to a child location.
+     */
+    fun child(path: String): IDatabaseReference
+
+    /**
+     * Creates a new child location with a unique key.
+     */
+    fun push(): IDatabaseReference
+
+    /**
+     * Gets the last part of the reference's path.
+     */
+    val key: String?
+}
 
 // --- Data Snapshot and Error Handling ---
 
@@ -36,7 +51,7 @@ interface IDataSnapshot {
     /**
      * Gets the key (last part of the path) of this snapshot.
      */
-    val key: String?
+    override val key: String?
 }
 
 interface IDatabaseError {
