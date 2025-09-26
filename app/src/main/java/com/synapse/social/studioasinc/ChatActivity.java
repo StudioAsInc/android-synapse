@@ -97,6 +97,10 @@ import com.synapse.social.studioasinc.UploadFiles;
 import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
+import com.synapse.social.studioasinc.MessageSendingHandler;
+import com.synapse.social.studioasinc.MessageInteractionHandler;
+import com.synapse.social.studioasinc.AiFeatureHandler;
+
 
 import java.io.File;
 import java.io.IOException;

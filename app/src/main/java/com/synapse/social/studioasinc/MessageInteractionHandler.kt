@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.util
+package com.synapse.social.studioasinc
 
 import android.app.AlertDialog
 import android.content.ClipData

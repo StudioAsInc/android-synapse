@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.util
+package com.synapse.social.studioasinc
 
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
