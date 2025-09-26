@@ -21,6 +21,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
+import com.synapse.social.studioasinc.ChatConstants.CHATS_REF
+import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
+import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
+import com.synapse.social.studioasinc.ChatConstants.UID_KEY
 
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
@@ -50,9 +54,9 @@ class MessageInteractionHandler(
 
         val messageData = chatMessagesList[position]
         val currentUser = auth.currentUser
-        val senderUid = messageData[ChatActivity.UID_KEY]?.toString()
+        val senderUid = messageData[UID_KEY]?.toString()
         val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
-        val messageText = messageData[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
+        val messageText = messageData[MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val popupView = inflater.inflate(R.layout.chat_msg_options_popup_cv_synapse, null)
@@ -72,7 +76,7 @@ class MessageInteractionHandler(
         summaryLayout.visibility = if (messageText.length > 200) View.VISIBLE else View.GONE
 
         replyLayout.setOnClickListener {
-            listener.onReplySelected(messageData[ChatActivity.KEY_KEY].toString())
+            listener.onReplySelected(messageData[KEY_KEY].toString())
             vbr.vibrate(48)
             popupWindow.dismiss()
         }
@@ -102,12 +106,12 @@ class MessageInteractionHandler(
                 val cu = auth.currentUser
                 val myUid = cu?.uid
                 if (myUid == null) return@setPositiveButton
-                val otherUid = activity.intent.getStringExtra(ChatActivity.UID_KEY)
-                val msgKey = messageData[ChatActivity.KEY_KEY]?.toString()
+                val otherUid = activity.intent.getStringExtra(UID_KEY)
+                val msgKey = messageData[KEY_KEY]?.toString()
                 if (otherUid == null || msgKey == null) return@setPositiveButton
                 val chatID = ChatMessageManager.getChatId(myUid, otherUid)
-                val msgRef = _firebase.getReference(ChatActivity.CHATS_REF).child(chatID).child(msgKey)
-                msgRef.child(ChatActivity.MESSAGE_TEXT_KEY).setValue(newText)
+                val msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey)
+                msgRef.child(MESSAGE_TEXT_KEY).setValue(newText)
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -186,12 +190,12 @@ class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message[ChatActivity.UID_KEY].toString() == auth.currentUser?.uid
+        val isMyMessage = message[UID_KEY].toString() == auth.currentUser?.uid
         return if (isMyMessage) firstUserName else secondUserName
     }
 
     private fun appendMessageToContext(contextBuilder: StringBuilder, message: HashMap<String, Any>) {
-        val messageText = message[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
+        val messageText = message[MESSAGE_TEXT_KEY]?.toString() ?: ""
         contextBuilder.append(getSenderNameForMessage(message))
             .append(": ")
             .append(messageText)
