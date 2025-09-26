@@ -97,7 +97,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if ("ATTACHMENT_MESSAGE".equals(type)) {
             ArrayList<HashMap<String, Object>> attachments = (ArrayList<HashMap<String, Object>>) _data.get(position).get("attachments");
             Log.d(TAG, "ATTACHMENT_MESSAGE detected with " + (attachments != null ? attachments.size() : 0) + " attachments");
-            
+
             if (attachments != null && attachments.size() == 1 && String.valueOf(attachments.get(0).getOrDefault("publicId", "")).contains("|video")) {
                 Log.d(TAG, "Video message detected, returning VIEW_TYPE_VIDEO");
                 return VIEW_TYPE_VIDEO;
@@ -246,7 +246,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             }
             holder.my_message_info.setVisibility(showMessageInfo ? View.VISIBLE : View.GONE);
-            
+
             if (showMessageInfo) {
                 Calendar push = Calendar.getInstance();
                 try {
@@ -261,7 +261,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (shouldShowTime) {
                     holder.date.setText(new SimpleDateFormat("hh:mm a").format(push.getTime()));
                 }
-                
+
                 holder.message_state.setVisibility(isMyMessage ? View.VISIBLE : View.GONE);
                 if (isMyMessage) {
                     String state = data.get("message_state") != null ? String.valueOf(data.get("message_state")) : "";
@@ -274,18 +274,18 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder.mProfileCard != null) {
             holder.mProfileCard.setVisibility(View.GONE);
         }
-        
+
         if (holder.mRepliedMessageLayout != null) {
             holder.mRepliedMessageLayout.setVisibility(View.GONE);
             Log.d(TAG, "Checking for reply data at position " + position + " - Reply layout holder exists");
-            
+
             if (data.containsKey("replied_message_id")) {
                 String repliedId = data.get("replied_message_id").toString();
                 Log.d(TAG, "Found replied_message_id: " + repliedId + " for position: " + position);
-                
+
                 if (repliedId != null && !repliedId.isEmpty() && !repliedId.equals("null")) {
                     Log.d(TAG, "Processing reply for message ID: " + repliedId);
-                    
+
                     if (repliedMessagesCache != null && repliedMessagesCache.containsKey(repliedId)) {
                         HashMap<String, Object> snapshot = repliedMessagesCache.get(repliedId);
                         if (snapshot != null && !snapshot.isEmpty()) {
@@ -428,14 +428,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
         int textSize = 16;
         try { textSize = (int) Double.parseDouble(appSettings.getString("ChatTextSize", "16")); } catch (Exception e) {}
-        
+
         if(holder.message_text != null) holder.message_text.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
         if (holder.mRepliedMessageLayoutUsername != null) holder.mRepliedMessageLayoutUsername.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize - 2);
         if (holder.mRepliedMessageLayoutMessage != null) holder.mRepliedMessageLayoutMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
 
         if (!isMyMessage && data.containsKey("message_state") && "sended".equals(String.valueOf(data.get("message_state")))) {
             String otherUserUid = listener.getRecipientUid();
-            
+
             String messageKey = String.valueOf(data.get("key"));
             FirebaseDatabase.getInstance().getReference("skyline/chats").child(otherUserUid).child(myUid).child(messageKey).child("message_state").setValue("seen");
             FirebaseDatabase.getInstance().getReference("skyline/chats").child(myUid).child(otherUserUid).child(messageKey).child("message_state").setValue("seen");
@@ -464,7 +464,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder.message_text != null) {
             holder.message_text.setOnLongClickListener(longClickListener);
         }
-        
+
         // Keep only one definitive long click handler to avoid conflicts
     }
 
@@ -480,7 +480,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         bindCommonMessageProperties(holder, position);
         HashMap<String, Object> data = _data.get(position);
         String msgText = data.getOrDefault("message_text", "").toString();
-        
+
         // Ensure message text is always visible and has content if available
         if (holder.message_text != null) {
             holder.message_text.setVisibility(msgText.isEmpty() ? View.GONE : View.VISIBLE);
@@ -491,13 +491,13 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
         ArrayList<HashMap<String, Object>> attachments = (ArrayList<HashMap<String, Object>>) data.get("attachments");
         Log.d(TAG, "Attachments found: " + (attachments != null ? attachments.size() : 0));
-        
+
         // CRITICAL FIX: Always ensure at least one layout is visible
         if (attachments == null || attachments.isEmpty()) {
             Log.w(TAG, "No attachments found, showing only message text");
             if (holder.mediaGridLayout != null) holder.mediaGridLayout.setVisibility(View.GONE);
             if (holder.mediaCarouselContainer != null) holder.mediaCarouselContainer.setVisibility(View.GONE);
-            
+
             // If no message text either, show a minimal placeholder to prevent thin line
             if (msgText.isEmpty() && holder.message_text != null) {
                 holder.message_text.setVisibility(View.VISIBLE);
@@ -512,15 +512,15 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // TEMPORARY FIX: Always use grid layout for now to ensure messages show properly
         // TODO: Re-enable carousel after debugging
         boolean useCarousel = false; // count >= 3;
-        
+
         Log.d(TAG, "useCarousel: " + useCarousel + ", count: " + count);
-        
+
         if (useCarousel && holder.mediaCarouselContainer != null && holder.mediaCarouselRecyclerView != null) {
             // Hide grid layout and show carousel
             Log.d(TAG, "Using carousel layout");
             if (holder.mediaGridLayout != null) holder.mediaGridLayout.setVisibility(View.GONE);
             holder.mediaCarouselContainer.setVisibility(View.VISIBLE);
-            
+
             try {
                 setupCarouselLayout(holder, attachments);
             } catch (Exception e) {
@@ -559,29 +559,29 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
         }
     }
-    
+
     private void setupCarouselLayout(MediaViewHolder holder, ArrayList<HashMap<String, Object>> attachments) {
         Log.d(TAG, "Setting up carousel layout for " + attachments.size() + " images");
-        
+
         // Setup horizontal RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(_context, LinearLayoutManager.HORIZONTAL, false);
         holder.mediaCarouselRecyclerView.setLayoutManager(layoutManager);
-        
+
         // Add item decoration for proper spacing
         if (holder.mediaCarouselRecyclerView.getItemDecorationCount() == 0) {
             holder.mediaCarouselRecyclerView.addItemDecoration(
                 CarouselItemDecoration.createWithStandardSpacing(holder.mediaCarouselRecyclerView));
         }
-        
+
         // Convert to typed attachments once and create adapter with click listener to open gallery
         ArrayList<Attachment> typedAttachments = AttachmentUtils.fromHashMapList(attachments);
         if (typedAttachments == null || typedAttachments.isEmpty()) {
             return;
         }
-        MessageImageCarouselAdapter adapter = new MessageImageCarouselAdapter(_context, typedAttachments, 
+        MessageImageCarouselAdapter adapter = new MessageImageCarouselAdapter(_context, typedAttachments,
             (position, attachmentList) -> openImageGalleryTyped(attachmentList, position));
         holder.mediaCarouselRecyclerView.setAdapter(adapter);
-        
+
         // Setup "View All" button - shows when there are more than 3 images
         // This provides easy access to the full-screen gallery experience
         if (holder.viewAllImagesButton != null) {
@@ -593,19 +593,19 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 holder.viewAllImagesButton.setVisibility(View.GONE);
             }
         }
-        
+
         // Set optimal card width for carousel
         ViewGroup.LayoutParams cardParams = holder.mediaContainerCard.getLayoutParams();
         cardParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
         holder.mediaContainerCard.setLayoutParams(cardParams);
     }
-    
+
     private void setupGridLayout(MediaViewHolder holder, ArrayList<HashMap<String, Object>> attachments) {
         Log.d(TAG, "Setting up grid layout for " + attachments.size() + " images");
-        
+
         GridLayout gridLayout = holder.mediaGridLayout;
         gridLayout.removeAllViews();
-        
+
         int count = attachments.size();
         int colCount = 2;
         int maxImages = 4;
@@ -617,7 +617,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         holder.mediaContainerCard.setLayoutParams(cardParams);
 
         gridLayout.setColumnCount(colCount);
-        
+
         // Ensure grid layout has minimum dimensions to prevent thin line
         ViewGroup.LayoutParams gridParams = gridLayout.getLayoutParams();
         if (gridParams == null) {
@@ -710,7 +710,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
         }
     }
-    
+
     private void openImageGallery(ArrayList<HashMap<String, Object>> attachments, int position) {
         if (_context != null) {
             ArrayList<Attachment> typed = AttachmentUtils.fromHashMapList(attachments);
@@ -777,7 +777,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (attachments != null && !attachments.isEmpty()) {
             String videoUrl = String.valueOf(attachments.get(0).get("url"));
             if(holder.videoThumbnail != null) Glide.with(_context).load(videoUrl).into(holder.videoThumbnail);
-            
+
             // --- CRITICAL FIX: Attach click listener to videoContainerCard ---
             if(holder.videoContainerCard != null) {
                 holder.videoContainerCard.setOnClickListener(v -> listener.openUrl(videoUrl));
@@ -804,7 +804,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         if(holder.mProfileCard != null) holder.mProfileCard.setVisibility(View.VISIBLE);
     }
-    
+
     private void bindLinkPreviewViewHolder(LinkPreviewViewHolder holder, int position) {
         bindCommonMessageProperties(holder, position);
         HashMap<String, Object> data = _data.get(position);
@@ -823,7 +823,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             LinkPreviewUtil.fetchPreview(urlToPreview, new LinkPreviewUtil.LinkPreviewCallback() {
                 @Override
                 public void onPreviewDataFetched(LinkPreviewUtil.LinkData linkData) {
-                    if (linkData != null) { 
+                    if (linkData != null) {
                         if (holder.linkPreviewTitle != null) holder.linkPreviewTitle.setText(linkData.title);
                         if (holder.linkPreviewDescription != null) holder.linkPreviewDescription.setText(linkData.description);
                         if (holder.linkPreviewDomain != null) holder.linkPreviewDomain.setText(linkData.domain);
@@ -846,7 +846,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
         }
     }
-    
+
     private void bindLoadingViewHolder(LoadingViewHolder holder, int position) {
         // The progress bar is displayed, and the loading is handled by the
         // scroll listener in ChatActivity. No action needed here.
@@ -938,7 +938,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String nextSender = (String) _data.get(position + 1).get("uid");
         return !currentSender.equals(nextSender);
     }
-    
+
     // CRITICAL FIX: Smart timestamp visibility logic
 	private String _getDurationString(final long _durationInMillis) {
 		long seconds = _durationInMillis / 1000;
@@ -958,14 +958,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (position == _data.size() - 1) {
             return true;
         }
-        
+
         // Show timestamp if there's a significant time gap (more than 5 minutes)
         if (position < _data.size() - 1) {
             try {
                 HashMap<String, Object> nextMessage = _data.get(position + 1);
                 long currentTime = _getMessageTimestamp(currentMessage);
                 long nextTime = _getMessageTimestamp(nextMessage);
-                
+
                 // Show timestamp if gap is more than 5 minutes (300000 ms)
                 return Math.abs(currentTime - nextTime) > 300000;
             } catch (Exception e) {
@@ -973,7 +973,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 return false;
             }
         }
-        
+
         return false;
     }
     

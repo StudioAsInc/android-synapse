@@ -26,7 +26,6 @@ import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.google.firebase.storage.FirebaseStorage
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import java.util.ArrayList
 import java.util.Calendar
@@ -324,7 +323,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                                 chatAdapter?.notifyDataSetChanged()
                             }
                         }
-                        
+
                         override fun onCancelled(error: DatabaseError) {
                             membersProcessed++
                             if (membersProcessed == totalMembers) {

@@ -85,10 +85,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import androidx.browser.customtabs.CustomTabsIntent;
 
 public class ProfileActivity extends AppCompatActivity {
-	
+
 	private Timer _timer = new Timer();
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 	private HashMap<String, Object> postLikeCountCache = new HashMap<>();
 	private String UserAvatarUri = "";
@@ -97,9 +97,9 @@ public class ProfileActivity extends AppCompatActivity {
 	private String object_clicked = "";
 	private String nickname = "";
 	private String AndroidDevelopersBlogURL = "";
-	
+
 	private ArrayList<HashMap<String, Object>> UserPostsList = new ArrayList<>();
-	
+
 	private LinearLayout ProfilePageBody;
 	private LinearLayout ProfilePageTopBar;
 	private LinearLayout ProfilePageMiddleLayout;
@@ -154,7 +154,7 @@ public class ProfileActivity extends AppCompatActivity {
 	private TextView ProfilePageNoInternetBodySubtitle;
 	private TextView ProfilePageNoInternetBodyRetry;
 	private ProgressBar ProfilePageLoadingBodyBar;
-	
+
 	private Intent intent = new Intent();
 	private FirebaseAuth auth;
 	private OnCompleteListener<AuthResult> _auth_create_user_listener;
@@ -195,7 +195,7 @@ class c {
 	private DatabaseReference maindb = _firebase.getReference("/");
 	private ChildEventListener _maindb_child_listener;
 	private TimerTask after;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
@@ -217,7 +217,7 @@ class c {
 	protected void onStop() {
 		super.onStop();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		ProfilePageBody = findViewById(R.id.ProfilePageBody);
 		ProfilePageTopBar = findViewById(R.id.ProfilePageTopBar);
@@ -276,14 +276,14 @@ class c {
 		auth = FirebaseAuth.getInstance();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		req = new RequestNetwork(this);
-		
+
 		ProfilePageTopBarBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		ProfilePageTopBarMenu.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -291,7 +291,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		ProfilePageTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
 			@Override
 			public void onTabSelected(TabLayout.Tab tab) {
@@ -305,27 +305,27 @@ class c {
 					ProfilePageTabUserPosts.setVisibility(View.VISIBLE);
 				}
 			}
-			
+
 			@Override
 			public void onTabUnselected(TabLayout.Tab tab) {
 				final int _position = tab.getPosition();
-				
+
 			}
-			
+
 			@Override
 			public void onTabReselected(TabLayout.Tab tab) {
 				final int _position = tab.getPosition();
-				
+
 			}
 		});
-		
+
 		ProfilePageSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
 			public void onRefresh() {
 				_loadRequest();
 			}
 		});
-		
+
 		ProfilePageTabUserInfoProfileImage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -334,7 +334,7 @@ class c {
 				}
 			}
 		});
-		
+
 		likeUserProfileButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -369,7 +369,7 @@ class c {
 				vbr.vibrate((long)(28));
 			}
 		});
-		
+
 		ProfilePageTabUserInfoFollowsDetails.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -378,7 +378,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		btnEditProfile.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -386,7 +386,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		btnFollow.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -420,7 +420,7 @@ class c {
 				});
 			}
 		});
-		
+
 		btnMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -431,7 +431,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		user_uid_layout_text.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
@@ -439,53 +439,53 @@ class c {
 				return true;
 			}
 		});
-		
+
 		ProfilePageNoInternetBodyRetry.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				_loadRequest();
 			}
 		});
-		
+
 		_main_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		main.addChildEventListener(_main_child_listener);
-		
+
 		_req_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -494,7 +494,7 @@ class c {
 				final HashMap<String, Object> _responseHeaders = _param3;
 				_getUserReference();
 			}
-			
+
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
@@ -504,142 +504,142 @@ class c {
 				ProfilePageLoadingBody.setVisibility(View.GONE);
 			}
 		};
-		
+
 		_maindb_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		maindb.addChildEventListener(_maindb_child_listener);
-		
+
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-				
+
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		ProfilePageTabLayout.addTab(ProfilePageTabLayout.newTab().setText(getResources().getString(R.string.profile_tab)));
 		ProfilePageTabLayout.addTab(ProfilePageTabLayout.newTab().setText(getResources().getString(R.string.posts_tab)));
 		ProfilePageTabLayout.setTabTextColors(0xFF9E9E9E, 0xFF445E91);
-		ProfilePageTabLayout.setTabRippleColor(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_pressed}}, 
-		
+		ProfilePageTabLayout.setTabRippleColor(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_pressed}},
+
 		new int[] {0xFFEEEEEE}));
 		ProfilePageTabLayout.setSelectedTabIndicatorColor(0xFF445E91);
 		ProfilePageTabUserPostsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -657,12 +657,12 @@ class c {
 		}
 		_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
 	}
-	
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -671,8 +671,8 @@ class c {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _getUserReference() {
 		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(getIntent().getStringExtra("uid"));
 		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -723,7 +723,7 @@ class c {
 						nickname = dataSnapshot.child("nickname").getValue(String.class);
 					}
 					if (dataSnapshot.child("biography").getValue(String.class).equals("null")) {
-						
+
 					} else {
 						ProfilePageTabUserInfoBioLayoutText.setText(dataSnapshot.child("biography").getValue(String.class));
 					}
@@ -785,8 +785,8 @@ if ( || ( || )) {
 		});
 		ProfilePageSwipeLayout.setRefreshing(false);
 	}
-	
-	
+
+
 	public void _getUserPostsReference() {
 		Query getUserPostsRef = FirebaseDatabase.getInstance().getReference("skyline/posts").orderByChild("uid").equalTo(getIntent().getStringExtra("uid"));
 		getUserPostsRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -819,8 +819,8 @@ if ( || ( || )) {
 			}
 		});
 	}
-	
-	
+
+
 	public void _setCount(final TextView _txt, final double _number) {
 		if (_number < 10000) {
 			_txt.setText(String.valueOf((long) _number));
@@ -843,10 +843,10 @@ if ( || ( || )) {
 			}
 			_txt.setText(decimalFormat.format(formattedNumber) + numberFormat);
 		}
-		
+
 	}
-	
-	
+
+
 	public void _setTime(final double _currentTime, final TextView _txt) {
 		Calendar c1 = Calendar.getInstance();
 		Calendar c2 = Calendar.getInstance();
@@ -886,8 +886,8 @@ if ( || ( || )) {
 			}
 		}
 	}
-	
-	
+
+
 	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
 		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
 		int right = (int)(_r * dpRatio);
@@ -911,10 +911,10 @@ if ( || ( || )) {
 			lp.setMargins(left, top, right, bottom);
 			_view.setLayoutParams(lp);
 		}
-		
+
 	}
-	
-	
+
+
 	public void _getUserCountReference() {
 		Query getFollowersCount = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid"));
 		getFollowersCount.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -1001,8 +1001,8 @@ if ( || ( || )) {
 			}
 		});
 	}
-	
-	
+
+
 	public String _getStyledNumber(final double _number) {
 		if (_number < 10000) {
 			return String.valueOf((long) _number);
@@ -1025,18 +1025,18 @@ if ( || ( || )) {
 			}
 			return decimalFormat.format(formattedNumber) + numberFormat;
 		}
-		
+
 	}
-	
-	
+
+
 	public void _loadRequest() {
 		ProfilePageSwipeLayout.setVisibility(View.GONE);
 		ProfilePageNoInternetBody.setVisibility(View.GONE);
 		ProfilePageLoadingBody.setVisibility(View.VISIBLE);
 		req.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _req_request_listener);
 	}
-	
-	
+
+
 	public double _convertXpToLevel(final double _xp_point) {
 		double convertedLevel = 0;
 		if ((_xp_point == 0) || (_xp_point < 1000)) {
@@ -1062,15 +1062,15 @@ if ( || ( || )) {
 		}
 		return convertedLevel;
 	}
-	
-	
+
+
 	public void _ScrollingText(final TextView _view) {
 		_view.setSingleLine(true);
 		_view.setEllipsize(TextUtils.TruncateAt.MARQUEE);
 		_view.setSelected(true);
 	}
-	
-	
+
+
 	public void _ProfileImagePreview(final String _uid) {
 		{
 			final AlertDialog mProfileImageViewDialog = new AlertDialog.Builder(ProfileActivity.this).create();
@@ -1082,7 +1082,7 @@ if ( || ( || )) {
 			final CardView avatarCard = mProfileImageViewDialogView.findViewById(R.id.avatarCard);
 			final ImageView avatar = mProfileImageViewDialogView.findViewById(R.id.avatar);
 			final TextView save_to_history = mProfileImageViewDialogView.findViewById(R.id.save_to_history);
-			
+
 			body.setVisibility(View.GONE);
 			_viewGraphics(save_to_history, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 			avatarCard.setBackgroundResource(R.drawable.shape_circular);
@@ -1141,8 +1141,8 @@ if ( || ( || )) {
 			mProfileImageViewDialog.show();
 		}
 	}
-	
-	
+
+
 	public void _setUserLastSeen(final double _currentTime, final TextView _txt) {
 		Calendar c1 = Calendar.getInstance();
 		Calendar c2 = Calendar.getInstance();
@@ -1202,8 +1202,8 @@ if ( || ( || )) {
 			}
 		}
 	}
-	
-	
+
+
 	public void _textview_mh(final TextView _txt, final String _value) {
 		_txt.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
 		//_txt.setTextIsSelectable(true);
@@ -1278,7 +1278,7 @@ if ( || ( || )) {
 					int start = sp.getSpanStart(this);
 					int end = sp.getSpanEnd(this);
 					object_clicked = sp.subSequence(start,end).toString();
-					handle = object_clicked.replace("@", ""); 
+					handle = object_clicked.replace("@", "");
 					DatabaseReference getReference = FirebaseDatabase.getInstance().getReference()
 					.child("synapse/username")
 					.child(handle);  // This points directly to "synapse/username/[handle]"
@@ -1291,7 +1291,7 @@ if ( || ( || )) {
 									intent.putExtra("uid", dataSnapshot.child("uid").getValue(String.class));
 									startActivity(intent);
 								} else {
-									
+
 								}
 							} else {
 							}
@@ -1314,8 +1314,8 @@ if ( || ( || )) {
 			ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 		}
 	}
-	
-	
+
+
 	public void _ImgRound(final ImageView _imageview, final double _value) {
 		android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable ();
 		gd.setColor(android.R.color.transparent);
@@ -1323,8 +1323,8 @@ if ( || ( || )) {
 		_imageview.setClipToOutline(true);
 		_imageview.setBackground(gd);
 	}
-	
-	
+
+
 	public void _OpenWebView(final String _URL) {
 		AndroidDevelopersBlogURL = _URL;
 		CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
@@ -1332,15 +1332,15 @@ if ( || ( || )) {
 		CustomTabsIntent customtabsintent = builder.build();
 		customtabsintent.launchUrl(this, Uri.parse(AndroidDevelopersBlogURL));
 	}
-	
+
 	public class ProfilePageTabUserPostsRecyclerViewAdapter extends RecyclerView.Adapter<ProfilePageTabUserPostsRecyclerViewAdapter.ViewHolder> {
-		
+
 		ArrayList<HashMap<String, Object>> _data;
-		
+
 		public ProfilePageTabUserPostsRecyclerViewAdapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-		
+
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -1349,11 +1349,11 @@ if ( || ( || )) {
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
 		}
-		
+
 		@Override
 		public void onBindViewHolder(ViewHolder _holder, final int _position) {
 			View _view = _holder.itemView;
-			
+
 			final LinearLayout body = _view.findViewById(R.id.body);
 			final LinearLayout top = _view.findViewById(R.id.top);
 			final LinearLayout linear1 = _view.findViewById(R.id.linear1);
@@ -1389,7 +1389,7 @@ if ( || ( || )) {
 			final TextView tv_2 = _view.findViewById(R.id.tv_2);
 			final ImageView shareButtonIc = _view.findViewById(R.id.shareButtonIc);
 			final TextView shareButtonCount = _view.findViewById(R.id.shareButtonCount);
-			
+
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_view.setLayoutParams(_lp);
 			body.setVisibility(View.GONE);
@@ -1398,7 +1398,7 @@ if ( || ( || )) {
 					//		postMessageTextMiddle.setText(_data.get((int)_position).get("post_text").toString());
 					//postMessageTextMiddle.setText(_data.get((int)_position).get("post_text").toString());
 					_textview_mh(postMessageTextMiddle, _data.get((int)_position).get("post_text").toString());
-					
+
 					postMessageTextMiddle.setVisibility(View.VISIBLE);
 				} else {
 					postMessageTextMiddle.setVisibility(View.GONE);
@@ -1413,7 +1413,7 @@ if ( || ( || )) {
 				postImage.setVisibility(View.GONE);
 				postMessageTextMiddle.setVisibility(View.GONE);
 			}
-			
+
 			if (_data.get((int)_position).get("post_hide_like_count").toString().equals("true")) {
 				likeButtonCount.setVisibility(View.GONE);
 			} else {
@@ -1491,7 +1491,7 @@ if ( || ( || )) {
 						}
 					}
 				}
-				
+
 			} else {
 				DatabaseReference getReference = FirebaseDatabase.getInstance().getReference().child("skyline/users").child(_data.get((int)_position).get("uid").toString());
 				getReference.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -1576,7 +1576,7 @@ if ( || ( || )) {
 
 					}
 				});
-				
+
 			}
 			DatabaseReference getLikeCheck = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
 			DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(_data.get((int)_position).get("key").toString());
@@ -1638,7 +1638,7 @@ if ( || ( || )) {
 
 				}
 			});
-			
+
 			likeButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
@@ -1733,12 +1733,12 @@ if ( || ( || )) {
 				}
 			});
 		}
-		
+
 		@Override
 		public int getItemCount() {
 			return _data.size();
 		}
-		
+
 		public class ViewHolder extends RecyclerView.ViewHolder {
 			public ViewHolder(View v) {
 				super(v);
