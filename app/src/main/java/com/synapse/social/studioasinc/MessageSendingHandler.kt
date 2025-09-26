@@ -17,6 +17,7 @@ import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.NotificationHelper
 import com.synapse.social.studioasinc.PresenceManager
+import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.ArrayList
 import java.util.HashMap
 

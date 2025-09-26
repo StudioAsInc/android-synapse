@@ -8,7 +8,7 @@ import com.synapse.social.studioasinc.ContentDisplayBottomSheetDialogFragment
 import com.synapse.social.studioasinc.R
 import java.util.HashMap
 
-class AiFeatureHandler(private val activity: AppCompatActivity) {
+internal class AiFeatureHandler(private val activity: AppCompatActivity) {
 
     private data class AiFeatureParams(
         val prompt: String,
@@ -21,7 +21,7 @@ class AiFeatureHandler(private val activity: AppCompatActivity) {
         val maxTokens: Int?
     )
 
-    fun callGeminiForSummary(prompt: String, viewHolder: BaseMessageViewHolder) {
+    internal fun callGeminiForSummary(prompt: String, viewHolder: BaseMessageViewHolder) {
         val params = AiFeatureParams(
             prompt,
             activity.getString(R.string.gemini_system_instruction_summary),
@@ -35,7 +35,7 @@ class AiFeatureHandler(private val activity: AppCompatActivity) {
         callGeminiForAiFeature(params)
     }
 
-    fun callGeminiForExplanation(prompt: String, viewHolder: BaseMessageViewHolder) {
+    internal fun callGeminiForExplanation(prompt: String, viewHolder: BaseMessageViewHolder) {
         val params = AiFeatureParams(
             prompt,
             activity.getString(R.string.gemini_system_instruction_explanation),

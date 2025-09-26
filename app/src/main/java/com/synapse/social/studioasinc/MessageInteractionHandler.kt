@@ -26,6 +26,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.BaseMessageViewHolder
 import com.synapse.social.studioasinc.ChatActivity
 import com.synapse.social.studioasinc.R
+import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
