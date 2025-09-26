@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.service.studioasinc.AI.Gemini
+import com.synapse.social.studioasinc.chat.ChatConstants
 import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
@@ -16,14 +17,10 @@ class AiFeatureHandler(
     private val message_et: EditText,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val auth: FirebaseAuth,
-    private var secondUserName: String,
+    internal var secondUserName: String,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
     private val mMessageReplyLayoutBodyRightMessage: TextView
 ) {
-
-    fun setSecondUserName(name: String) {
-        this.secondUserName = name
-    }
 
     private data class AiFeatureParams(
         val prompt: String,
@@ -46,7 +43,7 @@ class AiFeatureHandler(
             callGeminiForSend(prompt, true)
         } else {
             if (replyMessageID.isNotEmpty() && replyMessageID != "null") {
-                val repliedMessageIndex = chatMessagesList.indexOfFirst { it[ChatActivity.KEY_KEY]?.toString() == replyMessageID }
+                val repliedMessageIndex = chatMessagesList.indexOfFirst { it[ChatConstants.KEY_KEY]?.toString() == replyMessageID }
 
                 if (repliedMessageIndex != -1) {
                     val contextBuilder = StringBuilder()
@@ -58,8 +55,8 @@ class AiFeatureHandler(
 
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
-                        val sender = if (message[ChatActivity.UID_KEY].toString() == auth.currentUser?.uid) "Me" else secondUserName
-                        contextBuilder.append("$sender: ${message[ChatActivity.MESSAGE_TEXT_KEY]}\n")
+                        val sender = if (message[ChatConstants.UID_KEY].toString() == auth.currentUser?.uid) "Me" else secondUserName
+                        contextBuilder.append("$sender: ${message[ChatConstants.MESSAGE_TEXT_KEY]}\n")
                     }
 
                     contextBuilder.append("---\n")
@@ -82,7 +79,7 @@ class AiFeatureHandler(
     }
 
     private fun callGeminiForSend(prompt: String, showThinking: Boolean) {
-        gemini.setModel("gemini-2.5-flash-lite")
+        gemini.setModel(ChatConstants.GEMINI_MODEL_FLASH_LITE)
         gemini.setShowThinking(showThinking)
         gemini.setSystemInstruction(
             "You are a concise text assistant. Always return ONLY the transformed text (no explanation, no labels). " +
@@ -110,7 +107,7 @@ class AiFeatureHandler(
         val params = AiFeatureParams(
             prompt,
             activity.getString(R.string.gemini_system_instruction_summary),
-            "gemini-2.5-flash-lite",
+            ChatConstants.GEMINI_MODEL_FLASH_LITE,
             activity.getString(R.string.gemini_summary_title),
             "GeminiSummary",
             activity.getString(R.string.gemini_error_summary),
@@ -124,7 +121,7 @@ class AiFeatureHandler(
         val params = AiFeatureParams(
             prompt,
             activity.getString(R.string.gemini_system_instruction_explanation),
-            "gemini-2.5-flash",
+            ChatConstants.GEMINI_MODEL_FLASH,
             activity.getString(R.string.gemini_explanation_title),
             "GeminiExplanation",
             activity.getString(R.string.gemini_error_explanation),
