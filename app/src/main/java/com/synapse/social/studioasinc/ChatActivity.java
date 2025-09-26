@@ -1370,6 +1370,55 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
+	private void _attachUserStatusListener() {
+		// Extra safety: ensure userRef is available
+		if (userRef == null) {
+			Log.w("ChatActivity", "Cannot attach user status listener - userRef is null");
+			return;
+		}
+
+		// Ensure idempotency: remove existing listener if it exists
+		if (_userStatusListener != null) {
+			try {
+				userRef.removeEventListener(_userStatusListener);
+			} catch (Exception e) {
+				Log.w("ChatActivity", "Error removing existing user status listener: " + e.getMessage());
+			}
+			_userStatusListener = null;
+		}
+
+		_userStatusListener = new ValueEventListener() {
+			@Override
+			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
+					userProfileUpdater.updateAll(dataSnapshot);
+					SecondUserName = userProfileUpdater.getSecondUserName();
+					SecondUserAvatar = userProfileUpdater.getSecondUserAvatar();
+					if (chatAdapter != null) {
+						chatAdapter.setSecondUserName(SecondUserName);
+						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
+					}
+                    if (messageInteractionHandler != null) {
+                        messageInteractionHandler.setSecondUserName(SecondUserName);
+                    }
+				}
+			}
+
+			@Override
+			public void onCancelled(@NonNull DatabaseError databaseError) {
+				Log.e("ChatActivity", "Failed to get user reference: " + databaseError.getMessage());
+			}
+		};
+		userRef.addValueEventListener(_userStatusListener);
+	}
+
+	private void _detachUserStatusListener() {
+		if (_userStatusListener != null) {
+			userRef.removeEventListener(_userStatusListener);
+			_userStatusListener = null;
+		}
+	}
+
 	@Override
 	public void performHapticFeedback() {
 		if (vbr != null) {
@@ -1589,7 +1638,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	// ChatMessageManager.ChatMessageListener implementation
 	@Override
-	public void onInitialMessagesLoaded(@NonNull java.util.List<HashMap<String, Object>> messages, @Nullable String oldestMessageKey) {
+	public void onInitialMessagesLoaded(@NonNull java.util.List<? extends HashMap<String, Object>> messages, @Nullable String oldestMessageKey) {
 		ChatMessagesListRecycler.setVisibility(View.VISIBLE);
 		noChatText.setVisibility(View.GONE);
 		ChatMessagesList.clear();
@@ -1605,7 +1654,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	@Override
-	public void onOlderMessagesLoaded(@NonNull java.util.List<HashMap<String, Object>> messages, @Nullable String oldestMessageKey) {
+	public void onOlderMessagesLoaded(@NonNull java.util.List<? extends HashMap<String, Object>> messages, @Nullable String oldestMessageKey) {
 		_hideLoadMoreIndicator();
 		if (!messages.isEmpty()) {
 			final LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
