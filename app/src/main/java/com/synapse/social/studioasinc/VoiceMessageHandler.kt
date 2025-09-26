@@ -10,21 +10,23 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.io.IOException
 import java.util.Calendar
 
 class VoiceMessageHandler(
     private val activity: ChatActivity,
-    private val messageSendingHandler: MessageSendingHandler
+    private val listener: VoiceMessageListener
 ) {
     private var AudioMessageRecorder: MediaRecorder? = null
     private var audioFilePath: String? = null
     private var isRecording = false
     private var recordMs: Long = 0
     private val vbr = activity.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    private val auth = FirebaseAuth.getInstance()
+
+    interface VoiceMessageListener {
+        fun onVoiceMessageRecorded(url: String, duration: Long)
+    }
 
     fun setupVoiceButton(btn_voice_message: View) {
         btn_voice_message.setOnTouchListener { _, event ->
@@ -116,7 +118,7 @@ class VoiceMessageHandler(
                         }
 
                         override fun onSuccess(filePath: String, url: String, publicId: String) {
-                            messageSendingHandler.sendVoiceMessage(url, recordMs, "null", activity.mMessageReplyLayout)
+                            listener.onVoiceMessageRecorded(url, recordMs)
                         }
 
                         override fun onFailure(filePath: String, error: String) {

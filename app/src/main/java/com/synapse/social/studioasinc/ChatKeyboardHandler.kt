@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class ChatKeyboardHandler(
     private val activity: ChatActivity,
@@ -15,10 +16,10 @@ class ChatKeyboardHandler(
     private val toolContainer: View,
     private val btn_sendMessage: MaterialButton,
     private val messageInputOutlinedRound: LinearLayout,
-    private val messageInputOverallContainer: LinearLayout
+    private val messageInputOverallContainer: LinearLayout,
+    private val auth: FirebaseAuth
 ) {
 
-    private val auth = FirebaseAuth.getInstance()
     private val firebase = FirebaseDatabase.getInstance()
 
     fun setup() {
@@ -33,7 +34,7 @@ class ChatKeyboardHandler(
 
                 if (charSeq.isEmpty()) {
                     typingRef.removeValue()
-                    activity._TransitionManager(messageInputOverallContainer, 150)
+                    activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.VISIBLE
                     btn_sendMessage.visibility = View.GONE
                     messageInputOutlinedRound.orientation = LinearLayout.HORIZONTAL
@@ -43,7 +44,7 @@ class ChatKeyboardHandler(
                         "typingMessageStatus" to "true"
                     )
                     typingRef.updateChildren(typingSnd)
-                    activity._TransitionManager(messageInputOverallContainer, 150)
+                    activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.GONE
                     btn_sendMessage.visibility = View.VISIBLE
                     messageInputOutlinedRound.orientation = LinearLayout.VERTICAL
