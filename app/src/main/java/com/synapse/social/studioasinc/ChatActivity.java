@@ -387,6 +387,19 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 is_group
         );
 
+		gemini = new Gemini.Builder(this)
+		.model("gemini-1.5-flash")
+		.responseType("text")
+		.tone("friendly")
+		.size("medium")
+		.maxTokens(2000)
+		.temperature(0.8)
+		.showThinking(true)
+		.thinkingText("Analyzing your request...")
+		.systemInstruction("Your name is ChatBot, help users with their questions")
+		.responseTextView(message_et)
+		.build();
+
         aiFeatureHandler = new AiFeatureHandler(
                 this,
                 gemini,
@@ -412,19 +425,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
 
         activityResultHandler = new ActivityResultHandler(this);
-
-		gemini = new Gemini.Builder(this)
-		.model("gemini-1.5-flash")
-		.responseType("text")
-		.tone("friendly")
-		.size("medium")
-		.maxTokens(2000)
-		.temperature(0.8)
-		.showThinking(true)
-		.thinkingText("Analyzing your request...")
-		.systemInstruction("Your name is ChatBot, help users with their questions")
-		.responseTextView(message_et)
-		.build();
 		_setupSwipeToReply();
 
 		if (is_group) {
