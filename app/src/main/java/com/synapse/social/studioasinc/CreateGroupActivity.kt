@@ -10,13 +10,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.backend.AuthenticationService
-import com.synapse.social.studioasinc.backend.DatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
-import java.io.File
 
 class CreateGroupActivity : AppCompatActivity() {
 
@@ -27,15 +25,12 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private lateinit var dbService: IDatabaseService
-    private lateinit var authService: IAuthenticationService
+    private val database = FirebaseDatabase.getInstance().reference
+    private val storage = FirebaseStorage.getInstance().reference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_group)
-
-        dbService = DatabaseService()
-        authService = AuthenticationService()
 
         groupIcon = findViewById(R.id.group_icon)
         groupName = findViewById(R.id.group_name)
@@ -79,39 +74,29 @@ class CreateGroupActivity : AppCompatActivity() {
             return
         }
 
-        val currentUserUid = authService.getCurrentUser()?.getUid()
+        val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid
         if (currentUserUid == null) {
             Toast.makeText(this, "Authentication error", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val groupRef = dbService.getReference("groups")
-        val groupId = groupRef.push().key ?: ""
+        val groupId = database.child("groups").push().key ?: ""
         if (groupId.isEmpty()) {
             Toast.makeText(this, "Failed to create group", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (imageUri != null) {
-            val imagePath = StorageUtil.getPathFromUri(this, imageUri)
-            if (imagePath != null) {
-                val file = File(imagePath)
-                UploadFiles.uploadFile(imagePath, file.name, object : UploadFiles.UploadCallback {
-                    override fun onProgress(percent: Int) {
-                        // Handle progress if needed
+            val fileRef = storage.child("group_icons/$groupId.jpg")
+            fileRef.putFile(imageUri!!)
+                .addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        saveGroupInfo(groupId, name, uri.toString(), currentUserUid)
                     }
-
-                    override fun onSuccess(url: String, publicId: String) {
-                        saveGroupInfo(groupId, name, url, currentUserUid)
-                    }
-
-                    override fun onFailure(error: String) {
-                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon: $error", Toast.LENGTH_SHORT).show()
-                    }
-                })
-            } else {
-                Toast.makeText(this, "Failed to get image path", Toast.LENGTH_SHORT).show()
-            }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Failed to upload group icon", Toast.LENGTH_SHORT).show()
+                }
         } else {
             saveGroupInfo(groupId, name, "", currentUserUid)
         }
@@ -123,7 +108,7 @@ class CreateGroupActivity : AppCompatActivity() {
             members.add(adminUid)
         }
 
-        val group = hashMapOf<String, Any>(
+        val group = hashMapOf(
             "groupId" to groupId,
             "name" to name,
             "icon" to iconUrl,
@@ -131,20 +116,18 @@ class CreateGroupActivity : AppCompatActivity() {
             "members" to members.associateWith { true }
         )
 
-        val groupRef = dbService.getReference("groups").child(groupId)
-        dbService.setValue(groupRef, group, object : com.synapse.social.studioasinc.backend.interfaces.ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
-                if (error == null) {
-                    Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
-                    val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
-                    intent.putExtra("uid", groupId)
-                    startActivity(intent)
-                    finish()
-                } else {
-                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
-                }
+        database.child("groups").child(groupId).setValue(group)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Group created successfully", Toast.LENGTH_SHORT).show()
+                // Navigate to the group chat activity
+                val intent = Intent(this, ChatGroupActivity::class.java)
+                intent.putExtra("uid", groupId)
+                startActivity(intent)
+                finish()
             }
-        })
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to create group", Toast.LENGTH_SHORT).show()
+            }
     }
 
     override fun onSupportNavigateUp(): Boolean {

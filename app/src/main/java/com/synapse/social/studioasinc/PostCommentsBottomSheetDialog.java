@@ -79,10 +79,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PostCommentsBottomSheetDialog extends DialogFragment {
-
+		
 		private View rootView;
 		private Intent intent = new Intent();
-
+		
 		private LinearLayout body;
 		private LinearLayout top;
 		private LinearLayout body_in_layout;
@@ -116,11 +116,11 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 		private EditText comment_send_input;
 		private ImageView cancel_reply_mode;
 		private ImageView comment_send_button;
-
+		
 		private FirebaseAuth auth;
 		private DatabaseReference main = FirebaseDatabase.getInstance().getReference("skyline");
 		private Calendar cc = Calendar.getInstance();
-
+		
 		private String postKey = null;
 		private String pushKey = null;
 		private String postPublisherUID = null;
@@ -130,11 +130,11 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 		private int commentsLimit = 0;
 		private ArrayList<HashMap<String, Object>> commentsListMap = new ArrayList<>();
 		private Handler handler;
-
+		
 		private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 		private HashMap<String, Object> postCommentLikeCountCache = new HashMap<>();
 		private HashMap<String, Object> sendCommentMap = new HashMap<>();
-
+		
 		@NonNull
 		@Override
 		public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
@@ -143,7 +143,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				dialog.setContentView(rootView);
 				dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
 				handler = new Handler(Looper.getMainLooper());
-
+				
 				body = rootView.findViewById(R.id.body);
 				top = rootView.findViewById(R.id.top);
 				body_in_layout = rootView.findViewById(R.id.body_in_layout);
@@ -177,18 +177,18 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				comment_send_input = rootView.findViewById(R.id.comment_send_input);
 				cancel_reply_mode = rootView.findViewById(R.id.cancel_reply_mode);
 				comment_send_button = rootView.findViewById(R.id.comment_send_button);
-
+				
 				FirebaseApp.initializeApp(getContext());
 				auth = FirebaseAuth.getInstance();
-
+				
 				Display display = getActivity().getWindowManager().getDefaultDisplay();
 				int screenHeight = display.getHeight();
 				int desiredHeight = screenHeight * 3 / 4;
 				LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, desiredHeight);
-
+				
 				comments_list.setAdapter(new Comments_listAdapter(commentsListMap));
 				comments_list.setLayoutManager(new LinearLayoutManager(getActivity()));
-
+				
 				dialog.setOnShowListener(dialogInterface -> {
 						BottomSheetDialog d = (BottomSheetDialog) dialogInterface;
 						View bottomSheet = d.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -197,7 +197,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						BottomSheetBehavior.from(bottomSheet).setDraggable(true);
 						BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
 				});
-
+				
 				if (getArguments() != null) {
 						postKey = getArguments().getString("postKey");
 						postPublisherUID = getArguments().getString("postPublisherUID");
@@ -208,63 +208,63 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						getCommentsCount(postKey);
 						getCommentsRef(postKey, true);
 				}
-
+				
 				close.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								dialog.dismiss();
 						}
 				});
-
+				
 				emoji1.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😁"));
 						}
 				});
-
+				
 				emoji2.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("🥰"));
 						}
 				});
-
+				
 				emoji3.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😂"));
 						}
 				});
-
+				
 				emoji4.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😳"));
 						}
 				});
-
+				
 				emoji5.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😏"));
 						}
 				});
-
+				
 				emoji6.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😅"));
 						}
 				});
-
+				
 				emoji7.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("🥺"));
 						}
 				});
-
+				
 				cancel_reply_mode.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
@@ -274,10 +274,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								cancel_reply_mode.setVisibility(View.GONE);
 						}
 				});
-
+				
 				UserMention userMention = new UserMention(comment_send_input, comment_send_button);
 				comment_send_input.addTextChangedListener(userMention);
-
+				
 				comment_send_button.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
@@ -318,14 +318,14 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 						}
 				});
-
+				
 				getMyUserData(FirebaseAuth.getInstance().getCurrentUser().getUid());
 				body.setLayoutParams(params);
 				dialogStyles();
-
+				
 				return dialog;
 		}
-
+		
 		private void _sendCommentNotification(boolean isReply, String commentKey) {
 			FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 			if (currentUser == null) {
@@ -468,7 +468,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				}
 			});
 		}
-
+		
 		public void getMyUserData(String uid) {
 				DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
 				getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -486,16 +486,16 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						}
 						@Override
 						public void onCancelled(@NonNull DatabaseError databaseError) {
-
+								
 						}
 				});
 		}
-
+		
 		public void getCommentsCount(String key) {
 				{
 						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
 						Handler mMainHandler = new Handler(Looper.getMainLooper());
-
+						
 						mExecutorService.execute(new Runnable() {
 								@Override
 								public void run() {
@@ -511,25 +511,25 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 																}
 														});
 												}
-
+												
 												@Override
 												public void onCancelled(DatabaseError databaseError) {
-
+														
 												}
 										});
 								}
 						});
 				}
 		}
-
+		
 		public class Comments_listAdapter extends RecyclerView.Adapter<Comments_listAdapter.ViewHolder> {
-
+				
 				ArrayList<HashMap<String, Object>> _data;
-
+				
 				public Comments_listAdapter(ArrayList<HashMap<String, Object>> _arr) {
 						_data = _arr;
 				}
-
+				
 				@Override
 				public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 						LayoutInflater _inflater = getLayoutInflater();
@@ -538,7 +538,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_v.setLayoutParams(_lp);
 						return new ViewHolder(_v);
 				}
-
+				
 				@Override
 				public void onBindViewHolder(ViewHolder _holder, final int _position) {
 						View _view = _holder.itemView;
@@ -559,15 +559,15 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 
 						String uid = uidObj.toString();
 						String key = keyObj.toString();
-
+						
 						DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
 						DatabaseReference getCommentsRef = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey).child(key);
 						DatabaseReference checkCommentLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
 						DatabaseReference getCommentsLikeCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key);
 						DatabaseReference commentCheckPublisherLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(postPublisherUID);
-
+						
 						ArrayList<HashMap<String, Object>> commentsRepliesListMap = new ArrayList<>();
-
+						
 						final LinearLayout body = _view.findViewById(R.id.body);
 						final TextView show_more_comment = _view.findViewById(R.id.show_more_comment);
 						final ProgressBar progress = _view.findViewById(R.id.progress);
@@ -600,7 +600,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						final TextView show_other_replies_button = _view.findViewById(R.id.show_other_replies_button);
 						final RecyclerView other_replies_list = _view.findViewById(R.id.other_replies_list);
 						final TextView hide_replies_list_button = _view.findViewById(R.id.hide_replies_list_button);
-
+						
 						body.setVisibility(View.GONE);
 						likedByPublisherLayout.setVisibility(View.GONE);
 						replies_layout.setVisibility(View.GONE);
@@ -617,15 +617,15 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								comment_text.setText("");
 						}
-
+						
 
 						other_replies_list.setAdapter(new CommentsRepliesAdapter(commentsRepliesListMap));
 						other_replies_list.setLayoutManager(new LinearLayoutManager(getActivity()));
-
+						
 						{
 								ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
 								Handler mMainHandler = new Handler(Looper.getMainLooper());
-
+								
 								mExecutorService.execute(new Runnable() {
 										@Override
 										public void run() {
@@ -641,15 +641,15 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 																						other_replies_list.setVisibility(View.GONE);
 																						hide_replies_list_button.setVisibility(View.GONE);
 																						commentsRepliesListMap.clear();
-
+																						
 																						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-
+																						
 																						for (DataSnapshot _data : snapshot.getChildren()) {
 																								HashMap<String, Object> commentsGetMap = _data.getValue(_ind);
 																								commentsRepliesListMap.add(commentsGetMap);
 																								SketchwareUtil.sortListMap(commentsRepliesListMap, "like", true, false);
 																						}
-
+																						
 																						other_replies_list.getAdapter().notifyDataSetChanged();
 																				} else {
 																						replies_layout.setVisibility(View.GONE);
@@ -657,16 +657,16 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 																		}
 																});
 														}
-
+														
 														@Override
 														public void onCancelled(@NonNull DatabaseError error) {
-
+																
 														}
 												});
 										}
 								});
 						}
-
+						
 						show_other_replies_button.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -677,7 +677,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 						});
-
+						
 						hide_replies_list_button.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -688,7 +688,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 						});
-
+						
 						body.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -701,7 +701,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										cancel_reply_mode.setVisibility(View.VISIBLE);
 								}
 						});
-
+						
 						final String commentUid = uid;
 						final String commentKey = key;
 						body.setOnLongClickListener(new View.OnLongClickListener() {
@@ -766,7 +766,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								Glide.with(getContext()).load(Uri.parse(postPublisherAvatar)).into(likedByPublisherLayoutAvatar);
 						}
-
+						
 						if (UserInfoCacheMap.containsKey("uid-".concat(uid))) {
 								body.setVisibility(View.VISIBLE);
 								if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
@@ -883,16 +883,16 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 																}
 														}
 												} else {
-
+														
 												}
 										}
 										@Override
 										public void onCancelled(@NonNull DatabaseError databaseError) {
-
+												
 										}
 								});
 						}
-
+						
 						if (_data.size() > 19) {
 								if (_position == (_data.size() - 1)) {
 										show_more_comment.setVisibility(View.VISIBLE);
@@ -920,7 +920,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								show_more_comment.setVisibility(View.GONE);
 								progress.setVisibility(View.GONE);
 						}
-
+						
 						if (commentData.get("push_time") != null && !String.valueOf(commentData.get("push_time")).equals("null")) {
 								try {
 										push.setVisibility(View.VISIBLE);
@@ -981,7 +981,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								top_popular_2_fire_ic.setVisibility(View.GONE);
 								top_popular_3_fire_ic.setVisibility(View.GONE);
 						}
-
+						
 						commentCheckPublisherLike.addListenerForSingleValueEvent(new ValueEventListener() {
 								@Override
 								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -999,10 +999,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 								@Override
 								public void onCancelled(@NonNull DatabaseError databaseError) {
-
+										
 								}
 						});
-
+						
 						checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
 								@Override
 								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1014,10 +1014,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 								@Override
 								public void onCancelled(@NonNull DatabaseError databaseError) {
-
+										
 								}
 						});
-
+						
 						like_unlike.setOnClickListener(new View.OnClickListener(){
 								@Override
 								public void onClick(View _clickedView){
@@ -1098,21 +1098,21 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 												public void onCancelled(@NonNull DatabaseError databaseError) {
 												}
 										});
-
+										
 										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
 												@Override
 												public void onDataChange(DataSnapshot dataSnapshot) {
 														long count = dataSnapshot.getChildrenCount();
 														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
 												}
-
+												
 												@Override
 												public void onCancelled(DatabaseError databaseError) {
 												}
 										});
 								}
 						});
-
+						
 						profileCard.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -1122,27 +1122,27 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 						});
 				}
-
+				
 				@Override
 				public int getItemCount() {
 						return _data.size();
 				}
-
+				
 				public class ViewHolder extends RecyclerView.ViewHolder {
 						public ViewHolder(View _view) {
 								super(_view);
 						}
 				}
 		}
-
+		
 		public class CommentsRepliesAdapter extends RecyclerView.Adapter<CommentsRepliesAdapter.ViewHolder> {
-
+				
 				ArrayList<HashMap<String, Object>> _data;
-
+				
 				public CommentsRepliesAdapter(ArrayList<HashMap<String, Object>> _arr) {
 						_data = _arr;
 				}
-
+				
 				@Override
 				public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 						LayoutInflater _inflater = getLayoutInflater();
@@ -1151,7 +1151,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_v.setLayoutParams(_lp);
 						return new ViewHolder(_v);
 				}
-
+				
 				@Override
 				public void onBindViewHolder(ViewHolder _holder, final int _position) {
 						View _view = _holder.itemView;
@@ -1172,13 +1172,13 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						String uid = uidObj.toString();
 						String key = keyObj.toString();
 						String replyKey = replyKeyObj.toString();
-
+						
 						DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
 						DatabaseReference getCommentsRef = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies").child(postKey).child(replyKey).child(key);
 						DatabaseReference checkCommentLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
 						DatabaseReference getCommentsLikeCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key);
 						DatabaseReference commentCheckPublisherLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key).child(postPublisherUID);
-
+						
 						final LinearLayout body = _view.findViewById(R.id.body);
 						final TextView show_more_comment = _view.findViewById(R.id.show_more_comment);
 						final ProgressBar progress = _view.findViewById(R.id.progress);
@@ -1211,7 +1211,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						final TextView show_other_replies_button = _view.findViewById(R.id.show_other_replies_button);
 						final RecyclerView other_replies_list = _view.findViewById(R.id.other_replies_list);
 						final TextView hide_replies_list_button = _view.findViewById(R.id.hide_replies_list_button);
-
+						
 						body.setVisibility(View.GONE);
 						likedByPublisherLayout.setVisibility(View.GONE);
 						replies_layout.setVisibility(View.GONE);
@@ -1226,13 +1226,13 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								comment_text.setText("");
 						}
-
+						
 						if (postPublisherAvatar.equals("null")) {
 								likedByPublisherLayoutAvatar.setImageResource(R.drawable.avatar);
 						} else {
 								Glide.with(getContext()).load(Uri.parse(postPublisherAvatar)).into(likedByPublisherLayoutAvatar);
 						}
-
+						
 						if (UserInfoCacheMap.containsKey("uid-".concat(uid))) {
 								body.setVisibility(View.VISIBLE);
 								if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
@@ -1349,16 +1349,16 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 																}
 														}
 												} else {
-
+														
 												}
 										}
 										@Override
 										public void onCancelled(@NonNull DatabaseError databaseError) {
-
+												
 										}
 								});
 						}
-
+						
 						if (_data.size() > 19) {
 								if (_position == (_data.size() - 1)) {
 										show_more_comment.setVisibility(View.VISIBLE);
@@ -1386,7 +1386,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								show_more_comment.setVisibility(View.GONE);
 								progress.setVisibility(View.GONE);
 						}
-
+						
 						if (replyData.get("push_time") != null && !String.valueOf(replyData.get("push_time")).equals("null")) {
 								try {
 										push.setVisibility(View.VISIBLE);
@@ -1447,7 +1447,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								top_popular_2_fire_ic.setVisibility(View.GONE);
 								top_popular_3_fire_ic.setVisibility(View.GONE);
 						}
-
+						
 						commentCheckPublisherLike.addListenerForSingleValueEvent(new ValueEventListener() {
 								@Override
 								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1465,10 +1465,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 								@Override
 								public void onCancelled(@NonNull DatabaseError databaseError) {
-
+										
 								}
 						});
-
+						
 						checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
 								@Override
 								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1480,10 +1480,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 								@Override
 								public void onCancelled(@NonNull DatabaseError databaseError) {
-
+										
 								}
 						});
-
+						
 						like_unlike.setOnClickListener(new View.OnClickListener(){
 								@Override
 								public void onClick(View _clickedView){
@@ -1563,21 +1563,21 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 												public void onCancelled(@NonNull DatabaseError databaseError) {
 												}
 										});
-
+										
 										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
 												@Override
 												public void onDataChange(DataSnapshot dataSnapshot) {
 														long count = dataSnapshot.getChildrenCount();
 														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
 												}
-
+												
 												@Override
 												public void onCancelled(DatabaseError databaseError) {
 												}
 										});
 								}
 						});
-
+						
 						profileCard.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -1587,19 +1587,19 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 						});
 				}
-
+				
 				@Override
 				public int getItemCount() {
 						return _data.size();
 				}
-
+				
 				public class ViewHolder extends RecyclerView.ViewHolder {
 						public ViewHolder(View _view) {
 								super(_view);
 						}
 				}
 		}
-
+		
 		private void dialogStyles() {
 				{
 						android.graphics.drawable.GradientDrawable SkylineUi = new android.graphics.drawable.GradientDrawable();
@@ -1621,11 +1621,11 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				_viewGraphics(emoji6, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 				_viewGraphics(emoji7, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 		}
-
+		
 		public void _ImageColor(final ImageView _image, final int _color) {
 				_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 		}
-
+		
 		public void _showCommentLikedByPublisherPopup() {
 				View topToastNotificationView = getLayoutInflater().inflate(R.layout.synapse_comment_got_heart_cv, null);
 				final PopupWindow topToastNotificationPopup = new PopupWindow(topToastNotificationView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
@@ -1637,7 +1637,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				slideIn.setInterpolator(new LinearInterpolator());
 				slideIn.setDuration((int)(200));
 				slideIn.start();
-
+				
 				topToastNotificationView.postDelayed(() -> {
 						ObjectAnimator slideOut = new ObjectAnimator();
 						slideOut.setTarget(main);
@@ -1652,7 +1652,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				}, 2000);
 				topToastNotificationPopup.showAtLocation(rootView, Gravity.TOP, 0, 0);
 		}
-
+		
 		public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 				android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 				GG.setColor(_onFocus);
@@ -1661,7 +1661,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 				_view.setBackground(RE);
 		}
-
+		
 		public void _setCommentCount(final TextView _txt, final double _number) {
 				if (_number < 10000) {
 						_txt.setText("(" + String.valueOf((long) _number) + ")");
@@ -1685,7 +1685,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_txt.setText("(" + decimalFormat.format(formattedNumber) + numberFormat + ")");
 				}
 		}
-
+		
 		public void _setCommentLikeCount(final TextView _txt, final double _number) {
 				if (_number < 10000) {
 						_txt.setText(String.valueOf((long) _number));
@@ -1709,7 +1709,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_txt.setText(decimalFormat.format(formattedNumber) + numberFormat);
 				}
 		}
-
+		
 		public void _setTime(final double _currentTime, final TextView _txt) {
 				Calendar c1 = Calendar.getInstance();
 				Calendar c2 = Calendar.getInstance();
@@ -1749,7 +1749,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						}
 				}
 		}
-
+		
 		public void _progressBarColor(final ProgressBar _progressbar, final int _color) {
 				int color = _color;
 				_progressbar.setIndeterminateTintList(ColorStateList.valueOf(color));
