@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
-import com.synapse.social.studioasinc.R
 
 class ChatUIUpdater(
     private val activity: ChatActivity,
@@ -57,7 +56,6 @@ class ChatUIUpdater(
             topProfileLayoutGenderBadge.setImageResource(R.drawable.ic_male)
             topProfileLayoutGenderBadge.visibility = View.VISIBLE
         } else {
-            // NOTE: ic_female.xml does not exist in the drawables. Hiding the badge for now.
             topProfileLayoutGenderBadge.visibility = View.GONE
         }
 

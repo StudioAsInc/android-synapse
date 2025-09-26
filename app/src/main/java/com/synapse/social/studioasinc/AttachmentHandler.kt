@@ -9,8 +9,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
-import com.synapse.social.studioasinc.StorageUtil
-import com.synapse.social.studioasinc.PresenceManager
 
 class AttachmentHandler(
     private val activity: ChatActivity,
@@ -35,9 +33,8 @@ class AttachmentHandler(
                 rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
             }
 
-            // Clear the attachment draft from SharedPreferences
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
-            val chatId = ChatMessageManager.getChatId(
+            val chatId = ChatMessageManager.INSTANCE.getChatId(
                 auth.currentUser!!.uid,
                 activity.intent.getStringExtra("uid")
             )

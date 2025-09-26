@@ -20,6 +20,8 @@ import android.os.Handler;
 import android.os.Vibrator;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -379,7 +381,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		if (is_group) {
 			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
 		} else {
-			String chatID = ChatMessageManager.getChatId(currentUserUid, otherUserUid);
+			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
 			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
 		}
 		
@@ -519,7 +521,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public void onPause() {
 		super.onPause();
 		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -550,7 +552,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 		}
 	}
@@ -561,7 +563,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		
 		if (auth.getCurrentUser() != null) {
 			try {
-				String chatID = ChatMessageManager.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
+				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 				_firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
 			} catch (Exception e) {
 				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
@@ -1332,7 +1334,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 			final String otherUid = getIntent().getStringExtra(UID_KEY);
-			final String chatID = ChatMessageManager.getChatId(myUid, otherUid);
+			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
 			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
 
 			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
