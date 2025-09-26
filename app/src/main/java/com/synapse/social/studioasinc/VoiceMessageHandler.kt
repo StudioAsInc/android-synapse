@@ -95,7 +95,7 @@ class VoiceMessageHandler(
                     stop()
                     release()
                 } catch (e: RuntimeException) {
-                    // Handle exception
+                    android.util.Log.e("VoiceMessageHandler", "Error stopping media recorder", e)
                 }
             }
             AudioMessageRecorder = null
