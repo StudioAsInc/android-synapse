@@ -1,0 +1,277 @@
+package com.synapse.social.studioasinc.util
+
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.BaseMessageViewHolder
+import com.synapse.social.studioasinc.ChatActivity
+import com.synapse.social.studioasinc.R
+import com.service.studioasinc.AI.Gemini
+import com.synapse.social.studioasinc.ContentDisplayBottomSheetDialogFragment
+import java.util.HashMap
+
+class MessageInteractionHandler(
+    private val activity: AppCompatActivity,
+    private val auth: FirebaseAuth,
+    private val _firebase: FirebaseDatabase,
+    private val chatMessagesList: ArrayList<HashMap<String, Any>>,
+    private val chatMessagesListRecycler: RecyclerView,
+    private val vbr: android.os.Vibrator,
+    private var replyMessageID: String,
+    private val mMessageReplyLayout: LinearLayout,
+    private val mMessageReplyLayoutBodyRightUsername: TextView,
+    private val mMessageReplyLayoutBodyRightMessage: TextView,
+    private var firstUserName: String,
+    private var secondUserName: String
+) {
+
+    fun setFirstUserName(name: String) {
+        this.firstUserName = name
+    }
+
+    fun setSecondUserName(name: String) {
+        this.secondUserName = name
+    }
+
+    fun showMessageOverviewPopup(view: View, position: Int) {
+        if (position >= chatMessagesList.size || position < 0) {
+            return
+        }
+
+        val messageData = chatMessagesList[position]
+        val currentUser = auth.currentUser
+        val senderUid = messageData["uid"]?.toString()
+        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
+        val messageText = messageData["message_text"]?.toString() ?: ""
+
+        val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        val popupView = inflater.inflate(R.layout.chat_msg_options_popup_cv_synapse, null)
+
+        val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true)
+        popupWindow.elevation = 24f
+
+        val editLayout = popupView.findViewById<LinearLayout>(R.id.edit)
+        val replyLayout = popupView.findViewById<LinearLayout>(R.id.reply)
+        val summaryLayout = popupView.findViewById<LinearLayout>(R.id.summary)
+        val explainLayout = popupView.findViewById<LinearLayout>(R.id.explain)
+        val copyLayout = popupView.findViewById<LinearLayout>(R.id.copy)
+        val deleteLayout = popupView.findViewById<LinearLayout>(R.id.delete)
+
+        editLayout.visibility = if (isMine) View.VISIBLE else View.GONE
+        deleteLayout.visibility = if (isMine) View.VISIBLE else View.GONE
+        summaryLayout.visibility = if (messageText.length > 200) View.VISIBLE else View.GONE
+
+        replyLayout.setOnClickListener {
+            replyMessageID = messageData["key"].toString()
+            mMessageReplyLayoutBodyRightUsername.text = if (isMine) firstUserName else secondUserName
+            mMessageReplyLayoutBodyRightMessage.text = messageText
+            mMessageReplyLayout.visibility = View.VISIBLE
+            vbr.vibrate(48)
+            popupWindow.dismiss()
+        }
+
+        copyLayout.setOnClickListener {
+            val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("clipboard", messageText)
+            clipboard.setPrimaryClip(clip)
+            vbr.vibrate(48)
+            popupWindow.dismiss()
+        }
+
+        deleteLayout.setOnClickListener {
+            (activity as ChatActivity)._DeleteMessageDialog(messageData)
+            popupWindow.dismiss()
+        }
+
+        editLayout.setOnClickListener {
+            val dialog = MaterialAlertDialogBuilder(activity)
+            dialog.setTitle("Edit message")
+            val dialogView = LayoutInflater.from(activity).inflate(R.layout.single_et, null)
+            dialog.setView(dialogView)
+            val editText = dialogView.findViewById<EditText>(R.id.edittext1)
+            editText.setText(messageText)
+            dialog.setPositiveButton("Save") { _, _ ->
+                val newText = editText.text.toString()
+                val cu = auth.currentUser
+                val myUid = cu?.uid
+                if (myUid == null) return@setPositiveButton
+                val otherUid = activity.intent.getStringExtra("uid")
+                val msgKey = messageData["key"]?.toString()
+                if (otherUid == null || msgKey == null) return@setPositiveButton
+                val chatID = ChatMessageManager.getChatId(myUid, otherUid)
+                val msgRef = _firebase.getReference("chats").child(chatID).child(msgKey)
+                msgRef.child("message_text").setValue(newText)
+            }
+            dialog.setNegativeButton("Cancel", null)
+            val shownDialog = dialog.show()
+
+            editText.requestFocus()
+            shownDialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+
+            popupWindow.dismiss()
+        }
+
+        summaryLayout.setOnClickListener {
+            val prompt = "Summarize the following text in a few sentences:\n\n$messageText"
+            val vh = chatMessagesListRecycler.findViewHolderForAdapterPosition(position)
+            if (vh is BaseMessageViewHolder) {
+                callGeminiForSummary(prompt, vh)
+            }
+            popupWindow.dismiss()
+        }
+
+        explainLayout.setOnClickListener {
+            val prompt = buildExplanationPrompt(position, messageText, messageData)
+            val vh = chatMessagesListRecycler.findViewHolderForAdapterPosition(position)
+            if (vh is BaseMessageViewHolder) {
+                callGeminiForExplanation(prompt, vh)
+            }
+            popupWindow.dismiss()
+        }
+
+        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val popupWidth = popupView.measuredWidth
+        val popupHeight = popupView.measuredHeight
+
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+
+        val x = location[0] + view.width / 2 - popupWidth / 2
+        val y = location[1] - popupHeight - 8
+
+        popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        popupWindow.isOutsideTouchable = true
+        popupWindow.showAtLocation(view, Gravity.NO_GRAVITY, x, y)
+    }
+
+    private fun callGeminiForSummary(prompt: String, viewHolder: BaseMessageViewHolder) {
+        val params = AiFeatureParams(
+            prompt,
+            activity.getString(R.string.gemini_system_instruction_summary),
+            "gemini-2.5-flash-lite",
+            activity.getString(R.string.gemini_summary_title),
+            "GeminiSummary",
+            activity.getString(R.string.gemini_error_summary),
+            viewHolder,
+            null
+        )
+        callGeminiForAiFeature(params)
+    }
+
+    private fun callGeminiForExplanation(prompt: String, viewHolder: BaseMessageViewHolder) {
+        val params = AiFeatureParams(
+            prompt,
+            activity.getString(R.string.gemini_system_instruction_explanation),
+            "gemini-2.5-flash",
+            activity.getString(R.string.gemini_explanation_title),
+            "GeminiExplanation",
+            activity.getString(R.string.gemini_error_explanation),
+            viewHolder,
+            1000
+        )
+        callGeminiForAiFeature(params)
+    }
+
+    private fun callGeminiForAiFeature(params: AiFeatureParams) {
+        val builder = Gemini.Builder(activity)
+            .model(params.model)
+            .showThinking(true)
+            .systemInstruction(params.systemInstruction)
+
+        params.maxTokens?.let { builder.maxTokens(it) }
+
+        val gemini = builder.build()
+
+        gemini.sendPrompt(params.prompt, object : Gemini.GeminiCallback {
+            override fun onSuccess(response: String) {
+                activity.runOnUiThread {
+                    params.viewHolder.stopShimmer()
+                    val bottomSheet = ContentDisplayBottomSheetDialogFragment.newInstance(response, params.bottomSheetTitle)
+                    bottomSheet.show(activity.supportFragmentManager, bottomSheet.tag)
+                }
+            }
+
+            override fun onError(error: String) {
+                activity.runOnUiThread {
+                    params.viewHolder.stopShimmer()
+                    Toast.makeText(activity, "${params.errorMessage}$error", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onThinking() {
+                activity.runOnUiThread {
+                    params.viewHolder.startShimmer()
+                }
+            }
+        })
+    }
+
+    private fun buildExplanationPrompt(position: Int, messageText: String, messageData: HashMap<String, Any>): String {
+        val beforeContext = StringBuilder()
+        val startIndex = maxOf(0, position - 5)
+        for (i in startIndex until position) {
+            appendMessageToContext(beforeContext, chatMessagesList[i])
+        }
+
+        val afterContext = StringBuilder()
+        val endIndex = minOf(chatMessagesList.size, position + 2 + 1)
+        for (i in position + 1 until endIndex) {
+            appendMessageToContext(afterContext, chatMessagesList[i])
+        }
+
+        val senderOfMessageToExplain = getSenderNameForMessage(messageData)
+
+        return activity.getString(
+            R.string.gemini_explanation_prompt,
+            secondUserName,
+            beforeContext.toString(),
+            senderOfMessageToExplain,
+            messageText,
+            afterContext.toString()
+        )
+    }
+
+    private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
+        val isMyMessage = message["uid"].toString() == auth.currentUser?.uid
+        return if (isMyMessage) firstUserName else secondUserName
+    }
+
+    private fun appendMessageToContext(contextBuilder: StringBuilder, message: HashMap<String, Any>) {
+        val messageText = message["message_text"]?.toString() ?: ""
+        contextBuilder.append(getSenderNameForMessage(message))
+            .append(": ")
+            .append(messageText)
+            .append("\n")
+    }
+
+    private data class AiFeatureParams(
+        val prompt: String,
+        val systemInstruction: String,
+        val model: String,
+        val bottomSheetTitle: String,
+        val logTag: String,
+        val errorMessage: String,
+        val viewHolder: BaseMessageViewHolder,
+        val maxTokens: Int?
+    )
+}
