@@ -13,7 +13,8 @@ class UserService(private val dbService: IDatabaseService) {
     }
 
     fun getUserProfile(uid: String, listener: UserProfileListener) {
-        dbService.getData("skyline/users/$uid", object : IDataListener {
+        val userRef = dbService.getReference("skyline/users/$uid")
+        dbService.getData(userRef, object : IDataListener {
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 listener.onProfileReceived(dataSnapshot)
             }

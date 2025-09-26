@@ -1,15 +1,62 @@
 package com.synapse.social.studioasinc.backend.interfaces
 
-import com.google.android.gms.tasks.Task
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.Query
+// --- Generic Database Abstractions ---
+
+/** A generic representation of a database query. */
+interface IQuery {
+    fun orderByChild(path: String): IQuery
+    fun equalTo(value: String?): IQuery
+    fun limitToLast(limit: Int): IQuery
+    fun limitToFirst(limit: Int): IQuery
+    fun startAt(value: String): IQuery
+    fun endAt(value: String): IQuery
+}
+
+/** A generic representation of a database reference, which is also a basic query. */
+interface IDatabaseReference : IQuery {
+    /**
+     * Gets a reference to a child location.
+     */
+    fun child(path: String): IDatabaseReference
+
+    /**
+     * Creates a new child location with a unique key.
+     */
+    fun push(): IDatabaseReference
+
+    /**
+     * Gets the last part of the reference's path.
+     */
+    val key: String?
+}
+
+// --- Data Snapshot and Error Handling ---
 
 interface IDataSnapshot {
+    /**
+     * Attempts to convert the data in this snapshot to a specific type.
+     */
     fun <T> getValue(valueType: Class<T>): T?
+
+    /**
+     * Returns true if the snapshot contains any data.
+     */
+    fun exists(): Boolean
+
+    /**
+     * Gets the immediate children of this snapshot.
+     */
+    val children: Iterable<IDataSnapshot>
+
+    /**
+     * Gets the key (last part of the path) of this snapshot.
+     */
+    val key: String?
 }
 
 interface IDatabaseError {
-    fun getMessage(): String
+    val message: String
+    val code: Int
 }
 
 interface IDataListener {
@@ -18,15 +65,26 @@ interface IDataListener {
 }
 
 /**
- * This interface defines the contract for database operations.
- * NOTE: This interface currently leaks Firebase-specific types like `DatabaseReference`, `Query`, and `Task`.
- * This is a temporary measure to fix build errors and will be refactored in a future task
- * to create a pure abstraction layer.
+ * Defines the contract for database operations, fully abstracted from the underlying provider.
  */
 interface IDatabaseService {
-    fun getData(path: String, listener: IDataListener)
-    fun getReference(path: String): DatabaseReference
-    fun getData(query: Query, listener: IDataListener)
-    fun setValue(ref: DatabaseReference, value: Any?): Task<Void>
-    fun updateChildren(ref: DatabaseReference, updates: Map<String, Any?>): Task<Void>
+    /**
+     * Gets a reference to a specific location in the database.
+     */
+    fun getReference(path: String): IDatabaseReference
+
+    /**
+     * Fetches data once from the database based on a query.
+     */
+    fun getData(query: IQuery, listener: IDataListener)
+
+    /**
+     * Writes data to a database reference.
+     */
+    fun setValue(ref: IDatabaseReference, value: Any?, listener: ICompletionListener<Unit>)
+
+    /**
+     * Updates specific children of a database reference without overwriting other data.
+     */
+    fun updateChildren(ref: IDatabaseReference, updates: Map<String, Any?>, listener: ICompletionListener<Unit>)
 }

@@ -1,8 +1,9 @@
 package com.synapse.social.studioasinc.backend
 
-import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.backend.interfaces.IAuthResult
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IUser
 
 class AuthenticationService : IAuthenticationService {
@@ -17,11 +18,49 @@ class AuthenticationService : IAuthenticationService {
         }
     }
 
-    fun signOut() {
+    override fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
+        auth.signInWithEmailAndPassword(email, pass).addOnCompleteListener { task ->
+            val authResult = object : IAuthResult {
+                override fun isSuccessful(): Boolean = task.isSuccessful
+                override fun getUser(): IUser? {
+                    return task.result?.user?.let { fbUser ->
+                        object : IUser {
+                            override fun getUid(): String = fbUser.uid
+                        }
+                    }
+                }
+            }
+            listener.onComplete(authResult, task.exception)
+        }
+    }
+
+    override fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
+        auth.createUserWithEmailAndPassword(email, pass).addOnCompleteListener { task ->
+            val authResult = object : IAuthResult {
+                override fun isSuccessful(): Boolean = task.isSuccessful
+                override fun getUser(): IUser? {
+                    return task.result?.user?.let { fbUser ->
+                        object : IUser {
+                            override fun getUid(): String = fbUser.uid
+                        }
+                    }
+                }
+            }
+            listener.onComplete(authResult, task.exception)
+        }
+    }
+
+    override fun signOut() {
         auth.signOut()
     }
 
-    fun deleteUser(listener: OnCompleteListener<Void>) {
-        auth.currentUser?.delete()?.addOnCompleteListener(listener)
+    override fun deleteUser(listener: ICompletionListener<Unit>) {
+        auth.currentUser?.delete()?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                listener.onComplete(Unit, null)
+            } else {
+                listener.onComplete(null, task.exception)
+            }
+        }
     }
 }

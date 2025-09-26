@@ -132,17 +132,19 @@ class CreateGroupActivity : AppCompatActivity() {
         )
 
         val groupRef = dbService.getReference("groups").child(groupId)
-        dbService.setValue(groupRef, group)
-            .addOnSuccessListener {
-                Toast.makeText(this, "Group created successfully", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, ChatGroupActivity::class.java)
-                intent.putExtra("uid", groupId)
-                startActivity(intent)
-                finish()
+        dbService.setValue(groupRef, group, object : com.synapse.social.studioasinc.backend.interfaces.ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                if (error == null) {
+                    Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
+                    intent.putExtra("uid", groupId)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to create group", Toast.LENGTH_SHORT).show()
-            }
+        })
     }
 
     override fun onSupportNavigateUp(): Boolean {
