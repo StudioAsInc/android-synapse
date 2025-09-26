@@ -34,13 +34,13 @@ class AttachmentHandler(
             }
 
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
-            val chatId = ChatMessageManager.getChatId(
-                auth.currentUser!!.uid,
-                activity.intent.getStringExtra("uid")
-            )
-            drafts.edit().remove(chatId + "_attachments").apply()
-            if (auth.currentUser != null) {
-                PresenceManager.setActivity(auth.currentUser!!.uid, "Idle")
+            auth.currentUser?.let { user ->
+                val chatId = ChatMessageManager.getChatId(
+                    user.uid,
+                    activity.intent.getStringExtra("uid")
+                )
+                drafts.edit().remove(chatId + "_attachments").apply()
+                PresenceManager.setActivity(user.uid, "Idle")
             }
         }
 
