@@ -500,7 +500,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 topProfileLayoutVerifiedBadge,
                 mMessageReplyLayout,
                 mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage
+                mMessageReplyLayoutBodyRightMessage,
+                auth
         );
 
 		// Initialize with custom settings
@@ -548,7 +549,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				rv_attacmentList,
 				attactmentmap,
 				close_attachments_btn,
-				galleryBtn
+				galleryBtn,
+				auth
 		);
 		attachmentHandler.setup();
 	}

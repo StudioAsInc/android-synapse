@@ -26,7 +26,7 @@ class ChatKeyboardHandler(
         messageEt.addTextChangedListener(object : TextWatcher {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val charSeq = s.toString()
-                val chatID = ChatMessageManager.INSTANCE.getChatId(
+                val chatID = ChatMessageManager.getChatId(
                     auth.currentUser!!.uid,
                     activity.intent.getStringExtra(ChatConstants.UID_KEY)
                 )

@@ -6,7 +6,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
+import com.synapse.social.studioasinc.R
 
 class ChatUIUpdater(
     private val activity: ChatActivity,
@@ -19,7 +21,8 @@ class ChatUIUpdater(
     private val topProfileLayoutVerifiedBadge: ImageView,
     private val mMessageReplyLayout: LinearLayout,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
-    private val mMessageReplyLayoutBodyRightMessage: TextView
+    private val mMessageReplyLayoutBodyRightMessage: TextView,
+    private val auth: FirebaseAuth
 ) {
 
     fun updateNoChatVisibility(isEmpty: Boolean) {
@@ -70,7 +73,7 @@ class ChatUIUpdater(
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        val isMyMessage = activity.auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
+        val isMyMessage = auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName
         mMessageReplyLayoutBodyRightMessage.text = messageData[ChatConstants.MESSAGE_TEXT_KEY].toString()
         mMessageReplyLayout.visibility = View.VISIBLE
