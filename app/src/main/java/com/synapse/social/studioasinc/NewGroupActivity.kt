@@ -129,8 +129,8 @@ class UsersAdapter(
             users.toMutableList()
         } else {
             users.filter {
-                (it.username?.contains(query, ignoreCase = true) ?: false) ||
-                (it.nickname?.contains(query, ignoreCase = true) ?: false)
+                it.username.contains(query, ignoreCase = true) ||
+                it.nickname.contains(query, ignoreCase = true)
             }.toMutableList()
         }
         notifyDataSetChanged()

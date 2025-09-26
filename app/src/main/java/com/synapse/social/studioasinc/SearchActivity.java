@@ -78,14 +78,14 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.Map;
 
 public class SearchActivity extends AppCompatActivity {
-
+	
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-
+	
 	private ArrayList<HashMap<String, Object>> searchedUsersList = new ArrayList<>();
-
+	
 	private LinearLayout body;
 	private LinearLayout middleLayout;
 	private LinearLayout bottomSpc;
@@ -111,7 +111,7 @@ public class SearchActivity extends AppCompatActivity {
 	private ImageView topLayoutBarMiddleSearchLayoutIc;
 	private RecyclerView SearchUserLayoutRecyclerView;
 	private TextView SearchUserLayoutNoUserFound;
-
+	
 	private Intent intent = new Intent();
 	private Vibrator vbr;
 	private FirebaseAuth auth;
@@ -131,7 +131,7 @@ public class SearchActivity extends AppCompatActivity {
 	private RequestNetwork.RequestListener _request_request_listener;
 	private DatabaseReference maindb = _firebase.getReference("/");
 	private ChildEventListener _maindb_child_listener;
-
+	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
@@ -140,7 +140,7 @@ public class SearchActivity extends AppCompatActivity {
 		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-
+	
 	private void initialize(Bundle _savedInstanceState) {
 		body = findViewById(R.id.body);
 		middleLayout = findViewById(R.id.middleLayout);
@@ -170,7 +170,7 @@ public class SearchActivity extends AppCompatActivity {
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		auth = FirebaseAuth.getInstance();
 		request = new RequestNetwork(this);
-
+		
 		bottom_home.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -180,14 +180,14 @@ public class SearchActivity extends AppCompatActivity {
 				finish();
 			}
 		});
-
+		
 		bottom_search.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-
+				
 			}
 		});
-
+		
 		bottom_videos.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -195,8 +195,8 @@ public class SearchActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-
-
+		
+		
 		bottom_profile.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -205,7 +205,7 @@ public class SearchActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-
+		
 		topLayoutBarMiddleSearchLayoutCancel.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -213,7 +213,7 @@ public class SearchActivity extends AppCompatActivity {
 				topLayoutBarMiddleSearchLayoutCancel.setVisibility(View.GONE);
 			}
 		});
-
+		
 		topLayoutBarMiddleSearchInput.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -230,18 +230,18 @@ public class SearchActivity extends AppCompatActivity {
 					_ImageColor(topLayoutBarMiddleSearchLayoutIc, 0xFF2962FF);
 				}
 			}
-
+			
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-
+				
 			}
-
+			
 			@Override
 			public void afterTextChanged(Editable _param1) {
-
+				
 			}
 		});
-
+		
 		topLayoutBarMiddleSearchLayoutIc.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -252,60 +252,60 @@ public class SearchActivity extends AppCompatActivity {
 				}
 			}
 		});
-
+		
 		SearchUserLayoutRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 			@Override
 			public void onScrollStateChanged(RecyclerView recyclerView, int _scrollState) {
 				super.onScrollStateChanged(recyclerView, _scrollState);
-
+				
 			}
-
+			
 			@Override
 			public void onScrolled(RecyclerView recyclerView, int _offsetX, int _offsetY) {
 				super.onScrolled(recyclerView, _offsetX, _offsetY);
-
+				
 			}
 		});
-
+		
 		_main_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
+				
 			}
-
+			
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-
+				
 			}
 		};
 		main.addChildEventListener(_main_child_listener);
-
+		
 		_request_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -320,167 +320,167 @@ public class SearchActivity extends AppCompatActivity {
 						if (snapshot.exists()) {
 							SearchUserLayoutRecyclerView.setVisibility(View.VISIBLE);
 							SearchUserLayoutNoUserFound.setVisibility(View.GONE);
-
+							
 							searchedUsersList.clear();
-
+							
 							for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
 								HashMap<String, Object> searchMap = new HashMap<String, Object>((Map<String, Object>) dataSnapshot.getValue());
 								searchedUsersList.add(searchMap);
 							}
-
+							
 							SearchUserLayoutRecyclerView.getAdapter().notifyDataSetChanged();
-
+							
 						} else {
 							SearchUserLayoutRecyclerView.setVisibility(View.GONE);
 							SearchUserLayoutNoUserFound.setVisibility(View.VISIBLE);
 						}
 					}
-
+					
 					@Override
 					public void onCancelled(@NonNull DatabaseError error) {
-
+						
 					}
 				});
-
+				
 			}
-
+			
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
 				final String _message = _param2;
-
+				
 			}
 		};
-
+		
 		_maindb_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
+				
 			}
-
+			
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+				
 			}
-
+			
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-
+				
 			}
 		};
 		maindb.addChildEventListener(_maindb_child_listener);
-
+		
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
+				
 			}
 		};
-
+		
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-
+				
 			}
 		};
 	}
-
+	
 	private void initializeLogic() {
 		topLayoutBarMiddleSearchLayout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)0, Color.TRANSPARENT, 0xFFF5F5F5));
 		SearchUserLayout.setVisibility(View.VISIBLE);
@@ -507,8 +507,8 @@ public class SearchActivity extends AppCompatActivity {
 		});
 		_showAllUser();
 	}
-
-
+	
+	
 	@Override
 	public void onBackPressed() {
 		intent.setClass(getApplicationContext(), HomeActivity.class);
@@ -516,7 +516,7 @@ public class SearchActivity extends AppCompatActivity {
 		startActivity(intent);
 		finish();
 	}
-
+	
 	@Override
 	public void onResume() {
 		super.onResume();
@@ -527,13 +527,13 @@ public class SearchActivity extends AppCompatActivity {
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-
-
+	
+	
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-
-
+	
+	
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -542,24 +542,24 @@ public class SearchActivity extends AppCompatActivity {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-
-
+	
+	
 	public void _getSearchedUserReference() {
 		request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
 		SearchUserLayout.setVisibility(View.VISIBLE);
 		topLayoutBarMiddleSearchLayoutCancel.setVisibility(View.VISIBLE);
 	}
-
-
+	
+	
 	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
 		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
 		int right = (int)(_r * dpRatio);
 		int left = (int)(_l * dpRatio);
 		int top = (int)(_t * dpRatio);
 		int bottom = (int)(_b * dpRatio);
-
+		
 		boolean _default = false;
-
+		
 		ViewGroup.LayoutParams p = _view.getLayoutParams();
 		if (p instanceof LinearLayout.LayoutParams) {
 			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
@@ -576,10 +576,10 @@ public class SearchActivity extends AppCompatActivity {
 			lp.setMargins(left, top, right, bottom);
 			_view.setLayoutParams(lp);
 		}
-
-
+		
+		
 	}
-
+	
 	class c {
 		Context co;
 		public <T extends Activity> c(T a) {
@@ -591,33 +591,33 @@ public class SearchActivity extends AppCompatActivity {
 		public <T extends DialogFragment> c(T a) {
 			co = a.getActivity();
 		}
-
+		
 		public Context getContext() {
 			return co;
 		}
-
+		
 	}
-
-
+	
+	
 	{
-
+		
 	}
-
-
+	
+	
 	public void _search() {
 		request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
 		SearchUserLayout.setVisibility(View.VISIBLE);
 		topLayoutBarMiddleSearchLayoutCancel.setVisibility(View.VISIBLE);
 	}
-
-
+	
+	
 	public void _showAllUser() {
 		// Assume you have this defined somewhere
 		//EditText topLayoutBarMiddleSearchInput = findViewById(R.id.topLayoutBarMiddleSearchInput);
-
+		
 		DatabaseReference searchRef = FirebaseDatabase.getInstance().getReference("skyline/users");
 		Query searchQuery;
-
+		
 		if (topLayoutBarMiddleSearchInput.getText().toString().isEmpty()) {
 			// If EditText is empty, show all users
 			searchQuery = searchRef.limitToLast(50);
@@ -626,7 +626,7 @@ public class SearchActivity extends AppCompatActivity {
 			String searchText = topLayoutBarMiddleSearchInput.getText().toString();
 			searchQuery = searchRef.orderByChild("username").startAt(searchText).endAt(searchText + "\uf8ff").limitToLast(50);
 		}
-
+		
 		searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -634,7 +634,7 @@ public class SearchActivity extends AppCompatActivity {
 					SearchUserLayoutRecyclerView.setVisibility(View.VISIBLE);
 					SearchUserLayoutNoUserFound.setVisibility(View.GONE);
 					searchedUsersList.clear();
-
+					
 					for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
 						HashMap<String, Object> searchMap = new HashMap<String, Object>((Map<String, Object>) dataSnapshot.getValue());
 						searchedUsersList.add(searchMap);
@@ -645,29 +645,29 @@ public class SearchActivity extends AppCompatActivity {
 					SearchUserLayoutNoUserFound.setVisibility(View.VISIBLE);
 				}
 			}
-
+			
 			@Override
 			public void onCancelled(@NonNull DatabaseError error) {
 				// Handle error
 			}
 		});
 	}
-
-
+	
+	
 	public void _TransitionManager(final View _view, final double _duration) {
 		LinearLayout viewgroup =(LinearLayout) _view;
-
+		
 		android.transition.AutoTransition autoTransition = new android.transition.AutoTransition(); autoTransition.setDuration((long)_duration); android.transition.TransitionManager.beginDelayedTransition(viewgroup, autoTransition);
 	}
-
+	
 	public class SearchUserLayoutRecyclerViewAdapter extends RecyclerView.Adapter<SearchUserLayoutRecyclerViewAdapter.ViewHolder> {
-
+		
 		ArrayList<HashMap<String, Object>> _data;
-
+		
 		public SearchUserLayoutRecyclerViewAdapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-
+		
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -676,11 +676,11 @@ public class SearchActivity extends AppCompatActivity {
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
 		}
-
+		
 		@Override
 		public void onBindViewHolder(ViewHolder _holder, final int _position) {
 			View _view = _holder.itemView;
-
+			
 			final androidx.cardview.widget.CardView cardview1 = _view.findViewById(R.id.cardview1);
 			final LinearLayout body = _view.findViewById(R.id.body);
 			final RelativeLayout profileCardRelative = _view.findViewById(R.id.profileCardRelative);
@@ -695,7 +695,7 @@ public class SearchActivity extends AppCompatActivity {
 			final TextView username = _view.findViewById(R.id.username);
 			final ImageView genderBadge = _view.findViewById(R.id.genderBadge);
 			final ImageView badge = _view.findViewById(R.id.badge);
-
+			
 			try{
 				RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 				_view.setLayoutParams(_lp);
@@ -779,32 +779,32 @@ public class SearchActivity extends AppCompatActivity {
 					}
 				});
 			}catch(Exception e){
-
+				
 			}
 			/*
 try {
     // Layout setup
     RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT, 
         ViewGroup.LayoutParams.WRAP_CONTENT
     );
     _view.setLayoutParams(lp);
-
+    
     // Create reusable GradientDrawable creator
     GradientDrawableCreator gradientCreator = new GradientDrawableCreator();
     profileCard.setBackground(gradientCreator.create(300, Color.TRANSPARENT));
     userStatusCircleBG.setBackground(gradientCreator.create(300, 0xFFFFFFFF));
     userStatusCircleIN.setBackground(gradientCreator.create(300, 0xFF2196F3));
-
+    
     // Get current item data once
     Map<String, Object> currentItem = _data.get(_position);
-
+    
     // Set name and username
     name.setText("@" + currentItem.get("username").toString());
-    username.setText(currentItem.get("nickname").toString().equals("null")
-        ? "@" + currentItem.get("username").toString()
+    username.setText(currentItem.get("nickname").toString().equals("null") 
+        ? "@" + currentItem.get("username").toString() 
         : currentItem.get("nickname").toString());
-
+    
     // Avatar setup
     if (currentItem.get("banned").toString().equals("true")) {
         profileAvatar.setImageResource(R.drawable.banned_avatar);
@@ -818,7 +818,7 @@ try {
                 .into(profileAvatar);
         }
     }
-
+    
     // Gender badge setup
     String gender = currentItem.get("gender").toString();
     switch (gender) {
@@ -834,7 +834,7 @@ try {
             genderBadge.setVisibility(View.VISIBLE);
             break;
     }
-
+    
     // Account badge setup
     String accountType = currentItem.get("account_type").toString();
     switch (accountType) {
@@ -862,17 +862,17 @@ try {
             }
             break;
     }
-
+    
     // Status visibility
     userStatusCircleBG.setVisibility(
-        currentItem.get("status").toString().equals("online")
-            ? View.VISIBLE
+        currentItem.get("status").toString().equals("online") 
+            ? View.VISIBLE 
             : View.GONE
     );
-
+    
     // Margin setup
     _setMargin(cardview1, 18, 18, _position == 0 ? 18 : 0, 18);
-
+    
     // Intent handling
     if (getIntent().hasExtra("ref") && getIntent().getStringExtra("ref").equals("true")) {
         intent.setClass(getApplicationContext(), ProfileActivity.class);
@@ -880,7 +880,7 @@ try {
         startActivity(intent);
         finish();
     }
-
+    
     // Click listener
     body.setOnClickListener(v -> {
         intent.setClass(getApplicationContext(), ProfileActivity.class);
@@ -904,16 +904,16 @@ private static class GradientDrawableCreator {
 }
 */
 		}
-
+		
 		@Override
 		public int getItemCount() {
 			return _data.size();
 		}
-
+		
 		public class ViewHolder extends RecyclerView.ViewHolder {
 			public ViewHolder(View v) {
 				super(v);
 			}
 		}
 	}
-}
+}

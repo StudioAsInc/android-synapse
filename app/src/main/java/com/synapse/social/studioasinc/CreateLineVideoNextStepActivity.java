@@ -63,6 +63,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FileDownloadTask;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -81,6 +86,7 @@ import org.json.*;
 public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
 	private HashMap<String, Object> PostSendMap = new HashMap<>();
@@ -116,6 +122,13 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
 	private OnCompleteListener<AuthResult> auth_googleSignInListener;
+	private StorageReference storage = _firebase_storage.getReference("/");
+	private OnCompleteListener<Uri> _storage_upload_success_listener;
+	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _storage_download_success_listener;
+	private OnSuccessListener _storage_delete_success_listener;
+	private OnProgressListener _storage_upload_progress_listener;
+	private OnProgressListener _storage_download_progress_listener;
+	private OnFailureListener _storage_failure_listener;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private SharedPreferences appSavedData;
@@ -245,6 +258,82 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 			}
 		};
 		maindb.addChildEventListener(_maindb_child_listener);
+
+		_storage_upload_progress_listener = new OnProgressListener<UploadTask.TaskSnapshot>() {
+			@Override
+			public void onProgress(UploadTask.TaskSnapshot _param1) {
+				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
+
+			}
+		};
+
+		_storage_download_progress_listener = new OnProgressListener<FileDownloadTask.TaskSnapshot>() {
+			@Override
+			public void onProgress(FileDownloadTask.TaskSnapshot _param1) {
+				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
+
+			}
+		};
+
+		_storage_upload_success_listener = new OnCompleteListener<Uri>() {
+			@Override
+			public void onComplete(Task<Uri> _param1) {
+				final String _downloadUrl = _param1.getResult().toString();
+				cc = Calendar.getInstance();
+				PostSendMap = new HashMap<>();
+				PostSendMap.put("key", UniquePostKey);
+				PostSendMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+				PostSendMap.put("post_type", "LINE_VIDEO");
+				if (!postDescription.getText().toString().trim().equals("")) {
+					PostSendMap.put("post_text", postDescription.getText().toString().trim());
+				}
+				PostSendMap.put("videoUri", _downloadUrl);
+				if (!appSavedData.contains("user_region_data") && appSavedData.getString("user_region_data", "").equals("none")) {
+					PostSendMap.put("post_region", "none");
+				} else {
+					PostSendMap.put("post_region", appSavedData.getString("user_region_data", ""));
+				}
+				PostSendMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
+				FirebaseDatabase.getInstance().getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, new DatabaseReference.CompletionListener() {
+					@Override
+					public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+						if (databaseError == null) {
+							SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
+							_LoadingDialog(false);
+							finish();
+						} else {
+							SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
+							_LoadingDialog(false);
+						}
+					}
+				});
+
+			}
+		};
+
+		_storage_download_success_listener = new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+			@Override
+			public void onSuccess(FileDownloadTask.TaskSnapshot _param1) {
+				final long _totalByteCount = _param1.getTotalByteCount();
+
+			}
+		};
+
+		_storage_delete_success_listener = new OnSuccessListener() {
+			@Override
+			public void onSuccess(Object _param1) {
+
+			}
+		};
+
+		_storage_failure_listener = new OnFailureListener() {
+			@Override
+			public void onFailure(Exception _param1) {
+				final String _message = _param1.getMessage();
+				_LoadingDialog(false);
+				SketchwareUtil.showMessage(getApplicationContext(), _message);
+			}
+		};
 
 		_fdb_child_listener = new ChildEventListener() {
 			@Override
@@ -411,7 +500,7 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 			
 			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
 			
-
+			
 			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
 		} else {
 			if (SynapseLoadingDialog != null){
