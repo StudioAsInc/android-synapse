@@ -10,7 +10,7 @@ import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
 
-internal class AiFeatureHandler(
+class AiFeatureHandler(
     private val activity: AppCompatActivity,
     private val gemini: Gemini,
     private val message_et: EditText,
@@ -36,7 +36,7 @@ internal class AiFeatureHandler(
         val maxTokens: Int?
     )
 
-    internal fun handleSendButtonLongClick(replyMessageID: String): Boolean {
+    fun handleSendButtonLongClick(replyMessageID: String): Boolean {
         if (message_et.text.toString().isNotEmpty()) {
             val prompt = "Fix grammar, punctuation, and clarity without changing meaning. " +
                     "Preserve original formatting (line breaks, lists, markdown). " +

@@ -22,7 +22,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 
-internal class MessageInteractionHandler(
+class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val listener: ChatInteractionListener,
     private val auth: FirebaseAuth,
