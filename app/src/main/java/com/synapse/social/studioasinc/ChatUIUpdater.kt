@@ -78,4 +78,12 @@ class ChatUIUpdater(
     fun hideReplyUI() {
         mMessageReplyLayout.visibility = View.GONE
     }
+
+    fun updateGroupProfile(dataSnapshot: DataSnapshot) {
+        topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
+        Glide.with(activity).load(dataSnapshot.child("icon").getValue(String::class.java)).into(topProfileLayoutProfileImage)
+        topProfileLayoutGenderBadge.visibility = View.GONE
+        topProfileLayoutVerifiedBadge.visibility = View.GONE
+        topProfileLayoutStatus.text = "Group"
+    }
 }

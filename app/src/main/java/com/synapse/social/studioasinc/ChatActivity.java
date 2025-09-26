@@ -74,7 +74,7 @@ import android.animation.ValueAnimator;
 
 import static com.synapse.social.studioasinc.ChatConstants.*;
 
-public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener {
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener, ChatDataListener {
 
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
@@ -116,8 +116,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private LinearLayout middle;
 	public RelativeLayout attachmentLayoutListHolder;
 	private LinearLayout mMessageReplyLayout;
-	LinearLayout message_input_overall_container;
-	TextView blocked_txt;
+	private LinearLayout message_input_overall_container;
+	private TextView blocked_txt;
 	private ImageView back;
 	private LinearLayout topProfileLayout;
 	private LinearLayout topProfileLayoutSpace;
@@ -145,7 +145,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private TextView mMessageReplyLayoutBodyRightMessage;
 	private LinearLayout message_input_outlined_round;
 	private MaterialButton btn_sendMessage;
-	FadeEditText message_et;
+	private FadeEditText message_et;
 	private LinearLayout toolContainer;
 	private ImageView btn_voice_message;
 	private ImageView close_attachments_btn;
@@ -336,41 +336,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
 
-		chatUIUpdater = new ChatUIUpdater(
-				this,
-				noChatText,
-				ChatMessagesListRecycler,
-				topProfileLayoutProfileImage,
-				topProfileLayoutUsername,
-				topProfileLayoutStatus,
-				topProfileLayoutGenderBadge,
-				topProfileLayoutVerifiedBadge,
-				mMessageReplyLayout,
-				mMessageReplyLayoutBodyRightUsername,
-				mMessageReplyLayoutBodyRightMessage,
-				auth
-		);
-
-		chatDataHandler = new ChatDataHandler(
-				this,
-				_firebase,
-				auth,
-				chatMessagesRef,
-				userRef,
-				blocklist,
-				ChatMessagesList,
-				messageKeys,
-				locallyDeletedMessages,
-				repliedMessagesCache,
-				chatAdapter,
-				chatUIUpdater,
-				ChatMessagesListRecycler,
-				is_group,
-				getIntent().getStringExtra(UID_KEY),
-				message_input_overall_container,
-				blocked_txt
-		);
-
 		messageSendingHandler = new MessageSendingHandler(
 				this,
 				auth,
@@ -425,6 +390,42 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		);
 
 		activityResultHandler = new ActivityResultHandler(this);
+
+		chatUIUpdater = new ChatUIUpdater(
+				this,
+				noChatText,
+				ChatMessagesListRecycler,
+				topProfileLayoutProfileImage,
+				topProfileLayoutUsername,
+				topProfileLayoutStatus,
+				topProfileLayoutGenderBadge,
+				topProfileLayoutVerifiedBadge,
+				mMessageReplyLayout,
+				mMessageReplyLayoutBodyRightUsername,
+				mMessageReplyLayoutBodyRightMessage,
+				auth
+		);
+
+		chatDataHandler = new ChatDataHandler(
+				this,
+				_firebase,
+				auth,
+				chatMessagesRef,
+				userRef,
+				blocklist,
+				ChatMessagesList,
+				messageKeys,
+				locallyDeletedMessages,
+				repliedMessagesCache,
+				chatAdapter,
+				chatUIUpdater,
+				ChatMessagesListRecycler,
+				is_group,
+				getIntent().getStringExtra(UID_KEY),
+				message_input_overall_container,
+				blocked_txt
+		);
+
 		_setupSwipeToReply();
 
 		if (is_group) {
@@ -678,7 +679,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	private void scrollToBottom() {
+	public void scrollToBottom() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.smoothScrollToPosition(ChatMessagesList.size() - 1);
 		}
@@ -1247,6 +1248,27 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	public String getOldestMessageKey() {
 		return chatDataHandler.getOldestMessageKey();
+	}
+
+	@Override
+	public void onFirstUserNameChanged(String name) {
+		this.FirstUserName = name;
+		chatAdapter.setFirstUserName(name);
+		messageInteractionHandler.setFirstUserName(name);
+		messageSendingHandler.setFirstUserName(name);
+	}
+
+	@Override
+	public void onSecondUserNameChanged(String name) {
+		this.SecondUserName = name;
+		chatAdapter.setSecondUserName(name);
+		messageInteractionHandler.setSecondUserName(name);
+	}
+
+	@Override
+	public void onSecondUserAvatarChanged(String avatarUrl) {
+		this.SecondUserAvatar = avatarUrl;
+		chatAdapter.setSecondUserAvatar(avatarUrl);
 	}
 
 	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {

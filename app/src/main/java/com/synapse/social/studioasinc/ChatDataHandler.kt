@@ -1,6 +1,9 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
+import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
@@ -8,12 +11,16 @@ import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-import android.view.View
-import android.widget.LinearLayout
-import android.widget.TextView
+interface ChatDataListener {
+    fun onFirstUserNameChanged(name: String)
+    fun onSecondUserNameChanged(name: String)
+    fun onSecondUserAvatarChanged(avatarUrl: String?)
+    fun scrollToBottom()
+    fun runOnUiThread(action: Runnable)
+}
 
 class ChatDataHandler(
-    private val activity: ChatActivity,
+    private val listener: ChatDataListener,
     private val firebaseDB: FirebaseDatabase,
     private val auth: FirebaseAuth,
     var chatMessagesRef: DatabaseReference,
@@ -37,22 +44,25 @@ class ChatDataHandler(
 
     var firstUserName: String = "Unknown User"
         set(value) {
-            field = value
-            chatAdapter.setFirstUserName(value)
-            activity.messageInteractionHandler.firstUserName = value
-            activity.messageSendingHandler.setFirstUserName(value)
+            if (field != value) {
+                field = value
+                listener.onFirstUserNameChanged(value)
+            }
         }
 
     var secondUserName: String = "Unknown User"
         set(value) {
-            field = value
-            chatAdapter.setSecondUserName(value)
-            activity.messageInteractionHandler.secondUserName = value
+            if (field != value) {
+                field = value
+                listener.onSecondUserNameChanged(value)
+            }
         }
     var secondUserAvatar: String? = null
         set(value) {
-            field = value
-            chatAdapter.setSecondUserAvatar(value)
+            if (field != value) {
+                field = value
+                listener.onSecondUserAvatarChanged(value)
+            }
         }
 
     var oldestMessageKey: String? = null
@@ -72,39 +82,41 @@ class ChatDataHandler(
     }
 
     fun getUserReference() {
-        val getFirstUserName = firebaseDB.getReference(ChatConstants.SKYLINE_REF)
-            .child(ChatConstants.USERS_REF)
-            .child(auth.currentUser!!.uid)
+        auth.currentUser?.uid?.let { uid ->
+            val getFirstUserName = firebaseDB.getReference(ChatConstants.SKYLINE_REF)
+                .child(ChatConstants.USERS_REF)
+                .child(uid)
 
-        getFirstUserName.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                try {
-                    if (dataSnapshot.exists()) {
-                        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-                        val username = dataSnapshot.child("username").getValue(String::class.java)
-                        firstUserName = if (nickname != null && nickname != "null") {
-                            nickname
-                        } else if (username != null && username != "null") {
-                            "@$username"
+            getFirstUserName.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    try {
+                        if (dataSnapshot.exists()) {
+                            val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
+                            val username = dataSnapshot.child("username").getValue(String::class.java)
+                            firstUserName = if (nickname != null && nickname != "null") {
+                                nickname
+                            } else if (username != null && username != "null") {
+                                "@$username"
+                            } else {
+                                "Unknown User".also { Log.w("ChatActivity", "Both nickname and username are null or 'null'") }
+                            }
                         } else {
-                            "Unknown User".also { Log.w("ChatActivity", "Both nickname and username are null or 'null'") }
+                            Log.w("ChatActivity", "User data snapshot doesn't exist")
+                            firstUserName = "Unknown User"
                         }
-                    } else {
-                        Log.w("ChatActivity", "User data snapshot doesn't exist")
+                    } catch (e: Exception) {
+                        Log.e("ChatActivity", "Error processing user data: " + e.message)
                         firstUserName = "Unknown User"
                     }
-                } catch (e: Exception) {
-                    Log.e("ChatActivity", "Error processing user data: " + e.message)
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e("ChatActivity", "Failed to get first user name: " + databaseError.message)
                     firstUserName = "Unknown User"
                 }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("ChatActivity", "Failed to get first user name: " + databaseError.message)
-                firstUserName = "Unknown User"
-            }
-        })
-        getChatMessagesRef()
+            })
+            getChatMessagesRef()
+        }
     }
 
     fun getChatMessagesRef() {
@@ -132,11 +144,7 @@ class ChatDataHandler(
                             }
                         }
                         if (initialMessages.isNotEmpty()) {
-                            initialMessages.sortWith { msg1, msg2 ->
-                                val time1 = getMessageTimestamp(msg1)
-                                val time2 = getMessageTimestamp(msg2)
-                                time1.compareTo(time2)
-                            }
+                            initialMessages.sortBy { getMessageTimestamp(it) }
                             val oldestMessage = initialMessages[0]
                             if (oldestMessage.containsKey(KEY_KEY) && oldestMessage[KEY_KEY] != null) {
                                 oldestMessageKey = oldestMessage[KEY_KEY].toString()
@@ -186,7 +194,7 @@ class ChatDataHandler(
                             if (insertPosition > 0) chatAdapter.notifyItemChanged(insertPosition - 1)
                             if (insertPosition < chatMessagesList.size - 1) chatAdapter.notifyItemChanged(insertPosition + 1)
                             if (insertPosition == chatMessagesList.size - 1) {
-                                chatMessagesListRecycler.post { activity.scrollToBottom() }
+                                chatMessagesListRecycler.post { listener.scrollToBottom() }
                             }
                             if (newMessage.containsKey("replied_message_id")) {
                                 fetchRepliedMessages(arrayListOf(newMessage))
@@ -253,7 +261,7 @@ class ChatDataHandler(
                 Log.e("ChatActivity", "Chat listener cancelled: " + error.message)
             }
         }
-        chatMessagesRef.addChildEventListener(chatChildListener!!)
+        chatChildListener?.let { chatMessagesRef.addChildEventListener(it) }
     }
 
     private fun detachChatListener() {
@@ -262,31 +270,32 @@ class ChatDataHandler(
     }
 
     private fun attachUserStatusListener() {
-        if (userRef == null) return
-        if (userStatusListener != null) {
-            try {
-                userRef!!.removeEventListener(userStatusListener!!)
-            } catch (e: Exception) {
-                Log.w("ChatActivity", "Error removing existing user status listener: " + e.message)
+        userRef?.let { ref ->
+            if (userStatusListener != null) {
+                try {
+                    ref.removeEventListener(userStatusListener!!)
+                } catch (e: Exception) {
+                    Log.w("ChatActivity", "Error removing existing user status listener: " + e.message)
+                }
+                userStatusListener = null
             }
-            userStatusListener = null
-        }
-        userStatusListener = object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    chatUIUpdater.updateUserProfile(dataSnapshot)
-                    val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-                    val username = dataSnapshot.child("username").getValue(String::class.java)
-                    secondUserName = if (nickname != null && nickname != "null") nickname else if (username != null && username != "null") "@$username" else "Unknown User"
-                    secondUserAvatar = dataSnapshot.child("avatar_url").getValue(String::class.java)
+            userStatusListener = object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        chatUIUpdater.updateUserProfile(dataSnapshot)
+                        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
+                        val username = dataSnapshot.child("username").getValue(String::class.java)
+                        secondUserName = if (nickname != null && nickname != "null") nickname else if (username != null && username != "null") "@$username" else "Unknown User"
+                        secondUserAvatar = dataSnapshot.child("avatar_url").getValue(String::class.java)
+                    }
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e("ChatActivity", "Failed to get user reference: " + databaseError.message)
                 }
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("ChatActivity", "Failed to get user reference: " + databaseError.message)
-            }
+            userStatusListener?.let { ref.addValueEventListener(it) }
         }
-        userRef!!.addValueEventListener(userStatusListener!!)
     }
 
     private fun detachUserStatusListener() {
@@ -304,13 +313,12 @@ class ChatDataHandler(
                 handleBlocklistUpdate(snapshot)
             }
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                // Unblocking logic can be handled here if needed.
                 handleBlocklistUpdate(snapshot)
             }
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onCancelled(error: DatabaseError) {}
         }
-        blocklistRef.addChildEventListener(blocklistChildListener!!)
+        blocklistChildListener?.let { blocklistRef.addChildEventListener(it) }
     }
 
     private fun detachBlocklistListener() {
@@ -384,11 +392,10 @@ class ChatDataHandler(
     }
 
     private fun updateMessageInRecyclerView(repliedMessageKey: String) {
-        if (activity.isFinishing || activity.isDestroyed) return
-        for (i in chatMessagesList.indices) {
-            val message = chatMessagesList[i]
-            if (message.containsKey("replied_message_id") && repliedMessageKey == message["replied_message_id"].toString()) {
-                activity.runOnUiThread {
+        listener.runOnUiThread {
+            for (i in chatMessagesList.indices) {
+                val message = chatMessagesList[i]
+                if (message.containsKey("replied_message_id") && repliedMessageKey == message["replied_message_id"].toString()) {
                     if (i < chatAdapter.itemCount) {
                         chatAdapter.notifyItemChanged(i)
                     }
@@ -402,7 +409,7 @@ class ChatDataHandler(
             return
         }
         isLoading = true
-        activity._showLoadMoreIndicator()
+        listener.runOnUiThread { activity._showLoadMoreIndicator() }
 
         val getChatsMessages = chatMessagesRef
             .orderByKey()
@@ -411,7 +418,7 @@ class ChatDataHandler(
 
         getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                activity._hideLoadMoreIndicator()
+                listener.runOnUiThread { activity._hideLoadMoreIndicator() }
                 try {
                     if (dataSnapshot.exists()) {
                         val newMessages = ArrayList<HashMap<String, Any>>()
@@ -430,7 +437,7 @@ class ChatDataHandler(
                         }
 
                         if (newMessages.isNotEmpty()) {
-                            newMessages.sortWith { msg1, msg2 -> getMessageTimestamp(msg1).compareTo(getMessageTimestamp(msg2)) }
+                            newMessages.sortBy { getMessageTimestamp(it) }
                             oldestMessageKey = newMessages[0][KEY_KEY]?.toString()
 
                             val layoutManager = chatMessagesListRecycler.layoutManager as androidx.recyclerview.widget.LinearLayoutManager
@@ -456,7 +463,7 @@ class ChatDataHandler(
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
-                activity._hideLoadMoreIndicator()
+                listener.runOnUiThread { activity._hideLoadMoreIndicator() }
                 isLoading = false
                 Log.e("ChatActivity", "Error processing old messages: " + databaseError.message)
             }
@@ -480,24 +487,25 @@ class ChatDataHandler(
         val childKey = dataSnapshot.key ?: return
         val childValue = dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
 
-        val myUid = auth.currentUser?.uid ?: return
-        val otherUid = recipientUid
+        auth.currentUser?.uid?.let { myUid ->
+            val otherUid = recipientUid
 
-        if (childKey == otherUid) {
-            if (childValue?.containsKey(myUid) == true) {
-                messageInputContainer.visibility = View.GONE
-                blockedTextView.visibility = View.VISIBLE
-            } else {
-                messageInputContainer.visibility = View.VISIBLE
-                blockedTextView.visibility = View.GONE
+            if (childKey == otherUid) {
+                if (childValue?.containsKey(myUid) == true) {
+                    messageInputContainer.visibility = View.GONE
+                    blockedTextView.visibility = View.VISIBLE
+                } else {
+                    messageInputContainer.visibility = View.VISIBLE
+                    blockedTextView.visibility = View.GONE
+                }
             }
-        }
 
-        if (childKey == myUid) {
-            if (childValue?.containsKey(otherUid) == true) {
-                messageInputContainer.visibility = View.GONE
-            } else {
-                messageInputContainer.visibility = View.VISIBLE
+            if (childKey == myUid) {
+                if (childValue?.containsKey(otherUid) == true) {
+                    messageInputContainer.visibility = View.GONE
+                } else {
+                    messageInputContainer.visibility = View.VISIBLE
+                }
             }
         }
     }
