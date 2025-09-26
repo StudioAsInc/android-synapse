@@ -97,6 +97,10 @@ import com.synapse.social.studioasinc.UploadFiles;
 import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
+import com.synapse.social.studioasinc.MessageSendingHandler;
+import com.synapse.social.studioasinc.MessageInteractionHandler;
+import com.synapse.social.studioasinc.AiFeatureHandler;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -110,34 +114,36 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 
 
-public class ChatActivity extends AppCompatActivity implements ChatAdapterListener {
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener {
 
 	// Constants
-	private static final String SKYLINE_REF = "skyline";
-	private static final String USERS_REF = "users";
-	private static final String CHATS_REF = "chats";
-	private static final String USER_CHATS_REF = "user-chats";
-	private static final String INBOX_REF = "inbox";
-	private static final String BLOCKLIST_REF = "blocklist";
-	private static final String TYPING_MESSAGE_REF = "typing-message";
-	private static final String USERNAME_REF = "username";
+	public static final String SKYLINE_REF = "skyline";
+	public static final String USERS_REF = "users";
+	public static final String CHATS_REF = "chats";
+	public static final String USER_CHATS_REF = "user-chats";
+	public static final String INBOX_REF = "inbox";
+	public static final String BLOCKLIST_REF = "blocklist";
+	public static final String TYPING_MESSAGE_REF = "typing-message";
+	public static final String USERNAME_REF = "username";
 
-	private static final String UID_KEY = "uid";
-	private static final String ORIGIN_KEY = "origin";
-	private static final String KEY_KEY = "key";
-	private static final String MESSAGE_TEXT_KEY = "message_text";
-	private static final String TYPE_KEY = "TYPE";
-	private static final String MESSAGE_STATE_KEY = "message_state";
-	private static final String PUSH_DATE_KEY = "push_date";
-	private static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
-	private static final String ATTACHMENTS_KEY = "attachments";
-	private static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
-	private static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
-	private static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
-	private static final String CHAT_ID_KEY = "chatID";
+	public static final String UID_KEY = "uid";
+	public static final String ORIGIN_KEY = "origin";
+	public static final String KEY_KEY = "key";
+	public static final String MESSAGE_TEXT_KEY = "message_text";
+	public static final String TYPE_KEY = "TYPE";
+	public static final String MESSAGE_STATE_KEY = "message_state";
+	public static final String PUSH_DATE_KEY = "push_date";
+	public static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
+	public static final String ATTACHMENTS_KEY = "attachments";
+	public static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
+	public static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
+	public static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
+	public static final String CHAT_ID_KEY = "chatID";
 
-	private static final String MESSAGE_TYPE = "MESSAGE";
-	private static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
+	public static final String MESSAGE_TYPE = "MESSAGE";
+	public static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
+	public static final String VOICE_MESSAGE_TYPE = "VOICE_MESSAGE";
+
 
 	private static final String GEMINI_MODEL = "gemini-2.5-flash-lite";
 	private static final String GEMINI_EXPLANATION_MODEL = "gemini-2.5-flash";
@@ -242,6 +248,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private Intent i = new Intent();
 	private SharedPreferences appSettings;
 	private Gemini gemini;
+    private AiFeatureHandler aiFeatureHandler;
+
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -373,63 +381,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		btn_sendMessage.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
-				if (!message_et.getText().toString().isEmpty()) {
-					String prompt = "Fix grammar, punctuation, and clarity without changing meaning. " +
-					"Preserve original formatting (line breaks, lists, markdown). " +
-					"Censor profanity by replacing letters with asterisks. " +
-					"Return ONLY the corrected RAW text.\n```"
-					.concat(message_et.getText().toString())
-					.concat("```");
-					callGemini(prompt, true);
-				} else {
-					if (ReplyMessageID != null && !ReplyMessageID.equals("null")) {
-						int repliedMessageIndex = -1;
-						for (int i = 0; i < ChatMessagesList.size(); i++) {
-							if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(ReplyMessageID)) {
-								repliedMessageIndex = i;
-								break;
-							}
-						}
-
-						if (repliedMessageIndex != -1) {
-							StringBuilder contextBuilder = new StringBuilder();
-							contextBuilder.append("You are helping 'Me' to write a reply in a conversation with '").append(SecondUserName).append("'.\n");
-							contextBuilder.append("Here is the recent chat history:\n---\n");
-
-							int startIndex = Math.max(0, repliedMessageIndex - 10);
-							int endIndex = Math.min(ChatMessagesList.size() - 1, repliedMessageIndex + 10);
-
-							for (int i = startIndex; i <= endIndex; i++) {
-								HashMap<String, Object> message = ChatMessagesList.get(i);
-								String sender = message.get(UID_KEY).toString().equals(auth.getCurrentUser().getUid()) ? "Me" : SecondUserName;
-								contextBuilder.append(sender).append(": ").append(message.get(MESSAGE_TEXT_KEY).toString()).append("\n");
-							}
-
-							contextBuilder.append("---\n");
-
-							String repliedMessageSender = mMessageReplyLayoutBodyRightUsername.getText().toString();
-							String repliedMessageText = mMessageReplyLayoutBodyRightMessage.getText().toString();
-
-							contextBuilder.append("I need to reply to this message from '").append(repliedMessageSender).append("': \"").append(repliedMessageText).append("\"\n");
-							contextBuilder.append("Based on the conversation history, please suggest a short, relevant reply from 'Me'.");
-
-							String prompt = contextBuilder.toString();
-							callGemini(prompt, false);
-						}
-					} else {
-						// Fallback for non-reply long-press
-						String prompt = "Suggest a generic, friendly greeting.";
-						callGemini(prompt, false);
-					}
-				}
-				return true;
+				return aiFeatureHandler.handleSendButtonLongClick(ReplyMessageID);
 			}
 		});
 
 		btn_sendMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				_send_btn();
+                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
 			}
 		});
 
@@ -586,6 +545,47 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				topProfileLayoutGenderBadge,
 				topProfileLayoutVerifiedBadge
 		);
+
+        messageSendingHandler = new MessageSendingHandler(
+                this,
+                auth,
+                _firebase,
+                ChatMessagesList,
+                attactmentmap,
+                chatAdapter,
+                ChatMessagesListRecycler,
+                rv_attacmentList,
+                attachmentLayoutListHolder,
+                messageKeys,
+                otherUserUid,
+                FirstUserName,
+                is_group
+        );
+
+        aiFeatureHandler = new AiFeatureHandler(
+                this,
+                gemini,
+                message_et,
+                ChatMessagesList,
+                auth,
+                SecondUserName,
+                mMessageReplyLayoutBodyRightUsername,
+                mMessageReplyLayoutBodyRightMessage
+        );
+
+        messageInteractionHandler = new MessageInteractionHandler(
+                this,
+                this,
+                auth,
+                _firebase,
+                ChatMessagesList,
+                ChatMessagesListRecycler,
+                vbr,
+                aiFeatureHandler,
+                FirstUserName,
+                SecondUserName
+        );
+
 		// Initialize with custom settings
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
@@ -988,144 +988,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
+    private MessageInteractionHandler messageInteractionHandler;
 	@Override
 	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
-		if (_data == null || _position >= _data.size() || _position < 0) {
-			return;
-		}
-
-		final HashMap<String, Object> messageData = _data.get(_position);
-		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-		String senderUid = messageData.get(UID_KEY) != null ? String.valueOf(messageData.get(UID_KEY)) : null;
-		final boolean isMine = currentUser != null && senderUid != null && senderUid.equals(currentUser.getUid());
-		final String messageText = messageData.get(MESSAGE_TEXT_KEY) != null ? messageData.get(MESSAGE_TEXT_KEY).toString() : "";
-
-		// Inflate the custom popup layout
-		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View popupView = inflater.inflate(R.layout.chat_msg_options_popup_cv_synapse, null);
-
-		// Create the PopupWindow
-		final PopupWindow popupWindow = new PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
-		popupWindow.setElevation(24);
-
-		// Find views in the popup layout
-		LinearLayout editLayout = popupView.findViewById(R.id.edit);
-		LinearLayout replyLayout = popupView.findViewById(R.id.reply);
-		LinearLayout summaryLayout = popupView.findViewById(R.id.summary);
-		LinearLayout explainLayout = popupView.findViewById(R.id.explain);
-		LinearLayout copyLayout = popupView.findViewById(R.id.copy);
-		LinearLayout deleteLayout = popupView.findViewById(R.id.delete);
-
-		// Configure visibility based on message owner and content
-		editLayout.setVisibility(isMine ? View.VISIBLE : View.GONE);
-		deleteLayout.setVisibility(isMine ? View.VISIBLE : View.GONE);
-		summaryLayout.setVisibility(messageText.length() > 200 ? View.VISIBLE : View.GONE);
-
-		// Set click listeners
-		replyLayout.setOnClickListener(v -> {
-			ReplyMessageID = messageData.get(KEY_KEY).toString();
-			mMessageReplyLayoutBodyRightUsername.setText(isMine ? FirstUserName : SecondUserName);
-			mMessageReplyLayoutBodyRightMessage.setText(messageText);
-			mMessageReplyLayout.setVisibility(View.VISIBLE);
-			vbr.vibrate(48);
-			popupWindow.dismiss();
-		});
-
-		copyLayout.setOnClickListener(v -> {
-			((ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("clipboard", messageText));
-			vbr.vibrate(48);
-			popupWindow.dismiss();
-		});
-
-		deleteLayout.setOnClickListener(v -> {
-			_DeleteMessageDialog(messageData);
-			popupWindow.dismiss();
-		});
-
-		editLayout.setOnClickListener(v -> {
-			MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(ChatActivity.this);
-			dialog.setTitle("Edit message");
-			View dialogView = LayoutInflater.from(ChatActivity.this).inflate(R.layout.single_et, null);
-			dialog.setView(dialogView);
-			final EditText editText = dialogView.findViewById(R.id.edittext1);
-			editText.setText(messageText);
-			dialog.setPositiveButton("Save", (d, w) -> {
-				String newText = editText.getText().toString();
-				FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
-				String myUid = cu != null ? cu.getUid() : null;
-				if (myUid == null) {
-					return;
-				}
-				String otherUid = getIntent().getStringExtra("uid");
-				String msgKey = messageData.get(KEY_KEY) != null ? messageData.get(KEY_KEY).toString() : null;
-				if (otherUid == null || msgKey == null) {
-					return;
-				}
-				String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
-				DatabaseReference msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey);
-				msgRef.child(MESSAGE_TEXT_KEY).setValue(newText);
-			});
-			dialog.setNegativeButton("Cancel", null);
-			AlertDialog shownDialog = dialog.show();
-
-			// Request focus and show keyboard
-			editText.requestFocus();
-			if (shownDialog.getWindow() != null) {
-				shownDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-			}
-
-			popupWindow.dismiss();
-		});
-		
-		summaryLayout.setOnClickListener(v -> {
-			String prompt = "Summarize the following text in a few sentences:\n\n" + messageText;
-			RecyclerView.ViewHolder vh = ChatMessagesListRecycler.findViewHolderForAdapterPosition((int)_position);
-			if (vh instanceof BaseMessageViewHolder) {
-				callGeminiForSummary(prompt, (BaseMessageViewHolder) vh);
-			}
-			popupWindow.dismiss();
-		});
-
-		explainLayout.setOnClickListener(v -> {
-			int position = (int)_position;
-			String prompt = buildExplanationPrompt(position, messageText, messageData);
-			RecyclerView.ViewHolder vh = ChatMessagesListRecycler.findViewHolderForAdapterPosition(position);
-			if (vh instanceof BaseMessageViewHolder) {
-				callGeminiForExplanation(prompt, (BaseMessageViewHolder) vh);
-			}
-			popupWindow.dismiss();
-		});
-
-
-		// CRITICAL FIX: Improved positioning for compact popup
-		popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-		int popupWidth = popupView.getMeasuredWidth();
-		int popupHeight = popupView.getMeasuredHeight();
-
-		int[] location = new int[2];
-		_view.getLocationOnScreen(location);
-
-		// Compute initial centered-above coordinates with better positioning
-		int x = location[0] + (_view.getWidth() / 2) - (popupWidth / 2);
-		int aboveY = location[1] - popupHeight - 8; // Add small gap
-		int belowY = location[1] + _view.getHeight() + 8; // Add small gap
-
-		// Constrain within the visible window and flip below if there's no room above
-		Rect visibleFrame = new Rect();
-		_view.getWindowVisibleDisplayFrame(visibleFrame);
-
-		// Horizontal clamp with better margins
-		x = Math.max(visibleFrame.left + 16, Math.min(x, visibleFrame.right - popupWidth - 16));
-
-		// Vertical position: prefer above, otherwise below, and clamp
-		int y = (aboveY >= visibleFrame.top + 16) ? aboveY : Math.min(belowY, visibleFrame.bottom - popupHeight - 16);
-		y = Math.max(visibleFrame.top + 16, Math.min(y, visibleFrame.bottom - popupHeight - 16));
-
-		// Enable outside touch dismissal and proper shadow rendering
-		popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-		popupWindow.setOutsideTouchable(true);
-
-		popupWindow.showAtLocation(_view, Gravity.NO_GRAVITY, x, y);
+		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
 	}
 
 
@@ -1210,6 +1076,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					if (chatAdapter != null) {
 						chatAdapter.setFirstUserName(FirstUserName);
 					}
+                    if (messageSendingHandler != null) {
+                        messageSendingHandler.setFirstUserName(FirstUserName);
+                    }
+                    if (messageInteractionHandler != null) {
+                        messageInteractionHandler.setFirstUserName(FirstUserName);
+                    }
 				} catch (Exception e) {
 					Log.e("ChatActivity", "Error processing user data: " + e.getMessage());
 					FirstUserName = "Unknown User";
@@ -1638,6 +1510,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 						chatAdapter.setSecondUserName(SecondUserName);
 						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
 					}
+                    if (messageInteractionHandler != null) {
+                        messageInteractionHandler.setSecondUserName(SecondUserName);
+                    }
 				}
 			}
 
@@ -1890,246 +1765,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 
-	public void _textview_mh(final TextView _txt, final String _value) {
-		_txt.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
-		//_txt.setTextIsSelectable(true);
-		updateSpan(_value, _txt);
-	}
-	private void updateSpan(String str, TextView _txt){
-		SpannableStringBuilder ssb = new SpannableStringBuilder(str);
-		java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?<![^\\s])(([@]{1}|[#]{1})([A-Za-z0-9_-]\\.?)+)(?![^\\s,])|\\*\\*(.*?)\\*\\*|__(.*?)__|~~(.*?)~~|_(.*?)_|\\*(.*?)\\*|///(.*?)///");
-		java.util.regex.Matcher matcher = pattern.matcher(str);
-		int offset = 0;
-
-		while (matcher.find()) {
-			int start = matcher.start() + offset;
-			int end = matcher.end() + offset;
-
-			if (matcher.group(3) != null) {
-				// For mentions or hashtags
-				ProfileSpan span = new ProfileSpan();
-				ssb.setSpan(span, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-			} else if (matcher.group(4) != null) {
-				// For bold text (**bold**)
-				String boldText = matcher.group(4); // Extract text inside **
-				ssb.replace(start, end, boldText);
-				ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), start, start + boldText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 4; // Update offset for bold text replacement
-			} else if (matcher.group(5) != null) {
-				// For italic text (__italic__)
-				String italicText = matcher.group(5);
-				ssb.replace(start, end, italicText);
-				ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), start, start + italicText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 4; // Update offset for italic text replacement
-			} else if (matcher.group(6) != null) {
-				// For strikethrough text (~~strikethrough~~)
-				String strikethroughText = matcher.group(6);
-				ssb.replace(start, end, strikethroughText);
-				ssb.setSpan(new android.text.style.StrikethroughSpan(), start, start + strikethroughText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 4; // Update offset for strikethrough text replacement
-			} else if (matcher.group(7) != null) {
-				// For underline text (_underline_)
-				String underlineText = matcher.group(7);
-				ssb.replace(start, end, underlineText);
-				ssb.setSpan(new android.text.style.UnderlineSpan(), start, start + underlineText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 2; // Update offset for underline text replacement
-			} else if (matcher.group(8) != null) {
-				// For italic text (*italic*)
-				String italicText = matcher.group(8);
-				ssb.replace(start, end, italicText);
-				ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), start, start + italicText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 2; // Update offset for italic text replacement
-			} else if (matcher.group(9) != null) {
-				// For bold-italic text (///bold-italic///)
-				String boldItalicText = matcher.group(9);
-				ssb.replace(start, end, boldItalicText);
-				ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC), start, start + boldItalicText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				offset -= 6; // Update offset for bold-italic text replacement
-			}
-		}
-		_txt.setText(ssb);
-	}
-	private class ProfileSpan extends android.text.style.ClickableSpan{
 
 
-		@Override
-		public void onClick(View view){
-
-			if(view instanceof TextView){
-				TextView tv = (TextView)view;
-
-				if(tv.getText() instanceof Spannable){
-					Spannable sp = (Spannable)tv.getText();
-
-					int start = sp.getSpanStart(this);
-					int end = sp.getSpanEnd(this);
-					object_clicked = sp.subSequence(start,end).toString();
-					handle = object_clicked.replace("@", "");
-					DatabaseReference getReference = _firebase.getReference(USERNAME_REF).child(handle);
-					getReference.addListenerForSingleValueEvent(new ValueEventListener() {
-						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-							if(dataSnapshot.exists()) {
-								if (!dataSnapshot.child(UID_KEY).getValue(String.class).equals("null")) {
-									intent.setClass(getApplicationContext(), ProfileActivity.class);
-									intent.putExtra(UID_KEY, dataSnapshot.child(UID_KEY).getValue(String.class));
-									startActivity(intent);
-								} else {
-
-								}
-							} else {
-							}
-						}
-						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
-							//	swipeLayout.setVisibility(View.GONE);
-							//noInternetBody.setVisibility(View.VISIBLE);
-							//	loadingBody.setVisibility(View.GONE);
-						}
-					});
-				}
-			}
-
-		}
-		@Override
-		public void updateDrawState(TextPaint ds) {
-			ds.setUnderlineText(false);
-			ds.setColor(Color.parseColor("#FFFF00"));
-			ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-		}
-	}
-
-
-	public void _send_btn() {
-		final String messageText = message_et.getText().toString().trim();
-		final String senderUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		final String recipientUid = getIntent().getStringExtra("uid");
-
-		// The logic is now self-contained in proceedWithMessageSending.
-		// It handles updating the UI immediately and sending the notification in the background.
-		proceedWithMessageSending(messageText, senderUid, recipientUid);
-	}
-
-	private void proceedWithMessageSending(String messageText, String senderUid, String recipientUid) {
-		if (auth.getCurrentUser() != null) {
-			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Idle");
-		}
-		
-		if (attactmentmap.isEmpty() && messageText.isEmpty()) {
-			Log.w("ChatActivity", "No message text and no attachments - nothing to send");
-			return;
-		}
-
-		final String uniqueMessageKey = main.push().getKey();
-		final HashMap<String, Object> messageToSend = new HashMap<>();
-		String lastMessageForInbox;
-
-		if (!attactmentmap.isEmpty()) {
-			ArrayList<HashMap<String, Object>> successfulAttachments = new ArrayList<>();
-			boolean allUploadsSuccessful = true;
-			for (HashMap<String, Object> item : attactmentmap) {
-				if ("success".equals(item.get("uploadState"))) {
-					HashMap<String, Object> attachmentData = new HashMap<>();
-					attachmentData.put("url", item.get("cloudinaryUrl"));
-					attachmentData.put("publicId", item.get("publicId"));
-					attachmentData.put("width", item.get("width"));
-					attachmentData.put("height", item.get("height"));
-					successfulAttachments.add(attachmentData);
-				} else {
-					allUploadsSuccessful = false;
-				}
-			}
-
-			if (!allUploadsSuccessful) {
-				Toast.makeText(getApplicationContext(), "Waiting for uploads to complete...", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			
-			messageToSend.put(TYPE_KEY, ATTACHMENT_MESSAGE_TYPE);
-			messageToSend.put(ATTACHMENTS_KEY, successfulAttachments);
-			lastMessageForInbox = messageText.isEmpty() ? successfulAttachments.size() + " attachment(s)" : messageText;
-
-		} else { // Text-only message
-			messageToSend.put(TYPE_KEY, MESSAGE_TYPE);
-			lastMessageForInbox = messageText;
-		}
-
-		messageToSend.put(UID_KEY, senderUid);
-		messageToSend.put(MESSAGE_TEXT_KEY, messageText);
-		messageToSend.put(MESSAGE_STATE_KEY, "sended");
-		if (!ReplyMessageID.equals("null")) messageToSend.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
-		messageToSend.put(KEY_KEY, uniqueMessageKey);
-		messageToSend.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
-
-		// --- Immediate Actions: Update UI and send to DB ---
-		ChatMessageManager.INSTANCE.sendMessageToDb(
-				(HashMap<String, Object>) messageToSend,
-				senderUid,
-				recipientUid,
-				uniqueMessageKey,
-				is_group
-		);
-
-		// Create a copy for local UI to avoid modification by reference
-		HashMap<String, Object> localMessage = new HashMap<>(messageToSend);
-		localMessage.put("isLocalMessage", true);
-		messageKeys.add(uniqueMessageKey);
-		ChatMessagesList.add(localMessage);
-
-		if (ChatMessagesList.size() == 1) {
-			noChatText.setVisibility(View.GONE);
-			ChatMessagesListRecycler.setVisibility(View.VISIBLE);
-		}
-
-		int newPosition = ChatMessagesList.size() - 1;
-		chatAdapter.notifyItemInserted(newPosition);
-		if (newPosition > 0) chatAdapter.notifyItemChanged(newPosition - 1);
-
-		ChatMessagesListRecycler.post(this::scrollToBottom);
-
-		if (localMessage.containsKey(REPLIED_MESSAGE_ID_KEY)) {
-			ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
-			singleMessageList.add(localMessage);
-			_fetchRepliedMessages(singleMessageList);
-		}
-
-		ChatMessageManager.INSTANCE.updateInbox(lastMessageForInbox, recipientUid, is_group, null);
-
-		// Clear UI fields
-		message_et.setText("");
-		ReplyMessageID = "null";
-		mMessageReplyLayout.setVisibility(View.GONE);
-		if (!attactmentmap.isEmpty()) {
-			resetAttachmentState();
-		}
-
-		// --- Background Action: Fetch recipient's notification ID and send notification ---
-		final String chatId = ChatMessageManager.INSTANCE.getChatId(senderUid, recipientUid);
-		final String senderDisplayName = TextUtils.isEmpty(FirstUserName) ? "Someone" : FirstUserName;
-		final String notificationMessage = senderDisplayName + ": " + lastMessageForInbox;
-
-		_firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
-			.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					String recipientOneSignalPlayerId = "missing_id";
-					if (dataSnapshot.exists() && dataSnapshot.hasChild("oneSignalPlayerId")) {
-						String fetchedId = dataSnapshot.child("oneSignalPlayerId").getValue(String.class);
-						if (fetchedId != null && !fetchedId.isEmpty()) {
-							recipientOneSignalPlayerId = fetchedId;
-						}
-					}
-					NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId);
-				}
-				
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-					Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", databaseError.toException());
-					// Still attempt to send notification without the specific ID
-					NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, "missing_id", notificationMessage, chatId);
-				}
-			});
-	}
+    private MessageSendingHandler messageSendingHandler;
 
 
 	public void _Block(final String _uid) {
@@ -2662,131 +2300,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		startActivity(intent);
 	}
 
-	private void callGemini(String prompt, boolean showThinking) {
-		gemini.setModel(GEMINI_MODEL);
-		gemini.setShowThinking(showThinking);
-		gemini.setSystemInstruction(
-		"You are a concise text assistant. Always return ONLY the transformed text (no explanation, no labels). " +
-		"Preserve original formatting. Censor profanity by replacing letters with asterisks (e.g., s***t). " +
-		"Keep the language and tone of the input unless asked to change it."
-		);
-		gemini.sendPrompt(prompt, new Gemini.GeminiCallback() {
-			@Override
-			public void onSuccess(String response) {
-				runOnUiThread(() -> message_et.setText(response));
-			}
-
-			@Override
-			public void onError(String error) {
-				runOnUiThread(() -> message_et.setText("Error: " + error));
-			}
-
-			@Override
-			public void onThinking() {
-				if (showThinking) {
-					runOnUiThread(() -> message_et.setText(gemini.getThinkingText()));
-				}
-			}
-		});
-	}
-
-	private void callGeminiForSummary(String prompt, final BaseMessageViewHolder viewHolder) {
-		AiFeatureParams params = new AiFeatureParams(
-				prompt,
-				getString(R.string.gemini_system_instruction_summary),
-				GEMINI_MODEL,
-				getString(R.string.gemini_summary_title),
-				"GeminiSummary",
-				getString(R.string.gemini_error_summary),
-				viewHolder,
-				null
-		);
-		callGeminiForAiFeature(params);
-	}
-
-	private void callGeminiForExplanation(String prompt, final BaseMessageViewHolder viewHolder) {
-		AiFeatureParams params = new AiFeatureParams(
-				prompt,
-				getString(R.string.gemini_system_instruction_explanation),
-				GEMINI_EXPLANATION_MODEL,
-				getString(R.string.gemini_explanation_title),
-				"GeminiExplanation",
-				getString(R.string.gemini_error_explanation),
-				viewHolder,
-				1000
-		);
-		callGeminiForAiFeature(params);
-	}
-
-	private static class AiFeatureParams {
-		String prompt;
-		String systemInstruction;
-		String model;
-		String bottomSheetTitle;
-		String logTag;
-		String errorMessage;
-		BaseMessageViewHolder viewHolder;
-		Integer maxTokens;
-
-		AiFeatureParams(String prompt, String systemInstruction, String model, String bottomSheetTitle, String logTag, String errorMessage, BaseMessageViewHolder viewHolder, Integer maxTokens) {
-			this.prompt = prompt;
-			this.systemInstruction = systemInstruction;
-			this.model = model;
-			this.bottomSheetTitle = bottomSheetTitle;
-			this.logTag = logTag;
-			this.errorMessage = errorMessage;
-			this.viewHolder = viewHolder;
-			this.maxTokens = maxTokens;
-		}
-	}
-
-
-	private void callGeminiForAiFeature(AiFeatureParams params) {
-		Gemini.Builder builder = new Gemini.Builder(this)
-				.model(params.model)
-				.showThinking(true)
-				.systemInstruction(params.systemInstruction);
-
-		if (params.maxTokens != null) {
-			builder.maxTokens(params.maxTokens);
-		}
-
-		Gemini gemini = builder.build();
-
-		gemini.sendPrompt(params.prompt, new Gemini.GeminiCallback() {
-			@Override
-			public void onSuccess(String response) {
-				runOnUiThread(() -> {
-					if (params.viewHolder != null) {
-						params.viewHolder.stopShimmer();
-					}
-					ContentDisplayBottomSheetDialogFragment bottomSheet = ContentDisplayBottomSheetDialogFragment.newInstance(response, params.bottomSheetTitle);
-					bottomSheet.show(getSupportFragmentManager(), bottomSheet.getTag());
-				});
-			}
-
-			@Override
-			public void onError(String error) {
-				runOnUiThread(() -> {
-					if (params.viewHolder != null) {
-						params.viewHolder.stopShimmer();
-					}
-					Log.e(TAG, params.logTag + " Error: " + error);
-					Toast.makeText(getApplicationContext(), params.errorMessage + error, Toast.LENGTH_SHORT).show();
-				});
-			}
-
-			@Override
-			public void onThinking() {
-				runOnUiThread(() -> {
-					if (params.viewHolder != null) {
-						params.viewHolder.startShimmer();
-					}
-				});
-			}
-		});
-	}
-
 	private void handleBlocklistUpdate(DataSnapshot dataSnapshot) {
 		GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 		final String _childKey = dataSnapshot.getKey();
@@ -2835,31 +2348,29 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				.append("\n");
 	}
 
-	private String buildExplanationPrompt(int position, String messageText, HashMap<String, Object> messageData) {
-		// Build context strings
-		StringBuilder beforeContext = new StringBuilder();
-		int startIndex = Math.max(0, position - EXPLAIN_CONTEXT_MESSAGES_BEFORE);
-		for (int i = startIndex; i < position; i++) {
-			appendMessageToContext(beforeContext, ChatMessagesList.get(i));
-		}
-
-		StringBuilder afterContext = new StringBuilder();
-		int endIndex = Math.min(ChatMessagesList.size(), position + EXPLAIN_CONTEXT_MESSAGES_AFTER + 1);
-		for (int i = position + 1; i < endIndex; i++) {
-			appendMessageToContext(afterContext, ChatMessagesList.get(i));
-		}
-
-		String senderOfMessageToExplain = getSenderNameForMessage(messageData);
-
-		return getString(R.string.gemini_explanation_prompt,
-				SecondUserName,
-				beforeContext.toString(),
-				senderOfMessageToExplain,
-				messageText,
-				afterContext.toString());
-	}
 
 	private com.synapse.social.studioasinc.util.UserProfileUpdater userProfileUpdater;
+
+
+	@Override
+	public void onReplySelected(String messageId) {
+		ReplyMessageID = messageId;
+		for (HashMap<String, Object> messageData : ChatMessagesList) {
+			if (messageId.equals(messageData.get(KEY_KEY))) {
+				boolean isMyMessage = auth.getCurrentUser().getUid().equals(messageData.get(UID_KEY).toString());
+				mMessageReplyLayoutBodyRightUsername.setText(isMyMessage ? FirstUserName : SecondUserName);
+				mMessageReplyLayoutBodyRightMessage.setText(messageData.get(MESSAGE_TEXT_KEY).toString());
+				mMessageReplyLayout.setVisibility(View.VISIBLE);
+				vbr.vibrate(48);
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void onDeleteMessage(HashMap<String, Object> messageData) {
+		_DeleteMessageDialog(messageData);
+	}
 
 
 //	public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> { MOVED to attachments package }
@@ -2876,7 +2387,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 					@Override
 					public void onSuccess(String filePath, String url, String publicId) {
-						_sendVoiceMessage(url, (long) recordMs);
+						messageSendingHandler.sendVoiceMessage(url, (long) recordMs, ReplyMessageID, mMessageReplyLayout);
 					}
 
 					@Override
@@ -2886,41 +2397,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				});
 			}
 		}
-	}
-
-	private void _sendVoiceMessage(String audioUrl, long duration) {
-		final String senderUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		final String recipientUid = getIntent().getStringExtra("uid");
-		String uniqueMessageKey = main.push().getKey();
-
-		ChatSendMap = new HashMap<>();
-		ChatSendMap.put(UID_KEY, senderUid);
-		ChatSendMap.put(TYPE_KEY, "VOICE_MESSAGE");
-		ChatSendMap.put("audio_url", audioUrl);
-		ChatSendMap.put("audio_duration", duration);
-		ChatSendMap.put(MESSAGE_STATE_KEY, "sended");
-		if (!ReplyMessageID.equals("null")) ChatSendMap.put(REPLIED_MESSAGE_ID_KEY, ReplyMessageID);
-		ChatSendMap.put(KEY_KEY, uniqueMessageKey);
-		ChatSendMap.put(PUSH_DATE_KEY, ServerValue.TIMESTAMP);
-
-		ChatMessageManager.INSTANCE.sendMessageToDb(
-				(HashMap<String, Object>) ChatSendMap,
-				senderUid,
-				recipientUid,
-				uniqueMessageKey,
-				is_group
-		);
-
-		ChatSendMap.put("isLocalMessage", true);
-		messageKeys.add(uniqueMessageKey);
-		ChatMessagesList.add(ChatSendMap);
-		chatAdapter.notifyItemInserted(ChatMessagesList.size() - 1);
-		ChatMessagesListRecycler.post(() -> scrollToBottom());
-
-		ChatMessageManager.INSTANCE.updateInbox("Voice Message", recipientUid, is_group, null);
-
-		ReplyMessageID = "null";
-		mMessageReplyLayout.setVisibility(View.GONE);
 	}
 
 	@Override
