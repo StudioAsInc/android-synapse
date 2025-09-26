@@ -100,6 +100,7 @@ import com.synapse.social.studioasinc.util.ChatMessageManager;
 import com.synapse.social.studioasinc.MessageSendingHandler;
 import com.synapse.social.studioasinc.MessageInteractionHandler;
 import com.synapse.social.studioasinc.AiFeatureHandler;
+import static com.synapse.social.studioasinc.ChatConstants.*;
 
 
 import java.io.File;
@@ -115,41 +116,6 @@ import android.animation.ValueAnimator;
 
 
 public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener {
-
-	// Constants
-	public static final String SKYLINE_REF = "skyline";
-	public static final String USERS_REF = "users";
-	public static final String CHATS_REF = "chats";
-	public static final String USER_CHATS_REF = "user-chats";
-	public static final String INBOX_REF = "inbox";
-	public static final String BLOCKLIST_REF = "blocklist";
-	public static final String TYPING_MESSAGE_REF = "typing-message";
-	public static final String USERNAME_REF = "username";
-
-	public static final String UID_KEY = "uid";
-	public static final String ORIGIN_KEY = "origin";
-	public static final String KEY_KEY = "key";
-	public static final String MESSAGE_TEXT_KEY = "message_text";
-	public static final String TYPE_KEY = "TYPE";
-	public static final String MESSAGE_STATE_KEY = "message_state";
-	public static final String PUSH_DATE_KEY = "push_date";
-	public static final String REPLIED_MESSAGE_ID_KEY = "replied_message_id";
-	public static final String ATTACHMENTS_KEY = "attachments";
-	public static final String LAST_MESSAGE_UID_KEY = "last_message_uid";
-	public static final String LAST_MESSAGE_TEXT_KEY = "last_message_text";
-	public static final String LAST_MESSAGE_STATE_KEY = "last_message_state";
-	public static final String CHAT_ID_KEY = "chatID";
-
-	public static final String MESSAGE_TYPE = "MESSAGE";
-	public static final String ATTACHMENT_MESSAGE_TYPE = "ATTACHMENT_MESSAGE";
-	public static final String VOICE_MESSAGE_TYPE = "VOICE_MESSAGE";
-
-
-	private static final String GEMINI_MODEL = "gemini-2.5-flash-lite";
-	private static final String GEMINI_EXPLANATION_MODEL = "gemini-2.5-flash";
-	private static final int EXPLAIN_CONTEXT_MESSAGES_BEFORE = 5;
-	private static final int EXPLAIN_CONTEXT_MESSAGES_AFTER = 2;
-	private static final String TAG = "ChatActivity";
 
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
