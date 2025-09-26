@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.chat.ChatConstants
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 
@@ -31,17 +32,9 @@ class MessageInteractionHandler(
     private val chatMessagesListRecycler: RecyclerView,
     private val vbr: android.os.Vibrator,
     private val aiFeatureHandler: AiFeatureHandler,
-    private var firstUserName: String,
-    private var secondUserName: String
+    internal var firstUserName: String,
+    internal var secondUserName: String
 ) {
-
-    fun setFirstUserName(name: String) {
-        this.firstUserName = name
-    }
-
-    fun setSecondUserName(name: String) {
-        this.secondUserName = name
-    }
 
     fun showMessageOverviewPopup(view: View, position: Int) {
         if (position >= chatMessagesList.size || position < 0) {
@@ -50,9 +43,9 @@ class MessageInteractionHandler(
 
         val messageData = chatMessagesList[position]
         val currentUser = auth.currentUser
-        val senderUid = messageData[ChatActivity.UID_KEY]?.toString()
+        val senderUid = messageData[ChatConstants.UID_KEY]?.toString()
         val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
-        val messageText = messageData[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
+        val messageText = messageData[ChatConstants.MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val popupView = inflater.inflate(R.layout.chat_msg_options_popup_cv_synapse, null)
@@ -72,7 +65,7 @@ class MessageInteractionHandler(
         summaryLayout.visibility = if (messageText.length > 200) View.VISIBLE else View.GONE
 
         replyLayout.setOnClickListener {
-            listener.onReplySelected(messageData[ChatActivity.KEY_KEY].toString())
+            listener.onReplySelected(messageData[ChatConstants.KEY_KEY].toString())
             vbr.vibrate(48)
             popupWindow.dismiss()
         }
@@ -102,12 +95,12 @@ class MessageInteractionHandler(
                 val cu = auth.currentUser
                 val myUid = cu?.uid
                 if (myUid == null) return@setPositiveButton
-                val otherUid = activity.intent.getStringExtra(ChatActivity.UID_KEY)
-                val msgKey = messageData[ChatActivity.KEY_KEY]?.toString()
+                val otherUid = activity.intent.getStringExtra(ChatConstants.UID_KEY)
+                val msgKey = messageData[ChatConstants.KEY_KEY]?.toString()
                 if (otherUid == null || msgKey == null) return@setPositiveButton
                 val chatID = ChatMessageManager.getChatId(myUid, otherUid)
-                val msgRef = _firebase.getReference(ChatActivity.CHATS_REF).child(chatID).child(msgKey)
-                msgRef.child(ChatActivity.MESSAGE_TEXT_KEY).setValue(newText)
+                val msgRef = _firebase.getReference(ChatConstants.CHATS_REF).child(chatID).child(msgKey)
+                msgRef.child(ChatConstants.MESSAGE_TEXT_KEY).setValue(newText)
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -186,12 +179,12 @@ class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message[ChatActivity.UID_KEY].toString() == auth.currentUser?.uid
+        val isMyMessage = message[ChatConstants.UID_KEY].toString() == auth.currentUser?.uid
         return if (isMyMessage) firstUserName else secondUserName
     }
 
     private fun appendMessageToContext(contextBuilder: StringBuilder, message: HashMap<String, Any>) {
-        val messageText = message[ChatActivity.MESSAGE_TEXT_KEY]?.toString() ?: ""
+        val messageText = message[ChatConstants.MESSAGE_TEXT_KEY]?.toString() ?: ""
         contextBuilder.append(getSenderNameForMessage(message))
             .append(": ")
             .append(messageText)

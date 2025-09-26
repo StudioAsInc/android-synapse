@@ -32,6 +32,7 @@ import com.synapse.social.studioasinc.chat.ChatFirebaseManager
 import com.synapse.social.studioasinc.chat.AttachmentHandler
 import com.synapse.social.studioasinc.chat.AudioRecordingManager
 import com.synapse.social.studioasinc.chat.ChatUIManager
+import java.util.Objects
 
 class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListener,
     AttachmentHandler.AttachmentListener, AudioRecordingManager.AudioRecordingListener,
@@ -93,7 +94,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        isGroup = intent.getBooleanExtra("isGroup", false)
+        isGroup = intent.getBooleanExtra(ChatConstants.IS_GROUP_KEY, false)
         setContentView(if (isGroup) R.layout.activity_chat_group else R.layout.activity_chat)
 
         otherUserUid = intent.getStringExtra(ChatConstants.UID_KEY)
@@ -190,7 +191,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
     private fun setupFirebaseReferences() {
         val currentUserUid = auth.currentUser!!.uid
         val chatId = if (isGroup) otherUserUid!! else ChatMessageManager.getChatId(currentUserUid, otherUserUid!!)
-        val chatRefPath = if (isGroup) "skyline/group-chats" else "chats"
+        val chatRefPath = if (isGroup) ChatConstants.GROUP_CHATS_REF else ChatConstants.CHATS_REF
         chatMessagesRef = firebaseDb.getReference(chatRefPath).child(chatId)
         userRef = firebaseDb.getReference(ChatConstants.SKYLINE_REF).child(ChatConstants.USERS_REF).child(otherUserUid!!)
         blocklistRef = firebaseDb.getReference(ChatConstants.SKYLINE_REF).child(ChatConstants.BLOCKLIST_REF)
@@ -221,7 +222,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         )
 
         val gemini = Gemini.Builder(this)
-            .model("gemini-1.5-flash")
+            .model(ChatConstants.GEMINI_MODEL_FLASH)
             .responseType("text")
             .maxTokens(2000)
             .responseTextView(messageEt)
@@ -276,8 +277,8 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
     }
 
     private fun loadChatBackground() {
-        val themePrefs = getSharedPreferences("theme", MODE_PRIVATE)
-        val backgroundUrl = themePrefs.getString("chat_background_url", null)
+        val themePrefs = getSharedPreferences(ChatConstants.THEME_PREFS, MODE_PRIVATE)
+        val backgroundUrl = themePrefs.getString(ChatConstants.CHAT_BACKGROUND_URL_KEY, null)
         if (!backgroundUrl.isNullOrEmpty()) {
             Glide.with(this).load(backgroundUrl).into(ivBGimage)
         }
@@ -287,7 +288,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         firebaseDb.getReference(ChatConstants.SKYLINE_REF).child(ChatConstants.USERS_REF).child(auth.currentUser!!.uid)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    firstUserName = snapshot.child("nickname").value?.toString() ?: snapshot.child("username").value?.toString() ?: "Me"
+                    firstUserName = snapshot.child(ChatConstants.USER_NICKNAME_KEY).value?.toString() ?: snapshot.child(ChatConstants.USER_USERNAME_KEY).value?.toString() ?: "Me"
                     chatAdapter?.setFirstUserName(firstUserName)
                     messageSendingHandler.firstUserName = firstUserName
                     messageInteractionHandler.firstUserName = firstUserName
@@ -297,20 +298,25 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
     }
 
     private fun getGroupReference() {
-        val groupRef = firebaseDb.getReference("groups").child(intent.getStringExtra("uid"))
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    findViewById<TextView>(R.id.topProfileLayoutUsername).text = dataSnapshot.child("name").getValue(String::class.java)
-                    Glide.with(applicationContext).load(dataSnapshot.child("icon").getValue(String::class.java)).into(findViewById(R.id.topProfileLayoutProfileImage))
-                    findViewById<ImageView>(R.id.topProfileLayoutGenderBadge).visibility = View.GONE
-                    findViewById<ImageView>(R.id.topProfileLayoutVerifiedBadge).visibility = View.GONE
-                    findViewById<TextView>(R.id.topProfileLayoutStatus).text = "Group"
+        intent.getStringExtra(ChatConstants.UID_KEY)?.let {
+            val groupRef = firebaseDb.getReference(ChatConstants.GROUPS_REF).child(it)
+            groupRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        findViewById<TextView>(R.id.topProfileLayoutUsername).text = dataSnapshot.child(ChatConstants.GROUP_NAME_KEY).getValue(String::class.java)
+                        val iconUrl = dataSnapshot.child(ChatConstants.GROUP_ICON_KEY).getValue(String::class.java)
+                        if (!iconUrl.isNullOrEmpty()) {
+                            Glide.with(applicationContext).load(iconUrl).into(findViewById(R.id.topProfileLayoutProfileImage))
+                        }
+                        findViewById<ImageView>(R.id.topProfileLayoutGenderBadge).visibility = View.GONE
+                        findViewById<ImageView>(R.id.topProfileLayoutVerifiedBadge).visibility = View.GONE
+                        findViewById<TextView>(R.id.topProfileLayoutStatus).text = ChatConstants.USER_STATUS_GROUP
+                    }
                 }
-            }
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
-        firebaseManager.loadInitialMessages()
+                override fun onCancelled(databaseError: DatabaseError) {}
+            })
+            firebaseManager.loadInitialMessages()
+        }
     }
 
     override fun onStart() {
@@ -318,7 +324,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         firebaseManager.attachMessagesListener()
         attachUserStatusListener()
         attachBlocklistListener()
-        PresenceManager.setChattingWith(auth.currentUser!!.uid, otherUserUid!!)
+        otherUserUid?.let { PresenceManager.setChattingWith(auth.currentUser!!.uid, it) }
     }
 
     override fun onStop() {
@@ -326,7 +332,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         firebaseManager.detachMessagesListener()
         detachUserStatusListener()
         detachBlocklistListener()
-        PresenceManager.setActivity(auth.currentUser!!.uid, "Idle")
+        PresenceManager.setActivity(auth.currentUser!!.uid, ChatConstants.PRESENCE_IDLE)
     }
 
     override fun onDestroy() {
@@ -343,7 +349,9 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
                     val clazz = Class.forName(fullClassName)
                     val backIntent = Intent(this, clazz)
                     if (originSimpleName == "ProfileActivity") {
-                        backIntent.putExtra(ChatConstants.UID_KEY, intent.getStringExtra(ChatConstants.UID_KEY))
+                        intent.getStringExtra(ChatConstants.UID_KEY)?.let {
+                            backIntent.putExtra(ChatConstants.UID_KEY, it)
+                        }
                     }
                     startActivity(backIntent)
                 } catch (e: ClassNotFoundException) {
@@ -362,32 +370,32 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
     }
 
     // Listener Implementations
-    override fun onInitialMessagesLoaded(messages: List<HashMap<String, Any>>) {
+    override fun onInitialMessagesLoaded(messages: List<HashMap<String, Object>>) {
         chatMessagesList.clear()
-        chatMessagesList.addAll(messages)
+        chatMessagesList.addAll(messages as Collection<HashMap<String, Any>>)
         chatAdapter?.notifyDataSetChanged()
         chatMessagesListRecycler.scrollToPosition(chatMessagesList.size - 1)
         noChatText.visibility = View.GONE
         chatMessagesListRecycler.visibility = View.VISIBLE
     }
 
-    override fun onOldMessagesLoaded(messages: List<HashMap<String, Any>>) {
+    override fun onOldMessagesLoaded(messages: List<HashMap<String, Object>>) {
         val currentSize = chatMessagesList.size
-        chatMessagesList.addAll(0, messages)
+        chatMessagesList.addAll(0, messages as Collection<HashMap<String, Any>>)
         chatAdapter?.notifyItemRangeInserted(0, messages.size)
         (chatMessagesListRecycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(messages.size, 0)
     }
 
-    override fun onNewMessageAdded(message: HashMap<String, Any>) {
-        chatMessagesList.add(message)
+    override fun onNewMessageAdded(message: HashMap<String, Object>) {
+        chatMessagesList.add(message as HashMap<String, Any>)
         chatAdapter?.notifyItemInserted(chatMessagesList.size - 1)
         chatMessagesListRecycler.scrollToPosition(chatMessagesList.size - 1)
     }
 
-    override fun onMessageChanged(message: HashMap<String, Any>) {
+    override fun onMessageChanged(message: HashMap<String, Object>) {
         val index = chatMessagesList.indexOfFirst { it[ChatConstants.KEY_KEY] == message[ChatConstants.KEY_KEY] }
         if (index != -1) {
-            chatMessagesList[index] = message
+            chatMessagesList[index] = message as HashMap<String, Any>
             chatAdapter?.notifyItemChanged(index)
         }
     }
@@ -404,8 +412,8 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         }
     }
 
-    override fun onRepliedMessageFetched(repliedToKey: String, message: HashMap<String, Any>) {
-        repliedMessagesCache[repliedToKey] = message
+    override fun onRepliedMessageFetched(repliedToKey: String, message: HashMap<String, Object>) {
+        repliedMessagesCache[repliedToKey] = message as HashMap<String, Any>
         val index = chatMessagesList.indexOfFirst { it[ChatConstants.REPLIED_MESSAGE_ID_KEY] == repliedToKey }
         if (index != -1) chatAdapter?.notifyItemChanged(index)
     }
@@ -430,7 +438,7 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
         if (isTyping) {
             val typingSnd = hashMapOf<String, Any>(
                 ChatConstants.UID_KEY to auth.currentUser!!.uid,
-                "typingMessageStatus" to "true"
+                ChatConstants.TYPING_STATUS_KEY to ChatConstants.TYPING_STATUS_TRUE
             )
             typingRef.updateChildren(typingSnd)
         } else {
@@ -475,15 +483,15 @@ class ChatActivity : AppCompatActivity(), ChatFirebaseManager.ChatFirebaseListen
     }
 
     override fun onShowLoadMore() {
-        if (chatMessagesList.isNotEmpty() && chatMessagesList.first()["isLoadingMore"] != true) {
-            val loadingMap = hashMapOf<String, Any>("isLoadingMore" to true)
+        if (chatMessagesList.isNotEmpty() && chatMessagesList.first()[ChatConstants.IS_LOADING_MORE_KEY] != true) {
+            val loadingMap = hashMapOf<String, Any>(ChatConstants.IS_LOADING_MORE_KEY to true)
             chatMessagesList.add(0, loadingMap)
             chatAdapter?.notifyItemInserted(0)
         }
     }
 
     override fun onHideLoadMore() {
-        if (chatMessagesList.isNotEmpty() && chatMessagesList.first()["isLoadingMore"] == true) {
+        if (chatMessagesList.isNotEmpty() && chatMessagesList.first()[ChatConstants.IS_LOADING_MORE_KEY] == true) {
             chatMessagesList.removeAt(0)
             chatAdapter?.notifyItemRemoved(0)
         }
