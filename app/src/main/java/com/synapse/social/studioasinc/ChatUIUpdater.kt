@@ -69,7 +69,7 @@ class ChatUIUpdater(
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        val isMyMessage = auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
+        val isMyMessage = auth.currentUser?.uid == messageData[ChatConstants.UID_KEY].toString()
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName
         mMessageReplyLayoutBodyRightMessage.text = messageData[ChatConstants.MESSAGE_TEXT_KEY].toString()
         mMessageReplyLayout.visibility = View.VISIBLE
