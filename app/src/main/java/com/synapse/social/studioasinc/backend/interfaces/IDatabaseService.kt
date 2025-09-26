@@ -51,7 +51,7 @@ interface IDataSnapshot {
     /**
      * Gets the key (last part of the path) of this snapshot.
      */
-    override val key: String?
+    val key: String?
 }
 
 interface IDatabaseError {
