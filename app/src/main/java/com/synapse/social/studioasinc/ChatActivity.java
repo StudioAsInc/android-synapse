@@ -68,6 +68,7 @@ import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
 import com.synapse.social.studioasinc.util.ChatHelper;
 import com.synapse.social.studioasinc.util.DatabaseHelper;
+import com.synapse.social.studioasinc.util.ItemUploadHandler;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 
@@ -189,6 +190,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private ChatNavigator chatNavigator;
     private GroupDetailsLoader groupDetailsLoader;
     private UserBlockService userBlockService;
+    private ItemUploadHandler itemUploadHandler;
 
 
 	@Override
@@ -534,6 +536,17 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 auth
         );
         attachmentHandler.setup();
+
+        itemUploadHandler = new ItemUploadHandler(
+                this,
+                auth,
+                (ArrayList) attactmentmap,
+                rv_attacmentList,
+                (url) -> {
+                    path = url;
+                    return Unit.INSTANCE;
+                }
+        );
 
 		databaseHelper.attachChatListener();
 		_attachUserStatusListener();
@@ -1042,120 +1055,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _startUploadForItem(final double _position) {
-		if (auth.getCurrentUser() != null) {
-			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Sending an attachment");
-		}
-		final int itemPosition = (int) _position;
-
-		if (itemPosition < 0 || itemPosition >= attactmentmap.size()) {
-			Log.e("ChatActivity", "Invalid position for upload: " + itemPosition + ", size: " + attactmentmap.size());
-			return;
-		}
-
-		if (!SketchwareUtil.isConnected(getApplicationContext())) {
-			try {
-				HashMap<String, Object> itemMap = attactmentmap.get(itemPosition);
-				if (itemMap != null) {
-					itemMap.put("uploadState", "failed");
-					if (rv_attacmentList.getAdapter() != null) {
-						rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-					}
-				}
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error updating upload state: " + e.getMessage());
-			}
-			return;
-		}
-
-		HashMap<String, Object> itemMap = attactmentmap.get(itemPosition);
-		if (itemMap == null || !"pending".equals(itemMap.get("uploadState"))) {
-			return;
-		}
-		
-		itemMap.put("uploadState", "uploading");
-		itemMap.put("uploadProgress", 0.0);
-		
-		if (rv_attacmentList.getAdapter() != null) {
-			rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-		}
-
-		String filePath = itemMap.get("localPath").toString();
-		if (filePath == null || filePath.isEmpty()) {
-			Log.e("ChatActivity", "Invalid file path for upload");
-			itemMap.put("uploadState", "failed");
-			if (rv_attacmentList.getAdapter() != null) {
-				rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-			}
-			return;
-		}
-
-		File file = new File(filePath);
-		if (!file.exists()) {
-			Log.e("ChatActivity", "File does not exist: " + filePath);
-			itemMap.put("uploadState", "failed");
-			if (rv_attacmentList.getAdapter() != null) {
-				rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-			}
-			return;
-		}
-
-		AsyncUploadService.uploadWithNotification(this, filePath, file.getName(), new AsyncUploadService.UploadProgressListener() {
-			@Override
-			public void onProgress(String filePath, int percent) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> currentItem = attactmentmap.get(itemPosition);
-						if (currentItem != null && filePath.equals(currentItem.get("localPath"))) {
-							currentItem.put("uploadProgress", (double) percent);
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload progress: " + e.getMessage());
-				}
-			}
-			
-			@Override
-			public void onSuccess(String filePath, String url, String publicId) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> mapToUpdate = attactmentmap.get(itemPosition);
-						if (mapToUpdate != null && filePath.equals(mapToUpdate.get("localPath"))) {
-							mapToUpdate.put("uploadState", "success");
-							mapToUpdate.put("cloudinaryUrl", url);
-							mapToUpdate.put("publicId", publicId);
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-
-							path = url;
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload success: " + e.getMessage());
-				}
-			}
-			
-			@Override
-			public void onFailure(String filePath, String error) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> currentItem = attactmentmap.get(itemPosition);
-						if (currentItem != null && filePath.equals(currentItem.get("localPath"))) {
-							currentItem.put("uploadState", "failed");
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-						}
-					}
-					Log.e("ChatActivity", "Upload failed: " + error);
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload failure: " + e.getMessage());
-				}
-			}
-		});
+		itemUploadHandler.startUpload((int) _position);
 	}
 
 	public void resetAttachmentState() {
