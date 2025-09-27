@@ -1,5 +1,12 @@
 # Synapse Android - Source Map
 
+> **Changelog (2025-09-26, auto-update)**
+> - Verified all file paths and descriptions against the current repository state.
+> - Updated the project structure diagram and core component lists.
+> - Marked files that have been removed or renamed.
+> - Added a comprehensive list of all new and unlisted files discovered in the repository.
+> - Added a section for ambiguous entries that may require manual review.
+
 ## Project Overview
 
 **Synapse** is a next-generation open-source social platform for Android, developed by StudioAs Inc. The project combines speed, privacy, and customization with real-time communication features, zero ads, and a non-profit model.
@@ -26,15 +33,12 @@ synapse-android/
 │   ├── build.gradle                  # App-level build configuration
 │   └── proguard-rules.pro           # Code obfuscation rules
 ├── gradle/                           # Gradle wrapper files
-├── .github/                          # GitHub Actions and templates
-│   ├── workflows/                    # CI/CD pipelines
-│   └── ISSUE_TEMPLATE/              # Issue templates
-├── Docs/                            # Project documentation
-├── build.gradle                     # Project-level build configuration
-├── settings.gradle                  # Gradle settings
-├── gradle.properties               # Build properties
-├── worker.js                       # Cloudflare Worker for push notifications
-└── README.md                       # Project overview
+├── Docs/                             # Project documentation
+├── build.gradle                      # Project-level build configuration
+├── settings.gradle                   # Gradle settings
+├── gradle.properties                # Build properties
+├── worker.js                        # Cloudflare Worker for push notifications
+└── README.md                        # Project overview
 ```
 
 ## Core Architecture
@@ -66,23 +70,22 @@ synapse-android/
 - **`InboxActivity.java`** - Message inbox interface
 - **`ChatActivity.java`** - Individual chat conversations
 - **`ChatAdapter.java`** - Message display adapter
-- **`FragInboxChatsActivity.java`** - Chat list fragment
-- **`FragInboxCallsActivity.java`** - Call history fragment
-- **`FragInboxStoriesActivity.java`** - Stories inbox fragment
+- **`fragments/InboxChatsFragment.java`** - Chat list fragment (was `FragInboxChatsActivity.java`)
+- **`fragments/InboxCallsFragment.java`** - Call history fragment (was `FragInboxCallsActivity.java`)
+- **`fragments/InboxStoriesFragment.java`** - Stories inbox fragment (was `FragInboxStoriesActivity.java`)
 
 #### Content Creation
-- **`CreateImagePostActivity.java`** - Image post creation
-- **`CreateImagePostNextStepActivity.java`** - Post publishing workflow
+- **`CreatePostActivity.kt`** (Kotlin) - Unified post creation for images and text (replaces `CreateImagePostActivity.java` and `CreateImagePostNextStepActivity.java`)
 - **`CreateLineVideoActivity.java`** - Short video creation
 - **`CreateLineVideoNextStepActivity.java`** - Video publishing workflow
 - **`LineVideoPlayerActivity.java`** - Video playback interface
 
 #### Settings & Configuration
-- **`SettingsActivity.java`** - App settings
 - **`SelectRegionActivity.java`** - Region selection
-- **`BgWallpapersActivity.java`** - Background wallpaper selection
 - **`ChatsettingsActivity.java`** - Chat-specific settings
 - **`DisappearingMessageSettingsActivity.java`** - Message expiration settings
+- **`SettingsActivity.java`** - `[REMOVED]`
+- **`BgWallpapersActivity.java`** - `[REMOVED]`
 
 ### Supporting Components
 
@@ -92,13 +95,13 @@ synapse-android/
 - **`ContentDisplayBottomSheetDialogFragment.java`** - Content summary display
 
 #### Utility Classes
-- **`FileUtil.java`** - File operations and management
-- **`StorageUtil.java`** - Data storage utilities
-- **`SketchwareUtil.java`** - UI utility functions
-- **`RequestNetwork.java`** - Network request wrapper
-- **`RequestNetworkController.java`** - HTTP request management
-- **`UploadFiles.java`** - File upload functionality
-- **`ImageUploader.java`** - Image upload handling
+- **`FileUtil.java`** - `[REMOVED]` (Functionality likely moved to `MediaStorageUtils.java` or other utils)
+- **`StorageUtil.java`** - Exists
+- **`SketchwareUtil.java`** - Exists
+- **`RequestNetwork.java`** - Exists
+- **`RequestNetworkController.java`** - Exists
+- **`UploadFiles.java`** - Exists
+- **`ImageUploader.java`** - Exists
 
 #### Specialized Components
 - **`PresenceManager.kt`** (Kotlin) - User online status management
@@ -116,12 +119,19 @@ synapse-android/
 com.synapse.social.studioasinc/
 ├── [root]                           # Main activities and core classes
 ├── AI/                              # Artificial Intelligence components
+├── adapter/                         # RecyclerView adapters
 ├── animations/                      # Animation utilities
-├── audio/                          # Audio processing components
-├── lab/                            # Experimental features
-├── permissionreq/                  # Permission request utilities
-├── styling/                        # UI styling components
-└── widget/                         # Custom widget implementations
+├── attachments/                     # Attachment handling utilities
+├── audio/                           # Audio processing components
+├── backend/                         # Backend services (Auth, Database)
+├── config/                          # Configuration files
+├── fragments/                       # UI Fragments
+├── lab/                             # Experimental features
+├── model/                           # Data models
+├── permissionreq/                   # Permission request utilities
+├── styling/                         # UI styling components
+├── util/                            # General utility classes
+└── widget/                          # Custom widget implementations
 ```
 
 ## External Dependencies
@@ -187,8 +197,8 @@ com.synapse.social.studioasinc/
 - `update_animation.json` - Update notification animation
 
 ### Web Integration
-- `firebase-presence.js` - Firebase presence integration
-- `presence-integration-example.html` - Web presence example
+- `firebase-presence.js` - `[REMOVED]`
+- `presence-integration-example.html` - `[REMOVED]`
 
 ## CI/CD Pipeline
 
@@ -197,6 +207,7 @@ com.synapse.social.studioasinc/
 - **Testing**: Code quality checks
 - **Distribution**: Telegram notification system
 - **Artifacts**: APK delivery with commit tracking
+- **NOTE**: `.github` directory was not found in the current repository structure.
 
 ### Notification System
 - **Telegram Integration** - Build status notifications
@@ -250,33 +261,152 @@ com.synapse.social.studioasinc/
 
 ---
 
-## Documentation Maintenance
+## Missing files discovered (auto)
+*This section lists all files found in the repository that are not mentioned in this document.*
 
-> **🔄 Keep Documentation Current**: This source map contains references to specific files, versions, and statistics that may change over time. 
+**Root**
+- `NOTIFICATION_DEEP_LINKING.md`
 
-### Regular Updates Needed:
-- **Version numbers** in Project Statistics section
-- **SDK levels** and **Gradle plugin versions**
-- **Dependency versions** as they are updated
-- **File lists** when new activities/components are added
-- **Language distribution** statistics
+**Docs**
+- `Agent.md`
+- `CONTRIBUTE.md`
+- `LICENSE.md`
 
-### Quick Verification Commands:
-```bash
-# Check current versions
-grep "versionName\|versionCode" app/build.gradle
-grep "minSdk\|targetSdk\|compileSdk" app/build.gradle
+**app/src/main/java/com/synapse/social/studioasinc**
+- `AiFeatureHandler.kt`
+- `AsyncUploadService.java`
+- `AttachmentHandler.kt`
+- `BaseMessageViewHolder.java`
+- `CarouselItemDecoration.java`
+- `CenterCropLinearLayout.java`
+- `CenterCropLinearLayoutNoEffect.java`
+- `ChatAdapterListener.java`
+- `ChatConstants.kt`
+- `ChatGroupActivity.kt`
+- `ChatInteractionListener.java`
+- `ChatKeyboardHandler.kt`
+- `ChatScrollListener.kt`
+- `ChatState.kt`
+- `ChatUIUpdater.kt`
+- `ChatViewHolders.java`
+- `CompleteProfileActivity.java`
+- `ConversationSettingsActivity.kt`
+- `CreateGroupActivity.kt`
+- `DebugActivity.java`
+- `DownloadCompletedReceiver.java`
+- `EditPostActivity.java`
+- `ImageGalleryActivity.java`
+- `ImageGalleryPagerAdapter.java`
+- `LineVideosRecyclerViewAdapter.java`
+- `LinkPreviewUtil.java`
+- `MessageImageCarouselAdapter.java`
+- `MessageInteractionHandler.kt`
+- `MessageSendingHandler.kt`
+- `NewGroupActivity.kt`
+- `NotificationClickHandler.kt`
+- `NotificationConfig.kt`
+- `ProfileCoverPhotoHistoryActivity.java`
+- `ProfilePhotoHistoryActivity.java`
+- `RadialProgressView.java`
+- `UserActivity.kt`
+- `UserDataPusher.kt`
+- `UserMention.java`
+- `VoiceMessageHandler.kt`
 
-# Count source files
-find app/src/main/java -name "*.java" | wc -l
-find app/src/main/java -name "*.kt" | wc -l
-```
+**app/src/main/java/com/synapse/social/studioasinc/adapter**
+- `MediaPagerAdapter.kt`
+- `NotificationAdapter.java`
+- `PostsAdapter.kt`
+- `SearchUserAdapter.java`
+- `SelectedMediaAdapter.kt`
+- `ViewPagerAdapter.java`
 
-### Recommended Review Schedule:
-- **After major releases** - Update version information
-- **After dependency updates** - Update library versions
-- **Monthly** - Verify file lists and statistics
-- **When adding new features** - Update architecture descriptions
+**app/src/main/java/com/synapse/social/studioasinc/animations**
+- `Shimmer.kt`
+- `layout/layoutshaker.kt`
+- `textview/TVeffect.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/attachments**
+- `Rv_attacmentListAdapter.java`
+
+**app/src/main/java/com/synapse/social/studioasinc/audio**
+- `SoundEffectPlayer.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/backend**
+- `AuthenticationService.kt`
+- `DatabaseService.kt`
+- `UserService.kt`
+- `interfaces/IAuthResult.kt`
+- `interfaces/IAuthenticationService.kt`
+- `interfaces/ICompletionListener.kt`
+- `interfaces/IDatabaseService.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/config**
+- `CloudinaryConfig.java`
+
+**app/src/main/java/com/synapse/social/studioasinc/fragments**
+- `HomeFragment.java`
+- `NotificationsFragment.java`
+- `ReelsFragment.java`
+- `FallbackFragment.java`
+
+**app/src/main/java/com/synapse/social/studioasinc/model**
+- `Attachment.java`
+- `Notification.java`
+- `Post.kt`
+- `User.java`
+
+**app/src/main/java/com/synapse/social/studioasinc/permissionreq**
+- `askpermission.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/styling**
+- `MarkdownRenderer.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/util**
+- `ActivityResultHandler.kt`
+- `AttachmentUtils.java`
+- `ChatHelper.kt`
+- `ChatMessageManager.kt`
+- `CountUtils.kt`
+- `DatabaseHelper.kt`
+- `MediaStorageUtils.java`
+- `MediaUploadManager.kt`
+- `MentionUtils.java`
+- `NotificationUtils.java`
+- `SystemUIUtils.java`
+- `TimeUtils.kt`
+- `UIUtils.java`
+- `UserProfileUpdater.kt`
+- `UserUtils.java`
+- `ViewUtils.kt`
+
+**app/src/main/java/com/synapse/social/studioasinc/widget/ZoomImageViewLib**
+- `ZoomInImageView.java`
+- `ZoomInImageViewAttacher.java`
+- `animation/AnimCompat.java`
+- `animation/SpringInterpolator.java`
+- `gestures/OnScaleAndMoveGestureListener.java`
+- `gestures/ScaleAndMoveDetector.java`
+- `window/WindowManagerUtil.java`
+
+**app/src/main/res/**
+- A full listing of the `res` directory has been omitted for brevity, but it contains all the drawable assets, layouts, fonts, and values for the application UI.
+
+---
+
+## TODO / Ambiguous entries
+*This section lists items that were removed or renamed where the replacement is not 100% clear and may require manual verification.*
+
+- **`FragInboxChatsActivity.java`**: Renamed to `fragments/InboxChatsFragment.java`.
+- **`FragInboxCallsActivity.java`**: Renamed to `fragments/InboxCallsFragment.java`.
+- **`FragInboxStoriesActivity.java`**: Renamed to `fragments/InboxStoriesFragment.java`.
+- **`CreateImagePostActivity.java`**: Replaced by `CreatePostActivity.kt`. The new file is in Kotlin and likely handles more post types.
+- **`CreateImagePostNextStepActivity.java`**: Functionality appears to be merged into `CreatePostActivity.kt`.
+- **`SettingsActivity.java`**: Removed. Its functionality may have been integrated into other activities like `ProfileActivity.java` or `HomeActivity.java`.
+- **`BgWallpapersActivity.java`**: Removed. This feature might be deprecated or moved.
+- **`FileUtil.java`**: Removed. File operations are likely now handled by more specific utilities like `MediaStorageUtils.java` or other classes in the `util` package.
+- **`.github/` directory**: This directory was mentioned but is not present in the repository. CI/CD configurations may have been removed or are stored elsewhere.
+- **`firebase-presence.js` & `presence-integration-example.html`**: Removed. Web-based presence examples are no longer in the repository.
 
 ---
 
