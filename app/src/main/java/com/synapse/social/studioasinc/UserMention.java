@@ -1,8 +1,11 @@
 package com.synapse.social.studioasinc;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.PopupWindow;
@@ -10,39 +13,45 @@ import android.widget.PopupWindow;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter;
 import com.synapse.social.studioasinc.model.User;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+
+import io.github.jan_tennert.supabase.SupabaseClient;
+import io.github.jan_tennert.supabase.postgrest.Postgrest;
+import io.github.jan_tennert.supabase.postgrest.PostgrestResult;
+import io.github.jan_tennert.supabase.postgrest.query.Columns;
+import kotlinx.coroutines.CoroutineScope;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.launch;
+import kotlinx.coroutines.withContext;
 
 public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickListener {
 
     private final EditText editText;
     private final Context context;
-    private final DatabaseReference usersRef;
+    private final SupabaseClient supabase;
+    private final Postgrest postgrest; // Convenience field for Postgrest client
     private PopupWindow popupWindow;
     private SearchUserAdapter searchUserAdapter;
     private final List<User> userList = new ArrayList<>();
 
     private final View sendButton;
 
-    public UserMention(EditText editText, View sendButton) {
+    public UserMention(EditText editText, View sendButton, SupabaseClient supabase) {
         this.editText = editText;
         this.context = editText.getContext();
-        this.usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
+        this.supabase = supabase;
+        this.postgrest = supabase.postgrest;
         this.sendButton = sendButton;
         setupPopupWindow();
     }
 
-    public UserMention(EditText editText) {
-        this(editText, null);
+    public UserMention(EditText editText, SupabaseClient supabase) {
+        this(editText, null, supabase);
     }
 
     private void setupPopupWindow() {
@@ -80,7 +89,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
         if (cursorPosition > 0 && text.charAt(cursorPosition - 1) == '@') {
             searchUsers("");
-            showPopup();
+            // The popup will be shown in searchUsers after data is fetched
         } else {
             String[] words = text.substring(0, cursorPosition).split("\\s");
             String lastWord = words.length > 0 ? words[words.length - 1] : "";
@@ -88,7 +97,6 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
             if (lastWord.startsWith("@")) {
                 String query = lastWord.substring(1);
                 searchUsers(query);
-                showPopup();
             } else {
                 hidePopup();
             }
@@ -100,34 +108,42 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
     }
 
     private void searchUsers(String query) {
-        Query searchQuery = usersRef.orderByChild("username")
-                .startAt(query)
-                .endAt(query + "\uf8ff")
-                .limitToFirst(10);
+        CoroutineScope scope = new CoroutineScope(Dispatchers.getIO());
+        scope.launch(() -> {
+            try {
+                // Supabase query to search for users by username
+                // Assuming your 'users' table has 'id', 'username', and 'profile_url'
+                PostgrestResult response = postgrest.from("users")
+                        .select(Columns.list("id", "username", "profile_url")) // Select relevant user columns
+                        .filter("username.ilike", "%" + query + "%") // Case-insensitive partial match
+                        .limit(10) // Limit to 10 results
+                        .execute();
 
-        searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                userList.clear();
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    User user = snapshot.getValue(User.class);
-                    if (user != null) {
-                        user.setUid(snapshot.getKey());
-                        userList.add(user);
+                // Decode the response to a list of User objects
+                List<User> fetchedUsers = response.decodeList(User.class);
+
+                // Update UI on the main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    userList.clear();
+                    userList.addAll(fetchedUsers);
+                    searchUserAdapter.notifyDataSetChanged();
+                    if (userList.isEmpty()) {
+                        hidePopup();
+                    } else {
+                        showPopup();
                     }
-                }
-                searchUserAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                // Handle error
+                });
+            } catch (Exception e) {
+                Log.e("UserMention", "Error searching users: " + e.getMessage());
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    hidePopup(); // Hide popup on error
+                });
             }
         });
     }
 
     private void showPopup() {
-        if (!popupWindow.isShowing()) {
+        if (!popupWindow.isShowing() && !userList.isEmpty()) { // Only show if there are results
             popupWindow.showAsDropDown(editText);
         }
     }
@@ -140,7 +156,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
     @Override
     public void onUserClick(User user) {
-        String username = user.getUsername();
+        String username = user.getUsername(); // Assuming User.getUsername() exists
         String text = editText.getText().toString();
         int cursorPosition = editText.getSelectionStart();
 
@@ -150,7 +166,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
         if (atIndex != -1) {
             String newText = text.substring(0, atIndex + 1) + username + " " + text.substring(cursorPosition);
             editText.setText(newText);
-            editText.setSelection(atIndex + username.length() + 2);
+            editText.setSelection(atIndex + username.length() + 2); // Position cursor after the mentioned username and a space
         }
 
         hidePopup();

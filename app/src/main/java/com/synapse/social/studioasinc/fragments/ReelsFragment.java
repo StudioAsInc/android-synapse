@@ -13,22 +13,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.RequestNetwork;
 import com.synapse.social.studioasinc.RequestNetworkController;
+import io.github.jan-tennert.supabase.SupabaseClient;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ReelsFragment extends Fragment {
 
-    private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+    //Removed Firebase database call
     public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
     private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
     private SwipeRefreshLayout middleRelativeTopSwipe;
@@ -62,27 +57,7 @@ public class ReelsFragment extends Fragment {
             @Override
             public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
                 loadedBody.setVisibility(View.VISIBLE);
-                Query getLineVideosRef = FirebaseDatabase.getInstance().getReference("skyline/line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
-                getLineVideosRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot _dataSnapshot) {
-                        lineVideosListMap.clear();
-                        try {
-                            GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-                            for (DataSnapshot _data : _dataSnapshot.getChildren()) {
-                                HashMap<String, Object> _map = _data.getValue(_ind);
-                                lineVideosListMap.add(_map);
-                            }
-                            mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(getContext(), getParentFragmentManager(),  lineVideosListMap);
-                            videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError _databaseError) {}
-                });
+                //Removed Firebase database call
                 middleRelativeTopSwipe.setRefreshing(false);
             }
 

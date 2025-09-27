@@ -9,15 +9,6 @@ import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.onesignal.OneSignal;
 import com.onesignal.debug.LogLevel;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
@@ -27,21 +18,20 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.lifecycle.LifecycleOwner;
 
+import io.github.jan_tennert.supabase.SupabaseClient;
+import com.synapse.social.studioasinc.util.UserUtils; // Import UserUtils
+import com.synapse.social.studioasinc.util.NotificationUtils; // Import NotificationUtils
+
 public class SynapseApp extends Application implements DefaultLifecycleObserver {
     
     private static Context mContext;
     private Thread.UncaughtExceptionHandler mExceptionHandler;
-    
-    public static FirebaseAuth mAuth;
-    
-    public static DatabaseReference getCheckUserReference;
-    public static DatabaseReference setUserStatusRef;
-    public static DatabaseReference setUserStatusReference;
-    
-    public static Calendar mCalendar;
+
+    private SupabaseClient supabase;
+
+    // Removed static Calendar mCalendar as it's no longer used after Firebase removal
     
     public static Context getContext() {
-        return mContext;
     }
     
     @Override
@@ -50,21 +40,20 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         mContext = this;
         this.mExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
         this.mCalendar = Calendar.getInstance();
-        
-        // Initialize Firebase with disk persistence
-        FirebaseApp.initializeApp(this);
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
+        // Initialize Supabase
+        supabase = new SupabaseClient(
+                "YOUR_SUPABASE_URL", // Replace with your Supabase URL
+                "YOUR_SUPABASE_ANON_KEY"  // Replace with your Supabase anon key
+        );
+        // Initialize UserUtils with the Supabase client
+        UserUtils.setSupabaseClient(supabase);
+        // Initialize NotificationUtils with the Supabase client
+        NotificationUtils.setSupabaseClient(supabase);
         
         // Create notification channels
         createNotificationChannels();
-        
-        this.mAuth = FirebaseAuth.getInstance();
-        this.getCheckUserReference = FirebaseDatabase.getInstance().getReference("skyline/users");
-        this.setUserStatusRef = FirebaseDatabase.getInstance().getReference(".info/connected");
-        
-        // Keep users data synced for offline use
-        getCheckUserReference.keepSynced(true);
-        
+
         // Set up global exception handler
         Thread.setDefaultUncaughtExceptionHandler(
             new Thread.UncaughtExceptionHandler() {
@@ -112,10 +101,7 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
             public void onPushSubscriptionChange(@NonNull PushSubscriptionChangedState state) {
                 if (state.getCurrent().getOptedIn()) {
                     String playerId = state.getCurrent().getId();
-                    if (mAuth.getCurrentUser() != null && playerId != null) {
-                        String userUid = mAuth.getCurrentUser().getUid();
-                        OneSignalManager.savePlayerIdToRealtimeDatabase(userUid, playerId);
-                    }
+                    // TODO: Save this playerId to Supabase for the current user if needed for custom targeting
                 }
             }
         });
@@ -123,16 +109,10 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
 
     @Override
     public void onStart(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOnline(mAuth.getCurrentUser().getUid());
-        }
     }
 
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOffline(mAuth.getCurrentUser().getUid());
-        }
     }
     
     private void createNotificationChannels() {
@@ -170,12 +150,4 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         }
     }
     
-    /**
-     * Enable offline persistence for any database reference
-     * @param ref DatabaseReference to enable offline sync for
-     */
-    public static void enableOfflineSync(DatabaseReference ref) {
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-        ref.keepSynced(true);
-    }
 }

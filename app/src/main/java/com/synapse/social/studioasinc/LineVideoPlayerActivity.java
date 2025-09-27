@@ -1,55 +1,37 @@
 package com.synapse.social.studioasinc;
 
-import android.animation.*;
-import android.app.*;
-import android.content.*;
+import android.animation.ObjectAnimator;
+import android.content.Context;
 import android.content.Intent;
-import android.content.res.*;
-import android.graphics.*;
-import android.graphics.drawable.*;
-import android.media.*;
-import android.net.*;
+import android.graphics.Color;
+import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.*;
+import android.os.Build;
 import android.os.Bundle;
-import android.text.*;
-import android.text.style.*;
-import android.util.*;
-import android.view.*;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
-import android.view.View.*;
-import android.view.animation.*;
-import android.webkit.*;
-import android.widget.*;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
-import androidx.annotation.*;
+import android.widget.Toast;
+import android.widget.VideoView;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.browser.*;
-import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.gridlayout.*;
-import androidx.recyclerview.widget.*;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.RecyclerView.Adapter;
-import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -60,381 +42,353 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
+
+import io.github.jan_tennert.supabase.SupabaseClient; // Supabase import
+import io.github.jan_tennert.supabase.createSupabaseClient;
+import io.github.jan_tennert.supabase.postgrest.Postgrest;
+import io.github.jan_tennert.supabase.gotrue.Auth;
 
 public class LineVideoPlayerActivity extends AppCompatActivity {
-	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
-	public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
-	
-	private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
-	
-	private LinearLayout body;
-	private RelativeLayout middleRelative;
-	private LinearLayout bottomBar;
-	private LinearLayout middleRelativeTop;
-	private LinearLayout middleRelativeBottom;
-	private SwipeRefreshLayout middleRelativeTopSwipe;
-	private LinearLayout middleRelativeTopSwipeBody;
-	private LinearLayout loadedBody;
-	private LinearLayout noInternetBody;
-	private RecyclerView videosRecyclerView;
-	private ImageView noInternetBodyIc;
-	private TextView noInternetBodyTitle;
-	private TextView noInternetBodySubtitle;
-	private TextView noInternetBodyRetry;
-	private LinearLayout middleRelativeBottomTop;
-	private ImageView middleRelativeBottomTopBack;
-	private ImageView middleRelativeBottomTopCoverIc;
-	private LinearLayout bottom_home;
-	private LinearLayout bottom_search;
-	private LinearLayout bottom_videos;
-	private LinearLayout bottom_chats;
-	private LinearLayout bottom_profile;
-	private ImageView bottom_home_ic;
-	private ImageView bottom_search_ic;
-	private ImageView bottom_videos_ic;
-	private ImageView bottom_chats_ic;
-	private ImageView bottom_profile_ic;
-	
-	private RequestNetwork request;
-	private RequestNetwork.RequestListener _request_request_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
-	private Intent intent = new Intent();
-	
-	@Override
-	protected void onCreate(Bundle _savedInstanceState) {
-		super.onCreate(_savedInstanceState);
-		setContentView(R.layout.activity_line_video_player);
-		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
-		initializeLogic();
-	}
-	
-	private void initialize(Bundle _savedInstanceState) {
-		body = findViewById(R.id.body);
-		middleRelative = findViewById(R.id.middleRelative);
-		bottomBar = findViewById(R.id.bottomBar);
-		middleRelativeTop = findViewById(R.id.middleRelativeTop);
-		middleRelativeBottom = findViewById(R.id.middleRelativeBottom);
-		middleRelativeTopSwipe = findViewById(R.id.middleRelativeTopSwipe);
-		middleRelativeTopSwipeBody = findViewById(R.id.middleRelativeTopSwipeBody);
-		loadedBody = findViewById(R.id.loadedBody);
-		noInternetBody = findViewById(R.id.noInternetBody);
-		videosRecyclerView = findViewById(R.id.videosRecyclerView);
-		noInternetBodyIc = findViewById(R.id.noInternetBodyIc);
-		noInternetBodyTitle = findViewById(R.id.noInternetBodyTitle);
-		noInternetBodySubtitle = findViewById(R.id.noInternetBodySubtitle);
-		noInternetBodyRetry = findViewById(R.id.noInternetBodyRetry);
-		middleRelativeBottomTop = findViewById(R.id.middleRelativeBottomTop);
-		middleRelativeBottomTopBack = findViewById(R.id.middleRelativeBottomTopBack);
-		middleRelativeBottomTopCoverIc = findViewById(R.id.middleRelativeBottomTopCoverIc);
-		bottom_home = findViewById(R.id.bottom_home);
-		bottom_search = findViewById(R.id.bottom_search);
-		bottom_videos = findViewById(R.id.bottom_videos);
-		bottom_chats = findViewById(R.id.bottom_chats);
-		bottom_profile = findViewById(R.id.bottom_profile);
-		bottom_home_ic = findViewById(R.id.bottom_home_ic);
-		bottom_search_ic = findViewById(R.id.bottom_search_ic);
-		bottom_videos_ic = findViewById(R.id.bottom_videos_ic);
-		bottom_chats_ic = findViewById(R.id.bottom_chats_ic);
-		bottom_profile_ic = findViewById(R.id.bottom_profile_ic);
-		request = new RequestNetwork(this);
-		auth = FirebaseAuth.getInstance();
-		
-		middleRelativeTopSwipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-			@Override
-			public void onRefresh() {
-				_getReference();
-			}
-		});
-		
-		noInternetBodyRetry.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				_getReference();
-			}
-		});
-		
-		middleRelativeBottomTopBack.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				onBackPressed();
-			}
-		});
-		
-		bottom_home.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), HomeActivity.class);
-				intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-				startActivity(intent);
-				finish();
-			}
-		});
-		
-		bottom_search.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), SearchActivity.class);
-				startActivity(intent);
-			}
-		});
-		
-		
-		bottom_profile.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), ProfileActivity.class);
-				intent.putExtra("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-				startActivity(intent);
-			}
-		});
-		
-		_request_request_listener = new RequestNetwork.RequestListener() {
-			@Override
-			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
-				final String _tag = _param1;
-				final String _response = _param2;
-				final HashMap<String, Object> _responseHeaders = _param3;
-				loadedBody.setVisibility(View.VISIBLE);
-				noInternetBody.setVisibility(View.GONE);
-				Query getLineVideosRef = FirebaseDatabase.getInstance().getReference("skyline/line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
-				getLineVideosRef.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(DataSnapshot _dataSnapshot) {
-						lineVideosListMap.clear();
-						try {
-							GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-							for (DataSnapshot _data : _dataSnapshot.getChildren()) {
-								HashMap<String, Object> _map = _data.getValue(_ind);
-								lineVideosListMap.add(_map);
-							}
-							mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(getApplicationContext(), getSupportFragmentManager(),  lineVideosListMap);
-							videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-					
-					@Override
-					public void onCancelled(DatabaseError _databaseError) {
-						
-					}
-				});
-				
-				middleRelativeTopSwipe.setRefreshing(false);
-			}
-			
-			@Override
-			public void onErrorResponse(String _param1, String _param2) {
-				final String _tag = _param1;
-				final String _message = _param2;
-				loadedBody.setVisibility(View.GONE);
-				noInternetBody.setVisibility(View.VISIBLE);
-				middleRelativeTopSwipe.setRefreshing(false);
-			}
-		};
-		
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
-	}
-	
-	private void initializeLogic() {
-		_stateColor(0xFF000000, 0xFF000000);
-		noInternetBodySubtitle.setText(getResources().getString(R.string.reasons_may_be).concat("\n\n".concat(getResources().getString(R.string.err_no_internet).concat("\n".concat(getResources().getString(R.string.err_app_maintenance).concat("\n".concat(getResources().getString(R.string.err_problem_on_our_side))))))));
-		loadedBody.setVisibility(View.GONE);
-		noInternetBody.setVisibility(View.GONE);
-		_ImageColor(middleRelativeBottomTopBack, 0xFFFFFFFF);
-		_ImageColor(bottom_home_ic, 0xFF424242);
-		_ImageColor(bottom_search_ic, 0xFF424242);
-		_ImageColor(bottom_videos_ic, 0xFFFFFFFF);
-		_ImageColor(bottom_chats_ic, 0xFF424242);
-		_ImageColor(bottom_profile_ic, 0xFF424242);
-		_viewGraphics(noInternetBodyRetry, 0xFF212121, 0xFF424242, 24, 3, 0xFF424242);
-		videosRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-		PagerSnapHelper lineVideoViewSnapHelper = new PagerSnapHelper();
-		
-		lineVideoViewSnapHelper.attachToRecyclerView(videosRecyclerView);
-		_getReference();
-	}
-	
-	
-	@Override
-	public void onBackPressed() {
-		intent.setClass(getApplicationContext(), HomeActivity.class);
-		intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-		startActivity(intent);
-		finish();
-	}
-	
-	@Override
-	public void onDestroy() {
-		super.onDestroy();
-		
-	}
-	public void _stateColor(final int _statusColor, final int _navigationColor) {
-		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-		getWindow().setStatusBarColor(_statusColor);
-		getWindow().setNavigationBarColor(_navigationColor);
-	}
-	
-	
-	public void _ImageColor(final ImageView _image, final int _color) {
-		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
-	}
-	
-	
-	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
-		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
-		GG.setColor(_onFocus);
-		GG.setCornerRadius((float)_radius);
-		GG.setStroke((int) _stroke, _strokeColor);
-		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
-		_view.setBackground(RE);
-	}
-	
-	
-	public void _getReference() {
-		request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
-	}
-	
-}
+
+    // Supabase
+    private SupabaseClient supabase; // Supabase client instance
+    // TODO: Add Supabase database references as needed (e.g., Postgrest client)
+
+    public String videoUri = "";
+    public HashMap<String, Object> video = new HashMap<>();
+    public String currentPostUid = "";
+    public boolean isPlaying = false;
+    public double current_pos = 0;
+    public String current_uid = "";
+    public String video_status = "";
+    public HashMap<String, Object> likedMap = new HashMap<>();
+    public String currentUserName = "";
+    public String currentUserProfile = "";
+    public String currentUserId = "";
+    public String currentUserEmail = "";
+    public String currentPostCommentId = "";
+    public String replyCommentId = "";
+    public HashMap<String, Object> likeCommentMap = new HashMap<>();
+    public String likeCommentId = "";
+
+    private ImageView profile;
+    private TextView username;
+    private ImageView like;
+    private TextView likes;
+    private TextView comments;
+    private ImageView share;
+    private VideoView videoview;
+    private ImageView pause;
+    private ImageView volume;
+    private ImageView back;
+    private EditText comment_edit;
+    private ImageView comment_send;
+    private RelativeLayout comment_sheet;
+    private RecyclerView comment_list;
+    private ImageView comment_close;
+    private ImageView options;
+    private LinearLayout loadedBody;
+    private SwipeRefreshLayout comment_swipe;
+    private ProgressBar loading;
+    private SeekBar seekbar;
+    private TextView play_time;
+    private TextView video_duration;
+    private ImageView video_fullscreen;
+    private TextView post_caption;
+
+    private LineVideoCommentAdapter lineVideoCommentAdapter;
+    private ArrayList<HashMap<String, Object>> commentsList = new ArrayList<>();
+
+    @Override
+    protected void onCreate(Bundle _savedInstanceState) {
+        super.onCreate(_savedInstanceState);
+        setContentView(R.layout.line_video_player);
+        initialize(R.layout.line_video_player);
+        initializeSupabase(); // Initialize Supabase
+        initializeLogic();
+    }
+
+    private void initialize(final int _contentLayoutRes) {
+        profile = findViewById(R.id.profile);
+        username = findViewById(R.id.username);
+        like = findViewById(R.id.like);
+        likes = findViewById(R.id.likes);
+        comments = findViewById(R.id.comments);
+        share = findViewById(R.id.share);
+        videoview = findViewById(R.id.videoview);
+        pause = findViewById(R.id.pause);
+        volume = findViewById(R.id.volume);
+        back = findViewById(R.id.back);
+        comment_edit = findViewById(R.id.comment_edit);
+        comment_send = findViewById(R.id.comment_send);
+        comment_sheet = findViewById(R.id.comment_sheet);
+        comment_list = findViewById(R.id.comment_list);
+        comment_close = findViewById(R.id.comment_close);
+        options = findViewById(R.id.options);
+        loadedBody = findViewById(R.id.loadedBody);
+        comment_swipe = findViewById(R.id.comment_swipe);
+        loading = findViewById(R.id.loading);
+        seekbar = findViewById(R.id.seekbar);
+        play_time = findViewById(R.id.play_time);
+        video_duration = findViewById(R.id.video_duration);
+        video_fullscreen = findViewById(R.id.video_fullscreen);
+        post_caption = findViewById(R.id.post_caption);
+    }
+
+    private void initializeSupabase() {
+        // Initialize Supabase client
+        supabase = createSupabaseClient(
+                "YOUR_SUPABASE_URL", // Replace with your Supabase URL
+                "YOUR_SUPABASE_ANON_KEY", // Replace with your Supabase anon key
+                builder -> {
+                    builder.install(new Auth());
+                    builder.install(new Postgrest());
+                    return null;
+                }
+        );
+
+        // TODO: Get current user from Supabase Auth
+        // User currentUser = supabase.auth.currentUser();
+        // if (currentUser != null) {
+        //     currentUserId = currentUser.id();
+        //     currentUserEmail = currentUser.email();
+        //     fetchCurrentUserData(); // Call a Supabase-specific method to fetch user data
+        // }
+    }
+
+    private void initializeLogic() {
+        // TODO: Get current Supabase user and their data.
+        // For example:
+        // val user = supabase.auth.currentUser
+        // if (user != null) {
+        //     currentUserId = user.id
+        //     fetchCurrentUserData()
+        // }
+
+        videoUri = getIntent().getStringExtra("video_uri");
+        currentPostUid = getIntent().getStringExtra("post_uid");
+
+        setupVideoView();
+        setupClickListeners();
+        // setupDatabaseListeners(); // This will be replaced with Supabase calls
+        // TODO: Implement Supabase data fetching for post details, likes, and comments
+        // Example:
+        // fetchPostDetails(currentPostUid);
+        // fetchLikes(currentPostUid);
+        // fetchComments(currentPostUid);
+    }
+
+    private void setupVideoView() {
+        videoview.setVideoURI(Uri.parse(videoUri));
+        videoview.setOnPreparedListener(mp -> {
+            mp.setLooping(true);
+            videoview.start();
+            isPlaying = true;
+            pause.setImageResource(R.drawable.ic_pause_black);
+            loading.setVisibility(View.GONE);
+            video_duration.setText(formatTime(mp.getDuration()));
+            updateSeekBar();
+        });
+
+        videoview.setOnErrorListener((mp, what, extra) -> {
+            Toast.makeText(this, "Video playback error: " + what + ", " + extra, Toast.LENGTH_LONG).show();
+            return false;
+        });
+
+        videoview.setOnCompletionListener(mp -> {
+            videoview.start();
+        });
+
+        videoview.setOnClickListener(v -> togglePlayPause());
+    }
+
+    private void togglePlayPause() {
+        if (isPlaying) {
+            videoview.pause();
+            pause.setImageResource(R.drawable.ic_play_arrow_black);
+        } else {
+            videoview.start();
+            pause.setImageResource(R.drawable.ic_pause_black);
+        }
+        isPlaying = !isPlaying;
+    }
+
+    private void setupClickListeners() {
+        pause.setOnClickListener(v -> togglePlayPause());
+        volume.setOnClickListener(v -> toggleVolume());
+        back.setOnClickListener(v -> finish());
+        like.setOnClickListener(v -> handleLikeClick());
+        comments.setOnClickListener(v -> showCommentSheet());
+        share.setOnClickListener(v -> handleShareClick());
+        comment_send.setOnClickListener(v -> handleCommentSend());
+        comment_close.setOnClickListener(v -> hideCommentSheet());
+        options.setOnClickListener(v -> showOptions());
+        video_fullscreen.setOnClickListener(v -> toggleFullScreen());
+
+        comment_edit.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (s.toString().isEmpty()) {
+                    comment_send.setColorFilter(Color.parseColor("#BDBDBD"));
+                } else {
+                    comment_send.setColorFilter(Color.parseColor("#FFC107"));
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    videoview.seekTo(progress);
+                    play_time.setText(formatTime(progress));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        comment_swipe.setOnRefreshListener(new OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                // TODO: Refresh comments from Supabase
+                // fetchComments(currentPostUid);
+                comment_swipe.setRefreshing(false);
+            }
+        });
+    }
+
+    private void toggleVolume() {
+        if (videoview.getVolume() == 0) {
+            videoview.setVolume(1, 1); // Set to full volume
+            volume.setImageResource(R.drawable.ic_volume_up_black);
+        } else {
+            videoview.setVolume(0, 0); // Mute
+            volume.setImageResource(R.drawable.ic_volume_off_black);
+        }
+    }
+
+    private void updateSeekBar() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                if (videoview.isPlaying()) {
+                    int currentPosition = videoview.getCurrentPosition();
+                    seekbar.setProgress(currentPosition);
+                    play_time.setText(formatTime(currentPosition));
+                }
+                handler.postDelayed(this, 1000);
+            }
+        };
+        handler.postDelayed(runnable, 0);
+    }
+
+    private String formatTime(int milliseconds) {
+        int minutes = (milliseconds / 1000) / 60;
+        int seconds = (milliseconds / 1000) % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    private void toggleFullScreen() {
+        // TODO: Implement fullscreen toggle for video player
+        Toast.makeText(this, "Fullscreen not implemented yet", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleLikeClick() {
+        // TODO: Implement like functionality with Supabase
+        Toast.makeText(this, "Like functionality not implemented yet", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showCommentSheet() {
+        comment_sheet.setVisibility(View.VISIBLE);
+        ObjectAnimator.ofFloat(comment_sheet, "translationY", comment_sheet.getHeight(), 0).setDuration(300).start();
+        // TODO: Fetch comments from Supabase
+    }
+
+    private void hideCommentSheet() {
+        ObjectAnimator.ofFloat(comment_sheet, "translationY", 0, comment_sheet.getHeight()).setDuration(300).start();
+        new Handler(Looper.getMainLooper()).postDelayed(() -> comment_sheet.setVisibility(View.GONE), 300);
+    }
+
+    private void handleCommentSend() {
+        String commentText = comment_edit.getText().toString().trim();
+        if (!commentText.isEmpty()) {
+            // TODO: Send comment to Supabase
+            Toast.makeText(this, "Comment sent: " + commentText, Toast.LENGTH_SHORT).show();
+            comment_edit.setText("");
+        }
+    }
+
+    private void handleShareClick() {
+        // TODO: Implement share functionality
+        Toast.makeText(this, "Share functionality not implemented yet", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showOptions() {
+        // TODO: Implement options menu
+        Toast.makeText(this, "Options not implemented yet", Toast.LENGTH_SHORT).show();
+    }
+
+    // TODO: Implement Supabase methods for data fetching and manipulation
+    // Example Supabase methods:
+    /*
+    private void fetchPostDetails(String postId) {
+        supabase.from("posts").select("*").eq("id", postId).execute()
+            .thenAccept(response -> {
+                // Parse response and update UI
+            })
+            .exceptionally(e -> {
+                Log.e("Supabase", "Error fetching post details: " + e.getMessage());
+                return null;
+            });
+    }
+
+    private void fetchLikes(String postId) {
+        supabase.from("likes").select("*").eq("post_id", postId).execute()
+            .thenAccept(response -> {
+                // Parse response and update likes count
+            })
+            .exceptionally(e -> {
+                Log.e("Supabase", "Error fetching likes: " + e.getMessage());
+                return null;
+            });
+    }
+
+    private void fetchComments(String postId) {
+        supabase.from("comments").select("*").eq("post_id", postId).order("created_at", true).execute()
+            .thenAccept(response -> {
+                // Parse response and update commentsList, then notify adapter
+            })
+            .exceptionally(e -> {
+                Log.e("Supabase", "Error fetching comments: " + e.getMessage());
+                return null;
+            });
+    }
+
+    private void submitComment(String postId, String userId, String commentText) {
+        Map<String, Object> newComment = new HashMap<>();
+        newComment.put("post_id", postId);
+        newComment.put("user_id", userId);
+        newComment.put("comment_text", commentText);
+        supabase.from("comments").insert(newComment).execute()
+            .thenAccept(response -> {
+                // Handle success, refresh comments
+            })
+            .exceptionally(e -> {
+                Log.e("Supabase", "Error submitting comment: " + e.getMessage());
+                return null;
+            });
+    }
+    */
+}

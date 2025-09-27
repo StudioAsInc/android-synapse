@@ -1,636 +1,358 @@
 package com.synapse.social.studioasinc
 
-import android.Manifest
-import android.app.Activity
-import android.app.ProgressDialog
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.Animation
+import android.view.animation.ScaleAnimation
+import android.view.inputmethod.InputMethodManager
+import android.widget.BaseAdapter
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ListView
+import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.material.button.MaterialButton
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
-import com.google.firebase.storage.FirebaseStorage
-import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
-import java.util.ArrayList
-import java.util.Calendar
-import java.util.HashMap
+import com.vanniktech.emoji.EmojiEditText
+import com.vanniktech.emoji.EmojiPopup
+import com.vanniktech.emoji.EmojiTextView
+import com.synapse.social.studioasinc.util.ChatMessageManager // Import the migrated ChatMessageManager
 
-class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
+import io.github.jan_tennert.supabase.SupabaseClient
+import io.github.jan_tennert.supabase.createSupabaseClient
+import io.github.jan_tennert.supabase.postgrest.Postgrest
+import io.github.jan_tennert.supabase.gotrue.Auth
+import io.github.jan_tennert.supabase.realtime.Realtime
+import io.github.jan_tennert.supabase.realtime.PostgresAction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
-    private var chatMessagesRef: DatabaseReference? = null
-    private var oldestMessageKey: String? = null
-    private var isLoading = false
-    private val CHAT_PAGE_SIZE = 80
-    private var chatAdapter: ChatAdapter? = null
-    private var _chat_child_listener: ChildEventListener? = null
-    private val messageKeys: MutableSet<String> = HashSet()
-    private val ChatMessagesList: ArrayList<HashMap<String, Any>> = ArrayList()
-    private val repliedMessagesCache: HashMap<String, HashMap<String, Any>> = HashMap()
-    private val memberNamesMap: HashMap<String, String> = HashMap()
+class ChatGroupActivity : AppCompatActivity() {
 
+    private lateinit var supabase: SupabaseClient
+    private lateinit var chatMessageManager: ChatMessageManager // Instance of the migrated ChatMessageManager
+
+    private var chatListMap: ArrayList<HashMap<String, Any>> = ArrayList()
+    private var groupId: String = ""
+    private var groupName: String = ""
+    private var groupProfile: String = ""
+    private var currentUid: String = ""
+    private var currentUserUsername: String = ""
+    private var currentUserProfile: String = ""
+    private var oneSignalUserId: String = ""
+
+    private lateinit var linear1: LinearLayout
+    private lateinit var toolbar: RelativeLayout
     private lateinit var back: ImageView
-    private lateinit var topProfileLayoutProfileImage: ImageView
-    private lateinit var topProfileLayoutUsername: TextView
-    private lateinit var topProfileLayoutStatus: TextView
-    private lateinit var ChatMessagesListRecycler: RecyclerView
-    private lateinit var message_et: FadeEditText
-    private lateinit var btn_sendMessage: MaterialButton
-    private lateinit var galleryBtn: ImageView
-    private lateinit var attachmentLayoutListHolder: RelativeLayout
-    private lateinit var rv_attacmentList: RecyclerView
-    private lateinit var close_attachments_btn: ImageView
-    private lateinit var mMessageReplyLayout: LinearLayout
-    private lateinit var mMessageReplyLayoutBodyRightUsername: TextView
-    private lateinit var mMessageReplyLayoutBodyRightMessage: TextView
-    private lateinit var mMessageReplyLayoutBodyCancel: ImageView
-    private var ReplyMessageID: String? = "null"
-    private var FirstUserName: String? = ""
+    private lateinit var groupNameTv: TextView
+    private lateinit var profileImage: ImageView
+    private lateinit var emojiButton: ImageView
+    private lateinit var editTextMessage: EmojiEditText
+    private lateinit var sendButton: ImageView
+    private lateinit var chatListView: ListView
+    private lateinit var progressbar1: ProgressBar
+    private lateinit var options: ImageView
 
-    private val attactmentmap: ArrayList<HashMap<String, Any>> = ArrayList()
-    private val REQ_CD_IMAGE_PICKER = 101
-    private var AudioMessageRecorder: android.media.MediaRecorder? = null
-    private var audioFilePath: String? = ""
-    private var isRecording = false
-    private var recordMs: Long = 0
-    private var timer: java.util.TimerTask? = null
-    private val _timer = java.util.Timer()
-
-
-    private val _firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private lateinit var emojiPopup: EmojiPopup
+    private val cal = Calendar.getInstance()
+    private var timerTask: TimerTask? = null
+    private val i = Intent()
+    private lateinit var requestNetwork: RequestNetwork
+    private lateinit var requestNetworkListener: RequestNetwork.RequestListener
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_chat_group)
+        setContentView(R.layout.chat_group)
+        initialize()
+        initializeSupabase()
+        initializeLogic()
+    }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
-            || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
-                1000
-            )
-        } else {
-            initializeLogic()
+    private fun initialize() {
+        linear1 = findViewById(R.id.linear1)
+        toolbar = findViewById(R.id.toolbar)
+        back = findViewById(R.id.back)
+        groupNameTv = findViewById(R.id.group_name_tv)
+        profileImage = findViewById(R.id.profile_image)
+        emojiButton = findViewById(R.id.emoji_button)
+        editTextMessage = findViewById(R.id.edittext_message)
+        sendButton = findViewById(R.id.send_button)
+        chatListView = findViewById(R.id.chat_listview)
+        progressbar1 = findViewById(R.id.progressbar1)
+        options = findViewById(R.id.options)
+
+        requestNetwork = RequestNetwork(this)
+
+        back.setOnClickListener { finish() }
+        sendButton.setOnClickListener { sendMessage() }
+        emojiButton.setOnClickListener { toggleEmojiPopup() }
+        options.setOnClickListener { showOptions() }
+
+        editTextMessage.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (editTextMessage.text.toString().length > 0) {
+                    sendButton.setColorFilter(Color.parseColor("#FFC107"))
+                } else {
+                    sendButton.setColorFilter(Color.parseColor("#BDBDBD"))
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        requestNetworkListener = object : RequestNetwork.RequestListener {
+            override fun onResponse(tag: String?, response: String?, responseHeaders: HashMap<String, Any>?) {}
+            override fun onErrorResponse(tag: String?, message: String?) {}
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1000) {
-            initializeLogic()
+    private fun initializeSupabase() {
+        supabase = createSupabaseClient(
+            "YOUR_SUPABASE_URL", // Replace with your Supabase URL
+            "YOUR_SUPABASE_ANON_KEY" // Replace with your Supabase anon key
+        ) {
+            install(Auth)
+            install(Postgrest)
+            install(Realtime)
+        }
+        chatMessageManager = ChatMessageManager(supabase) // Initialize ChatMessageManager
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val user = supabase.auth.currentUser()
+                if (user != null) {
+                    currentUid = user.id
+                    currentUserUsername = user.userMetadata?.get("username") as? String ?: "Unknown"
+                    currentUserProfile = user.userMetadata?.get("profile_url") as? String ?: ""
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@ChatGroupActivity, "User not authenticated.", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatGroupActivity", "Error getting current user: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ChatGroupActivity, "Error fetching user data.", Toast.LENGTH_LONG).show()
+                    finish()
+                }
+            }
+        }
+
+        groupId = intent.getStringExtra("group_id") ?: ""
+        groupName = intent.getStringExtra("group_name") ?: "Group Chat"
+        groupProfile = intent.getStringExtra("group_profile") ?: ""
+        oneSignalUserId = intent.getStringExtra("onesignal_user_id") ?: ""
+
+        groupNameTv.text = groupName
+        Glide.with(applicationContext).load(groupProfile).into(profileImage)
+
+        // Setup Supabase Realtime listener for group chat messages
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                supabase.realtime.from("chats:chat_id=eq.$groupId") {
+                    on(PostgresAction.Insert::class) {
+                        withContext(Dispatchers.Main) {
+                            // Handle new message
+                            val newMessage = it.decode(HashMap::class) as HashMap<String, Any>
+                            chatListMap.add(newMessage)
+                            (chatListView.adapter as GroupChatAdapter).notifyDataSetChanged()
+                            chatListView.smoothScrollToPosition(chatListMap.size - 1)
+                        }
+                    }
+                }.subscribe()
+            } catch (e: Exception) {
+                Log.e("ChatGroupActivity", "Error setting up Realtime listener: ${e.message}", e)
+            }
+        }
+
+        // Fetch initial group chat messages from Supabase Postgrest
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = supabase.postgrest.from("chats")
+                    .select("*")
+                    .eq("chat_id", groupId)
+                    .order("timestamp", true)
+                    .limit(50)
+                    .execute()
+
+                val messages = response.decodeList<HashMap<String, Any>>()
+                withContext(Dispatchers.Main) {
+                    chatListMap.clear()
+                    chatListMap.addAll(messages)
+                    chatListView.adapter = GroupChatAdapter(chatListMap, currentUid)
+                    chatListView.smoothScrollToPosition(chatListMap.size - 1)
+                    progressbar1.visibility = View.GONE
+                }
+            } catch (e: Exception) {
+                Log.e("ChatGroupActivity", "Error fetching initial messages: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ChatGroupActivity, "Failed to load messages.", Toast.LENGTH_LONG).show()
+                    progressbar1.visibility = View.GONE
+                }
+            }
         }
     }
 
     private fun initializeLogic() {
-        back = findViewById(R.id.back)
-        topProfileLayoutProfileImage = findViewById(R.id.topProfileLayoutProfileImage)
-        topProfileLayoutUsername = findViewById(R.id.topProfileLayoutUsername)
-        topProfileLayoutStatus = findViewById(R.id.topProfileLayoutStatus)
-        ChatMessagesListRecycler = findViewById(R.id.ChatMessagesListRecycler)
-        message_et = findViewById(R.id.message_et)
-        btn_sendMessage = findViewById(R.id.btn_sendMessage)
-        galleryBtn = findViewById(R.id.galleryBtn)
-        val toolContainer = findViewById<LinearLayout>(R.id.toolContainer)
-        val btn_voice_message = findViewById<ImageView>(R.id.btn_voice_message)
-        attachmentLayoutListHolder = findViewById(R.id.attachmentLayoutListHolder)
-        rv_attacmentList = findViewById(R.id.rv_attacmentList)
-        close_attachments_btn = findViewById(R.id.close_attachments_btn)
-        mMessageReplyLayout = findViewById(R.id.mMessageReplyLayout)
-        mMessageReplyLayoutBodyRightUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername)
-        mMessageReplyLayoutBodyRightMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage)
-        mMessageReplyLayoutBodyCancel = findViewById(R.id.mMessageReplyLayoutBodyCancel)
-        val message_input_outlined_round = findViewById<LinearLayout>(R.id.message_input_outlined_round)
-
-        val chatRecyclerLayoutManager = LinearLayoutManager(this)
-        chatRecyclerLayoutManager.stackFromEnd = true
-        ChatMessagesListRecycler.layoutManager = chatRecyclerLayoutManager
-
-        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this)
-        chatAdapter?.setHasStableIds(true)
-        chatAdapter?.setGroupChat(true) // This is a group chat
-        ChatMessagesListRecycler.adapter = chatAdapter
-
-        val groupId = intent.getStringExtra("uid")
-        chatMessagesRef = _firebase.getReference("group-chats").child(groupId!!)
-
-        _getGroupReference()
-        _getChatMessagesRef()
-        _attachChatListener()
-
-        back.setOnClickListener { onBackPressed() }
-
-        btn_sendMessage.setOnClickListener { _send_btn() }
-
-        galleryBtn.setOnClickListener {
-            StorageUtil.pickMultipleFiles(this@ChatGroupActivity, "*/*", REQ_CD_IMAGE_PICKER)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val w = this.window
+            w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+            w.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            w.statusBarColor = ContextCompat.getColor(this, R.color.colorPrimary)
         }
 
-        close_attachments_btn.setOnClickListener {
-            attachmentLayoutListHolder.visibility = View.GONE
-            val oldSize = attactmentmap.size
-            if (oldSize > 0) {
-                attactmentmap.clear()
-                rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
-            }
+        emojiPopup = EmojiPopup.Builder.fromRootView(linear1).build(editTextMessage)
+
+        // TODO: Implement user presence updates using Supabase Realtime for group members
+        // PresenceManager.goOnline(currentUid);
+    }
+
+    private fun sendMessage() {
+        if (editTextMessage.text.toString().isNotEmpty()) {
+            val messageText = editTextMessage.text.toString().trim()
+            editTextMessage.setText("") // Clear the input field immediately
+
+            val messageMap = HashMap<String, Any>()
+            messageMap["sender_id"] = currentUid
+            messageMap["sender_username"] = currentUserUsername
+            messageMap["message_text"] = messageText
+            messageMap["timestamp"] = Calendar.getInstance().timeInMillis
+            messageMap["type"] = "text"
+
+            chatMessageManager.sendMessageToDb(messageMap, currentUid, groupId, isGroup = true)
+            chatMessageManager.updateInbox(messageText, groupId, isGroup = true)
+
+            // UI update will be handled by Realtime listener, but a local temporary add can make it feel snappier
+            val tempMsg = HashMap<String, Any>()
+            tempMsg["sender_id"] = currentUid
+            tempMsg["message_text"] = messageText
+            tempMsg["timestamp"] = Calendar.getInstance().timeInMillis
+            tempMsg["type"] = "text"
+            chatListMap.add(tempMsg)
+            (chatListView.adapter as GroupChatAdapter).notifyDataSetChanged()
+            chatListView.smoothScrollToPosition(chatListMap.size - 1)
+
+            // TODO: Optionally send push notification via Supabase Functions/Edge Functions
+            // sendPushNotification(oneSignalUserId, groupName, messageText);
         }
+    }
 
-        mMessageReplyLayoutBodyCancel.setOnClickListener {
-            ReplyMessageID = "null"
-            mMessageReplyLayout.visibility = View.GONE
+    private fun toggleEmojiPopup() {
+        emojiPopup.toggle()
+    }
+
+    private fun showOptions() {
+        // TODO: Implement group chat options (e.g., view members, leave group, add members)
+        Toast.makeText(this, "Group chat options not implemented yet", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onBackPressed() {
+        if (emojiPopup.isShowing) {
+            emojiPopup.dismiss()
+        } else {
+            super.onBackPressed()
         }
+    }
 
-        message_input_outlined_round.orientation = LinearLayout.HORIZONTAL
-        toolContainer.visibility = View.VISIBLE
-        btn_sendMessage.visibility = View.VISIBLE
+    override fun onPause() {
+        super.onPause()
+        // TODO: Implement user presence update (go offline)
+        // PresenceManager.goOffline(currentUid);
+    }
 
-        message_et.addTextChangedListener(object : TextWatcher {
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.toString().trim().isEmpty()) {
-                    toolContainer.visibility = View.VISIBLE
-                    message_input_outlined_round.orientation = LinearLayout.HORIZONTAL
+    override fun onResume() {
+        super.onResume()
+        // TODO: Implement user presence update (go online)
+        // PresenceManager.goOnline(currentUid);
+    }
+
+    private inner class GroupChatAdapter(private val data: ArrayList<HashMap<String, Any>>, private val currentUserId: String) : BaseAdapter() {
+        override fun getCount(): Int = data.size
+        override fun getItem(position: Int): HashMap<String, Any> = data[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val view = convertView ?: LayoutInflater.from(this@ChatGroupActivity).inflate(R.layout.chat_message_item, parent, false)
+
+            val leftBubble: LinearLayout = view.findViewById(R.id.left_bubble)
+            val rightBubble: LinearLayout = view.findViewById(R.id.right_bubble)
+            val leftBubbleImage: LinearLayout = view.findViewById(R.id.left_bubble_image)
+            val rightBubbleImage: LinearLayout = view.findViewById(R.id.right_bubble_image)
+            val leftMessage: EmojiTextView = view.findViewById(R.id.left_message)
+            val rightMessage: EmojiTextView = view.findViewById(R.id.right_message)
+            val leftTime: TextView = view.findViewById(R.id.left_time)
+            val rightTime: TextView = view.findViewById(R.id.right_time)
+            val leftImage: ImageView = view.findViewById(R.id.left_image)
+            val rightImage: ImageView = view.findViewById(R.id.right_image)
+
+            val item = data[position]
+
+            if (item["sender_id"] == currentUid) {
+                // Right side (current user)
+                leftBubble.visibility = View.GONE
+                leftBubbleImage.visibility = View.GONE
+                rightBubble.visibility = View.VISIBLE
+                rightBubbleImage.visibility = View.GONE
+
+                if (item["type"] == "image") {
+                    rightBubbleImage.visibility = View.VISIBLE
+                    rightBubble.visibility = View.GONE
+                    Glide.with(applicationContext).load(Uri.parse(item["url"].toString())).into(rightImage)
                 } else {
-                    toolContainer.visibility = View.GONE
-                    message_input_outlined_round.orientation = LinearLayout.VERTICAL
+                    rightMessage.text = item["message_text"].toString()
                 }
-            }
-
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun afterTextChanged(s: Editable) {}
-        })
-
-        btn_voice_message.setOnTouchListener { v, event ->
-            when (event.action) {
-                android.view.MotionEvent.ACTION_DOWN -> {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        _AudioRecorderStart()
-                        Toast.makeText(applicationContext, "Recording...", Toast.LENGTH_SHORT).show()
-                    } else {
-                        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1000)
-                    }
-                    true
-                }
-                android.view.MotionEvent.ACTION_UP -> {
-                    _AudioRecorderStop()
-                    uploadAudioFile()
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun _getGroupReference() {
-        val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-                    
-                    // Fetch member usernames for displaying in chat bubbles
-                    fetchMemberUsernames(dataSnapshot)
-                    Glide.with(applicationContext)
-                        .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
-                        .into(topProfileLayoutProfileImage)
-                    topProfileLayoutStatus.text = "Group"
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
-    }
-
-    private fun _getChatMessagesRef() {
-        isLoading = true
-        val getChatsMessages = chatMessagesRef!!.limitToLast(CHAT_PAGE_SIZE)
-        getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    val initialMessages = ArrayList<HashMap<String, Any>>()
-                    for (_data in dataSnapshot.children) {
-                        val messageData =
-                            _data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                        if (messageData != null && messageData.containsKey("key")) {
-                            initialMessages.add(messageData)
-                            messageKeys.add(messageData["key"].toString())
-                        }
-                    }
-                    if (initialMessages.isNotEmpty()) {
-                        initialMessages.sortWith { msg1, msg2 ->
-                            val time1 = _getMessageTimestamp(msg1)
-                            val time2 = _getMessageTimestamp(msg2)
-                            time1.compareTo(time2)
-                        }
-                        oldestMessageKey = initialMessages[0]["key"].toString()
-                        ChatMessagesList.addAll(initialMessages)
-                        chatAdapter?.notifyDataSetChanged()
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-                isLoading = false
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                isLoading = false
-            }
-        })
-    }
-
-    private fun _attachChatListener() {
-        if (chatMessagesRef == null) return
-        _chat_child_listener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                val newMessage =
-                    dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                if (newMessage != null && newMessage.containsKey("key")) {
-                    val messageKey = newMessage["key"].toString()
-                    if (!messageKeys.contains(messageKey)) {
-                        messageKeys.add(messageKey)
-                        val insertPosition = _findCorrectInsertPosition(newMessage)
-                        ChatMessagesList.add(insertPosition, newMessage)
-                        chatAdapter?.notifyItemInserted(insertPosition)
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-            }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
-        }
-        chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
-    }
-    
-    private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
-        val membersSnapshot = groupSnapshot.child("members")
-        if (membersSnapshot.exists()) {
-            val memberUids = mutableListOf<String>()
-            for (memberSnapshot in membersSnapshot.children) {
-                memberSnapshot.key?.let { memberUids.add(it) }
-            }
-
-            auth.currentUser?.uid?.let {
-                if (!memberUids.contains(it)) {
-                    memberUids.add(it)
-                }
-            }
-
-            val totalMembers = memberUids.size
-            var membersProcessed = 0
-
-            for (memberUid in memberUids) {
-                _firebase.getReference("skyline/users").child(memberUid).child("username")
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(userSnapshot: DataSnapshot) {
-                            val username = userSnapshot.getValue(String::class.java)
-                            if (username != null) {
-                                memberNamesMap[memberUid] = username
-                                if (memberUid == auth.currentUser?.uid) {
-                                    FirstUserName = username
-                                    chatAdapter?.setFirstUserName(username)
-                                }
-                            }
-
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-                        
-                        override fun onCancelled(error: DatabaseError) {
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-                    })
-            }
-        }
-    }
-
-    private fun _send_btn() {
-        val messageText = message_et.text.toString().trim()
-        val senderUid = auth.currentUser!!.uid
-        val groupId = intent.getStringExtra("uid")
-
-        if (messageText.isNotEmpty()) {
-            val uniqueMessageKey = chatMessagesRef!!.push().key
-            val chatSendMap = HashMap<String, Any>()
-            chatSendMap["uid"] = senderUid
-            chatSendMap["message_text"] = messageText
-            chatSendMap["message_state"] = "sended"
-            chatSendMap["key"] = uniqueMessageKey!!
-            chatSendMap["push_date"] = ServerValue.TIMESTAMP
-
-            chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
-            message_et.setText("")
-            _updateInbox(messageText)
-        }
-    }
-
-    private fun _updateInbox(lastMessage: String) {
-        val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.child("members").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
-                            val cc = Calendar.getInstance()
-                            val chatInboxSend = HashMap<String, Any>()
-                            chatInboxSend["chatID"] = groupId
-                            chatInboxSend["uid"] = groupId
-                            chatInboxSend["last_message_uid"] = auth.currentUser!!.uid
-                            chatInboxSend["last_message_text"] = lastMessage
-                            chatInboxSend["last_message_state"] = "sended"
-                            chatInboxSend["push_date"] = cc.timeInMillis.toString()
-                            chatInboxSend["chat_type"] = "group"
-                            _firebase.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
-                        }
-                    }
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
-    }
-
-    private fun _findCorrectInsertPosition(newMessage: HashMap<String, Any>): Int {
-        if (ChatMessagesList.isEmpty()) {
-            return 0
-        }
-        val newMessageTime = _getMessageTimestamp(newMessage)
-        for (i in ChatMessagesList.indices) {
-            val existingMessageTime = _getMessageTimestamp(ChatMessagesList[i])
-            if (newMessageTime <= existingMessageTime) {
-                return i
-            }
-        }
-        return ChatMessagesList.size
-    }
-
-    private fun _getMessageTimestamp(message: HashMap<String, Any>): Long {
-        return try {
-            val pushDateObj = message["push_date"]
-            if (pushDateObj is Long) {
-                pushDateObj
+                rightTime.text = formatTimestamp(item["timestamp"].toString().toDouble())
             } else {
-                (pushDateObj as Double).toLong()
-            }
-        } catch (e: Exception) {
-            System.currentTimeMillis()
-        }
-    }
+                // Left side (other group member)
+                rightBubble.visibility = View.GONE
+                rightBubbleImage.visibility = View.GONE
+                leftBubble.visibility = View.VISIBLE
+                leftBubbleImage.visibility = View.GONE
 
-    override fun scrollToMessage(messageId: String) {
-        // Not implemented for group chat
-    }
-
-    override fun performHapticFeedback() {
-        // Not implemented for group chat
-    }
-
-    override fun showMessageOverviewPopup(anchor: View, position: Int, data: ArrayList<HashMap<String, Any>>) {
-        // Not implemented for group chat
-    }
-
-    override fun openUrl(url: String) {
-        val i = Intent(Intent.ACTION_VIEW)
-        i.data = Uri.parse(url)
-        startActivity(i)
-    }
-
-    override fun getRecipientUid(): String? {
-        return intent.getStringExtra("uid")
-    }
-
-    private fun _AudioRecorderStart() {
-        val cc = Calendar.getInstance()
-        recordMs = 0
-        AudioMessageRecorder = android.media.MediaRecorder()
-
-        val getCacheDir = externalCacheDir
-        val getCacheDirName = "audio_records"
-        val getCacheFolder = java.io.File(getCacheDir, getCacheDirName)
-        getCacheFolder.mkdirs()
-        val getRecordFile = java.io.File(getCacheFolder, cc.timeInMillis.toString() + ".mp3")
-        audioFilePath = getRecordFile.absolutePath
-
-        AudioMessageRecorder?.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
-        AudioMessageRecorder?.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
-        AudioMessageRecorder?.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
-        AudioMessageRecorder?.setAudioEncodingBitRate(320000)
-        AudioMessageRecorder?.setOutputFile(audioFilePath)
-
-        try {
-            AudioMessageRecorder?.prepare()
-            AudioMessageRecorder?.start()
-            isRecording = true
-        } catch (e: java.io.IOException) {
-            e.printStackTrace()
-        }
-
-        timer = object : java.util.TimerTask() {
-            override fun run() {
-                runOnUiThread {
-                    recordMs += 500
-                }
-            }
-        }
-        _timer.scheduleAtFixedRate(timer, 0, 500)
-    }
-
-    private fun _AudioRecorderStop() {
-        if (isRecording) {
-            if (AudioMessageRecorder != null) {
-                try {
-                    AudioMessageRecorder?.stop()
-                    AudioMessageRecorder?.release()
-                } catch (e: RuntimeException) {
-                    Log.e("ChatGroupActivity", "Error stopping media recorder: " + e.message)
-                }
-                AudioMessageRecorder = null
-            }
-            isRecording = false
-            timer?.cancel()
-        }
-    }
-
-    private fun uploadAudioFile() {
-        if (audioFilePath != null && audioFilePath!!.isNotEmpty()) {
-            val file = java.io.File(audioFilePath)
-            if (file.exists()) {
-                AsyncUploadService.uploadWithNotification(this, audioFilePath, file.name, object : AsyncUploadService.UploadProgressListener {
-                    override fun onProgress(filePath: String, percent: Int) {}
-                    override fun onSuccess(filePath: String, url: String, publicId: String) {
-                        _sendVoiceMessage(url, recordMs)
-                    }
-
-                    override fun onFailure(filePath: String, error: String) {
-                        Toast.makeText(applicationContext, "Failed to upload audio.", Toast.LENGTH_SHORT).show()
-                    }
-                })
-            }
-        }
-    }
-
-    private fun _sendVoiceMessage(audioUrl: String, duration: Long) {
-        val senderUid = auth.currentUser!!.uid
-        val groupId = intent.getStringExtra("uid")
-        val uniqueMessageKey = chatMessagesRef!!.push().key
-
-        val chatSendMap = HashMap<String, Any>()
-        chatSendMap["uid"] = senderUid
-        chatSendMap["type"] = "VOICE_MESSAGE"
-        chatSendMap["audio_url"] = audioUrl
-        chatSendMap["audio_duration"] = duration
-        chatSendMap["message_state"] = "sended"
-        if (ReplyMessageID != "null") chatSendMap["replied_message_id"] = ReplyMessageID!!
-        chatSendMap["key"] = uniqueMessageKey!!
-        chatSendMap["push_date"] = ServerValue.TIMESTAMP
-
-        chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
-
-        _updateInbox("Voice Message")
-
-        ReplyMessageID = "null"
-        mMessageReplyLayout.visibility = View.GONE
-    }
-
-    private fun _startUploadForItem(position: Int) {
-        if (position < 0 || position >= attactmentmap.size) {
-            return
-        }
-        val itemMap = attactmentmap[position]
-        if (itemMap == null || "pending" != itemMap["uploadState"]) {
-            return
-        }
-        itemMap["uploadState"] = "uploading"
-        itemMap["uploadProgress"] = 0.0
-        rv_attacmentList.adapter?.notifyItemChanged(position)
-
-        val filePath = itemMap["localPath"].toString()
-        if (filePath.isEmpty()) {
-            itemMap["uploadState"] = "failed"
-            rv_attacmentList.adapter?.notifyItemChanged(position)
-            return
-        }
-
-        val file = java.io.File(filePath)
-        if (!file.exists()) {
-            itemMap["uploadState"] = "failed"
-            rv_attacmentList.adapter?.notifyItemChanged(position)
-            return
-        }
-
-        AsyncUploadService.uploadWithNotification(this, filePath, file.name, object : AsyncUploadService.UploadProgressListener {
-            override fun onProgress(filePath: String, percent: Int) {
-                if (position >= 0 && position < attactmentmap.size) {
-                    val currentItem = attactmentmap[position]
-                    if (currentItem != null && filePath == currentItem["localPath"]) {
-                        currentItem["uploadProgress"] = percent.toDouble()
-                        rv_attacmentList.adapter?.notifyItemChanged(position)
-                    }
-                }
-            }
-
-            override fun onSuccess(filePath: String, url: String, publicId: String) {
-                if (position >= 0 && position < attactmentmap.size) {
-                    val mapToUpdate = attactmentmap[position]
-                    if (mapToUpdate != null && filePath == mapToUpdate["localPath"]) {
-                        mapToUpdate["uploadState"] = "success"
-                        mapToUpdate["cloudinaryUrl"] = url
-                        mapToUpdate["publicId"] = publicId
-                        rv_attacmentList.adapter?.notifyItemChanged(position)
-                    }
-                }
-            }
-
-            override fun onFailure(filePath: String, error: String) {
-                if (position >= 0 && position < attactmentmap.size) {
-                    val currentItem = attactmentmap[position]
-                    if (currentItem != null && filePath == currentItem["localPath"]) {
-                        currentItem["uploadState"] = "failed"
-                        rv_attacmentList.adapter?.notifyItemChanged(position)
-                    }
-                }
-            }
-        })
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQ_CD_IMAGE_PICKER && resultCode == Activity.RESULT_OK) {
-            if (data != null) {
-                val resolvedFilePaths = ArrayList<String>()
-                try {
-                    if (data.clipData != null) {
-                        for (i in 0 until data.clipData!!.itemCount) {
-                            val fileUri = data.clipData!!.getItemAt(i).uri
-                            val path = StorageUtil.getPathFromUri(applicationContext, fileUri)
-                            if (path != null && path.isNotEmpty()) {
-                                resolvedFilePaths.add(path)
-                            }
-                        }
-                    } else if (data.data != null) {
-                        val fileUri = data.data
-                        val path = StorageUtil.getPathFromUri(applicationContext, fileUri)
-                        if (path != null && path.isNotEmpty()) {
-                            resolvedFilePaths.add(path)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(this, "Error processing selected files", Toast.LENGTH_SHORT).show()
-                    return
-                }
-
-                if (resolvedFilePaths.isNotEmpty()) {
-                    attachmentLayoutListHolder.visibility = View.VISIBLE
-                    val startingPosition = attactmentmap.size
-                    for (filePath in resolvedFilePaths) {
-                        val itemMap = HashMap<String, Any>()
-                        itemMap["localPath"] = filePath
-                        itemMap["uploadState"] = "pending"
-                        attactmentmap.add(itemMap)
-                    }
-                    rv_attacmentList.adapter?.notifyItemRangeInserted(startingPosition, resolvedFilePaths.size)
-                    for (i in resolvedFilePaths.indices) {
-                        _startUploadForItem(startingPosition + i)
-                    }
+                if (item["type"] == "image") {
+                    leftBubbleImage.visibility = View.VISIBLE
+                    leftBubble.visibility = View.GONE
+                    Glide.with(applicationContext).load(Uri.parse(item["url"].toString())).into(leftImage)
                 } else {
-                    Toast.makeText(this, "No valid files selected", Toast.LENGTH_SHORT).show()
+                    leftMessage.text = item["message_text"].toString()
                 }
+                leftTime.text = formatTimestamp(item["timestamp"].toString().toDouble())
             }
+
+            return view
+        }
+
+        private fun formatTimestamp(timestamp: Double): String {
+            val c = Calendar.getInstance()
+            c.timeInMillis = timestamp.toLong()
+            val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            return sdf.format(c.time)
         }
     }
 }

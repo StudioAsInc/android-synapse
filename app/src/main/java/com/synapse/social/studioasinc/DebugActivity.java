@@ -35,7 +35,6 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import com.google.android.material.color.MaterialColors;
-import com.google.firebase.FirebaseApp;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -43,7 +42,8 @@ import java.text.*;
 import java.util.*;
 import java.util.regex.*;
 import org.json.*;
-import java.io.*;
+import java.io.*;
+
 
 public class DebugActivity extends AppCompatActivity {
 	
@@ -63,7 +63,6 @@ public class DebugActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_debug);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
 	
@@ -106,7 +105,8 @@ public class DebugActivity extends AppCompatActivity {
 	public void onBackPressed() {
 		finish();
 	}
-	
+	
+
 	public void _stateColor(final int _statusColor, final int _navigationColor) {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 		getWindow().setStatusBarColor(_statusColor);
@@ -140,4 +140,4 @@ public class DebugActivity extends AppCompatActivity {
 	{
 	}
 	
-}
+}

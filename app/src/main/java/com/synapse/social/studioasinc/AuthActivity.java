@@ -24,21 +24,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
+
+import io.github.jan-tennert.supabase.SupabaseClient;
 
 public class AuthActivity extends AppCompatActivity {
 
@@ -78,10 +69,10 @@ public class AuthActivity extends AppCompatActivity {
     private int sfxUserInputEndId;
     private int sfxErrorId;
 
-    // Firebase
-    private FirebaseAuth fauth;
-    private final OnCompleteListener<AuthResult> authCreateUserListener = createAuthCreateUserListener();
-    private final OnCompleteListener<AuthResult> authSignInListener = createAuthSignInListener();
+    private SupabaseClient supabase;
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,7 +82,7 @@ public class AuthActivity extends AppCompatActivity {
         initializeServices();
         setupWindowFlags();
         setupListeners();
-        initializeFirebase();
+        initializeSupabase();
         startIntroAnimation();
     }
 
@@ -149,15 +140,20 @@ public class AuthActivity extends AppCompatActivity {
         }
     }
 
-    private void initializeFirebase() {
-        FirebaseApp.initializeApp(this);
-        fauth = FirebaseAuth.getInstance();
-    }
+
 
     private void setupListeners() {
         continueButton.setOnClickListener(this::handleContinueClick);
         finishButton.setOnClickListener(this::handleFinishClick);
         button1.setOnClickListener(this::handleSignUpClick);
+    }
+
+    private void initializeSupabase() {
+        supabase = new SupabaseClient(
+            "YOUR_SUPABASE_URL", // Replace with your Supabase URL
+            "YOUR_SUPABASE_ANON_KEY"  // Replace with your Supabase anon key
+        );
+    }
 
         emailLayout.setOnClickListener(v -> email_et.requestFocus());
         passLayout.setOnClickListener(v -> pass_et.requestFocus());
@@ -267,39 +263,29 @@ public class AuthActivity extends AppCompatActivity {
         }
 
         if (isValid) {
-            fauth.createUserWithEmailAndPassword(email, pass)
-                .addOnCompleteListener(this, authCreateUserListener);
+            new Thread(() -> {
+                try {
+                    supabase.auth.signUp(email, pass);
+                    // Handle successful signup on the main thread
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Intent intent = new Intent(AuthActivity.this, CompleteProfileActivity.class);
+                        startActivity(intent);
+                        finish();
+                    });
+                } catch (Exception e) {
+                    // Handle signup error on the main thread
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        aiResponseTextView_1.setTotalDuration(1300L);
+                        aiResponseTextView_1.setFadeDuration(150L);
+                        aiResponseTextView_1.startTyping("Signup failed.");
+                    });
+                }
+            }).start();
         }
     }
 
-    private OnCompleteListener<AuthResult> createAuthCreateUserListener() {
-        return task -> {
-            if (task.isSuccessful()) {
-                handleSuccessfulRegistration();
-            } else {
-                handleRegistrationError(task.getException());
-            }
-        };
-    }
 
-    private void handleSuccessfulRegistration() {
-        aiNameTextView.setTotalDuration(300L);
-        aiNameTextView.setFadeDuration(150L);
-        aiNameTextView.startTyping("Creating your account...");
 
-        Intent intent = new Intent(AuthActivity.this, CompleteProfileActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
-    private void handleRegistrationError(Exception exception) {
-        if (exception == null) return;
-
-        String errorMessage = exception.getMessage();
-        if ("The email address is already in use by another account.".equals(errorMessage)) {
-            handleExistingAccount();
-        }
-    }
 
     private void handleExistingAccount() {
         aiNameTextView.setTotalDuration(500L);
@@ -309,80 +295,23 @@ public class AuthActivity extends AppCompatActivity {
         String email = email_et.getText().toString();
         String pass = pass_et.getText().toString();
 
-        fauth.signInWithEmailAndPassword(email, pass)
-            .addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    FirebaseUser user = fauth.getCurrentUser();
-                    if (user != null) {
-                        fetchUsername(user.getUid());
-                    }
-                } else {
-                    showSignInError();
-                }
-            });
-    }
 
-    private void fetchUsername(String uid) {
-        // Update OneSignal Player ID on sign-in
-        updateOneSignalPlayerId(uid);
-        
-        DatabaseReference usernameRef = FirebaseDatabase.getInstance().getReference()
-                .child("skyline")
-                .child("users")
-                .child(uid)
-                .child("username");
+        // Navigate to home activity
 
-        usernameRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                String username = dataSnapshot.getValue(String.class);
-                if (username != null) {
-                    showWelcomeMessage("You are @" + username + " right? No further steps, Let's go...");
-                } else {
-                    showWelcomeMessage("I recognize you! Let's go...");
-                }
-                navigateToHomeAfterDelay();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                showWelcomeMessage("I recognize you! Let's go...");
-                navigateToHomeAfterDelay();
-            }
-        });
-    }
-
-    private void showWelcomeMessage(String message) {
-        aiResponseTextView_1.setTotalDuration(1300L);
-        aiResponseTextView_1.setFadeDuration(150L);
-        aiResponseTextView_1.startTyping(message);
-    }
-
-    private void navigateToHomeAfterDelay() {
-        new Handler().postDelayed(() -> {
-            Intent intent = new Intent(AuthActivity.this, HomeActivity.class);
-            startActivity(intent);
-            finish();
-        }, 2000);
-    }
-
-    private void showSignInError() {
+        // Display an error message
         aiResponseTextView_1.setTotalDuration(1300L);
         aiResponseTextView_1.setFadeDuration(150L);
         aiResponseTextView_1.startTyping("Hmm, that password doesn't match. Try again?");
-    }
 
-    private OnCompleteListener<AuthResult> createAuthSignInListener() {
-        return task -> {
-            if (task.isSuccessful()) {
-                Intent intent = new Intent(AuthActivity.this, HomeActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        };
     }
-
     private void hideKeyboard() {
+
+
+/*    private void showSignInError() {
+        aiResponseTextView_1.setTotalDuration(1300L);
+        aiResponseTextView_1.setFadeDuration(150L);
+        aiResponseTextView_1.startTyping("Hmm, that password doesn't match. Try again?");
+    }*/
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null && getWindow().getDecorView().getWindowToken() != null) {
             imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
@@ -392,22 +321,6 @@ public class AuthActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         finishAffinity();
-    }
-
-    /**
-     * Updates the OneSignal Player ID for the current user in Firebase Realtime Database.
-     * This method gets the current OneSignal Player ID and saves it to the user's profile.
-     *
-     * @param uid The Firebase UID of the user
-     */
-    private void updateOneSignalPlayerId(String uid) {
-        // Get current OneSignal Player ID if available
-        if (OneSignal.getUser().getPushSubscription().getOptedIn()) {
-            String playerId = OneSignal.getUser().getPushSubscription().getId();
-            if (playerId != null && !playerId.isEmpty()) {
-                OneSignalManager.savePlayerIdToRealtimeDatabase(uid, playerId);
-            }
-        }
     }
 
     @Override
