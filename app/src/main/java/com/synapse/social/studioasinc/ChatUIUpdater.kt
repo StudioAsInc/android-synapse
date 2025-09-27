@@ -65,7 +65,7 @@ class ChatUIUpdater(
             topProfileLayoutVerifiedBadge.visibility = View.GONE
         }
 
-        Glide.with(activity).load(avatarUrl).into(topProfileLayoutProfileImage)
+        Glide.with(topProfileLayoutProfileImage.context).load(avatarUrl).into(topProfileLayoutProfileImage)
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
@@ -77,5 +77,13 @@ class ChatUIUpdater(
 
     fun hideReplyUI() {
         mMessageReplyLayout.visibility = View.GONE
+    }
+
+    fun updateGroupProfile(dataSnapshot: DataSnapshot) {
+        topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
+        Glide.with(topProfileLayoutProfileImage.context).load(dataSnapshot.child("icon").getValue(String::class.java)).into(topProfileLayoutProfileImage)
+        topProfileLayoutGenderBadge.visibility = View.GONE
+        topProfileLayoutVerifiedBadge.visibility = View.GONE
+        topProfileLayoutStatus.text = "Group"
     }
 }

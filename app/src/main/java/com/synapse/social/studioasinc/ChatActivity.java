@@ -51,13 +51,11 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
@@ -68,43 +66,30 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.TimerTask;
+import java.util.stream.Collectors;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 
 import static com.synapse.social.studioasinc.ChatConstants.*;
 
-public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener {
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener, ChatDataListener {
 
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
-	private HashMap<String, Object> ChatSendMap = new HashMap<>();
-	private HashMap<String, Object> ChatInboxSend = new HashMap<>();
-	private double recordMs = 0;
-	private HashMap<String, Object> ChatInboxSend2 = new HashMap<>();
 	private String SecondUserAvatar = "";
-	private HashMap<String, Object> typingSnd = new HashMap<>();
-	private String ReplyMessageID = "";
-	private String SecondUserName = "";
+	String ReplyMessageID = "";
 	private String FirstUserName = "";
-	private String oldestMessageKey = null;
-	private static final int CHAT_PAGE_SIZE = 80;
+	private String SecondUserName = "";
 	private boolean is_group = false;
-	private String object_clicked = "";
-	private String handle = "";
-	private HashMap<String, Object> block = new HashMap<>();
-	private double block_switch = 0;
 	private String path = "";
 	private String AndroidDevelopersBlogURL = "";
 	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
-	private boolean isLoading = false;
-	private ChildEventListener _chat_child_listener;
 	private DatabaseReference chatMessagesRef;
-	private ValueEventListener _userStatusListener;
 	private DatabaseReference userRef;
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
@@ -113,69 +98,37 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
 	public ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
-	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
-	private ImageView ivBGimage;
-	private LinearLayout body;
-	private LinearLayout appBar;
-	private LinearLayout middle;
-	public RelativeLayout attachmentLayoutListHolder;
+	// UI Components
 	private LinearLayout mMessageReplyLayout;
 	private LinearLayout message_input_overall_container;
 	private TextView blocked_txt;
-	private ImageView back;
-	private LinearLayout topProfileLayout;
-	private LinearLayout topProfileLayoutSpace;
-	private ImageView ic_video_call;
-	private ImageView ic_audio_call;
-	private ImageView ic_more;
-	private CardView topProfileCard;
-	private LinearLayout topProfileLayoutRight;
 	private ImageView topProfileLayoutProfileImage;
-	private LinearLayout topProfileLayoutRightTop;
 	private TextView topProfileLayoutStatus;
 	private TextView topProfileLayoutUsername;
 	private ImageView topProfileLayoutGenderBadge;
 	private ImageView topProfileLayoutVerifiedBadge;
 	private TextView noChatText;
 	private RecyclerView ChatMessagesListRecycler;
-	private CardView card_attactmentListRVHolder;
 	public RecyclerView rv_attacmentList;
-	private LinearLayout mMessageReplyLayoutBody;
-	private LinearLayout mMessageReplyLayoutSpace;
-	private ImageView mMessageReplyLayoutBodyIc;
-	private LinearLayout mMessageReplyLayoutBodyRight;
-	private ImageView mMessageReplyLayoutBodyCancel;
 	private TextView mMessageReplyLayoutBodyRightUsername;
 	private TextView mMessageReplyLayoutBodyRightMessage;
-	private LinearLayout message_input_outlined_round;
-	private MaterialButton btn_sendMessage;
 	private FadeEditText message_et;
-	private LinearLayout toolContainer;
-	private ImageView btn_voice_message;
-	private ImageView close_attachments_btn;
-	private View divider_mic_camera;
-	private ImageView galleryBtn;
 
-	private Intent intent = new Intent();
-	private DatabaseReference main = _firebase.getReference(SKYLINE_REF);
+	// Services and Handlers
 	private FirebaseAuth auth;
-	private TimerTask loadTimer;
-	private Calendar cc = Calendar.getInstance();
 	private Vibrator vbr;
 	private DatabaseReference blocklist = _firebase.getReference(SKYLINE_REF).child(BLOCKLIST_REF);
-	private ChildEventListener _blocklist_child_listener;
-	private SharedPreferences blocked;
-	private SharedPreferences theme;
-	private Intent i = new Intent();
-	private SharedPreferences appSettings;
 	private Gemini gemini;
-    private AiFeatureHandler aiFeatureHandler;
-    private ActivityResultHandler activityResultHandler;
-    private ChatKeyboardHandler chatKeyboardHandler;
-    private VoiceMessageHandler voiceMessageHandler;
-    private ChatUIUpdater chatUIUpdater;
-    private ChatScrollListener chatScrollListener;
-    private AttachmentHandler attachmentHandler;
+	private AiFeatureHandler aiFeatureHandler;
+	private ActivityResultHandler activityResultHandler;
+	private ChatKeyboardHandler chatKeyboardHandler;
+	private VoiceMessageHandler voiceMessageHandler;
+	private ChatUIUpdater chatUIUpdater;
+	private ChatScrollListener chatScrollListener;
+	private AttachmentHandler attachmentHandler;
+	private ChatDataHandler chatDataHandler;
+	private MessageSendingHandler messageSendingHandler;
+	private MessageInteractionHandler messageInteractionHandler;
 
 
 	@Override
@@ -187,12 +140,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		} else {
 			setContentView(R.layout.activity_chat);
 		}
-		initialize(_savedInstanceState);
+		initializeViews();
 		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
-		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
-		|| ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED) {
+				|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
+				|| ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO}, 1000);} else {
 			initializeLogic();
 		}
@@ -206,130 +159,55 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	private void initialize(Bundle _savedInstanceState) {
-		relativelayout1 = findViewById(R.id.relativelayout1);
-		ivBGimage = findViewById(R.id.ivBGimage);
-		body = findViewById(R.id.body);
-		appBar = findViewById(R.id.appBar);
-		middle = findViewById(R.id.middle);
-		attachmentLayoutListHolder = findViewById(R.id.attachmentLayoutListHolder);
+	private void initializeViews() {
 		mMessageReplyLayout = findViewById(R.id.mMessageReplyLayout);
 		message_input_overall_container = findViewById(R.id.message_input_overall_container);
 		blocked_txt = findViewById(R.id.blocked_txt);
-		back = findViewById(R.id.back);
-		topProfileLayout = findViewById(R.id.topProfileLayout);
-		topProfileLayoutSpace = findViewById(R.id.topProfileLayoutSpace);
-		ic_video_call = findViewById(R.id.ic_video_call);
-		ic_audio_call = findViewById(R.id.ic_audio_call);
-		ic_more = findViewById(R.id.ic_more);
-		topProfileCard = findViewById(R.id.topProfileCard);
-		topProfileLayoutRight = findViewById(R.id.topProfileLayoutRight);
 		topProfileLayoutProfileImage = findViewById(R.id.topProfileLayoutProfileImage);
-		topProfileLayoutRightTop = findViewById(R.id.topProfileLayoutRightTop);
 		topProfileLayoutStatus = findViewById(R.id.topProfileLayoutStatus);
 		topProfileLayoutUsername = findViewById(R.id.topProfileLayoutUsername);
 		topProfileLayoutGenderBadge = findViewById(R.id.topProfileLayoutGenderBadge);
 		topProfileLayoutVerifiedBadge = findViewById(R.id.topProfileLayoutVerifiedBadge);
 		noChatText = findViewById(R.id.noChatText);
 		ChatMessagesListRecycler = findViewById(R.id.ChatMessagesListRecycler);
-		card_attactmentListRVHolder = findViewById(R.id.card_attactmentListRVHolder);
 		rv_attacmentList = findViewById(R.id.rv_attacmentList);
-		mMessageReplyLayoutBody = findViewById(R.id.mMessageReplyLayoutBody);
-		mMessageReplyLayoutSpace = findViewById(R.id.mMessageReplyLayoutSpace);
-		mMessageReplyLayoutBodyIc = findViewById(R.id.mMessageReplyLayoutBodyIc);
-		mMessageReplyLayoutBodyRight = findViewById(R.id.mMessageReplyLayoutBodyRight);
-		mMessageReplyLayoutBodyCancel = findViewById(R.id.mMessageReplyLayoutBodyCancel);
 		mMessageReplyLayoutBodyRightUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername);
 		mMessageReplyLayoutBodyRightMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage);
-		message_input_outlined_round = findViewById(R.id.message_input_outlined_round);
-		btn_sendMessage = findViewById(R.id.btn_sendMessage);
 		message_et = findViewById(R.id.message_et);
-		toolContainer = findViewById(R.id.toolContainer);
-		btn_voice_message = findViewById(R.id.btn_voice_message);
-		divider_mic_camera = findViewById(R.id.divider_mic_camera);
-		galleryBtn = findViewById(R.id.galleryBtn);
-		close_attachments_btn = findViewById(R.id.close_attachments_btn);
+
+		ImageView back = findViewById(R.id.back);
+		LinearLayout topProfileLayout = findViewById(R.id.topProfileLayout);
+		ImageView ic_more = findViewById(R.id.ic_more);
+		ImageView mMessageReplyLayoutBodyCancel = findViewById(R.id.mMessageReplyLayoutBodyCancel);
+		LinearLayout message_input_outlined_round = findViewById(R.id.message_input_outlined_round);
+		MaterialButton btn_sendMessage = findViewById(R.id.btn_sendMessage);
+
 		auth = FirebaseAuth.getInstance();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		blocked = getSharedPreferences("block", Activity.MODE_PRIVATE);
-		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
-		appSettings = getSharedPreferences("appSettings", Activity.MODE_PRIVATE);
 
-		back.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				onBackPressed();
-			}
-		});
-
+		back.setOnClickListener(_view -> onBackPressed());
 		View.OnClickListener profileClickListener = v -> startActivityWithUid(ConversationSettingsActivity.class);
 		topProfileLayout.setOnClickListener(profileClickListener);
 		ic_more.setOnClickListener(profileClickListener);
 
-		ic_video_call.setVisibility(View.GONE);
-		ic_audio_call.setVisibility(View.GONE);
-
-		mMessageReplyLayoutBodyCancel.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				ReplyMessageID = "null";
-				chatUIUpdater.hideReplyUI();
-				vbr.vibrate((long)(48));
-			}
+		mMessageReplyLayoutBodyCancel.setOnClickListener(_view -> {
+			ReplyMessageID = "null";
+			chatUIUpdater.hideReplyUI();
+			vbr.vibrate(48);
 		});
 
-		message_input_outlined_round.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				message_et.requestFocus();
+		message_input_outlined_round.setOnClickListener(_view -> message_et.requestFocus());
+		btn_sendMessage.setOnClickListener(_view -> {
+			if (messageSendingHandler != null) {
+				messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
 			}
 		});
-
-		btn_sendMessage.setOnLongClickListener(new View.OnLongClickListener() {
-			@Override
-			public boolean onLongClick(View _view) {
+		btn_sendMessage.setOnLongClickListener(_view -> {
+			if (aiFeatureHandler != null) {
 				return aiFeatureHandler.handleSendButtonLongClick(ReplyMessageID);
 			}
+			return false;
 		});
-
-		btn_sendMessage.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
-			}
-		});
-
-		_blocklist_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				handleBlocklistUpdate(_param1);
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				handleBlocklistUpdate(_param1);
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -337,30 +215,22 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
 		String backgroundUrl = themePrefs.getString("chat_background_url", null);
 		if (backgroundUrl != null && !backgroundUrl.isEmpty()) {
-			Glide.with(this).load(backgroundUrl).into(ivBGimage);
+			Glide.with(this).load(backgroundUrl).into((ImageView) findViewById(R.id.ivBGimage));
 		}
 
-		SecondUserAvatar = "null";
 		ReplyMessageID = "null";
 		path = "";
-		block_switch = 0;
 		LinearLayoutManager ChatRecyclerLayoutManager = new LinearLayoutManager(this);
 		ChatRecyclerLayoutManager.setReverseLayout(false);
 		ChatRecyclerLayoutManager.setStackFromEnd(true);
 		ChatMessagesListRecycler.setLayoutManager(ChatRecyclerLayoutManager);
 
-		ChatMessagesListRecycler.setLongClickable(true);
-		ChatMessagesListRecycler.setClickable(true);
-		
 		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this);
 		chatAdapter.setHasStableIds(true);
 		ChatMessagesListRecycler.setAdapter(chatAdapter);
-		
 		ChatMessagesListRecycler.setItemViewCacheSize(50);
-		ChatMessagesListRecycler.setDrawingCacheEnabled(true);
-		ChatMessagesListRecycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
-		
-		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+		String currentUserUid = auth.getCurrentUser().getUid();
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
 		if (is_group) {
 			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
@@ -368,126 +238,64 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
 			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
 		}
-		
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
 
-        messageSendingHandler = new MessageSendingHandler(
-                this,
-                auth,
-                _firebase,
-                ChatMessagesList,
-                attactmentmap,
-                chatAdapter,
-                ChatMessagesListRecycler,
-                rv_attacmentList,
-                attachmentLayoutListHolder,
-                messageKeys,
-                otherUserUid,
-                FirstUserName,
-                is_group
-        );
+		chatDataHandler = new ChatDataHandler(this, _firebase, auth, chatMessagesRef, userRef, blocklist, is_group, otherUserUid);
+
+		chatUIUpdater = new ChatUIUpdater(
+				this, noChatText, ChatMessagesListRecycler, topProfileLayoutProfileImage,
+				topProfileLayoutUsername, topProfileLayoutStatus, topProfileLayoutGenderBadge,
+				topProfileLayoutVerifiedBadge, mMessageReplyLayout, mMessageReplyLayoutBodyRightUsername,
+				mMessageReplyLayoutBodyRightMessage, auth
+		);
+
+		messageSendingHandler = new MessageSendingHandler(
+				this, auth, _firebase, ChatMessagesList, attactmentmap, chatAdapter,
+				ChatMessagesListRecycler, rv_attacmentList, (RelativeLayout) findViewById(R.id.attachmentLayoutListHolder),
+				messageKeys, otherUserUid, FirstUserName, is_group
+		);
 
 		gemini = new Gemini.Builder(this)
-		.model("gemini-1.5-flash")
-		.responseType("text")
-		.tone("friendly")
-		.size("medium")
-		.maxTokens(2000)
-		.temperature(0.8)
-		.showThinking(true)
-		.thinkingText("Analyzing your request...")
-		.systemInstruction("Your name is ChatBot, help users with their questions")
-		.responseTextView(message_et)
-		.build();
+				.model("gemini-1.5-flash").responseType("text").tone("friendly").size("medium")
+				.maxTokens(2000).temperature(0.8).showThinking(true).thinkingText("Analyzing your request...")
+				.systemInstruction("Your name is ChatBot, help users with their questions")
+				.responseTextView(message_et).build();
 
-        aiFeatureHandler = new AiFeatureHandler(
-                this,
-                gemini,
-                message_et,
-                ChatMessagesList,
-                auth,
-                SecondUserName,
-                mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage
-        );
+		aiFeatureHandler = new AiFeatureHandler(
+				this, gemini, message_et, ChatMessagesList, auth, SecondUserName,
+				mMessageReplyLayoutBodyRightUsername, mMessageReplyLayoutBodyRightMessage
+		);
 
-        messageInteractionHandler = new MessageInteractionHandler(
-                this,
-                this,
-                auth,
-                _firebase,
-                ChatMessagesList,
-                ChatMessagesListRecycler,
-                vbr,
-                aiFeatureHandler,
-                FirstUserName,
-                SecondUserName
-        );
+		messageInteractionHandler = new MessageInteractionHandler(
+				this, this, auth, _firebase, ChatMessagesList, ChatMessagesListRecycler,
+				vbr, aiFeatureHandler, FirstUserName, SecondUserName
+		);
 
-        activityResultHandler = new ActivityResultHandler(this);
+		activityResultHandler = new ActivityResultHandler(this);
 		_setupSwipeToReply();
 
-		if (is_group) {
-			_getGroupReference();
-		} else {
-			_getUserReference();
-		}
-		message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
-		if (message_et.getText().toString().trim().equals("")) {
-			_TransitionManager(message_input_overall_container, 100);
-			message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
+		LinearLayout message_input_outlined_round = findViewById(R.id.message_input_outlined_round);
+		chatKeyboardHandler = new ChatKeyboardHandler(
+				this, message_et, (LinearLayout) findViewById(R.id.toolContainer),
+				(MaterialButton) findViewById(R.id.btn_sendMessage), message_input_outlined_round,
+				message_input_overall_container, auth
+		);
+		chatKeyboardHandler.setup();
 
-		} else {
-			_TransitionManager(message_input_overall_container, 100);
-			message_input_outlined_round.setOrientation(LinearLayout.VERTICAL);
+		voiceMessageHandler = new VoiceMessageHandler(this, this);
+		voiceMessageHandler.setupVoiceButton((ImageView) findViewById(R.id.btn_voice_message));
 
-		}
+		chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
+		ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
 
-        chatKeyboardHandler = new ChatKeyboardHandler(
-                this,
-                message_et,
-                toolContainer,
-                btn_sendMessage,
-                message_input_outlined_round,
-                message_input_overall_container,
-                auth
-        );
-        chatKeyboardHandler.setup();
+		attachmentHandler = new AttachmentHandler(
+				this, (RelativeLayout) findViewById(R.id.attachmentLayoutListHolder),
+				rv_attacmentList, attactmentmap, (ImageView) findViewById(R.id.close_attachments_btn),
+				(ImageView) findViewById(R.id.galleryBtn), auth
+		);
+		attachmentHandler.setup();
 
-        voiceMessageHandler = new VoiceMessageHandler(this, this);
-        voiceMessageHandler.setupVoiceButton(btn_voice_message);
-
-        chatUIUpdater = new ChatUIUpdater(
-                this,
-                noChatText,
-                ChatMessagesListRecycler,
-                topProfileLayoutProfileImage,
-                topProfileLayoutUsername,
-                topProfileLayoutStatus,
-                topProfileLayoutGenderBadge,
-                topProfileLayoutVerifiedBadge,
-                mMessageReplyLayout,
-                mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage,
-                auth
-        );
-
-        chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
-        ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
-
-        attachmentHandler = new AttachmentHandler(
-                this,
-                attachmentLayoutListHolder,
-                rv_attacmentList,
-                attactmentmap,
-                close_attachments_btn,
-                galleryBtn,
-                auth
-        );
-        attachmentHandler.setup();
-
-		_attachChatListener();
-		_attachUserStatusListener();
+		chatDataHandler.loadInitialData();
 	}
 
 	@Override
@@ -495,7 +303,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		super.onActivityResult(_requestCode, _resultCode, _data);
 		activityResultHandler.handleResult(_requestCode, _resultCode, _data);
 	}
-
 
 	@Override
 	public void onPause() {
@@ -509,16 +316,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	protected void onStart() {
 		super.onStart();
-		blocklist.addChildEventListener(_blocklist_child_listener);
-
-		if (chatMessagesRef != null && ChatMessagesList != null && chatAdapter != null) {
-			_attachChatListener();
+		if (chatDataHandler != null) {
+			chatDataHandler.attachListeners();
 		}
-		
-		if (userRef != null) {
-			_attachUserStatusListener();
-		}
-
 		if (auth.getCurrentUser() != null) {
 			String recipientUid = getIntent().getStringExtra("uid");
 			PresenceManager.setChattingWith(auth.getCurrentUser().getUid(), recipientUid);
@@ -528,9 +328,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onStop() {
 		super.onStop();
-		_detachChatListener();
-		_detachUserStatusListener();
-		blocklist.removeEventListener(_blocklist_child_listener);
+		if (chatDataHandler != null) {
+			chatDataHandler.detachListeners();
+		}
 		if (auth.getCurrentUser() != null) {
 			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
 			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
@@ -540,7 +340,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		
 		if (auth.getCurrentUser() != null) {
 			try {
 				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
@@ -549,29 +348,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
 			}
 		}
-		
-		_detachChatListener();
-		_detachUserStatusListener();
-		
-		if (_blocklist_child_listener != null) {
-			try {
-				blocklist.removeEventListener(_blocklist_child_listener);
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error removing blocklist listener: " + e.getMessage());
-			}
-		}
-		
 		if (recordHandler != null && recordRunnable != null) {
 			recordHandler.removeCallbacks(recordRunnable);
 		}
-		
-		if (ChatMessagesList != null) {
-			ChatMessagesList.clear();
-		}
-		if (attactmentmap != null) {
-			attactmentmap.clear();
-		}
-		
+		if (ChatMessagesList != null) ChatMessagesList.clear();
+		if (attactmentmap != null) attactmentmap.clear();
 		if (SynapseLoadingDialog != null && SynapseLoadingDialog.isShowing()) {
 			try {
 				SynapseLoadingDialog.dismiss();
@@ -580,18 +361,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 			SynapseLoadingDialog = null;
 		}
-		
-		if (chatAdapter != null) {
-			chatAdapter = null;
-		}
-		
-		if (ChatMessagesListRecycler != null) {
-			ChatMessagesListRecycler.setAdapter(null);
-		}
-		if (rv_attacmentList != null) {
-			rv_attacmentList.setAdapter(null);
-		}
-		
+		if (chatAdapter != null) chatAdapter = null;
+		if (ChatMessagesListRecycler != null) ChatMessagesListRecycler.setAdapter(null);
+		if (rv_attacmentList != null) rv_attacmentList.setAdapter(null);
 		AsyncUploadService.cancelAllUploads(this);
 	}
 
@@ -630,499 +402,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		finish();
 	}
 
-	private void _fetchRepliedMessages(ArrayList<HashMap<String, Object>> messages) {
-		java.util.HashSet<String> repliedIdsToFetch = new java.util.HashSet<>();
-		for (HashMap<String, Object> message : messages) {
-			if (message.containsKey("replied_message_id")) {
-                String repliedId = String.valueOf(message.get("replied_message_id"));
-				if (repliedId != null && !repliedId.equals("null") && !repliedMessagesCache.containsKey(repliedId)) {
-					repliedIdsToFetch.add(repliedId);
-				}
-			}
-		}
-
-		if (repliedIdsToFetch.isEmpty()) {
-			return;
-		}
-
-		DatabaseReference chatRef = chatMessagesRef;
-
-		for (String messageKey : repliedIdsToFetch) {
-			repliedMessagesCache.put(messageKey, new HashMap<>());
-
-			chatRef.child(messageKey).addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot snapshot) {
-					if (snapshot.exists()) {
-						HashMap<String, Object> repliedMessage = snapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						if (repliedMessage != null) {
-							repliedMessagesCache.put(messageKey, repliedMessage);
-							_updateMessageInRecyclerView(messageKey);
-						}
-					}
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError error) {
-					repliedMessagesCache.remove(messageKey);
-				}
-			});
-		}
-	}
-
-	private void _updateMessageInRecyclerView(String repliedMessageKey) {
-		if (chatAdapter == null || isFinishing() || isDestroyed()) return;
-		for (int i = 0; i < ChatMessagesList.size(); i++) {
-			HashMap<String, Object> message = ChatMessagesList.get(i);
-			if (message != null && message.containsKey("replied_message_id") && repliedMessageKey.equals(message.get("replied_message_id").toString())) {
-				final int positionToUpdate = i;
-				runOnUiThread(() -> {
-					if (chatAdapter != null && positionToUpdate < chatAdapter.getItemCount()) {
-						chatAdapter.notifyItemChanged(positionToUpdate);
-					}
-				});
-			}
-		}
-	}
-	public void _stateColor(final int _statusColor, final int _navigationColor) {
-		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-		getWindow().setStatusBarColor(_statusColor);
-		getWindow().setNavigationBarColor(_navigationColor);
-	}
-
-
-	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
-		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
-		GG.setColor(_onFocus);
-		GG.setCornerRadius((float)_radius);
-		GG.setStroke((int) _stroke, _strokeColor);
-		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
-		_view.setBackground(RE);
-	}
-
-
-	public void _ImageColor(final ImageView _image, final int _color) {
-		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
-	}
-
-
-    private MessageInteractionHandler messageInteractionHandler;
 	@Override
 	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
 		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
 	}
-
-
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-
-		boolean _default = false;
-
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-
-
-	}
-
-	class c {
-		Context co;
-		public <T extends Activity> c(T a) {
-			co = a;
-		}
-		public <T extends Fragment> c(T a) {
-			co = a.getActivity();
-		}
-		public <T extends DialogFragment> c(T a) {
-			co = a.getActivity();
-		}
-
-		public Context getContext() {
-			return co;
-		}
-
-	}
-
-
-	{
-
-	}
-
-
-	public void _getUserReference() {
-		DatabaseReference getFirstUserName = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getFirstUserName.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				try {
-					if (dataSnapshot.exists()) {
-						String nickname = dataSnapshot.child("nickname").getValue(String.class);
-						String username = dataSnapshot.child("username").getValue(String.class);
-						
-						if (nickname != null && !"null".equals(nickname)) {
-							FirstUserName = nickname;
-						} else if (username != null && !"null".equals(username)) {
-							FirstUserName = "@" + username;
-						} else {
-							FirstUserName = "Unknown User";
-							Log.w("ChatActivity", "Both nickname and username are null or 'null'");
-						}
-					} else {
-						Log.w("ChatActivity", "User data snapshot doesn't exist");
-						FirstUserName = "Unknown User";
-					}
-					if (chatAdapter != null) {
-						chatAdapter.setFirstUserName(FirstUserName);
-					}
-                    if (messageSendingHandler != null) {
-                        messageSendingHandler.setFirstUserName(FirstUserName);
-                    }
-                    if (messageInteractionHandler != null) {
-                        messageInteractionHandler.setFirstUserName(FirstUserName);
-                    }
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing user data: " + e.getMessage());
-					FirstUserName = "Unknown User";
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Failed to get first user name: " + databaseError.getMessage());
-				FirstUserName = "Unknown User";
-			}
-		});
-
-		_getChatMessagesRef();
-	}
-
-
-	public void _getChatMessagesRef() {
-		Query getChatsMessages = chatMessagesRef.limitToLast(CHAT_PAGE_SIZE);
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				try {
-					if(dataSnapshot.exists()) {
-						chatUIUpdater.updateNoChatVisibility(false);
-						ChatMessagesList.clear();
-						messageKeys.clear();
-						ArrayList<HashMap<String, Object>> initialMessages = new ArrayList<>();
-						
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							try {
-								HashMap<String, Object> messageData = _data.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-								if (messageData != null && messageData.containsKey(KEY_KEY) && messageData.get(KEY_KEY) != null) {
-									initialMessages.add(messageData);
-									messageKeys.add(messageData.get(KEY_KEY).toString());
-								} else {
-									Log.w("ChatActivity", "Skipping initial message without valid key: " + _data.getKey());
-								}
-							} catch (Exception e) {
-								Log.e("ChatActivity", "Error processing initial message data: " + e.getMessage());
-							}
-						}
-
-						if (!initialMessages.isEmpty()) {
-							initialMessages.sort((msg1, msg2) -> {
-								long time1 = _getMessageTimestamp(msg1);
-								long time2 = _getMessageTimestamp(msg2);
-								return Long.compare(time1, time2);
-							});
-							
-							HashMap<String, Object> oldestMessage = initialMessages.get(0);
-							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
-								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
-							}
-
-							ChatMessagesList.addAll(initialMessages);
-							if (chatAdapter != null) {
-								chatAdapter.notifyDataSetChanged();
-							}
-							ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-							_fetchRepliedMessages(initialMessages);
-						}
-					} else {
-						chatUIUpdater.updateNoChatVisibility(true);
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing initial chat messages: " + e.getMessage());
-					chatUIUpdater.updateNoChatVisibility(true);
-				}
-			}
-			
-			@Override 
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Initial message load failed: " + databaseError.getMessage());
-				chatUIUpdater.updateNoChatVisibility(true);
-			}
-		});
-	}
-
-	private void _attachChatListener() {
-		if (chatMessagesRef == null || ChatMessagesList == null || chatAdapter == null) {
-			Log.w("ChatActivity", "Cannot attach chat listener - missing dependencies");
-			return;
-		}
-		
-		if (_chat_child_listener != null) {
-			try {
-				chatMessagesRef.removeEventListener(_chat_child_listener);
-			} catch (Exception e) {
-				Log.w("ChatActivity", "Error removing existing chat listener: " + e.getMessage());
-			}
-			_chat_child_listener = null;
-		}
-		
-		_chat_child_listener = new ChildEventListener() {
-				@Override
-				public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
-					Log.d("ChatActivity", "=== FIREBASE LISTENER: onChildAdded ===");
-					Log.d("ChatActivity", "Snapshot key: " + dataSnapshot.getKey() + ", Previous child: " + previousChildName);
-					
-					if (dataSnapshot.exists()) {
-						HashMap<String, Object> newMessage = dataSnapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						Log.d("ChatActivity", "New message data: " + (newMessage != null ? newMessage.toString() : "null"));
-						
-						if (newMessage != null && newMessage.get(KEY_KEY) != null) {
-							String messageKey = newMessage.get(KEY_KEY).toString();
-							String messageType = newMessage.getOrDefault("TYPE", "unknown").toString();
-							Log.d("ChatActivity", "New message received from Firebase - Type: " + messageType + ", Key: " + messageKey);
-							
-							if (!messageKeys.contains(messageKey)) {
-								messageKeys.add(messageKey);
-								_safeUpdateRecyclerView();
-								
-								int insertPosition = _findCorrectInsertPosition(newMessage);
-								ChatMessagesList.add(insertPosition, newMessage);
-								
-								Log.d("ChatActivity", "Added new Firebase message to list at position " + insertPosition + ", key: " + messageKey);
-								
-								if (chatAdapter != null) {
-									chatAdapter.notifyItemInserted(insertPosition);
-									if (insertPosition > 0) chatAdapter.notifyItemChanged(insertPosition - 1);
-									if (insertPosition < ChatMessagesList.size() - 1) chatAdapter.notifyItemChanged(insertPosition + 1);
-								}
-								
-								if (insertPosition == ChatMessagesList.size() - 1 && ChatMessagesListRecycler != null) {
-									ChatMessagesListRecycler.post(() -> scrollToBottom());
-								}
-								
-								if (newMessage.containsKey("replied_message_id")) {
-									ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
-									singleMessageList.add(newMessage);
-									_fetchRepliedMessages(singleMessageList);
-								}
-							} else {
-								int oldPosition = -1;
-								for (int i = 0; i < ChatMessagesList.size(); i++) {
-									if (messageKey.equals(ChatMessagesList.get(i).get(KEY_KEY))) {
-										oldPosition = i;
-										break;
-									}
-								}
-
-								if (oldPosition != -1) {
-									newMessage.remove("isLocalMessage");
-									int newPosition = _findCorrectInsertPosition(newMessage);
-
-									if (oldPosition == newPosition) {
-										ChatMessagesList.set(oldPosition, newMessage);
-										if (chatAdapter != null) {
-											chatAdapter.notifyItemChanged(oldPosition);
-										}
-									} else {
-										ChatMessagesList.remove(oldPosition);
-										ChatMessagesList.add(newPosition, newMessage);
-										if (chatAdapter != null) {
-											chatAdapter.notifyItemMoved(oldPosition, newPosition);
-											chatAdapter.notifyItemChanged(newPosition);
-										}
-									}
-								}
-							}
-						} else {
-							Log.w("ChatActivity", "New message is null or missing key");
-						}
-					} else {
-						Log.w("ChatActivity", "DataSnapshot does not exist");
-					}
-					Log.d("ChatActivity", "=== FIREBASE LISTENER: onChildAdded END ===");
-				}
-
-				@Override
-				public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-					if (snapshot.exists()) {
-						HashMap<String, Object> updatedMessage = snapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						if (updatedMessage != null && updatedMessage.get(KEY_KEY) != null) {
-							String key = updatedMessage.get(KEY_KEY).toString();
-							
-							for (int i = 0; i < ChatMessagesList.size(); i++) {
-								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
-									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(key)) {
-									
-									ChatMessagesList.set(i, updatedMessage);
-									
-									if (chatAdapter != null) {
-										chatAdapter.notifyItemChanged(i);
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				@Override
-				public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-					if (snapshot.exists()) {
-						String removedKey = snapshot.getKey();
-						if (removedKey != null) {
-							if (locallyDeletedMessages.contains(removedKey)) {
-								locallyDeletedMessages.remove(removedKey);
-								return;
-							}
-							for (int i = 0; i < ChatMessagesList.size(); i++) {
-								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
-									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(removedKey)) {
-									
-									ChatMessagesList.remove(i);
-									messageKeys.remove(removedKey);
-									
-									if (chatAdapter != null) {
-										chatAdapter.notifyItemRemoved(i);
-										
-										if (!ChatMessagesList.isEmpty() && i < ChatMessagesList.size()) {
-											chatAdapter.notifyItemChanged(Math.min(i, ChatMessagesList.size() - 1));
-										}
-									}
-									
-									if (ChatMessagesList.isEmpty()) {
-										_safeUpdateRecyclerView();
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				@Override public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
-				@Override public void onCancelled(@NonNull DatabaseError error) {
-					Log.e("ChatActivity", "Chat listener cancelled: " + error.getMessage());
-				}
-			};
-		chatMessagesRef.addChildEventListener(_chat_child_listener);
-	}
-
-	private int _findCorrectInsertPosition(HashMap<String, Object> newMessage) {
-		if (ChatMessagesList.isEmpty()) {
-			return 0;
-		}
-		
-		long newMessageTime = _getMessageTimestamp(newMessage);
-		
-		for (int i = 0; i < ChatMessagesList.size(); i++) {
-			long existingMessageTime = _getMessageTimestamp(ChatMessagesList.get(i));
-			
-			if (newMessageTime <= existingMessageTime) {
-				return i;
-			}
-		}
-		
-		return ChatMessagesList.size();
-	}
 	
-	private long _getMessageTimestamp(HashMap<String, Object> message) {
-		try {
-			Object pushDateObj = message.get("push_date");
-			if (pushDateObj instanceof Long) {
-				return (Long) pushDateObj;
-			} else if (pushDateObj instanceof Double) {
-				return ((Double) pushDateObj).longValue();
-			} else if (pushDateObj instanceof String) {
-				return Long.parseLong((String) pushDateObj);
-			}
-		} catch (Exception e) {
-			Log.w("ChatActivity", "Error parsing message timestamp: " + e.getMessage());
-		}
-		return System.currentTimeMillis();
-	}
-	
-	private void _forceRefreshRecyclerView() {
-		if (chatAdapter != null && ChatMessagesListRecycler != null) {
-			ChatMessagesListRecycler.post(() -> {
-				chatAdapter.notifyDataSetChanged();
-			});
-		}
-	}
-	
-	private void _safeUpdateRecyclerView() {
-		try {
-			if (chatAdapter != null && ChatMessagesListRecycler != null) {
-				ChatMessagesListRecycler.post(() -> {
-					try {
-						chatUIUpdater.updateNoChatVisibility(ChatMessagesList.isEmpty());
-					} catch (Exception e) {
-						Log.e("ChatActivity", "Error updating RecyclerView visibility: " + e.getMessage());
-					}
-				});
-			}
-		} catch (Exception e) {
-			Log.e("ChatActivity", "Error in safe update: " + e.getMessage());
-		}
-	}
-	
-	private void _reorderMessagesIfNeeded() {
-		try {
-			if (ChatMessagesList.size() > 1) {
-				boolean needsReorder = false;
-				for (int i = 0; i < ChatMessagesList.size() - 1; i++) {
-					long currentTime = _getMessageTimestamp(ChatMessagesList.get(i));
-					long nextTime = _getMessageTimestamp(ChatMessagesList.get(i + 1));
-					if (currentTime > nextTime) {
-						needsReorder = true;
-						break;
-					}
-				}
-				
-				if (needsReorder) {
-					Log.d("ChatActivity", "Messages are out of order, reordering...");
-					ChatMessagesList.sort((msg1, msg2) -> {
-						long time1 = _getMessageTimestamp(msg1);
-						long time2 = _getMessageTimestamp(msg2);
-						return Long.compare(time1, time2);
-					});
-					
-					if (chatAdapter != null) {
-						chatAdapter.notifyDataSetChanged();
-					}
-					Log.d("ChatActivity", "Messages reordered successfully");
-				}
-			}
-		} catch (Exception e) {
-			Log.e("ChatActivity", "Error reordering messages: " + e.getMessage());
-		}
-	}
-
-	private void scrollToBottom() {
+	public void scrollToBottom() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.smoothScrollToPosition(ChatMessagesList.size() - 1);
 		}
@@ -1134,468 +419,101 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	private void _detachChatListener() {
-		if (_chat_child_listener != null) {
-			chatMessagesRef.removeEventListener(_chat_child_listener);
-			_chat_child_listener = null;
-		}
-	}
-
-	private void _attachUserStatusListener() {
-		if (userRef == null) {
-			Log.w("ChatActivity", "Cannot attach user status listener - userRef is null");
-			return;
-		}
-		
-		if (_userStatusListener != null) {
-			try {
-				userRef.removeEventListener(_userStatusListener);
-			} catch (Exception e) {
-				Log.w("ChatActivity", "Error removing existing user status listener: " + e.getMessage());
-			}
-			_userStatusListener = null;
-		}
-		
-		_userStatusListener = new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					chatUIUpdater.updateUserProfile(dataSnapshot);
-
-					String nickname = dataSnapshot.child("nickname").getValue(String.class);
-					String username = dataSnapshot.child("username").getValue(String.class);
-					if (nickname != null && !"null".equals(nickname)) {
-						SecondUserName = nickname;
-					} else if (username != null && !"null".equals(username)) {
-						SecondUserName = "@" + username;
-					} else {
-						SecondUserName = "Unknown User";
-					}
-                    SecondUserAvatar = dataSnapshot.child("avatar_url").getValue(String.class);
-
-					if (chatAdapter != null) {
-						chatAdapter.setSecondUserName(SecondUserName);
-						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
-					}
-                    if (messageInteractionHandler != null) {
-                        messageInteractionHandler.setSecondUserName(SecondUserName);
-                    }
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Failed to get user reference: " + databaseError.getMessage());
-			}
-		};
-		userRef.addValueEventListener(_userStatusListener);
-	}
-
-	private void _detachUserStatusListener() {
-		if (_userStatusListener != null) {
-			userRef.removeEventListener(_userStatusListener);
-			_userStatusListener = null;
-		}
-	}
-
-	public String _getDurationString(final long _durationInMillis) {
-		long seconds = _durationInMillis / 1000;
-		long minutes = seconds / 60;
-		long hours = minutes / 60;
-		seconds %= 60;
-		minutes %= 60;
-
-		if (hours > 0) {
-			return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-		} else {
-			return String.format("%02d:%02d", minutes, seconds);
-		}
-	}
-
-
 	public void _getOldChatMessagesRef() {
-		if (isLoading || oldestMessageKey == null || oldestMessageKey.isEmpty() || oldestMessageKey.equals("null")) {
-			return;
-		}
-		isLoading = true;
-		_showLoadMoreIndicator();
-
-		Query getChatsMessages = chatMessagesRef
-		.orderByKey()
-		.endBefore(oldestMessageKey)
-		.limitToLast(CHAT_PAGE_SIZE);
-
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				_hideLoadMoreIndicator();
-				try {
-					if(dataSnapshot.exists()) {
-						ArrayList<HashMap<String, Object>> newMessages = new ArrayList<>();
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							try {
-								HashMap<String, Object> messageData = _data.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-								if (messageData != null && messageData.containsKey(KEY_KEY) && messageData.get(KEY_KEY) != null) {
-									if (!messageKeys.contains(messageData.get(KEY_KEY).toString())) {
-										newMessages.add(messageData);
-										messageKeys.add(messageData.get(KEY_KEY).toString());
-									}
-								} else {
-									Log.w("ChatActivity", "Skipping message without valid key: " + _data.getKey());
-								}
-							} catch (Exception e) {
-								Log.e("ChatActivity", "Error processing message data: " + e.getMessage());
-							}
-						}
-
-						if (!newMessages.isEmpty()) {
-							newMessages.sort((msg1, msg2) -> {
-								long time1 = _getMessageTimestamp(msg1);
-								long time2 = _getMessageTimestamp(msg2);
-								return Long.compare(time1, time2);
-							});
-							
-							HashMap<String, Object> oldestMessage = newMessages.get(0);
-							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
-								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
-							}
-
-							final LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
-							if (layoutManager != null) {
-								int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
-								View firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition);
-								int topOffset = (firstVisibleView != null) ? firstVisibleView.getTop() : 0;
-
-								ChatMessagesList.addAll(0, newMessages);
-								if (chatAdapter != null) {
-									chatAdapter.notifyItemRangeInserted(0, newMessages.size());
-								}
-
-								if (firstVisibleView != null) {
-									layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size(), topOffset);
-								}
-								_fetchRepliedMessages(newMessages);
-							}
-						} else {
-							oldestMessageKey = null;
-							_hideLoadMoreIndicator();
-							Log.d("ChatActivity", "No more messages to load, pagination complete");
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing old messages: " + e.getMessage());
-				} finally {
-					isLoading = false;
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				_hideLoadMoreIndicator();
-				isLoading = false;
-				Log.e("ChatActivity", "Error processing old messages: " + databaseError.getMessage());
-			}
-		});
+		chatDataHandler.getOldChatMessagesRef();
 	}
-
 
 	public void _DeleteMessageDialog(final HashMap<String, Object> messageData) {
-		if (messageData == null || messageData.get(KEY_KEY) == null) {
-			return;
-		}
+		if (messageData == null || messageData.get(KEY_KEY) == null) return;
 		final String messageKey = messageData.get(KEY_KEY).toString();
 
-		MaterialAlertDialogBuilder zorry = new MaterialAlertDialogBuilder(ChatActivity.this);
-		zorry.setTitle("Delete Message");
-		zorry.setMessage("Are you sure you want to delete this message? This action cannot be undone.");
-		zorry.setIcon(R.drawable.popup_ic_3);
-		zorry.setPositiveButton("Delete", (dialog, which) -> {
-			locallyDeletedMessages.add(messageKey);
+		new MaterialAlertDialogBuilder(ChatActivity.this)
+			.setTitle("Delete Message")
+			.setMessage("Are you sure you want to delete this message? This action cannot be undone.")
+			.setIcon(R.drawable.popup_ic_3)
+			.setPositiveButton("Delete", (dialog, which) -> {
+				locallyDeletedMessages.add(messageKey);
+				final String myUid = auth.getCurrentUser().getUid();
+				final String otherUid = getIntent().getStringExtra(UID_KEY);
+				final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
+				final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
 
-			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-			final String otherUid = getIntent().getStringExtra(UID_KEY);
-			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
-			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
-
-			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
-				if (task.isSuccessful()) {
-					chatRef.limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
-						@Override
-						public void onDataChange(@NonNull DataSnapshot snapshot) {
-							if (!snapshot.exists()) {
-								_firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
-								_firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
+				chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
+					if (task.isSuccessful()) {
+						chatRef.limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
+							@Override
+							public void onDataChange(@NonNull DataSnapshot snapshot) {
+								if (!snapshot.exists()) {
+									_firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
+									_firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
+									_firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
+									_firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
+								}
 							}
-						}
-						@Override
-						public void onCancelled(@NonNull DatabaseError error) {
-							Log.e("ChatActivity", "Error checking for last message: " + error.getMessage());
-						}
-					});
-				}
-			});
-
-			for (int i = 0; i < ChatMessagesList.size(); i++) {
-				Object k = ChatMessagesList.get(i).get(KEY_KEY);
-				if (k != null && messageKey.equals(String.valueOf(k))) {
-					ChatMessagesList.remove(i);
-					messageKeys.remove(messageKey);
-					chatAdapter.notifyItemRemoved(i);
-					if (i > 0) {
-						chatAdapter.notifyItemChanged(i - 1);
+							@Override
+							public void onCancelled(@NonNull DatabaseError error) {
+								Log.e("ChatActivity", "Error checking for last message: " + error.getMessage());
+							}
+						});
 					}
-					break;
-				}
-			}
-		});
-		zorry.setNegativeButton("Cancel", null);
-		zorry.create().show();
+				});
+				onMessageRemoved(messageKey);
+			})
+			.setNegativeButton("Cancel", null)
+			.create().show();
 	}
-
-
-	public void _ScrollingText(final TextView _view) {
-		_view.setSingleLine(true);
-		_view.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-		_view.setSelected(true);
-	}
-
-    private MessageSendingHandler messageSendingHandler;
-
 
 	public void _Block(final String _uid) {
-		block = new HashMap<>();
-		block.put(_uid, "true");
-		blocklist.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(block);
-		block.clear();
+		HashMap<String,Object> blockMap = new HashMap<>();
+		blockMap.put(_uid, "true");
+		blocklist.child(auth.getCurrentUser().getUid()).updateChildren(blockMap);
 	}
-
 
 	public void _TransitionManager(final View _view, final double _duration) {
 		LinearLayout viewgroup =(LinearLayout) _view;
-
-		android.transition.AutoTransition autoTransition = new android.transition.AutoTransition(); autoTransition.setDuration((long)_duration); android.transition.TransitionManager.beginDelayedTransition(viewgroup, autoTransition);
+		android.transition.AutoTransition autoTransition = new android.transition.AutoTransition();
+		autoTransition.setDuration((long)_duration);
+		android.transition.TransitionManager.beginDelayedTransition(viewgroup, autoTransition);
 	}
-
-
-	public void _Unblock_this_user() {
-		DatabaseReference blocklistRef = FirebaseDatabase.getInstance().getReference("skyline/blocklist");
-		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		String uidToRemove = getIntent().getStringExtra("uid");
-
-		blocklistRef.child(myUid).child(uidToRemove).removeValue()
-		.addOnSuccessListener(aVoid -> {
-			Intent intent = getIntent();
-			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-			finish();
-			startActivity(intent);
-		})
-		.addOnFailureListener(e -> {
-			Log.e("UnblockUser", "Failed to unblock user", e);
-		});
-	}
-
-
-	public void _LoadingDialog(final boolean _visibility) {
-		if (_visibility) {
-			if (SynapseLoadingDialog== null){
-				SynapseLoadingDialog = new ProgressDialog(this);
-				SynapseLoadingDialog.setCancelable(false);
-				SynapseLoadingDialog.setCanceledOnTouchOutside(false);
-
-				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-				SynapseLoadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-
-			}
-			SynapseLoadingDialog.show();
-			SynapseLoadingDialog.setContentView(R.layout.loading_synapse);
-
-			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
-
-		} else {
-			if (SynapseLoadingDialog != null){
-				SynapseLoadingDialog.dismiss();
-			}
-		}
-
-	}
-
-
-	public void _ImgRound(final ImageView _imageview, final double _value) {
-		android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable ();
-		gd.setColor(android.R.color.transparent);
-		gd.setCornerRadius((int)_value);
-		_imageview.setClipToOutline(true);
-		_imageview.setBackground(gd);
-	}
-
 
 	@Override
 	public void openUrl(final String _URL) {
-		AndroidDevelopersBlogURL = _URL;
 		CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
 		builder.setToolbarColor(Color.parseColor("#242D39"));
 		CustomTabsIntent customtabsintent = builder.build();
-		customtabsintent.launchUrl(this, Uri.parse(AndroidDevelopersBlogURL));
+		customtabsintent.launchUrl(this, Uri.parse(_URL));
 	}
 
-
-	public void _startUploadForItem(final double _position) {
-		if (auth.getCurrentUser() != null) {
-			PresenceManager.setActivity(auth.getCurrentUser().getUid(), "Sending an attachment");
-		}
-		final int itemPosition = (int) _position;
-
-		if (itemPosition < 0 || itemPosition >= attactmentmap.size()) {
-			Log.e("ChatActivity", "Invalid position for upload: " + itemPosition + ", size: " + attactmentmap.size());
-			return;
-		}
-
-		if (!SketchwareUtil.isConnected(getApplicationContext())) {
-			try {
-				HashMap<String, Object> itemMap = attactmentmap.get(itemPosition);
-				if (itemMap != null) {
-					itemMap.put("uploadState", "failed");
-					if (rv_attacmentList.getAdapter() != null) {
-						rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-					}
-				}
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error updating upload state: " + e.getMessage());
-			}
-			return;
-		}
-
-		HashMap<String, Object> itemMap = attactmentmap.get(itemPosition);
-		if (itemMap == null || !"pending".equals(itemMap.get("uploadState"))) {
-			return;
-		}
-		
-		itemMap.put("uploadState", "uploading");
-		itemMap.put("uploadProgress", 0.0);
-		
-		if (rv_attacmentList.getAdapter() != null) {
-			rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-		}
-
-		String filePath = itemMap.get("localPath").toString();
-		if (filePath == null || filePath.isEmpty()) {
-			Log.e("ChatActivity", "Invalid file path for upload");
-			itemMap.put("uploadState", "failed");
-			if (rv_attacmentList.getAdapter() != null) {
-				rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-			}
-			return;
-		}
-
-		File file = new File(filePath);
-		if (!file.exists()) {
-			Log.e("ChatActivity", "File does not exist: " + filePath);
-			itemMap.put("uploadState", "failed");
-			if (rv_attacmentList.getAdapter() != null) {
-				rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-			}
-			return;
-		}
-
-		AsyncUploadService.uploadWithNotification(this, filePath, file.getName(), new AsyncUploadService.UploadProgressListener() {
-			@Override
-			public void onProgress(String filePath, int percent) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> currentItem = attactmentmap.get(itemPosition);
-						if (currentItem != null && filePath.equals(currentItem.get("localPath"))) {
-							currentItem.put("uploadProgress", (double) percent);
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload progress: " + e.getMessage());
-				}
-			}
-			
-			@Override
-			public void onSuccess(String filePath, String url, String publicId) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> mapToUpdate = attactmentmap.get(itemPosition);
-						if (mapToUpdate != null && filePath.equals(mapToUpdate.get("localPath"))) {
-							mapToUpdate.put("uploadState", "success");
-							mapToUpdate.put("cloudinaryUrl", url);
-							mapToUpdate.put("publicId", publicId);
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-
-							path = url;
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload success: " + e.getMessage());
-				}
-			}
-			
-			@Override
-			public void onFailure(String filePath, String error) {
-				try {
-					if (itemPosition >= 0 && itemPosition < attactmentmap.size()) {
-						HashMap<String, Object> currentItem = attactmentmap.get(itemPosition);
-						if (currentItem != null && filePath.equals(currentItem.get("localPath"))) {
-							currentItem.put("uploadState", "failed");
-							if (rv_attacmentList.getAdapter() != null) {
-								rv_attacmentList.getAdapter().notifyItemChanged(itemPosition);
-							}
-						}
-					}
-					Log.e("ChatActivity", "Upload failed: " + error);
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error updating upload failure: " + e.getMessage());
+	@Override
+	public void showLoadMoreIndicator() {
+		runOnUiThread(() -> {
+			if (!ChatMessagesList.isEmpty() && !ChatMessagesList.get(0).containsKey("isLoadingMore")) {
+				HashMap<String, Object> loadingMap = new HashMap<>();
+				loadingMap.put("isLoadingMore", true);
+				ChatMessagesList.add(0, loadingMap);
+				if (chatAdapter != null) {
+					chatAdapter.notifyItemRangeInserted(0, 1);
 				}
 			}
 		});
 	}
 
-	public void resetAttachmentState() {
-		attachmentHandler.resetAttachmentState();
-        path = "";
-	}
-
-
-
-	public void _showLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty() && !ChatMessagesList.get(0).containsKey("isLoadingMore")) {
-			HashMap<String, Object> loadingMap = new HashMap<>();
-			loadingMap.put("isLoadingMore", true);
-			ChatMessagesList.add(0, loadingMap);
-			if (chatAdapter != null) {
-				chatAdapter.notifyItemInserted(0);
-				if (ChatMessagesList.size() > 1) {
-					chatAdapter.notifyItemChanged(1);
-				}
+	@Override
+	public void hideLoadMoreIndicator() {
+		runOnUiThread(() -> {
+			if (!ChatMessagesList.isEmpty() && ChatMessagesList.get(0).containsKey("isLoadingMore")) {
+				ChatMessagesList.remove(0);
+				if(chatAdapter != null) chatAdapter.notifyItemRemoved(0);
 			}
-		}
+		});
 	}
-
-
-	public void _hideLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty() && ChatMessagesList.get(0).containsKey("isLoadingMore")) {
-			ChatMessagesList.remove(0);
-			((ChatAdapter)chatAdapter).notifyItemRemoved(0);
-		}
-	}
-
 
 	public void _showReplyUI(final double _position) {
 		HashMap<String, Object> messageData = ChatMessagesList.get((int)_position);
 		ReplyMessageID = messageData.get(KEY_KEY).toString();
 		chatUIUpdater.showReplyUI(FirstUserName, SecondUserName, messageData);
-		vbr.vibrate((long)(48));
+		vbr.vibrate(48);
 	}
-
-
 
 	public void _setupSwipeToReply() {
 		ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
@@ -1607,94 +525,24 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			@Override
 			public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
 				int position = viewHolder.getAdapterPosition();
-				if (position < 0 || position >= ChatMessagesList.size()) {
-					return;
-				}
+				if (position < 0 || position >= ChatMessagesList.size()) return;
 
 				HashMap<String, Object> messageData = ChatMessagesList.get(position);
 				if (messageData == null || !messageData.containsKey("key") || messageData.get("key") == null) {
 					chatAdapter.notifyItemChanged(position);
 					return;
 				}
-
 				_showReplyUI(position);
 				viewHolder.itemView.animate().translationX(0).setDuration(150).start();
 				chatAdapter.notifyItemChanged(position);
 			}
-
-			@Override
-			public boolean isItemViewSwipeEnabled() {
-				return true;
-			}
-
-			@Override
-			public boolean isLongPressDragEnabled() {
-				return false;
-			}
-
-			@Override
-			public void onChildDraw(Canvas c, RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
-				if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
-					View itemView = viewHolder.itemView;
-					Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-					Drawable icon = ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_reply);
-					if (icon != null) {
-						icon.setColorFilter(0xFF616161, PorterDuff.Mode.SRC_IN);
-
-						int iconMargin = (itemView.getHeight() - icon.getIntrinsicHeight()) / 2;
-						int iconTop = itemView.getTop() + iconMargin;
-						int iconBottom = iconTop + icon.getIntrinsicHeight();
-
-						float width = (float) itemView.getWidth();
-						float threshold = width * 0.25f;
-						float progress = Math.min(1f, Math.abs(dX) / threshold);
-						icon.setAlpha((int) (Math.max(0.25f, progress) * 255));
-
-						if (dX > 0) {
-							int iconLeft = itemView.getLeft() + iconMargin;
-							int iconRight = itemView.getLeft() + iconMargin + icon.getIntrinsicWidth();
-							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
-							icon.draw(c);
-						} else {
-							int iconRight = itemView.getRight() - iconMargin;
-							int iconLeft = itemView.getRight() - iconMargin - icon.getIntrinsicWidth();
-							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
-							icon.draw(c);
-						}
-					}
-
-					float dampedDx = dX * 0.75f;
-					itemView.setTranslationX(dampedDx);
-					itemView.setAlpha(1.0f);
-				} else {
-					super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
-				}
-			}
-
-			@Override
-			public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
-				return 0.25f;
-			}
-
-			@Override
-			public float getSwipeEscapeVelocity(float defaultValue) {
-				return defaultValue * 1.5f;
-			}
-
-			@Override
-			public float getSwipeVelocityThreshold(float defaultValue) {
-				return defaultValue * 1.2f;
-			}
 		};
-		ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
-		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
+		new ItemTouchHelper(simpleItemTouchCallback).attachToRecyclerView(ChatMessagesListRecycler);
 	}
 
 	@Override
 	public void performHapticFeedback() {
-		if (vbr != null) {
-			vbr.vibrate((long)(24));
-		}
+		vbr.vibrate(24);
 	}
 
 	@Override
@@ -1702,13 +550,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		final int position = _findMessagePosition(_messageKey);
 		if (position != -1) {
 			ChatMessagesListRecycler.smoothScrollToPosition(position);
-			
 			new Handler().postDelayed(() -> {
 				if (!isFinishing() && !isDestroyed() && ChatMessagesListRecycler != null) {
 					RecyclerView.ViewHolder viewHolder = ChatMessagesListRecycler.findViewHolderForAdapterPosition(position);
-					if (viewHolder != null) {
-						_highlightMessage(viewHolder.itemView);
-					}
+					if (viewHolder != null) _highlightMessage(viewHolder.itemView);
 				}
 			}, 500);
 		} else {
@@ -1725,36 +570,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		return -1;
 	}
 
-	public void _getGroupReference() {
-		DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
-		groupRef.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					topProfileLayoutUsername.setText(dataSnapshot.child("name").getValue(String.class));
-					Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("icon").getValue(String.class))).into(topProfileLayoutProfileImage);
-					topProfileLayoutGenderBadge.setVisibility(View.GONE);
-					topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
-					topProfileLayoutStatus.setText("Group");
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-
-		_getChatMessagesRef();
-	}
-
 	private void _highlightMessage(View messageView) {
-		if (isFinishing() || isDestroyed()) {
-			return;
-		}
+		if (isFinishing() || isDestroyed()) return;
 		
 		Drawable originalBackground = messageView.getBackground();
-		
 		ValueAnimator highlightAnimator = ValueAnimator.ofFloat(0f, 1f);
 		highlightAnimator.setDuration(800);
 		highlightAnimator.addUpdateListener(animation -> {
@@ -1762,40 +581,27 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				animation.cancel();
 				return;
 			}
-			
 			float progress = (Float) animation.getAnimatedValue();
-			
 			int alpha = (int) (100 * (1 - progress));
 			int color = Color.argb(alpha, 107, 76, 255);
-			
 			GradientDrawable highlightDrawable = new GradientDrawable();
 			highlightDrawable.setColor(color);
 			highlightDrawable.setCornerRadius(dpToPx(27));
-			
-			messageView.setBackgroundDrawable(highlightDrawable);
+			messageView.setBackground(highlightDrawable);
 		});
-		
 		highlightAnimator.addListener(new AnimatorListenerAdapter() {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				if (!isFinishing() && !isDestroyed() && messageView != null) {
-					messageView.setBackgroundDrawable(originalBackground);
+					messageView.setBackground(originalBackground);
 				}
 			}
 		});
-		
 		highlightAnimator.start();
 	}
 	
 	private int dpToPx(int dp) {
-		try {
-			if (getResources() != null && getResources().getDisplayMetrics() != null) {
-				return (int) (dp * getResources().getDisplayMetrics().density);
-			}
-		} catch (Exception e) {
-			Log.e("ChatActivity", "Error converting dp to px: " + e.getMessage());
-		}
-		return dp;
+		return (int) (dp * getResources().getDisplayMetrics().density);
 	}
 
 	private void startActivityWithUid(Class<?> activityClass) {
@@ -1804,41 +610,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		startActivity(intent);
 	}
 
-	private void handleBlocklistUpdate(DataSnapshot dataSnapshot) {
-		GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-		final String _childKey = dataSnapshot.getKey();
-		final HashMap<String, Object> _childValue = dataSnapshot.getValue(_ind);
-
-		if (_childValue == null) {
-			return;
-		}
-
-		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		String otherUid = getIntent().getStringExtra(UID_KEY);
-
-		if (_childKey.equals(otherUid)) {
-			if (_childValue.containsKey(myUid)) {
-				message_input_overall_container.setVisibility(View.GONE);
-				blocked_txt.setVisibility(View.VISIBLE);
-			} else {
-				message_input_overall_container.setVisibility(View.VISIBLE);
-				blocked_txt.setVisibility(View.GONE);
-			}
-		}
-
-		if (_childKey.equals(myUid)) {
-			if (_childValue.containsKey(otherUid)) {
-				message_input_overall_container.setVisibility(View.GONE);
-			} else {
-				message_input_overall_container.setVisibility(View.VISIBLE);
-			}
-		}
-	}
-
 	private String getSenderNameForMessage(HashMap<String, Object> message) {
-		if (message == null || message.get(UID_KEY) == null || auth.getCurrentUser() == null) {
-			return "Unknown";
-		}
+		if (message == null || message.get(UID_KEY) == null || auth.getCurrentUser() == null) return "Unknown";
 		boolean isMyMessage = message.get(UID_KEY).toString().equals(auth.getCurrentUser().getUid());
 		return isMyMessage ? FirstUserName : SecondUserName;
 	}
@@ -1846,10 +619,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private void appendMessageToContext(StringBuilder contextBuilder, HashMap<String, Object> message) {
 		Object messageTextObj = message.get(MESSAGE_TEXT_KEY);
 		String messageText = (messageTextObj != null) ? messageTextObj.toString() : "";
-		contextBuilder.append(getSenderNameForMessage(message))
-				.append(": ")
-				.append(messageText)
-				.append("\n");
+		contextBuilder.append(getSenderNameForMessage(message)).append(": ").append(messageText).append("\n");
 	}
 
 	@Override
@@ -1880,82 +650,140 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	public boolean isLoading() {
-		return isLoading;
+		return chatDataHandler.isLoading();
 	}
 
-	public String getOldestMessageKey() {
-		return oldestMessageKey;
+	@Override
+	public void onInitialMessagesLoaded(ArrayList<HashMap<String, Object>> initialMessages, String oldestMessageKey) {
+		runOnUiThread(() -> {
+			chatUIUpdater.updateNoChatVisibility(initialMessages.isEmpty());
+			ChatMessagesList.clear();
+			messageKeys.clear();
+			if (!initialMessages.isEmpty()) {
+				ChatMessagesList.addAll(initialMessages);
+				messageKeys.addAll(initialMessages.stream().map(m -> m.get(KEY_KEY).toString()).collect(Collectors.toSet()));
+				chatAdapter.notifyDataSetChanged();
+				scrollToBottomImmediate();
+			}
+		});
 	}
 
-	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {
+	@Override
+	public void onNewMessageAdded(HashMap<String, Object> newMessage) {
+		runOnUiThread(() -> {
+			String messageKey = newMessage.get(KEY_KEY).toString();
+			if (!messageKeys.contains(messageKey)) {
+				messageKeys.add(messageKey);
+				int insertPosition = ChatMessagesList.size();
+				ChatMessagesList.add(insertPosition, newMessage);
+				chatAdapter.notifyItemInserted(insertPosition);
+				scrollToBottom();
+			}
+		});
+	}
 
-		private final ArrayList<HashMap<String, Object>> data;
-		private final Context context;
-		private final boolean isGroup;
-		private final FirebaseDatabase firebase;
+	@Override
+	public void onMessageChanged(HashMap<String, Object> updatedMessage) {
+		runOnUiThread(() -> {
+			String key = updatedMessage.get(KEY_KEY).toString();
+			for (int i = 0; i < ChatMessagesList.size(); i++) {
+				if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(key)) {
+					ChatMessagesList.set(i, updatedMessage);
+					chatAdapter.notifyItemChanged(i);
+					break;
+				}
+			}
+		});
+	}
 
-		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, FirebaseDatabase firebase) {
-			this.data = arr;
-			this.context = context;
-			this.isGroup = isGroup;
-			this.firebase = firebase;
-		}
-
-		@Override
-		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-			LayoutInflater inflater = LayoutInflater.from(context);
-			View v = inflater.inflate(R.layout.chat_msg_cv_synapse, null);
-			RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-			v.setLayoutParams(lp);
-			return new ViewHolder(v);
-		}
-
-		@Override
-		public void onBindViewHolder(ViewHolder holder, final int position) {
-			View view = holder.itemView;
-			final TextView sender_name = view.findViewById(R.id.sender_name);
-
-			if (isGroup && !data.get(position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-				sender_name.setVisibility(View.VISIBLE);
-				final String senderUid = data.get(position).get("uid").toString();
-				DatabaseReference userRef = firebase.getReference("skyline/users").child(senderUid);
-				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if (dataSnapshot.exists()) {
-							String nickname = dataSnapshot.child("nickname").getValue(String.class);
-							String username = dataSnapshot.child("username").getValue(String.class);
-							if (nickname != null && !"null".equals(nickname)) {
-								sender_name.setText(nickname);
-							} else if (username != null && !"null".equals(username)) {
-								sender_name.setText("@" + username);
-							} else {
-								sender_name.setText("Unknown User");
-							}
-						} else {
-							sender_name.setText("Unknown User");
-						}
+	@Override
+	public void onMessageRemoved(String removedKey) {
+		runOnUiThread(() -> {
+			if (locallyDeletedMessages.contains(removedKey)) {
+				locallyDeletedMessages.remove(removedKey);
+				return;
+			}
+			for (int i = 0; i < ChatMessagesList.size(); i++) {
+				if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(removedKey)) {
+					ChatMessagesList.remove(i);
+					messageKeys.remove(removedKey);
+					chatAdapter.notifyItemRemoved(i);
+					if (i > 0 && i <= ChatMessagesList.size()) {
+						chatAdapter.notifyItemChanged(i - 1);
 					}
+					break;
+				}
+			}
+		});
+	}
 
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-						sender_name.setText("Unknown User");
-					}
-				});
+	@Override
+	public void onUserProfileUpdated(DataSnapshot dataSnapshot) {
+		runOnUiThread(() -> {
+			chatUIUpdater.updateUserProfile(dataSnapshot);
+			String nickname = dataSnapshot.child("nickname").getValue(String.class);
+			String username = dataSnapshot.child("username").getValue(String.class);
+			SecondUserName = (nickname != null && !nickname.equals("null")) ? nickname : ((username != null && !username.equals("null")) ? "@" + username : "Unknown User");
+			SecondUserAvatar = dataSnapshot.child("avatar_url").getValue(String.class);
+			chatAdapter.setSecondUserName(SecondUserName);
+			chatAdapter.setSecondUserAvatar(SecondUserAvatar);
+			messageInteractionHandler.setSecondUserName(SecondUserName);
+		});
+	}
+
+	@Override
+	public void onGroupProfileUpdated(DataSnapshot dataSnapshot) {
+		runOnUiThread(() -> chatUIUpdater.updateGroupProfile(dataSnapshot));
+	}
+
+	@Override
+	public void onFirstUserNameResolved(String name) {
+		runOnUiThread(() -> {
+			this.FirstUserName = name;
+			chatAdapter.setFirstUserName(name);
+			messageInteractionHandler.setFirstUserName(name);
+			messageSendingHandler.setFirstUserName(name);
+		});
+	}
+
+	@Override
+	public void onMoreMessagesLoaded(ArrayList<HashMap<String, Object>> newMessages, String oldestKey) {
+		runOnUiThread(() -> {
+			LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
+			int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
+			View firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition);
+			int topOffset = (firstVisibleView != null) ? firstVisibleView.getTop() : 0;
+
+			ChatMessagesList.addAll(0, newMessages);
+			messageKeys.addAll(newMessages.stream().map(m -> m.get(KEY_KEY).toString()).collect(Collectors.toSet()));
+			chatAdapter.notifyItemRangeInserted(0, newMessages.size());
+
+			if (firstVisibleView != null) {
+				layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size(), topOffset);
+			}
+		});
+	}
+
+	@Override
+	public void onNoMoreMessages() {
+		runOnUiThread(() -> Toast.makeText(ChatActivity.this, "No more messages", Toast.LENGTH_SHORT).show());
+	}
+
+	@Override
+	public void onDataLoadError(String error) {
+		runOnUiThread(() -> Toast.makeText(ChatActivity.this, error, Toast.LENGTH_SHORT).show());
+	}
+
+	@Override
+	public void onBlockStatusChanged(boolean isBlocked, boolean isBlockedByMe) {
+		runOnUiThread(() -> {
+			if (isBlocked || isBlockedByMe) {
+				message_input_overall_container.setVisibility(View.GONE);
+				if (isBlocked) blocked_txt.setVisibility(View.VISIBLE);
 			} else {
-				sender_name.setVisibility(View.GONE);
+				message_input_overall_container.setVisibility(View.VISIBLE);
+				blocked_txt.setVisibility(View.GONE);
 			}
-		}
-
-		@Override
-		public int getItemCount() {
-			return data.size();
-		}
-
-		public static class ViewHolder extends RecyclerView.ViewHolder {
-			public ViewHolder(View v) {
-				super(v);
-			}
-		}
+		});
 	}
 }
