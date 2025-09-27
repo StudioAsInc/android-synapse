@@ -431,6 +431,40 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         activityResultHandler = new ActivityResultHandler(this);
 		_setupSwipeToReply();
 
+        chatUIUpdater = new ChatUIUpdater(
+                this,
+                noChatText,
+                ChatMessagesListRecycler,
+                topProfileLayoutProfileImage,
+                topProfileLayoutUsername,
+                topProfileLayoutStatus,
+                topProfileLayoutGenderBadge,
+                topProfileLayoutVerifiedBadge,
+                mMessageReplyLayout,
+                mMessageReplyLayoutBodyRightUsername,
+                mMessageReplyLayoutBodyRightMessage,
+                auth
+        );
+
+		chatHelper = new ChatHelper(this);
+		databaseHelper = new DatabaseHelper(
+				this,
+				_firebase,
+				chatAdapter,
+				FirstUserName,
+				chatUIUpdater,
+				(ArrayList)ChatMessagesList,
+				messageKeys,
+				oldestMessageKey,
+				chatMessagesRef,
+				ChatMessagesListRecycler,
+				(HashMap)repliedMessagesCache,
+				() -> {
+					ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
+					return kotlin.Unit.INSTANCE;
+				}
+		);
+
 		if (is_group) {
 			_getGroupReference();
 		} else {
@@ -461,21 +495,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         voiceMessageHandler = new VoiceMessageHandler(this, this);
         voiceMessageHandler.setupVoiceButton(btn_voice_message);
 
-        chatUIUpdater = new ChatUIUpdater(
-                this,
-                noChatText,
-                ChatMessagesListRecycler,
-                topProfileLayoutProfileImage,
-                topProfileLayoutUsername,
-                topProfileLayoutStatus,
-                topProfileLayoutGenderBadge,
-                topProfileLayoutVerifiedBadge,
-                mMessageReplyLayout,
-                mMessageReplyLayoutBodyRightUsername,
-                mMessageReplyLayoutBodyRightMessage,
-                auth
-        );
-
         chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
         ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
 
@@ -489,25 +508,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 auth
         );
         attachmentHandler.setup();
-
-		chatHelper = new ChatHelper(this);
-		databaseHelper = new DatabaseHelper(
-				this,
-				_firebase,
-				chatAdapter,
-				FirstUserName,
-				chatUIUpdater,
-				(ArrayList)ChatMessagesList,
-				messageKeys,
-				oldestMessageKey,
-				chatMessagesRef,
-				ChatMessagesListRecycler,
-				(HashMap)repliedMessagesCache,
-				() -> {
-					ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-					return kotlin.Unit.INSTANCE;
-				}
-		);
 
 		databaseHelper.attachChatListener();
 		_attachUserStatusListener();
