@@ -178,8 +178,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private ChatUIUpdater chatUIUpdater;
     private ChatScrollListener chatScrollListener;
     private AttachmentHandler attachmentHandler;
-    private ChatHelper chatHelper;
-    private DatabaseHelper databaseHelper;
+	private ChatHelper chatHelper;
+	private DatabaseHelper databaseHelper;
 
 
 	@Override
@@ -490,33 +490,26 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
         attachmentHandler.setup();
 
-        chatHelper = new ChatHelper(
-                this,
-                chatMessagesRef,
-                chatAdapter,
-                ChatMessagesList,
-                repliedMessagesCache,
-                messageKeys,
-                ChatMessagesListRecycler
-        );
+		chatHelper = new ChatHelper(this);
+		databaseHelper = new DatabaseHelper(
+				this,
+				_firebase,
+				chatAdapter,
+				FirstUserName,
+				chatUIUpdater,
+				(ArrayList)ChatMessagesList,
+				messageKeys,
+				oldestMessageKey,
+				chatMessagesRef,
+				ChatMessagesListRecycler,
+				(HashMap)repliedMessagesCache,
+				() -> {
+					ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
+					return kotlin.Unit.INSTANCE;
+				}
+		);
 
-        databaseHelper = new DatabaseHelper(
-                this,
-                _firebase,
-                chatAdapter,
-                FirstUserName,
-                chatUIUpdater,
-                ChatMessagesList,
-                messageKeys,
-                oldestMessageKey,
-                chatMessagesRef,
-                () -> {
-                    chatHelper.fetchRepliedMessages(ChatMessagesList);
-                    ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-                }
-        );
-
-		chatHelper.attachChatListener();
+		databaseHelper.attachChatListener();
 		_attachUserStatusListener();
 	}
 
@@ -558,7 +551,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onStop() {
 		super.onStop();
-		chatHelper.detachChatListener();
+		databaseHelper.detachChatListener();
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
@@ -580,7 +573,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		}
 		
-		chatHelper.detachChatListener();
+		databaseHelper.detachChatListener();
 		_detachUserStatusListener();
 		
 		if (_blocklist_child_listener != null) {
@@ -894,88 +887,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getOldChatMessagesRef() {
-		if (isLoading || oldestMessageKey == null || oldestMessageKey.isEmpty() || oldestMessageKey.equals("null")) {
-			return;
-		}
-		isLoading = true;
-		_showLoadMoreIndicator();
-
-		Query getChatsMessages = chatMessagesRef
-		.orderByKey()
-		.endBefore(oldestMessageKey)
-		.limitToLast(CHAT_PAGE_SIZE);
-
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				_hideLoadMoreIndicator();
-				try {
-					if(dataSnapshot.exists()) {
-						ArrayList<HashMap<String, Object>> newMessages = new ArrayList<>();
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							try {
-								HashMap<String, Object> messageData = _data.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-								if (messageData != null && messageData.containsKey(KEY_KEY) && messageData.get(KEY_KEY) != null) {
-									if (!messageKeys.contains(messageData.get(KEY_KEY).toString())) {
-										newMessages.add(messageData);
-										messageKeys.add(messageData.get(KEY_KEY).toString());
-									}
-								} else {
-									Log.w("ChatActivity", "Skipping message without valid key: " + _data.getKey());
-								}
-							} catch (Exception e) {
-								Log.e("ChatActivity", "Error processing message data: " + e.getMessage());
-							}
-						}
-
-						if (!newMessages.isEmpty()) {
-							newMessages.sort((msg1, msg2) -> {
-								long time1 = _getMessageTimestamp(msg1);
-								long time2 = _getMessageTimestamp(msg2);
-								return Long.compare(time1, time2);
-							});
-							
-							HashMap<String, Object> oldestMessage = newMessages.get(0);
-							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
-								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
-							}
-
-							final LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
-							if (layoutManager != null) {
-								int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
-								View firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition);
-								int topOffset = (firstVisibleView != null) ? firstVisibleView.getTop() : 0;
-
-								ChatMessagesList.addAll(0, newMessages);
-								if (chatAdapter != null) {
-									chatAdapter.notifyItemRangeInserted(0, newMessages.size());
-								}
-
-								if (firstVisibleView != null) {
-									layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size(), topOffset);
-								}
-								chatHelper.fetchRepliedMessages(newMessages);
-							}
-						} else {
-							oldestMessageKey = null;
-							_hideLoadMoreIndicator();
-							Log.d("ChatActivity", "No more messages to load, pagination complete");
-						}
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing old messages: " + e.getMessage());
-				} finally {
-					isLoading = false;
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				_hideLoadMoreIndicator();
-				isLoading = false;
-				Log.e("ChatActivity", "Error processing old messages: " + databaseError.getMessage());
-			}
-		});
+		databaseHelper.getOldChatMessagesRef();
 	}
 
 
