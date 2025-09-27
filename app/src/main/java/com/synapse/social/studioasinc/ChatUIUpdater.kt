@@ -78,4 +78,12 @@ class ChatUIUpdater(
     fun hideReplyUI() {
         mMessageReplyLayout.visibility = View.GONE
     }
+
+    fun showLoadMoreIndicator() {
+        activity._showLoadMoreIndicator()
+    }
+
+    fun hideLoadMoreIndicator() {
+        activity._hideLoadMoreIndicator()
+    }
 }

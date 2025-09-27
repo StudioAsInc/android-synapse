@@ -4,7 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Vibrator
+import android.os.VibratorManager
+import android.os.VibrationEffect
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
@@ -22,7 +25,14 @@ class VoiceMessageHandler(
     private var audioFilePath: String? = null
     private var isRecording = false
     private var recordMs: Long = 0
-    private val vbr = activity.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    private val vbr: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager =
+            activity.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        activity.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
 
     interface VoiceMessageListener {
         fun onVoiceMessageRecorded(url: String, duration: Long)
@@ -61,7 +71,11 @@ class VoiceMessageHandler(
     private fun startAudioRecorder() {
         val cc = Calendar.getInstance()
         recordMs = 0
-        AudioMessageRecorder = MediaRecorder()
+        AudioMessageRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(activity)
+        } else {
+            MediaRecorder()
+        }
 
         val getCacheDir = activity.externalCacheDir
         val getCacheDirName = "audio_records"
@@ -85,7 +99,11 @@ class VoiceMessageHandler(
             }
         }
 
-        vbr.vibrate(48)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            vbr.vibrate(48)
+        }
     }
 
     private fun stopAudioRecorder() {
@@ -100,7 +118,11 @@ class VoiceMessageHandler(
             }
             AudioMessageRecorder = null
             isRecording = false
-            vbr.vibrate(48)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                vbr.vibrate(48)
+            }
         }
     }
 
