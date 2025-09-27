@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
+import android.os.Build
+import android.os.VibrationEffect
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -77,7 +79,11 @@ class MessageInteractionHandler(
 
         replyLayout.setOnClickListener {
             listener.onReplySelected(messageData[KEY_KEY].toString())
-            vbr.vibrate(48)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                vbr.vibrate(48)
+            }
             popupWindow.dismiss()
         }
 
@@ -85,7 +91,11 @@ class MessageInteractionHandler(
             val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("clipboard", messageText)
             clipboard.setPrimaryClip(clip)
-            vbr.vibrate(48)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                vbr.vibrate(48)
+            }
             popupWindow.dismiss()
         }
 
