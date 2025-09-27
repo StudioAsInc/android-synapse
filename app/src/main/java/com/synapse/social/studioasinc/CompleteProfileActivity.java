@@ -82,16 +82,16 @@ import com.google.firebase.database.Query;
 import com.synapse.social.studioasinc.ImageUploader;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
-import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
+import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
 import com.synapse.social.studioasinc.util.ViewUtilsKt;
 
 public class CompleteProfileActivity extends AppCompatActivity {
-	
+
 	public final int REQ_CD_SELECTAVATAR = 101;
-	
+
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
-	
+
+
 	private boolean userNameErr = false;
 	private String avatarUri = "";
 	private String avatarName = "";
@@ -106,7 +106,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private String imageUrl = "";
 	private HashMap<String, Object> mDp = new HashMap<>();
 	private String thedpurl = "";
-	
+
 	private ScrollView scroll;
 	private androidx.constraintlayout.widget.ConstraintLayout body;
 	private com.google.android.material.appbar.MaterialToolbar toolbar;
@@ -128,7 +128,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private ImageView email_verification_status_refresh;
 	private com.google.android.material.button.MaterialButton skip_button;
 	private com.google.android.material.button.MaterialButton complete_button;
-	
+
 	private Vibrator vbr;
 	private FirebaseAuth auth;
 	private OnCompleteListener<AuthResult> _auth_create_user_listener;
@@ -144,28 +144,28 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private Intent intent = new Intent();
 	private DatabaseReference main = _firebase.getReference("skyline");
 	private ChildEventListener _main_child_listener;
-	
+
 	private Calendar getJoinTime = Calendar.getInstance();
 	private Intent SelectAvatar = new Intent(Intent.ACTION_GET_CONTENT);
 	private DatabaseReference fdb = _firebase.getReference("notify");
 	private ChildEventListener _fdb_child_listener;
 	private DatabaseReference pushusername = _firebase.getReference("synapse/username");
 	private ChildEventListener _pushusername_child_listener;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_complete_profile);
 		initialize(_savedInstanceState);
 		FirebaseApp.initializeApp(this);
-		
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);} else {
 			initializeLogic();
 		}
 	}
-	
+
 	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -173,7 +173,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			initializeLogic();
 		}
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		scroll = findViewById(R.id.scroll);
 		body = findViewById(R.id.body);
@@ -209,7 +209,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		auth = FirebaseAuth.getInstance();
 		SelectAvatar.setType("image/*");
 		SelectAvatar.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-		
+
 		profile_image_card.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
@@ -219,14 +219,14 @@ public class CompleteProfileActivity extends AppCompatActivity {
 				return true;
 			}
 		});
-		
+
 		profile_image_card.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				startActivityForResult(SelectAvatar, REQ_CD_SELECTAVATAR);
 			}
 		});
-		
+
 		username_input.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -250,7 +250,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 								} else {
 									username_input.setActivated(false);
 									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
-									
+
 									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
 									checkUsernameQuery.addListenerForSingleValueEvent(new ValueEventListener() {
 										@Override
@@ -264,10 +264,10 @@ public class CompleteProfileActivity extends AppCompatActivity {
 												userNameErr = false;
 											}
 										}
-										
+
 										@Override
 										public void onCancelled(DatabaseError databaseError) {
-											
+
 										}
 									});
 								}
@@ -284,18 +284,18 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					}
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
 		nickname_input.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -307,18 +307,18 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					nickname_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
 		biography_input.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -330,32 +330,32 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					biography_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
-		
-		
-		
-		
-		
-		
+
+
+
+
+
+
+
 		skip_button.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				SketchwareUtil.showMessage(getApplicationContext(), "Not possible");
-				
+
 			}
 		});
-		
+
 		complete_button.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -400,146 +400,146 @@ public class CompleteProfileActivity extends AppCompatActivity {
 				}
 			}
 		});
-		
+
 		_main_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		main.addChildEventListener(_main_child_listener);
-		
-		
-		
+
+
+
 		_fdb_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		fdb.addChildEventListener(_fdb_child_listener);
-		
+
 		_pushusername_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		pushusername.addChildEventListener(_pushusername_child_listener);
-		
+
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
-		
-		
+
+
+
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
@@ -555,61 +555,61 @@ public class CompleteProfileActivity extends AppCompatActivity {
 				}
 			}
 		};
-		
+
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-				
+
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		email_verification_title.setTypeface(Typeface.DEFAULT, 1);
 		subtitle.setTypeface(Typeface.DEFAULT, 0);
@@ -632,15 +632,15 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			Glide.with(getApplicationContext()).load(Uri.parse(getIntent().getStringExtra("googleLoginAvatarUri"))).into(profile_image);
 			nickname_input.setText(getIntent().getStringExtra("googleLoginName"));
 		}
-		
-		
+
+
 		_font();
 	}
-	
+
 	@Override
 	protected void onActivityResult(int _requestCode, int _resultCode, Intent _data) {
 		super.onActivityResult(_requestCode, _resultCode, _data);
-		
+
 		switch (_requestCode) {
 			case REQ_CD_SELECTAVATAR:
 			if (_resultCode == Activity.RESULT_OK) {
@@ -663,23 +663,23 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					public void onUploadComplete(String imageUrl) {
 						thedpurl = imageUrl;
 					}
-					
+
 					@Override
 					public void onUploadError(String errorMessage) {
 						SketchwareUtil.showMessage(getApplicationContext(), "Something went wrong");
 					}
 				});
-				
+
 			}
 			else {
-				
+
 			}
 			break;
 			default:
 			break;
 		}
 	}
-	
+
 	@Override
 	public void onBackPressed() {
 		{
@@ -688,7 +688,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
 			NewCustomDialog.setView(NewCustomDialogCV);
 			NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-			
+
 			final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
 			final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
 			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
@@ -718,17 +718,17 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			NewCustomDialog.show();
 		}
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
+
+
+
+
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.complete_profile_menu, menu);
@@ -782,7 +782,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	public void _font() {
 		title.setTypeface(Typeface.DEFAULT, 1);
 	}
-	
+
 	private void addOneSignalPlayerIdToMap(HashMap<String, Object> userMap) {
 		// Get current OneSignal Player ID if available
 		if (OneSignal.getUser().getPushSubscription().getOptedIn()) {
@@ -792,8 +792,8 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			}
 		}
 	}
-	
-	
-	
-	
-}
+
+
+
+
+}

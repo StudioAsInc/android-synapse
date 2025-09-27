@@ -60,16 +60,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
+import com.google.firebase.database.Query;
 
 public class LineVideoPlayerActivity extends AppCompatActivity {
-	
+
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
 	public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
-	
+
 	private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
-	
+
 	private LinearLayout body;
 	private RelativeLayout middleRelative;
 	private LinearLayout bottomBar;
@@ -97,7 +97,7 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 	private ImageView bottom_videos_ic;
 	private ImageView bottom_chats_ic;
 	private ImageView bottom_profile_ic;
-	
+
 	private RequestNetwork request;
 	private RequestNetwork.RequestListener _request_request_listener;
 	private FirebaseAuth auth;
@@ -114,7 +114,7 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 	private DatabaseReference main = _firebase.getReference("skyline");
 	private ChildEventListener _main_child_listener;
 	private Intent intent = new Intent();
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
@@ -123,7 +123,7 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		body = findViewById(R.id.body);
 		middleRelative = findViewById(R.id.middleRelative);
@@ -154,28 +154,28 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		bottom_profile_ic = findViewById(R.id.bottom_profile_ic);
 		request = new RequestNetwork(this);
 		auth = FirebaseAuth.getInstance();
-		
+
 		middleRelativeTopSwipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
 			public void onRefresh() {
 				_getReference();
 			}
 		});
-		
+
 		noInternetBodyRetry.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				_getReference();
 			}
 		});
-		
+
 		middleRelativeBottomTopBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		bottom_home.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -185,7 +185,7 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 				finish();
 			}
 		});
-		
+
 		bottom_search.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -193,8 +193,8 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-		
-		
+
+
 		bottom_profile.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -203,7 +203,7 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-		
+
 		_request_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -229,16 +229,16 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 							e.printStackTrace();
 						}
 					}
-					
+
 					@Override
 					public void onCancelled(DatabaseError _databaseError) {
-						
+
 					}
 				});
-				
+
 				middleRelativeTopSwipe.setRefreshing(false);
 			}
-			
+
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
@@ -248,136 +248,136 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 				middleRelativeTopSwipe.setRefreshing(false);
 			}
 		};
-		
+
 		_main_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		main.addChildEventListener(_main_child_listener);
-		
+
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-				
+
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		_stateColor(0xFF000000, 0xFF000000);
 		noInternetBodySubtitle.setText(getResources().getString(R.string.reasons_may_be).concat("\n\n".concat(getResources().getString(R.string.err_no_internet).concat("\n".concat(getResources().getString(R.string.err_app_maintenance).concat("\n".concat(getResources().getString(R.string.err_problem_on_our_side))))))));
@@ -392,12 +392,12 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		_viewGraphics(noInternetBodyRetry, 0xFF212121, 0xFF424242, 24, 3, 0xFF424242);
 		videosRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 		PagerSnapHelper lineVideoViewSnapHelper = new PagerSnapHelper();
-		
+
 		lineVideoViewSnapHelper.attachToRecyclerView(videosRecyclerView);
 		_getReference();
 	}
-	
-	
+
+
 	@Override
 	public void onBackPressed() {
 		intent.setClass(getApplicationContext(), HomeActivity.class);
@@ -405,24 +405,24 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		startActivity(intent);
 		finish();
 	}
-	
+
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		
+
 	}
 	public void _stateColor(final int _statusColor, final int _navigationColor) {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-	
-	
+
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -431,10 +431,10 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _getReference() {
 		request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
 	}
-	
-}
+
+}

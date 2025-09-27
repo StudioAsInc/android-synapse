@@ -59,7 +59,7 @@ public class ImageUploader {
 
                 // Set your server URL for image upload
                 URL url = new URL("https://api.imgbb.com/1/upload?expiration=0&key=faa85ffbac0217ff67b5f3c4baa7fb29");
-                
+
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setDoInput(true);
                 connection.setDoOutput(true);

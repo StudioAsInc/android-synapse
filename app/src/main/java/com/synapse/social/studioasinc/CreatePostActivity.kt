@@ -2,7 +2,6 @@ package com.synapse.social.studioasinc
 
 import android.Manifest
 import android.app.Activity
-import android.app.ProgressDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -50,7 +49,9 @@ class CreatePostActivity : AppCompatActivity() {
     // Data
     private val selectedMediaItems = mutableListOf<MediaItem>()
     private lateinit var selectedMediaAdapter: SelectedMediaAdapter
-    private var progressDialog: ProgressDialog? = null
+    private var progressDialog: androidx.appcompat.app.AlertDialog? = null
+    private var progressBar: ProgressBar? = null
+    private var progressPercentage: TextView? = null
     
     // Firebase
     private val firebase = FirebaseDatabase.getInstance()
@@ -293,7 +294,9 @@ class CreatePostActivity : AppCompatActivity() {
             selectedMediaItems,
             onProgress = { progress ->
                 runOnUiThread {
-                    progressDialog?.progress = (progress * 100).toInt()
+                    val progressInt = (progress * 100).toInt()
+                    progressBar?.progress = progressInt
+                    progressPercentage?.text = "$progressInt%"
                 }
             },
             onComplete = { uploadedItems ->
@@ -340,17 +343,22 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun showLoading(show: Boolean) {
         if (show) {
-            progressDialog = ProgressDialog(this).apply {
-                setTitle("Creating Post")
-                setMessage("Uploading media...")
-                setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-                setCancelable(false)
-                max = 100
-                show()
-            }
+            val dialogView = layoutInflater.inflate(R.layout.dialog_progress, null)
+            progressBar = dialogView.findViewById(R.id.progressBar)
+            progressPercentage = dialogView.findViewById(R.id.progressPercentage)
+
+            progressDialog = MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setCancelable(false)
+                .create()
+                .apply {
+                    show()
+                }
         } else {
             progressDialog?.dismiss()
             progressDialog = null
+            progressBar = null
+            progressPercentage = null
         }
     }
 
