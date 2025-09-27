@@ -62,6 +62,8 @@ import com.google.firebase.database.ValueEventListener;
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
+import com.synapse.social.studioasinc.util.ChatHelper;
+import com.synapse.social.studioasinc.util.DatabaseHelper;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -176,6 +178,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private ChatUIUpdater chatUIUpdater;
     private ChatScrollListener chatScrollListener;
     private AttachmentHandler attachmentHandler;
+    private ChatHelper chatHelper;
+    private DatabaseHelper databaseHelper;
 
 
 	@Override
@@ -486,7 +490,33 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
         attachmentHandler.setup();
 
-		_attachChatListener();
+        chatHelper = new ChatHelper(
+                this,
+                chatMessagesRef,
+                chatAdapter,
+                ChatMessagesList,
+                repliedMessagesCache,
+                messageKeys,
+                ChatMessagesListRecycler
+        );
+
+        databaseHelper = new DatabaseHelper(
+                this,
+                _firebase,
+                chatAdapter,
+                FirstUserName,
+                chatUIUpdater,
+                ChatMessagesList,
+                messageKeys,
+                oldestMessageKey,
+                chatMessagesRef,
+                () -> {
+                    chatHelper.fetchRepliedMessages(ChatMessagesList);
+                    ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
+                }
+        );
+
+		chatHelper.attachChatListener();
 		_attachUserStatusListener();
 	}
 
@@ -528,7 +558,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onStop() {
 		super.onStop();
-		_detachChatListener();
+		chatHelper.detachChatListener();
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
@@ -550,7 +580,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		}
 		
-		_detachChatListener();
+		chatHelper.detachChatListener();
 		_detachUserStatusListener();
 		
 		if (_blocklist_child_listener != null) {
@@ -597,92 +627,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	@Override
 	public void onBackPressed() {
-		if (getIntent().hasExtra(ORIGIN_KEY)) {
-			String originSimpleName = getIntent().getStringExtra(ORIGIN_KEY);
-			if (originSimpleName != null && !originSimpleName.equals("null") && !originSimpleName.trim().isEmpty()) {
-				try {
-					String packageName = "com.synapse.social.studioasinc";
-					String fullClassName = packageName + "." + originSimpleName.trim();
-					Class<?> clazz = Class.forName(fullClassName);
-
-					Intent intent = new Intent(this, clazz);
-					if ("ProfileActivity".equals(originSimpleName.trim())) {
-						if (getIntent().hasExtra(UID_KEY)) {
-							intent.putExtra(UID_KEY, getIntent().getStringExtra(UID_KEY));
-						} else {
-							Toast.makeText(this, "Error: UID is required for ProfileActivity", Toast.LENGTH_SHORT).show();
-							finish();
-							return;
-						}
-					}
-					startActivity(intent);
-					finish();
-					return;
-				} catch (ClassNotFoundException e) {
-					Log.e("ChatActivity", "Activity class not found: " + originSimpleName, e);
-					Toast.makeText(this, "Error: Activity not found", Toast.LENGTH_SHORT).show();
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Failed to start activity: " + originSimpleName, e);
-					Toast.makeText(this, "Error: Failed to start activity", Toast.LENGTH_SHORT).show();
-				}
-			}
-		}
-		finish();
-	}
-
-	private void _fetchRepliedMessages(ArrayList<HashMap<String, Object>> messages) {
-		java.util.HashSet<String> repliedIdsToFetch = new java.util.HashSet<>();
-		for (HashMap<String, Object> message : messages) {
-			if (message.containsKey("replied_message_id")) {
-                String repliedId = String.valueOf(message.get("replied_message_id"));
-				if (repliedId != null && !repliedId.equals("null") && !repliedMessagesCache.containsKey(repliedId)) {
-					repliedIdsToFetch.add(repliedId);
-				}
-			}
-		}
-
-		if (repliedIdsToFetch.isEmpty()) {
-			return;
-		}
-
-		DatabaseReference chatRef = chatMessagesRef;
-
-		for (String messageKey : repliedIdsToFetch) {
-			repliedMessagesCache.put(messageKey, new HashMap<>());
-
-			chatRef.child(messageKey).addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot snapshot) {
-					if (snapshot.exists()) {
-						HashMap<String, Object> repliedMessage = snapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						if (repliedMessage != null) {
-							repliedMessagesCache.put(messageKey, repliedMessage);
-							_updateMessageInRecyclerView(messageKey);
-						}
-					}
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError error) {
-					repliedMessagesCache.remove(messageKey);
-				}
-			});
-		}
-	}
-
-	private void _updateMessageInRecyclerView(String repliedMessageKey) {
-		if (chatAdapter == null || isFinishing() || isDestroyed()) return;
-		for (int i = 0; i < ChatMessagesList.size(); i++) {
-			HashMap<String, Object> message = ChatMessagesList.get(i);
-			if (message != null && message.containsKey("replied_message_id") && repliedMessageKey.equals(message.get("replied_message_id").toString())) {
-				final int positionToUpdate = i;
-				runOnUiThread(() -> {
-					if (chatAdapter != null && positionToUpdate < chatAdapter.getItemCount()) {
-						chatAdapter.notifyItemChanged(positionToUpdate);
-					}
-				});
-			}
-		}
+		chatHelper.onBackPressed();
 	}
 	public void _stateColor(final int _statusColor, final int _navigationColor) {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
@@ -767,269 +712,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getUserReference() {
-		DatabaseReference getFirstUserName = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getFirstUserName.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				try {
-					if (dataSnapshot.exists()) {
-						String nickname = dataSnapshot.child("nickname").getValue(String.class);
-						String username = dataSnapshot.child("username").getValue(String.class);
-						
-						if (nickname != null && !"null".equals(nickname)) {
-							FirstUserName = nickname;
-						} else if (username != null && !"null".equals(username)) {
-							FirstUserName = "@" + username;
-						} else {
-							FirstUserName = "Unknown User";
-							Log.w("ChatActivity", "Both nickname and username are null or 'null'");
-						}
-					} else {
-						Log.w("ChatActivity", "User data snapshot doesn't exist");
-						FirstUserName = "Unknown User";
-					}
-					if (chatAdapter != null) {
-						chatAdapter.setFirstUserName(FirstUserName);
-					}
-                    if (messageSendingHandler != null) {
-                        messageSendingHandler.setFirstUserName(FirstUserName);
-                    }
-                    if (messageInteractionHandler != null) {
-                        messageInteractionHandler.setFirstUserName(FirstUserName);
-                    }
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing user data: " + e.getMessage());
-					FirstUserName = "Unknown User";
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Failed to get first user name: " + databaseError.getMessage());
-				FirstUserName = "Unknown User";
-			}
-		});
-
-		_getChatMessagesRef();
+		databaseHelper.getUserReference();
 	}
-
 
 	public void _getChatMessagesRef() {
-		Query getChatsMessages = chatMessagesRef.limitToLast(CHAT_PAGE_SIZE);
-		getChatsMessages.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				try {
-					if(dataSnapshot.exists()) {
-						chatUIUpdater.updateNoChatVisibility(false);
-						ChatMessagesList.clear();
-						messageKeys.clear();
-						ArrayList<HashMap<String, Object>> initialMessages = new ArrayList<>();
-						
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							try {
-								HashMap<String, Object> messageData = _data.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-								if (messageData != null && messageData.containsKey(KEY_KEY) && messageData.get(KEY_KEY) != null) {
-									initialMessages.add(messageData);
-									messageKeys.add(messageData.get(KEY_KEY).toString());
-								} else {
-									Log.w("ChatActivity", "Skipping initial message without valid key: " + _data.getKey());
-								}
-							} catch (Exception e) {
-								Log.e("ChatActivity", "Error processing initial message data: " + e.getMessage());
-							}
-						}
-
-						if (!initialMessages.isEmpty()) {
-							initialMessages.sort((msg1, msg2) -> {
-								long time1 = _getMessageTimestamp(msg1);
-								long time2 = _getMessageTimestamp(msg2);
-								return Long.compare(time1, time2);
-							});
-							
-							HashMap<String, Object> oldestMessage = initialMessages.get(0);
-							if (oldestMessage != null && oldestMessage.containsKey(KEY_KEY) && oldestMessage.get(KEY_KEY) != null) {
-								oldestMessageKey = oldestMessage.get(KEY_KEY).toString();
-							}
-
-							ChatMessagesList.addAll(initialMessages);
-							if (chatAdapter != null) {
-								chatAdapter.notifyDataSetChanged();
-							}
-							ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-							_fetchRepliedMessages(initialMessages);
-						}
-					} else {
-						chatUIUpdater.updateNoChatVisibility(true);
-					}
-				} catch (Exception e) {
-					Log.e("ChatActivity", "Error processing initial chat messages: " + e.getMessage());
-					chatUIUpdater.updateNoChatVisibility(true);
-				}
-			}
-			
-			@Override 
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Initial message load failed: " + databaseError.getMessage());
-				chatUIUpdater.updateNoChatVisibility(true);
-			}
-		});
-	}
-
-	private void _attachChatListener() {
-		if (chatMessagesRef == null || ChatMessagesList == null || chatAdapter == null) {
-			Log.w("ChatActivity", "Cannot attach chat listener - missing dependencies");
-			return;
-		}
-		
-		if (_chat_child_listener != null) {
-			try {
-				chatMessagesRef.removeEventListener(_chat_child_listener);
-			} catch (Exception e) {
-				Log.w("ChatActivity", "Error removing existing chat listener: " + e.getMessage());
-			}
-			_chat_child_listener = null;
-		}
-		
-		_chat_child_listener = new ChildEventListener() {
-				@Override
-				public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
-					Log.d("ChatActivity", "=== FIREBASE LISTENER: onChildAdded ===");
-					Log.d("ChatActivity", "Snapshot key: " + dataSnapshot.getKey() + ", Previous child: " + previousChildName);
-					
-					if (dataSnapshot.exists()) {
-						HashMap<String, Object> newMessage = dataSnapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						Log.d("ChatActivity", "New message data: " + (newMessage != null ? newMessage.toString() : "null"));
-						
-						if (newMessage != null && newMessage.get(KEY_KEY) != null) {
-							String messageKey = newMessage.get(KEY_KEY).toString();
-							String messageType = newMessage.getOrDefault("TYPE", "unknown").toString();
-							Log.d("ChatActivity", "New message received from Firebase - Type: " + messageType + ", Key: " + messageKey);
-							
-							if (!messageKeys.contains(messageKey)) {
-								messageKeys.add(messageKey);
-								_safeUpdateRecyclerView();
-								
-								int insertPosition = _findCorrectInsertPosition(newMessage);
-								ChatMessagesList.add(insertPosition, newMessage);
-								
-								Log.d("ChatActivity", "Added new Firebase message to list at position " + insertPosition + ", key: " + messageKey);
-								
-								if (chatAdapter != null) {
-									chatAdapter.notifyItemInserted(insertPosition);
-									if (insertPosition > 0) chatAdapter.notifyItemChanged(insertPosition - 1);
-									if (insertPosition < ChatMessagesList.size() - 1) chatAdapter.notifyItemChanged(insertPosition + 1);
-								}
-								
-								if (insertPosition == ChatMessagesList.size() - 1 && ChatMessagesListRecycler != null) {
-									ChatMessagesListRecycler.post(() -> scrollToBottom());
-								}
-								
-								if (newMessage.containsKey("replied_message_id")) {
-									ArrayList<HashMap<String, Object>> singleMessageList = new ArrayList<>();
-									singleMessageList.add(newMessage);
-									_fetchRepliedMessages(singleMessageList);
-								}
-							} else {
-								int oldPosition = -1;
-								for (int i = 0; i < ChatMessagesList.size(); i++) {
-									if (messageKey.equals(ChatMessagesList.get(i).get(KEY_KEY))) {
-										oldPosition = i;
-										break;
-									}
-								}
-
-								if (oldPosition != -1) {
-									newMessage.remove("isLocalMessage");
-									int newPosition = _findCorrectInsertPosition(newMessage);
-
-									if (oldPosition == newPosition) {
-										ChatMessagesList.set(oldPosition, newMessage);
-										if (chatAdapter != null) {
-											chatAdapter.notifyItemChanged(oldPosition);
-										}
-									} else {
-										ChatMessagesList.remove(oldPosition);
-										ChatMessagesList.add(newPosition, newMessage);
-										if (chatAdapter != null) {
-											chatAdapter.notifyItemMoved(oldPosition, newPosition);
-											chatAdapter.notifyItemChanged(newPosition);
-										}
-									}
-								}
-							}
-						} else {
-							Log.w("ChatActivity", "New message is null or missing key");
-						}
-					} else {
-						Log.w("ChatActivity", "DataSnapshot does not exist");
-					}
-					Log.d("ChatActivity", "=== FIREBASE LISTENER: onChildAdded END ===");
-				}
-
-				@Override
-				public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-					if (snapshot.exists()) {
-						HashMap<String, Object> updatedMessage = snapshot.getValue(new GenericTypeIndicator<HashMap<String, Object>>() {});
-						if (updatedMessage != null && updatedMessage.get(KEY_KEY) != null) {
-							String key = updatedMessage.get(KEY_KEY).toString();
-							
-							for (int i = 0; i < ChatMessagesList.size(); i++) {
-								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
-									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(key)) {
-									
-									ChatMessagesList.set(i, updatedMessage);
-									
-									if (chatAdapter != null) {
-										chatAdapter.notifyItemChanged(i);
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				@Override
-				public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-					if (snapshot.exists()) {
-						String removedKey = snapshot.getKey();
-						if (removedKey != null) {
-							if (locallyDeletedMessages.contains(removedKey)) {
-								locallyDeletedMessages.remove(removedKey);
-								return;
-							}
-							for (int i = 0; i < ChatMessagesList.size(); i++) {
-								if (ChatMessagesList.get(i).get(KEY_KEY) != null && 
-									ChatMessagesList.get(i).get(KEY_KEY).toString().equals(removedKey)) {
-									
-									ChatMessagesList.remove(i);
-									messageKeys.remove(removedKey);
-									
-									if (chatAdapter != null) {
-										chatAdapter.notifyItemRemoved(i);
-										
-										if (!ChatMessagesList.isEmpty() && i < ChatMessagesList.size()) {
-											chatAdapter.notifyItemChanged(Math.min(i, ChatMessagesList.size() - 1));
-										}
-									}
-									
-									if (ChatMessagesList.isEmpty()) {
-										_safeUpdateRecyclerView();
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				@Override public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
-				@Override public void onCancelled(@NonNull DatabaseError error) {
-					Log.e("ChatActivity", "Chat listener cancelled: " + error.getMessage());
-				}
-			};
-		chatMessagesRef.addChildEventListener(_chat_child_listener);
+		databaseHelper.getChatMessagesRef();
 	}
 
 	private int _findCorrectInsertPosition(HashMap<String, Object> newMessage) {
@@ -1131,13 +818,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private void scrollToBottomImmediate() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-		}
-	}
-
-	private void _detachChatListener() {
-		if (_chat_child_listener != null) {
-			chatMessagesRef.removeEventListener(_chat_child_listener);
-			_chat_child_listener = null;
 		}
 	}
 
@@ -1274,7 +954,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 								if (firstVisibleView != null) {
 									layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size(), topOffset);
 								}
-								_fetchRepliedMessages(newMessages);
+								chatHelper.fetchRepliedMessages(newMessages);
 							}
 						} else {
 							oldestMessageKey = null;
