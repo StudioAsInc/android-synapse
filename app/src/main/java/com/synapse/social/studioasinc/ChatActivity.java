@@ -60,10 +60,16 @@ import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.service.studioasinc.AI.Gemini;
+import com.synapse.social.studioasinc.chat.common.ui.ChatNavigator;
+import com.synapse.social.studioasinc.chat.common.ui.SwipeToReplyHandler;
+import com.synapse.social.studioasinc.chat.common.service.UserBlockService;
+import com.synapse.social.studioasinc.chat.group.service.GroupDetailsLoader;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
 import com.synapse.social.studioasinc.util.ChatHelper;
 import com.synapse.social.studioasinc.util.DatabaseHelper;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -180,6 +186,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private AttachmentHandler attachmentHandler;
 	private ChatHelper chatHelper;
 	private DatabaseHelper databaseHelper;
+    private ChatNavigator chatNavigator;
+    private GroupDetailsLoader groupDetailsLoader;
+    private UserBlockService userBlockService;
 
 
 	@Override
@@ -429,7 +438,14 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
 
         activityResultHandler = new ActivityResultHandler(this);
-		_setupSwipeToReply();
+        SwipeToReplyHandler swipeToReplyHandler = new SwipeToReplyHandler(this, ChatMessagesList, new Function1<Integer, Unit>() {
+            @Override
+            public Unit invoke(Integer position) {
+                _showReplyUI((double) position);
+                return Unit.INSTANCE;
+            }
+        });
+        swipeToReplyHandler.attachToRecyclerView(ChatMessagesListRecycler);
 
         chatUIUpdater = new ChatUIUpdater(
                 this,
@@ -466,7 +482,17 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		);
 
 		if (is_group) {
-			_getGroupReference();
+            groupDetailsLoader = new GroupDetailsLoader(
+                    this,
+                    getIntent().getStringExtra("uid"),
+                    topProfileLayoutUsername,
+                    topProfileLayoutProfileImage,
+                    topProfileLayoutGenderBadge,
+                    topProfileLayoutVerifiedBadge,
+                    topProfileLayoutStatus
+            );
+            groupDetailsLoader.loadGroupDetails();
+            _getChatMessagesRef();
 		} else {
 			_getUserReference();
 		}
@@ -511,6 +537,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 		databaseHelper.attachChatListener();
 		_attachUserStatusListener();
+        chatNavigator = new ChatNavigator(this, ChatMessagesListRecycler, ChatMessagesList);
+        userBlockService = new UserBlockService(this);
 	}
 
 	@Override
@@ -962,36 +990,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private MessageSendingHandler messageSendingHandler;
 
 
-	public void _Block(final String _uid) {
-		block = new HashMap<>();
-		block.put(_uid, "true");
-		blocklist.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(block);
-		block.clear();
-	}
-
-
 	public void _TransitionManager(final View _view, final double _duration) {
 		LinearLayout viewgroup =(LinearLayout) _view;
 
 		android.transition.AutoTransition autoTransition = new android.transition.AutoTransition(); autoTransition.setDuration((long)_duration); android.transition.TransitionManager.beginDelayedTransition(viewgroup, autoTransition);
-	}
-
-
-	public void _Unblock_this_user() {
-		DatabaseReference blocklistRef = FirebaseDatabase.getInstance().getReference("skyline/blocklist");
-		String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		String uidToRemove = getIntent().getStringExtra("uid");
-
-		blocklistRef.child(myUid).child(uidToRemove).removeValue()
-		.addOnSuccessListener(aVoid -> {
-			Intent intent = getIntent();
-			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-			finish();
-			startActivity(intent);
-		})
-		.addOnFailureListener(e -> {
-			Log.e("UnblockUser", "Failed to unblock user", e);
-		});
 	}
 
 
@@ -1195,98 +1197,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 
-	public void _setupSwipeToReply() {
-		ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-			@Override
-			public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
-				return false;
-			}
-
-			@Override
-			public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
-				int position = viewHolder.getAdapterPosition();
-				if (position < 0 || position >= ChatMessagesList.size()) {
-					return;
-				}
-
-				HashMap<String, Object> messageData = ChatMessagesList.get(position);
-				if (messageData == null || !messageData.containsKey("key") || messageData.get("key") == null) {
-					chatAdapter.notifyItemChanged(position);
-					return;
-				}
-
-				_showReplyUI(position);
-				viewHolder.itemView.animate().translationX(0).setDuration(150).start();
-				chatAdapter.notifyItemChanged(position);
-			}
-
-			@Override
-			public boolean isItemViewSwipeEnabled() {
-				return true;
-			}
-
-			@Override
-			public boolean isLongPressDragEnabled() {
-				return false;
-			}
-
-			@Override
-			public void onChildDraw(Canvas c, RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
-				if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
-					View itemView = viewHolder.itemView;
-					Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-					Drawable icon = ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_reply);
-					if (icon != null) {
-						icon.setColorFilter(0xFF616161, PorterDuff.Mode.SRC_IN);
-
-						int iconMargin = (itemView.getHeight() - icon.getIntrinsicHeight()) / 2;
-						int iconTop = itemView.getTop() + iconMargin;
-						int iconBottom = iconTop + icon.getIntrinsicHeight();
-
-						float width = (float) itemView.getWidth();
-						float threshold = width * 0.25f;
-						float progress = Math.min(1f, Math.abs(dX) / threshold);
-						icon.setAlpha((int) (Math.max(0.25f, progress) * 255));
-
-						if (dX > 0) {
-							int iconLeft = itemView.getLeft() + iconMargin;
-							int iconRight = itemView.getLeft() + iconMargin + icon.getIntrinsicWidth();
-							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
-							icon.draw(c);
-						} else {
-							int iconRight = itemView.getRight() - iconMargin;
-							int iconLeft = itemView.getRight() - iconMargin - icon.getIntrinsicWidth();
-							icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
-							icon.draw(c);
-						}
-					}
-
-					float dampedDx = dX * 0.75f;
-					itemView.setTranslationX(dampedDx);
-					itemView.setAlpha(1.0f);
-				} else {
-					super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
-				}
-			}
-
-			@Override
-			public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
-				return 0.25f;
-			}
-
-			@Override
-			public float getSwipeEscapeVelocity(float defaultValue) {
-				return defaultValue * 1.5f;
-			}
-
-			@Override
-			public float getSwipeVelocityThreshold(float defaultValue) {
-				return defaultValue * 1.2f;
-			}
-		};
-		ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
-		itemTouchHelper.attachToRecyclerView(ChatMessagesListRecycler);
-	}
 
 	@Override
 	public void performHapticFeedback() {
@@ -1297,104 +1207,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	@Override
 	public void scrollToMessage(final String _messageKey) {
-		final int position = _findMessagePosition(_messageKey);
-		if (position != -1) {
-			ChatMessagesListRecycler.smoothScrollToPosition(position);
-			
-			new Handler().postDelayed(() -> {
-				if (!isFinishing() && !isDestroyed() && ChatMessagesListRecycler != null) {
-					RecyclerView.ViewHolder viewHolder = ChatMessagesListRecycler.findViewHolderForAdapterPosition(position);
-					if (viewHolder != null) {
-						_highlightMessage(viewHolder.itemView);
-					}
-				}
-			}, 500);
-		} else {
-			Toast.makeText(getApplicationContext(), "Original message not found", Toast.LENGTH_SHORT).show();
-		}
-	}
-	
-	private int _findMessagePosition(String messageKey) {
-		for (int i = 0; i < ChatMessagesList.size(); i++) {
-			if (ChatMessagesList.get(i).get(KEY_KEY).toString().equals(messageKey)) {
-				return i;
-			}
-		}
-		return -1;
+		chatNavigator.scrollToMessage(_messageKey);
 	}
 
-	public void _getGroupReference() {
-		DatabaseReference groupRef = _firebase.getReference("groups").child(getIntent().getStringExtra("uid"));
-		groupRef.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					topProfileLayoutUsername.setText(dataSnapshot.child("name").getValue(String.class));
-					Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("icon").getValue(String.class))).into(topProfileLayoutProfileImage);
-					topProfileLayoutGenderBadge.setVisibility(View.GONE);
-					topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
-					topProfileLayoutStatus.setText("Group");
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-
-		_getChatMessagesRef();
-	}
-
-	private void _highlightMessage(View messageView) {
-		if (isFinishing() || isDestroyed()) {
-			return;
-		}
-		
-		Drawable originalBackground = messageView.getBackground();
-		
-		ValueAnimator highlightAnimator = ValueAnimator.ofFloat(0f, 1f);
-		highlightAnimator.setDuration(800);
-		highlightAnimator.addUpdateListener(animation -> {
-			if (isFinishing() || isDestroyed() || messageView == null) {
-				animation.cancel();
-				return;
-			}
-			
-			float progress = (Float) animation.getAnimatedValue();
-			
-			int alpha = (int) (100 * (1 - progress));
-			int color = Color.argb(alpha, 107, 76, 255);
-			
-			GradientDrawable highlightDrawable = new GradientDrawable();
-			highlightDrawable.setColor(color);
-			highlightDrawable.setCornerRadius(dpToPx(27));
-			
-			messageView.setBackgroundDrawable(highlightDrawable);
-		});
-		
-		highlightAnimator.addListener(new AnimatorListenerAdapter() {
-			@Override
-			public void onAnimationEnd(Animator animation) {
-				if (!isFinishing() && !isDestroyed() && messageView != null) {
-					messageView.setBackgroundDrawable(originalBackground);
-				}
-			}
-		});
-		
-		highlightAnimator.start();
-	}
-	
-	private int dpToPx(int dp) {
-		try {
-			if (getResources() != null && getResources().getDisplayMetrics() != null) {
-				return (int) (dp * getResources().getDisplayMetrics().density);
-			}
-		} catch (Exception e) {
-			Log.e("ChatActivity", "Error converting dp to px: " + e.getMessage());
-		}
-		return dp;
-	}
 
 	private void startActivityWithUid(Class<?> activityClass) {
 		Intent intent = new Intent(getApplicationContext(), activityClass);
@@ -1483,77 +1298,5 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	public String getOldestMessageKey() {
 		return oldestMessageKey;
-	}
-
-	public static class ChatMessagesListRecyclerAdapter extends RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder> {
-
-		private final ArrayList<HashMap<String, Object>> data;
-		private final Context context;
-		private final boolean isGroup;
-		private final FirebaseDatabase firebase;
-
-		public ChatMessagesListRecyclerAdapter(Context context, ArrayList<HashMap<String, Object>> arr, boolean isGroup, FirebaseDatabase firebase) {
-			this.data = arr;
-			this.context = context;
-			this.isGroup = isGroup;
-			this.firebase = firebase;
-		}
-
-		@Override
-		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-			LayoutInflater inflater = LayoutInflater.from(context);
-			View v = inflater.inflate(R.layout.chat_msg_cv_synapse, null);
-			RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-			v.setLayoutParams(lp);
-			return new ViewHolder(v);
-		}
-
-		@Override
-		public void onBindViewHolder(ViewHolder holder, final int position) {
-			View view = holder.itemView;
-			final TextView sender_name = view.findViewById(R.id.sender_name);
-
-			if (isGroup && !data.get(position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-				sender_name.setVisibility(View.VISIBLE);
-				final String senderUid = data.get(position).get("uid").toString();
-				DatabaseReference userRef = firebase.getReference("skyline/users").child(senderUid);
-				userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if (dataSnapshot.exists()) {
-							String nickname = dataSnapshot.child("nickname").getValue(String.class);
-							String username = dataSnapshot.child("username").getValue(String.class);
-							if (nickname != null && !"null".equals(nickname)) {
-								sender_name.setText(nickname);
-							} else if (username != null && !"null".equals(username)) {
-								sender_name.setText("@" + username);
-							} else {
-								sender_name.setText("Unknown User");
-							}
-						} else {
-							sender_name.setText("Unknown User");
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-						sender_name.setText("Unknown User");
-					}
-				});
-			} else {
-				sender_name.setVisibility(View.GONE);
-			}
-		}
-
-		@Override
-		public int getItemCount() {
-			return data.size();
-		}
-
-		public static class ViewHolder extends RecyclerView.ViewHolder {
-			public ViewHolder(View v) {
-				super(v);
-			}
-		}
 	}
 }
