@@ -802,6 +802,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
+	private void _attachChatListener() {
+		if (databaseHelper != null) {
+			databaseHelper.attachChatListener();
+		}
+	}
+
 	private void scrollToBottom() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.smoothScrollToPosition(ChatMessagesList.size() - 1);

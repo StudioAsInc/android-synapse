@@ -98,7 +98,7 @@ class DatabaseHelper(
                             oldestMessageKey = initialMessages.firstOrNull()?.get("key")?.toString()
                             chatMessagesList.addAll(initialMessages)
                             chatAdapter?.notifyDataSetChanged()
-                            fetchRepliedMessages(initialMessages as ArrayList<HashMap<String, Object>>)
+                            fetchRepliedMessages(initialMessages)
                             onMessagesLoaded.invoke()
                         }
                     } else {
@@ -164,7 +164,7 @@ class DatabaseHelper(
                             if (firstVisibleView != null) {
                                 layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size, topOffset)
                             }
-                            fetchRepliedMessages(newMessages as ArrayList<HashMap<String, Object>>)
+                            fetchRepliedMessages(newMessages)
                         } else {
                             oldestMessageKey = null
                         }
@@ -184,7 +184,7 @@ class DatabaseHelper(
         })
     }
 
-    fun fetchRepliedMessages(messages: ArrayList<HashMap<String, Object>>) {
+    fun fetchRepliedMessages(messages: ArrayList<HashMap<String, Any>>) {
         val repliedIdsToFetch = HashSet<String>()
         for (message in messages) {
             if (message.containsKey("replied_message_id")) {
@@ -229,7 +229,7 @@ class DatabaseHelper(
             if (message.containsKey("replied_message_id") && repliedMessageKey == message["replied_message_id"].toString()) {
                 val positionToUpdate = i
                 activity.runOnUiThread {
-                    if (chatAdapter != null && positionToUpdate < chatAdapter.itemCount) {
+                    if (positionToUpdate < chatAdapter!!.itemCount) {
                         chatAdapter.notifyItemChanged(positionToUpdate)
                     }
                 }
@@ -286,8 +286,8 @@ class DatabaseHelper(
                         recyclerView.post { recyclerView.smoothScrollToPosition(chatMessagesList.size - 1) }
                     }
                     if (newMessage.containsKey("replied_message_id")) {
-                        val singleMessageList = ArrayList<HashMap<String, Object>>()
-                        singleMessageList.add(newMessage as HashMap<String, Object>)
+                        val singleMessageList = ArrayList<HashMap<String, Any>>()
+                        singleMessageList.add(newMessage)
                         fetchRepliedMessages(singleMessageList)
                     }
                 }
