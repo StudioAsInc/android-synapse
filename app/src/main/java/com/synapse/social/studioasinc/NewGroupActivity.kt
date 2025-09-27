@@ -142,7 +142,7 @@ class UsersAdapter(
         private val userCheckbox: CheckBox = itemView.findViewById(R.id.user_checkbox)
 
         fun bind(user: User) {
-            userName.text = if (user.nickname.isNotEmpty()) user.nickname else user.username
+            userName.text = if (!user.nickname.isNullOrEmpty()) user.nickname else (user.username ?: "")
             Glide.with(itemView.context).load(user.avatar).placeholder(R.drawable.avatar).into(userAvatar)
 
             itemView.setOnClickListener {
