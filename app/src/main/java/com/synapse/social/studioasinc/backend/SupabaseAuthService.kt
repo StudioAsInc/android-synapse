@@ -9,6 +9,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.user.UserInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,8 +73,6 @@ class SupabaseAuthService : IAuthenticationService {
         listener.onComplete(Unit, null)
     }
 }
-
-import io.github.jan.supabase.gotrue.user.UserInfo
 
 class SupabaseUser(private val user: UserInfo) : IUser {
     override fun getUid(): String {

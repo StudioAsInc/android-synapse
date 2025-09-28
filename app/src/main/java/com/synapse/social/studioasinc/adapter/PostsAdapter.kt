@@ -30,6 +30,7 @@ import com.synapse.social.studioasinc.util.CountUtils
 import com.synapse.social.studioasinc.util.MentionUtils
 import com.synapse.social.studioasinc.util.NotificationUtils
 import com.synapse.social.studioasinc.util.TimeUtils
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 
 class PostsAdapter(
     private val context: Context,
@@ -70,9 +71,7 @@ class PostsAdapter(
         mediaPagerAdapters.clear()
     }
 
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-
-inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         // Views
         private val body: LinearLayout = itemView.findViewById(R.id.body)
         private val topMoreButton: ImageView = itemView.findViewById(R.id.topMoreButton)
