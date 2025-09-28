@@ -1,12 +1,13 @@
-
 package com.synapse.social.studioasinc
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import java.util.Calendar
 import java.util.HashMap
 
 class UserDataPusher {
+
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
 
     fun pushData(
         username: String,
@@ -54,26 +55,24 @@ class UserDataPusher {
         createUserMap["join_date"] = getJoinTime.timeInMillis.toString()
         // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
 
-        val main = FirebaseDatabase.getInstance().getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val map = HashMap<String, Any>()
-                    map["uid"] = uid
-                    map["email"] = email
-                    map["username"] = username
-                    val pushusername = FirebaseDatabase.getInstance().getReference("synapse/username")
-                    pushusername.child(username).updateChildren(map)
-                        .addOnCompleteListener { pushTask ->
-                            if (pushTask.isSuccessful) {
-                                onComplete(true, null)
-                            } else {
-                                onComplete(false, pushTask.exception?.message)
-                            }
-                        }
-                } else {
-                    onComplete(false, task.exception?.message)
+        val main = dbService.getReference("skyline")
+        main.child("users").child(uid).updateChildren(createUserMap) { _, error ->
+            if (error == null) {
+                val map = HashMap<String, Any>()
+                map["uid"] = uid
+                map["email"] = email
+                map["username"] = username
+                val pushusername = dbService.getReference("synapse/username")
+                pushusername.child(username).updateChildren(map) { _, pushError ->
+                    if (pushError == null) {
+                        onComplete(true, null)
+                    } else {
+                        onComplete(false, pushError.message)
+                    }
                 }
+            } else {
+                onComplete(false, error.message)
             }
+        }
     }
 }

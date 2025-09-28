@@ -13,7 +13,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.User
 
 class NewGroupActivity : AppCompatActivity() {
@@ -26,7 +30,8 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val database by lazy { dbService.getReference("skyline/users") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,8 +86,8 @@ class NewGroupActivity : AppCompatActivity() {
     }
 
     private fun fetchUsers() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
+        database.addListenerForSingleValueEvent(object : IDataListener {
+            override fun onDataChange(snapshot: IDataSnapshot) {
                 usersList.clear()
                 for (userSnapshot in snapshot.children) {
                     val user = userSnapshot.getValue(User::class.java)
@@ -93,7 +98,7 @@ class NewGroupActivity : AppCompatActivity() {
                 usersAdapter.notifyDataSetChanged()
             }
 
-            override fun onCancelled(error: DatabaseError) {
+            override fun onCancelled(error: IDatabaseError) {
                 Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
             }
         })

@@ -20,9 +20,9 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                 val resolvedFilePaths = ArrayList<String>()
 
                 try {
-                    if (data.clipData != null) {
-                        for (i in 0 until data.clipData!!.itemCount) {
-                            val fileUri = data.clipData!!.getItemAt(i).uri
+                    data.clipData?.let { clipData ->
+                        for (i in 0 until clipData.itemCount) {
+                            val fileUri = clipData.getItemAt(i).uri
                             val path = StorageUtil.getPathFromUri(activity.applicationContext, fileUri)
                             if (path != null && path.isNotEmpty()) {
                                 resolvedFilePaths.add(path)
@@ -30,9 +30,8 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                                 Log.w("ChatActivity", "Failed to resolve file path for clip data item $i")
                             }
                         }
-                    } else if (data.data != null) {
-                        val fileUri = data.data
-                        val path = StorageUtil.getPathFromUri(activity.applicationContext, fileUri)
+                    } ?: data.data?.let { uri ->
+                        val path = StorageUtil.getPathFromUri(activity.applicationContext, uri)
                         if (path != null && path.isNotEmpty()) {
                             resolvedFilePaths.add(path)
                         } else {
@@ -76,14 +75,12 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                     }
 
                     // Notify adapter of changes
-                    if (activity.rv_attacmentList.adapter != null) {
-                        activity.rv_attacmentList.adapter!!.notifyItemRangeInserted(startingPosition, resolvedFilePaths.size)
-                    }
+                    activity.rv_attacmentList.adapter?.notifyItemRangeInserted(startingPosition, resolvedFilePaths.size)
 
                     // Start upload for each item
                     for (i in resolvedFilePaths.indices) {
                         try {
-                            activity._startUploadForItem((startingPosition + i).toDouble())
+                            activity._startUploadForItem(startingPosition + i)
                         } catch (e: Exception) {
                             Log.e("ChatActivity", "Error starting upload for item " + i + ": " + e.message)
                         }

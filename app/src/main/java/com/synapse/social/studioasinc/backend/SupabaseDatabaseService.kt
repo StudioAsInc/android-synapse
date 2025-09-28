@@ -41,7 +41,11 @@ class SupabaseDatabaseService : IDatabaseService {
         val supabaseRef = ref as SupabaseDatabaseReference
         GlobalScope.launch {
             try {
-                supabaseRef.reference.upsert(value!!)
+                if (value == null) {
+                    supabaseRef.reference.delete()
+                } else {
+                    supabaseRef.reference.upsert(value)
+                }
                 listener.onComplete(Unit, null)
             } catch (e: Exception) {
                 listener.onComplete(null, e)

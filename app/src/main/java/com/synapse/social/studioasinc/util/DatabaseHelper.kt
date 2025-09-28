@@ -9,6 +9,11 @@ import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.ChatUIUpdater
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
+import com.synapse.social.studioasinc.backend.interfaces.IRealtimeListener
 import java.util.ArrayList
 import java.util.HashMap
 
@@ -22,21 +27,21 @@ class DatabaseHelper(
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val messageKeys: MutableSet<String>,
     private var oldestMessageKey: String?,
-    private val chatMessagesRef: DatabaseReference,
+    private val chatMessagesRef: IDatabaseReference,
     private val recyclerView: RecyclerView,
     private val repliedMessagesCache: HashMap<String, HashMap<String, Any>>,
     private val onMessagesLoaded: () -> Unit
 ) {
 
-    private var chatChildListener: ChildEventListener? = null
     private var isLoading = false
+    private var realtimeChannel: IRealtimeChannel? = null
 
     companion object {
         private const val TAG = "DatabaseHelper"
     }
 
     fun getUserReference() {
-        val currentUserUid = authService.getCurrentUser()?.uid ?: return
+        val currentUserUid = authService.getCurrentUser()?.getUid() ?: return
         val getFirstUserNameRef = dbService.getReference("skyline/users").child(currentUserUid)
 
         dbService.getData(getFirstUserNameRef, object : IDataListener {
@@ -238,8 +243,6 @@ class DatabaseHelper(
             }
         }
     }
-
-    private var realtimeChannel: IRealtimeChannel? = null
 
     fun attachChatListener() {
         if (realtimeChannel != null) {

@@ -275,7 +275,26 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		btn_sendMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-                messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
+				String recipientUid = getIntent().getStringExtra("uid");
+				if (recipientUid == null || recipientUid.isEmpty()) {
+					return;
+				}
+				if (!TextUtils.isEmpty(message_et.getText().toString().trim()) || !attactmentmap.isEmpty()) {
+					MessageSendingHandler messageSendingHandler = new MessageSendingHandler(
+							ChatActivity.this,
+							authService,
+							dbService,
+							message_et,
+							attachmentLayoutListHolder,
+							attactmentmap,
+							ReplyMessageID,
+							is_group,
+							recipientUid
+					);
+					messageSendingHandler.sendMessage();
+					ReplyMessageID = "null";
+					chatUIUpdater.hideReplyUI();
+				}
 			}
 		});
 
@@ -315,22 +334,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			            String chatID = chatMessageManager.getChatId(currentUserUid, otherUserUid);			            chatMessagesRef = dbService.getReference(CHATS_REF).child(chatID);		}
 		
 		        userRef = dbService.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
-        messageSendingHandler = new MessageSendingHandler(
-                this,
-                authService,
-                dbService,
-                ChatMessagesList,
-                attactmentmap,
-                chatAdapter,
-                ChatMessagesListRecycler,
-                rv_attacmentList,
-                attachmentLayoutListHolder,
-                messageKeys,
-                otherUserUid,
-                FirstUserName,
-                is_group
-        );
-
 		gemini = new Gemini.Builder(this)
 		.model("gemini-1.5-flash")
 		.responseType("text")
@@ -834,8 +837,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		_view.setSelected(true);
 	}
 
-    private MessageSendingHandler messageSendingHandler;
-
 
 	public void _TransitionManager(final View _view, final double _duration) {
 		LinearLayout viewgroup =(LinearLayout) _view;
@@ -993,8 +994,26 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	@Override
-	public void onVoiceMessageRecorded(String url, long duration) {
-		messageSendingHandler.sendVoiceMessage(url, duration, ReplyMessageID, mMessageReplyLayout);
+	public void onVoiceMessageRecorded(String path, long duration) {
+		String recipientUid = getIntent().getStringExtra("uid");
+		if (recipientUid == null || recipientUid.isEmpty()) {
+			return;
+		}
+
+		MessageSendingHandler messageSendingHandler = new MessageSendingHandler(
+				this,
+				authService,
+				dbService,
+				message_et,
+				attachmentLayoutListHolder,
+				attactmentmap,
+				ReplyMessageID,
+				is_group,
+				recipientUid
+		);
+		messageSendingHandler.sendVoiceMessage(path, duration);
+		ReplyMessageID = "null";
+		chatUIUpdater.hideReplyUI();
 	}
 
 	public boolean isLoading() {

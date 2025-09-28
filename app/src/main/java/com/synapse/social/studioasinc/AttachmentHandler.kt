@@ -17,7 +17,8 @@ class AttachmentHandler(
     private var attactmentmap: ArrayList<HashMap<String, Any>>,
     private val close_attachments_btn: View,
     private val galleryBtn: View,
-    private val authService: IAuthenticationService
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService
 ) {
 
     fun setup() {
@@ -34,13 +35,14 @@ class AttachmentHandler(
             }
 
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
-            val chatId = ChatMessageManager(dbService, authService).getChatId(
-                authService.getCurrentUser()!!.uid,
-                activity.intent.getStringExtra("uid")
-            )
-            drafts.edit().remove(chatId + "_attachments").apply()
-            if (authService.getCurrentUser() != null) {
-                PresenceManager.setActivity(authService.getCurrentUser()!!.uid, "Idle")
+            val currentUser = authService.getCurrentUser()
+            if (currentUser != null) {
+                val chatId = ChatMessageManager(dbService, authService).getChatId(
+                    currentUser.getUid(),
+                    activity.intent.getStringExtra("uid")
+                )
+                drafts.edit().remove(chatId + "_attachments").apply()
+                PresenceManager.setActivity(currentUser.getUid(), "Idle")
             }
         }
 

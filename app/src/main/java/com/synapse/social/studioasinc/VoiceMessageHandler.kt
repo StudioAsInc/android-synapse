@@ -35,7 +35,7 @@ class VoiceMessageHandler(
     }
 
     interface VoiceMessageListener {
-        fun onVoiceMessageRecorded(url: String, duration: Long)
+        fun onVoiceMessageRecorded(path: String, duration: Long)
     }
 
     fun setupVoiceButton(btn_voice_message: View) {
@@ -60,7 +60,6 @@ class VoiceMessageHandler(
                 }
                 MotionEvent.ACTION_UP -> {
                     stopAudioRecorder()
-                    uploadAudioFile()
                     true
                 }
                 else -> false
@@ -123,35 +122,7 @@ class VoiceMessageHandler(
             } else {
                 vbr.vibrate(48)
             }
-        }
-    }
-
-    private fun uploadAudioFile() {
-        if (audioFilePath != null && audioFilePath!!.isNotEmpty()) {
-            val file = File(audioFilePath!!)
-            if (file.exists()) {
-                AsyncUploadService.uploadWithNotification(
-                    activity,
-                    audioFilePath!!,
-                    file.name,
-                    object : AsyncUploadService.UploadProgressListener {
-                        override fun onProgress(filePath: String, percent: Int) {
-                            // Handle progress
-                        }
-
-                        override fun onSuccess(filePath: String, url: String, publicId: String) {
-                            listener.onVoiceMessageRecorded(url, recordMs)
-                        }
-
-                        override fun onFailure(filePath: String, error: String) {
-                            Toast.makeText(
-                                activity,
-                                "Failed to upload audio.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    })
-            }
+            audioFilePath?.let { listener.onVoiceMessageRecorded(it, recordMs) }
         }
     }
 }

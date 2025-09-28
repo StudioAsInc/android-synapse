@@ -1,18 +1,20 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 object OneSignalManager {
 
     private const val TAG = "OneSignalManager"
-    private val db = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val db = dbService.getReference("skyline/users")
 
     /**
-     * Saves or updates the user's OneSignal Player ID in the Firebase Realtime Database.
+     * Saves or updates the user's OneSignal Player ID in the database.
      * This is now the primary method for storing the player ID.
      *
-     * @param userUid The Firebase UID of the user.
+     * @param userUid The UID of the user.
      * @param playerId The OneSignal Player ID to save.
      */
     @JvmStatic
@@ -22,12 +24,12 @@ object OneSignalManager {
             return
         }
 
-        db.child(userUid).child("oneSignalPlayerId").setValue(playerId)
-            .addOnSuccessListener {
-                Log.i(TAG, "OneSignal Player ID saved to Realtime Database for user: $userUid")
+        db.child(userUid).child("oneSignalPlayerId").setValue(playerId) { _, error ->
+            if (error == null) {
+                Log.i(TAG, "OneSignal Player ID saved to Database for user: $userUid")
+            } else {
+                Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid", error)
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to save OneSignal Player ID to Realtime Database for user: $userUid", e)
-            }
+        }
     }
 }

@@ -15,13 +15,13 @@ class UserBlockService(
 
 
     fun blockUser(uid: String) {
-        val myUid = authService.getCurrentUser()?.uid ?: return
+        val myUid = authService.getCurrentUser()?.getUid() ?: return
         val blockData = mapOf(uid to "true")
         dbService.updateChildren(dbService.getReference("skyline/blocklist").child(myUid), blockData) { _, _ -> }
     }
 
     fun unblockUser(uid: String) {
-        val myUid = authService.getCurrentUser()?.uid ?: return
+        val myUid = authService.getCurrentUser()?.getUid() ?: return
         dbService.setValue(dbService.getReference("skyline/blocklist").child(myUid).child(uid), null) { _, error ->
             if (error == null) {
                 val intent = activity.intent
