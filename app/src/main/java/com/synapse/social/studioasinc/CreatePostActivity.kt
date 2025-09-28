@@ -27,11 +27,12 @@ import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toHashMap
-import com.synapse.social.studioasinc.util.FileUtil
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import com.synapse.social.studioasinc.util.MentionUtils
-import com.synapse.social.studioasinc.util.UserMention
+import com.synapse.social.studioasinc.UserMention
+import com.synapse.social.studioasinc.StorageUtil
 import java.util.*
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 
 class CreatePostActivity : AppCompatActivity() {
 
@@ -212,7 +213,7 @@ class CreatePostActivity : AppCompatActivity() {
         val itemsToAdd = minOf(uris.size, remainingSlots)
 
         for (i in 0 until itemsToAdd) {
-            val path = FileUtil.convertUriToFilePath(this, uris[i])
+            val path = StorageUtil.getPathFromUri(this, uris[i])
             if (path != null) {
                 selectedMediaItems.add(MediaItem(url = path, type = MediaType.IMAGE))
             }
@@ -230,7 +231,7 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedVideo(uri: Uri) {
-        val path = FileUtil.convertUriToFilePath(this, uri)
+        val path = StorageUtil.getPathFromUri(this, uri)
         if (path != null) {
             selectedMediaItems.add(MediaItem(url = path, type = MediaType.VIDEO))
             updateMediaVisibility()
@@ -325,18 +326,20 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun savePostToDatabase(post: Post) {
-        dbService.setValue(postsRef.child(post.key), post.toHashMap()) { _, error ->
-            runOnUiThread {
-                showLoading(false)
-                if (error == null) {
-                    Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                    handleMentions(post.postText, post.key)
-                    finish()
-                } else {
-                    Toast.makeText(this, "Failed to create post: ${error.message}", Toast.LENGTH_LONG).show()
+        dbService.setValue(postsRef.child(post.key), post.toHashMap(), object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                runOnUiThread {
+                    showLoading(false)
+                    if (error == null) {
+                        Toast.makeText(this@CreatePostActivity, "Post created successfully!", Toast.LENGTH_SHORT).show()
+                        handleMentions(post.postText, post.key)
+                        finish()
+                    } else {
+                        Toast.makeText(this@CreatePostActivity, "Failed to create post: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
-        }
+        })
     }
 
     private fun handleMentions(text: String?, postKey: String) {

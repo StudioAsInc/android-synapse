@@ -226,7 +226,6 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 }
                 android.view.MotionEvent.ACTION_UP -> {
                     _AudioRecorderStop()
-                    uploadAudioFile()
                     true
                 }
                 else -> false
@@ -237,63 +236,77 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private fun _getGroupReference() {
         val groupId = intent.getStringExtra("uid") ?: return
         val groupRef = dbService.getReference("groups").child(groupId)
-        groupRef.addListenerForSingleValueEvent(object : IDataListener {
+        dbService.getData(groupRef, object : IDataListener {
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-
-                    // Fetch member usernames for displaying in chat bubbles
-                    fetchMemberUsernames(dataSnapshot)
-                    Glide.with(applicationContext)
-                        .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
-                        .into(topProfileLayoutProfileImage)
-                    topProfileLayoutStatus.text = "Group"
+                    val groupDataList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    val groupData = groupDataList?.firstOrNull()
+                    if (groupData != null) {
+                        topProfileLayoutUsername.text = groupData["name"] as? String
+                        fetchMemberUsernames(groupData)
+                        val iconUrl = groupData["icon"] as? String
+                        if (iconUrl != null) {
+                            Glide.with(applicationContext)
+                                .load(Uri.parse(iconUrl))
+                                .into(topProfileLayoutProfileImage)
+                        }
+                        topProfileLayoutStatus.text = "Group"
+                    }
                 }
             }
 
-            override fun onCancelled(databaseError: IDatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {
+                Log.e("ChatGroupActivity", "Failed to get group reference: ${databaseError.message}")
+            }
         })
     }
 
     private fun _getChatMessagesRef() {
         isLoading = true
-        chatMessagesRef?.limitToLast(CHAT_PAGE_SIZE)?.addListenerForSingleValueEvent(object : IDataListener {
-            override fun onDataChange(dataSnapshot: IDataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    val initialMessages = ArrayList<HashMap<String, Any>>()
-                    for (_data in dataSnapshot.children) {
-                        val messageData = _data.getValue(HashMap::class.java) as? HashMap<String, Any>
-                        if (messageData != null && messageData.containsKey("key")) {
-                            initialMessages.add(messageData)
-                            messageKeys.add(messageData["key"].toString())
+        chatMessagesRef?.limitToFirst(CHAT_PAGE_SIZE)?.let { query ->
+            dbService.getData(query, object : IDataListener {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        val initialMessages = ArrayList<HashMap<String, Any>>()
+                        val messagesList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                        if (messagesList != null) {
+                            for (messageData in messagesList) {
+                                val mutableMessageData = HashMap(messageData)
+                                if (mutableMessageData.containsKey("key")) {
+                                    initialMessages.add(mutableMessageData)
+                                    messageKeys.add(mutableMessageData["key"].toString())
+                                }
+                            }
+                        }
+                        if (initialMessages.isNotEmpty()) {
+                            initialMessages.sortWith { msg1, msg2 ->
+                                val time1 = _getMessageTimestamp(msg1)
+                                val time2 = _getMessageTimestamp(msg2)
+                                time1.compareTo(time2)
+                            }
+                            oldestMessageKey = initialMessages[0]["key"].toString()
+                            ChatMessagesList.addAll(initialMessages)
+                            chatAdapter?.notifyDataSetChanged()
+                            ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
                         }
                     }
-                    if (initialMessages.isNotEmpty()) {
-                        initialMessages.sortWith { msg1, msg2 ->
-                            val time1 = _getMessageTimestamp(msg1)
-                            val time2 = _getMessageTimestamp(msg2)
-                            time1.compareTo(time2)
-                        }
-                        oldestMessageKey = initialMessages[0]["key"].toString()
-                        ChatMessagesList.addAll(initialMessages)
-                        chatAdapter?.notifyDataSetChanged()
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
+                    isLoading = false
                 }
-                isLoading = false
-            }
 
-            override fun onCancelled(databaseError: IDatabaseError) {
-                isLoading = false
-            }
-        })
+                override fun onCancelled(databaseError: IDatabaseError) {
+                    isLoading = false
+                    Log.e("ChatGroupActivity", "Failed to get chat messages: ${databaseError.message}")
+                }
+            })
+        } ?: run { isLoading = false }
     }
 
     private fun _attachChatListener() {
         if (chatMessagesRef == null) return
-        _chat_child_listener = object : IRealtimeListener {
-            override fun onChildAdded(dataSnapshot: IDataSnapshot, previousChildName: String?) {
-                val newMessage = dataSnapshot.getValue(HashMap::class.java) as? HashMap<String, Any>
+
+        val realtimeListener = object : IRealtimeListener {
+            override fun onInsert(snapshot: IDataSnapshot) {
+                val newMessage = snapshot.getValue(HashMap::class.java) as? HashMap<String, Any>
                 if (newMessage != null && newMessage.containsKey("key")) {
                     val messageKey = newMessage["key"].toString()
                     if (!messageKeys.contains(messageKey)) {
@@ -306,21 +319,21 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 }
             }
 
-            override fun onChildChanged(snapshot: IDataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: IDataSnapshot) {}
-            override fun onChildMoved(snapshot: IDataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: IDatabaseError) {}
-        }
-        chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
-    }
-    
-    private fun fetchMemberUsernames(groupSnapshot: IDataSnapshot) {
-        val membersSnapshot = groupSnapshot.child("members")
-        if (membersSnapshot.exists()) {
-            val memberUids = mutableListOf<String>()
-            for (memberSnapshot in membersSnapshot.children) {
-                memberSnapshot.key?.let { memberUids.add(it) }
+            override fun onUpdate(snapshot: IDataSnapshot) {
+                // Can be implemented to handle message edits
             }
+
+            override fun onDelete(snapshot: IDataSnapshot) {
+                // Can be implemented to handle message deletions
+            }
+        }
+        dbService.addRealtimeListener(chatMessagesRef!!, realtimeListener)
+    }
+
+    private fun fetchMemberUsernames(groupData: Map<String, Any>) {
+        val members = groupData["members"] as? Map<String, Any>
+        if (members != null) {
+            val memberUids = members.keys.toMutableList()
 
             authService.getCurrentUser()?.getUid()?.let {
                 if (!memberUids.contains(it)) {
@@ -332,33 +345,33 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             var membersProcessed = 0
 
             for (memberUid in memberUids) {
-                dbService.getReference("skyline/users").child(memberUid).child("username")
-                    .addListenerForSingleValueEvent(object : IDataListener {
-                        override fun onDataChange(userSnapshot: IDataSnapshot) {
-                            val username = userSnapshot.getValue(String::class.java)
-                            if (username != null) {
-                                memberNamesMap[memberUid] = username
-                                if (memberUid == authService.getCurrentUser()?.getUid()) {
-                                    FirstUserName = username
-                                    chatAdapter?.setFirstUserName(username)
-                                }
-                            }
-
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
+                val userRef = dbService.getReference("skyline/users").child(memberUid).child("username")
+                dbService.getData(userRef, object : IDataListener {
+                    override fun onDataChange(userSnapshot: IDataSnapshot) {
+                        val username = userSnapshot.getValue(String::class.java)
+                        if (username != null) {
+                            memberNamesMap[memberUid] = username
+                            if (memberUid == authService.getCurrentUser()?.getUid()) {
+                                FirstUserName = username
+                                chatAdapter?.setFirstUserName(username)
                             }
                         }
 
-                        override fun onCancelled(error: IDatabaseError) {
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
+                        membersProcessed++
+                        if (membersProcessed == totalMembers) {
+                            chatAdapter?.setUserNamesMap(memberNamesMap)
+                            chatAdapter?.notifyDataSetChanged()
                         }
-                    })
+                    }
+
+                    override fun onCancelled(error: IDatabaseError) {
+                        membersProcessed++
+                        if (membersProcessed == totalMembers) {
+                            chatAdapter?.setUserNamesMap(memberNamesMap)
+                            chatAdapter?.notifyDataSetChanged()
+                        }
+                    }
+                })
             }
         }
     }

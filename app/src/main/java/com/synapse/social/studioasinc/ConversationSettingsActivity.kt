@@ -15,6 +15,7 @@ import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
@@ -128,30 +129,34 @@ class ConversationSettingsActivity : AppCompatActivity() {
         val userId = intent.getStringExtra(KEY_UID) ?: return
         val getUserReference = dbService.getReference(REF_SKYLINE).child(REF_USERS).child(userId)
 
-        getUserReference.addListenerForSingleValueEvent(object : IDataListener {
+        dbService.getData(getUserReference, object : IDataListener {
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    val isBanned = dataSnapshot.child(KEY_BANNED).getValue(String::class.java) == "true"
-                    if (isBanned) {
-                        binding.profilePictureIV.setImageResource(R.drawable.banned_avatar)
-                    } else {
-                        val avatarUrl = dataSnapshot.child(KEY_AVATAR).getValue(String::class.java)
-                        if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
-                            binding.profilePictureIV.setImageResource(R.drawable.avatar)
+                    val userList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    val userMap = userList?.firstOrNull()
+                    if (userMap != null) {
+                        val isBanned = userMap[KEY_BANNED] as? String == "true"
+                        if (isBanned) {
+                            binding.profilePictureIV.setImageResource(R.drawable.banned_avatar)
                         } else {
-                            Glide.with(applicationContext).load(Uri.parse(avatarUrl)).into(binding.profilePictureIV)
+                            val avatarUrl = userMap[KEY_AVATAR] as? String
+                            if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
+                                binding.profilePictureIV.setImageResource(R.drawable.avatar)
+                            } else {
+                                Glide.with(applicationContext).load(Uri.parse(avatarUrl)).into(binding.profilePictureIV)
+                            }
                         }
-                    }
 
-                    val nickname = dataSnapshot.child(KEY_NICKNAME).getValue(String::class.java)
-                    val username = dataSnapshot.child(KEY_USERNAME).getValue(String::class.java)
+                        val nickname = userMap[KEY_NICKNAME] as? String
+                        val username = userMap[KEY_USERNAME] as? String
 
-                    val user2nickname: String = if (nickname.isNullOrEmpty() || nickname == "null") {
-                        if (username.isNullOrEmpty()) "" else "@$username"
-                    } else {
-                        nickname
+                        val user2nickname: String = if (nickname.isNullOrEmpty() || nickname == "null") {
+                            if (username.isNullOrEmpty()) "" else "@$username"
+                        } else {
+                            nickname
+                        }
+                        binding.username.text = user2nickname
                     }
-                    binding.username.text = user2nickname
                 }
             }
 
@@ -163,9 +168,18 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun blockUser(uid: String?) {
         uid?.let {
-            val blockData = hashMapOf<String, Any>(it to it)
+            val blockData = hashMapOf<String, Any>(it to true)
             authService.getCurrentUser()?.getUid()?.let { currentUserUid ->
-                blocklistRef.child(currentUserUid).updateChildren(blockData) { _, _ -> }
+                val ref = blocklistRef.child(currentUserUid)
+                dbService.updateChildren(ref, blockData, object : ICompletionListener<Unit> {
+                    override fun onComplete(result: Unit?, error: Exception?) {
+                        if (error == null) {
+                            Toast.makeText(this@ConversationSettingsActivity, "User blocked", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@ConversationSettingsActivity, "Failed to block user", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
             }
         }
     }

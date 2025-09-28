@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import java.util.Calendar
 import java.util.HashMap
@@ -56,23 +57,27 @@ class UserDataPusher {
         // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
 
         val main = dbService.getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap) { _, error ->
-            if (error == null) {
-                val map = HashMap<String, Any>()
-                map["uid"] = uid
-                map["email"] = email
-                map["username"] = username
-                val pushusername = dbService.getReference("synapse/username")
-                pushusername.child(username).updateChildren(map) { _, pushError ->
-                    if (pushError == null) {
-                        onComplete(true, null)
-                    } else {
-                        onComplete(false, pushError.message)
-                    }
+        main.child("users").child(uid).updateChildren(createUserMap, object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                if (error == null) {
+                    val map = HashMap<String, Any>()
+                    map["uid"] = uid
+                    map["email"] = email
+                    map["username"] = username
+                    val pushusername = dbService.getReference("synapse/username")
+                    pushusername.child(username).updateChildren(map, object : ICompletionListener<Unit> {
+                        override fun onComplete(result: Unit?, pushError: Exception?) {
+                            if (pushError == null) {
+                                onComplete(true, null)
+                            } else {
+                                onComplete(false, pushError.message)
+                            }
+                        }
+                    })
+                } else {
+                    onComplete(false, error.message)
                 }
-            } else {
-                onComplete(false, error.message)
             }
-        }
+        })
     }
 }

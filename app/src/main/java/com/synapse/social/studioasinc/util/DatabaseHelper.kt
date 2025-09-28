@@ -9,11 +9,7 @@ import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.ChatUIUpdater
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
-import com.synapse.social.studioasinc.backend.interfaces.IRealtimeListener
+import com.synapse.social.studioasinc.backend.interfaces.*
 import java.util.ArrayList
 import java.util.HashMap
 
@@ -48,14 +44,18 @@ class DatabaseHelper(
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 try {
                     if (dataSnapshot.exists()) {
-                        val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
-                        val nickname = user["nickname"] as? String
-                        val username = user["username"] as? String
-
-                        firstUserName = when {
-                            nickname != null && nickname != "null" -> nickname
-                            username != null && username != "null" -> "@$username"
-                            else -> "Unknown User"
+                        val userList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any?>>
+                        val user = userList?.firstOrNull()
+                        if (user != null) {
+                            val nickname = user["nickname"] as? String
+                            val username = user["username"] as? String
+                            firstUserName = when {
+                                nickname != null && nickname != "null" -> nickname
+                                username != null && username != "null" -> "@$username"
+                                else -> "Unknown User"
+                            }
+                        } else {
+                            firstUserName = "Unknown User"
                         }
                     } else {
                         firstUserName = "Unknown User"
@@ -87,13 +87,14 @@ class DatabaseHelper(
                         chatMessagesList.clear()
                         messageKeys.clear()
                         val initialMessages = ArrayList<HashMap<String, Any>>()
+                        val messagesList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
 
-                        for (data in dataSnapshot.children) {
+                        messagesList?.forEach { messageMap ->
                             try {
-                                val messageData = data.getValue(HashMap::class.java) as HashMap<String, Any>
-                                if (messageData != null && messageData["key"] != null) {
-                                    initialMessages.add(messageData)
-                                    messageKeys.add(messageData["key"].toString())
+                                val mutableMessageData = HashMap(messageMap)
+                                if (mutableMessageData["key"] != null) {
+                                    initialMessages.add(mutableMessageData)
+                                    messageKeys.add(mutableMessageData["key"].toString())
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error processing initial message data", e)
@@ -142,13 +143,14 @@ class DatabaseHelper(
                 try {
                     if (dataSnapshot.exists()) {
                         val newMessages = ArrayList<HashMap<String, Any>>()
-                        for (data in dataSnapshot.children) {
+                        val messagesList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                        messagesList?.forEach { messageMap ->
                             try {
-                                val messageData = data.getValue(HashMap::class.java) as HashMap<String, Any>
-                                if (messageData != null && messageData["key"] != null) {
-                                    if (!messageKeys.contains(messageData["key"].toString())) {
-                                        newMessages.add(messageData)
-                                        messageKeys.add(messageData["key"].toString())
+                                val mutableMessageData = HashMap(messageMap)
+                                if (mutableMessageData["key"] != null) {
+                                    if (!messageKeys.contains(mutableMessageData["key"].toString())) {
+                                        newMessages.add(mutableMessageData)
+                                        messageKeys.add(mutableMessageData["key"].toString())
                                     }
                                 }
                             } catch (e: Exception) {

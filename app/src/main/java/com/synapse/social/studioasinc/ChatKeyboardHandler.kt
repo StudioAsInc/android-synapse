@@ -7,6 +7,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
@@ -21,9 +22,13 @@ class ChatKeyboardHandler(
     private val dbService: IDatabaseService
 ) {
 
-
-
     fun setup() {
+        val emptyListener = object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                // Not implemented
+            }
+        }
+
         messageEt.addTextChangedListener(object : TextWatcher {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val charSeq = s.toString()
@@ -36,7 +41,7 @@ class ChatKeyboardHandler(
                     val typingRef = dbService.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
 
                     if (charSeq.isEmpty()) {
-                        dbService.setValue(typingRef, null) { _, _ -> }
+                        dbService.setValue(typingRef, null, emptyListener)
                         activity._TransitionManager(messageInputOverallContainer, 150.0)
                         toolContainer.visibility = View.VISIBLE
                         btn_sendMessage.visibility = View.GONE
@@ -46,7 +51,7 @@ class ChatKeyboardHandler(
                             ChatConstants.UID_KEY to currentUser.getUid(),
                             "typingMessageStatus" to "true"
                         )
-                        dbService.updateChildren(typingRef, typingSnd) { _, _ -> }
+                        dbService.updateChildren(typingRef, typingSnd, emptyListener)
                         activity._TransitionManager(messageInputOverallContainer, 150.0)
                         toolContainer.visibility = View.GONE
                         btn_sendMessage.visibility = View.VISIBLE

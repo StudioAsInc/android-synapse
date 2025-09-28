@@ -86,12 +86,18 @@ class NewGroupActivity : AppCompatActivity() {
     }
 
     private fun fetchUsers() {
-        database.addListenerForSingleValueEvent(object : IDataListener {
+        dbService.getData(database, object : IDataListener {
             override fun onDataChange(snapshot: IDataSnapshot) {
                 usersList.clear()
-                for (userSnapshot in snapshot.children) {
-                    val user = userSnapshot.getValue(User::class.java)
-                    if (user != null) {
+                if (snapshot.exists()) {
+                    val userMaps = snapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    userMaps?.forEach { userMap ->
+                        val user = User(
+                            userMap["uid"] as? String ?: "",
+                            userMap["username"] as? String ?: "",
+                            userMap["nickname"] as? String ?: "",
+                            userMap["avatar"] as? String ?: ""
+                        )
                         usersList.add(user)
                     }
                 }
@@ -99,7 +105,7 @@ class NewGroupActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: IDatabaseError) {
-                Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@NewGroupActivity, "Failed to load users: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }

@@ -3,38 +3,26 @@ package com.synapse.social.studioasinc.util
 import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.PresenceManager
-import com.synapse.social.studioasinc.SketchwareUtil
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import java.io.File
 
 class ItemUploadHandler(
     private val context: Context,
-    private val auth: FirebaseAuth,
+    private val authService: IAuthenticationService,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val rv_attacmentList: RecyclerView,
     private val onUploadSuccess: (String) -> Unit
 ) {
 
     fun startUpload(position: Int) {
-        if (auth.currentUser != null) {
-            PresenceManager.setActivity(auth.currentUser!!.uid, "Sending an attachment")
+        authService.getCurrentUser()?.let {
+            PresenceManager.setActivity(it.getUid(), "Sending an attachment")
         }
 
         if (position < 0 || position >= attactmentmap.size) {
             Log.e("ItemUploadHandler", "Invalid position for upload: $position, size: ${attactmentmap.size}")
-            return
-        }
-
-        if (!SketchwareUtil.isConnected(context)) {
-            try {
-                val itemMap = attactmentmap[position]
-                itemMap["uploadState"] = "failed"
-                rv_attacmentList.adapter?.notifyItemChanged(position)
-            } catch (e: Exception) {
-                Log.e("ItemUploadHandler", "Error updating upload state: " + e.message)
-            }
             return
         }
 

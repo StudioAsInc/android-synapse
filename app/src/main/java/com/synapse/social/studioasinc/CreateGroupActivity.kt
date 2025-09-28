@@ -14,9 +14,10 @@ import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
-import com.synapse.social.studioasinc.util.AsyncUploadService
-import com.synapse.social.studioasinc.util.StorageUtil
+import com.synapse.social.studioasinc.AsyncUploadService
+import com.synapse.social.studioasinc.StorageUtil
 import com.theartofdev.edmodo.cropper.CropImage
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.theartofdev.edmodo.cropper.CropImageView
 import java.io.File
 
@@ -131,17 +132,19 @@ class CreateGroupActivity : AppCompatActivity() {
         )
 
         val groupRef = dbService.getReference("groups").child(groupId)
-        dbService.setValue(groupRef, group) { _, error ->
-            if (error == null) {
-                Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
-                intent.putExtra("uid", groupId)
-                startActivity(intent)
-                finish()
-            } else {
-                Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
+        dbService.setValue(groupRef, group, object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                if (error == null) {
+                    Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
+                    intent.putExtra("uid", groupId)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
+        })
     }
 
     override fun onSupportNavigateUp(): Boolean {

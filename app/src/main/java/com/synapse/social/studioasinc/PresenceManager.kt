@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 /**
@@ -11,6 +12,11 @@ object PresenceManager {
 
     private val dbService: IDatabaseService = SupabaseDatabaseService()
     private val usersRef = dbService.getReference("skyline/users")
+    private val emptyListener = object : ICompletionListener<Unit> {
+        override fun onComplete(result: Unit?, error: Exception?) {
+            // No-op
+        }
+    }
 
     /**
      * Returns the specific database reference for a user's status.
@@ -25,7 +31,7 @@ object PresenceManager {
     @JvmStatic
     fun goOnline(uid: String) {
         val statusRef = getUserStatusRef(uid)
-        statusRef.setValue("online") { _, _ -> }
+        statusRef.setValue("online", emptyListener)
         /*
          * TODO: onDisconnect functionality needs to be re-implemented using Supabase Realtime and Presence.
          *
@@ -49,7 +55,7 @@ object PresenceManager {
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString()) { _, _ -> }
+        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString(), emptyListener)
     }
 
     /**

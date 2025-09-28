@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc
 
 import android.util.Log
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 object OneSignalManager {
@@ -24,12 +25,14 @@ object OneSignalManager {
             return
         }
 
-        db.child(userUid).child("oneSignalPlayerId").setValue(playerId) { _, error ->
-            if (error == null) {
-                Log.i(TAG, "OneSignal Player ID saved to Database for user: $userUid")
-            } else {
-                Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid", error)
+        db.child(userUid).child("oneSignalPlayerId").setValue(playerId, object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                if (error == null) {
+                    Log.i(TAG, "OneSignal Player ID saved to Database for user: $userUid")
+                } else {
+                    Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid", error)
+                }
             }
-        }
+        })
     }
 }

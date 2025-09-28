@@ -73,9 +73,11 @@ class SupabaseAuthService : IAuthenticationService {
     }
 }
 
-class SupabaseUser(private val user: io.github.jan.supabase.gotrue.user.User) : IUser {
+import io.github.jan.supabase.gotrue.user.UserInfo
+
+class SupabaseUser(private val user: UserInfo) : IUser {
     override fun getUid(): String {
-        return user.uid
+        return user.id
     }
 }
 
