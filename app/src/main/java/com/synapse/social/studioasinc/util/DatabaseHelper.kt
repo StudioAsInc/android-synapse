@@ -5,8 +5,8 @@ import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.ChatUIUpdater
 import java.util.ArrayList
@@ -14,7 +14,8 @@ import java.util.HashMap
 
 class DatabaseHelper(
     private val context: Context,
-    private val firebaseDatabase: FirebaseDatabase,
+    private val dbService: IDatabaseService,
+    private val authService: IAuthenticationService,
     private val chatAdapter: ChatAdapter?,
     private var firstUserName: String,
     private val chatUIUpdater: ChatUIUpdater,
@@ -35,15 +36,16 @@ class DatabaseHelper(
     }
 
     fun getUserReference() {
-        val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val getFirstUserNameRef = firebaseDatabase.getReference("skyline/users").child(currentUserUid)
+        val currentUserUid = authService.getCurrentUser()?.uid ?: return
+        val getFirstUserNameRef = dbService.getReference("skyline/users").child(currentUserUid)
 
-        getFirstUserNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(getFirstUserNameRef, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 try {
                     if (dataSnapshot.exists()) {
-                        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-                        val username = dataSnapshot.child("username").getValue(String::class.java)
+                        val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
+                        val nickname = user["nickname"] as? String
+                        val username = user["username"] as? String
 
                         firstUserName = when {
                             nickname != null && nickname != "null" -> nickname
@@ -61,9 +63,9 @@ class DatabaseHelper(
                 getChatMessagesRef()
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 firstUserName = "Unknown User"
-                Log.e(TAG, "Failed to get user reference", databaseError.toException())
+                Log.e(TAG, "Failed to get user reference", Exception(databaseError.message))
                 getChatMessagesRef()
             }
         })
@@ -72,8 +74,8 @@ class DatabaseHelper(
     fun getChatMessagesRef() {
         val getChatsMessagesQuery = chatMessagesRef.limitToLast(80)
 
-        getChatsMessagesQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(getChatsMessagesQuery, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 try {
                     if (dataSnapshot.exists()) {
                         chatUIUpdater.updateNoChatVisibility(false)
@@ -83,7 +85,7 @@ class DatabaseHelper(
 
                         for (data in dataSnapshot.children) {
                             try {
-                                val messageData = data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+                                val messageData = data.getValue(HashMap::class.java) as HashMap<String, Any>
                                 if (messageData != null && messageData["key"] != null) {
                                     initialMessages.add(messageData)
                                     messageKeys.add(messageData["key"].toString())
@@ -110,8 +112,8 @@ class DatabaseHelper(
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e(TAG, "Initial message load failed", databaseError.toException())
+            override fun onCancelled(databaseError: IDatabaseError) {
+                Log.e(TAG, "Initial message load failed", Exception(databaseError.message))
                 chatUIUpdater.updateNoChatVisibility(true)
             }
         })
@@ -129,15 +131,15 @@ class DatabaseHelper(
             .endBefore(oldestMessageKey)
             .limitToLast(80)
 
-        getChatsMessagesQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(getChatsMessagesQuery, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 chatUIUpdater.hideLoadMoreIndicator()
                 try {
                     if (dataSnapshot.exists()) {
                         val newMessages = ArrayList<HashMap<String, Any>>()
                         for (data in dataSnapshot.children) {
                             try {
-                                val messageData = data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+                                val messageData = data.getValue(HashMap::class.java) as HashMap<String, Any>
                                 if (messageData != null && messageData["key"] != null) {
                                     if (!messageKeys.contains(messageData["key"].toString())) {
                                         newMessages.add(messageData)
@@ -176,10 +178,10 @@ class DatabaseHelper(
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 isLoading = false
                 chatUIUpdater.hideLoadMoreIndicator()
-                Log.e(TAG, "Error loading old messages", databaseError.toException())
+                Log.e(TAG, "Error loading old messages", Exception(databaseError.message))
             }
         })
     }
@@ -202,10 +204,10 @@ class DatabaseHelper(
         for (messageKey in repliedIdsToFetch) {
             repliedMessagesCache[messageKey] = HashMap()
 
-            chatMessagesRef.child(messageKey).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
+            dbService.getData(chatMessagesRef.child(messageKey), object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
-                        val repliedMessage = snapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+                        val repliedMessage = snapshot.getValue(HashMap::class.java) as HashMap<String, Any>
                         if (repliedMessage != null) {
                             repliedMessagesCache[messageKey] = repliedMessage
                             updateMessageInRecyclerView(messageKey)
@@ -213,9 +215,9 @@ class DatabaseHelper(
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     repliedMessagesCache.remove(messageKey)
-                    Log.e(TAG, "Failed to fetch replied message", error.toException())
+                    Log.e(TAG, "Failed to fetch replied message", Exception(error.message))
                 }
             })
         }
@@ -237,42 +239,38 @@ class DatabaseHelper(
         }
     }
 
+    private var realtimeChannel: IRealtimeChannel? = null
+
     fun attachChatListener() {
-        if (chatChildListener != null) {
+        if (realtimeChannel != null) {
             detachChatListener()
         }
 
-        chatChildListener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                handleChildAdded(dataSnapshot)
+        realtimeChannel = dbService.addRealtimeListener(chatMessagesRef, object : IRealtimeListener {
+            override fun onInsert(snapshot: IDataSnapshot) {
+                handleChildAdded(snapshot)
             }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+            override fun onUpdate(snapshot: IDataSnapshot) {
                 handleChildChanged(snapshot)
             }
 
-            override fun onChildRemoved(snapshot: DataSnapshot) {
+            override fun onDelete(snapshot: IDataSnapshot) {
                 handleChildRemoved(snapshot)
             }
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Chat listener cancelled", error.toException())
-            }
-        }
-        chatMessagesRef.addChildEventListener(chatChildListener!!)
+        })
     }
 
     fun detachChatListener() {
-        if (chatChildListener != null) {
-            chatMessagesRef.removeEventListener(chatChildListener!!)
-            chatChildListener = null
+        if (realtimeChannel != null) {
+            dbService.removeRealtimeListener(realtimeChannel!!)
+            realtimeChannel = null
         }
     }
 
-    private fun handleChildAdded(dataSnapshot: DataSnapshot) {
+    private fun handleChildAdded(dataSnapshot: IDataSnapshot) {
         if (dataSnapshot.exists()) {
-            val newMessage = dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+            val newMessage = dataSnapshot.getValue(HashMap::class.java) as HashMap<String, Any>
             if (newMessage != null && newMessage["key"] != null) {
                 val messageKey = newMessage["key"].toString()
                 if (!messageKeys.contains(messageKey)) {
@@ -295,9 +293,9 @@ class DatabaseHelper(
         }
     }
 
-    private fun handleChildChanged(snapshot: DataSnapshot) {
+    private fun handleChildChanged(snapshot: IDataSnapshot) {
         if (snapshot.exists()) {
-            val updatedMessage = snapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+            val updatedMessage = snapshot.getValue(HashMap::class.java) as HashMap<String, Any>
             if (updatedMessage != null && updatedMessage["key"] != null) {
                 val key = updatedMessage["key"].toString()
                 for (i in chatMessagesList.indices) {
@@ -311,7 +309,7 @@ class DatabaseHelper(
         }
     }
 
-    private fun handleChildRemoved(snapshot: DataSnapshot) {
+    private fun handleChildRemoved(snapshot: IDataSnapshot) {
         if (snapshot.exists()) {
             val removedKey = snapshot.key
             if (removedKey != null) {

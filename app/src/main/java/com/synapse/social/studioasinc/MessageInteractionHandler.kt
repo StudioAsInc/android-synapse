@@ -19,8 +19,8 @@ import android.widget.PopupWindow
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 import com.synapse.social.studioasinc.ChatConstants.CHATS_REF
@@ -31,8 +31,8 @@ import com.synapse.social.studioasinc.ChatConstants.UID_KEY
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val listener: ChatInteractionListener,
-    private val auth: FirebaseAuth,
-    private val _firebase: FirebaseDatabase,
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val chatMessagesListRecycler: RecyclerView,
     private val vbr: android.os.Vibrator,
@@ -55,7 +55,7 @@ class MessageInteractionHandler(
         }
 
         val messageData = chatMessagesList[position]
-        val currentUser = auth.currentUser
+        val currentUser = authService.getCurrentUser()
         val senderUid = messageData[UID_KEY]?.toString()
         val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
         val messageText = messageData[MESSAGE_TEXT_KEY]?.toString() ?: ""
@@ -113,15 +113,15 @@ class MessageInteractionHandler(
             editText.setText(messageText)
             dialog.setPositiveButton("Save") { _, _ ->
                 val newText = editText.text.toString()
-                val cu = auth.currentUser
+                val cu = authService.getCurrentUser()
                 val myUid = cu?.uid
                 if (myUid == null) return@setPositiveButton
                 val otherUid = activity.intent.getStringExtra(UID_KEY)
                 val msgKey = messageData[KEY_KEY]?.toString()
                 if (otherUid == null || msgKey == null) return@setPositiveButton
-                val chatID = ChatMessageManager.getChatId(myUid, otherUid)
-                val msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey)
-                msgRef.child(MESSAGE_TEXT_KEY).setValue(newText)
+                val chatID = ChatMessageManager(dbService, authService).getChatId(myUid, otherUid)
+                val msgRef = dbService.getReference(CHATS_REF).child(chatID).child(msgKey)
+                dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText, (result, error) -> {})
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -200,7 +200,7 @@ class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message[UID_KEY].toString() == auth.currentUser?.uid
+        val isMyMessage = message[UID_KEY].toString() == authService.getCurrentUser()?.uid
         return if (isMyMessage) firstUserName else secondUserName
     }
 

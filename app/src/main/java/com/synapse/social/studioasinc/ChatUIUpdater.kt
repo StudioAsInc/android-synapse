@@ -6,8 +6,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 
 class ChatUIUpdater(
     private val activity: ChatActivity,
@@ -21,7 +21,7 @@ class ChatUIUpdater(
     private val mMessageReplyLayout: LinearLayout,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
     private val mMessageReplyLayoutBodyRightMessage: TextView,
-    private val auth: FirebaseAuth
+    private val authService: IAuthenticationService
 ) {
 
     fun updateNoChatVisibility(isEmpty: Boolean) {
@@ -34,13 +34,14 @@ class ChatUIUpdater(
         }
     }
 
-    fun updateUserProfile(dataSnapshot: DataSnapshot) {
-        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-        val username = dataSnapshot.child("username").getValue(String::class.java)
-        val status = dataSnapshot.child("status").getValue(String::class.java)
-        val gender = dataSnapshot.child("gender").getValue(String::class.java)
-        val verified = dataSnapshot.child("verified").getValue(Boolean::class.java)
-        val avatarUrl = dataSnapshot.child("avatar_url").getValue(String::class.java)
+    fun updateUserProfile(dataSnapshot: IDataSnapshot) {
+        val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
+        val nickname = user["nickname"] as? String
+        val username = user["username"] as? String
+        val status = user["status"] as? String
+        val gender = user["gender"] as? String
+        val verified = user["verified"] as? Boolean
+        val avatarUrl = user["avatar_url"] as? String
 
         if (nickname != null && nickname != "null") {
             topProfileLayoutUsername.text = nickname
@@ -69,7 +70,7 @@ class ChatUIUpdater(
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        val isMyMessage = auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
+        val isMyMessage = authService.getCurrentUser()!!.uid == messageData[ChatConstants.UID_KEY].toString()
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName
         mMessageReplyLayoutBodyRightMessage.text = messageData[ChatConstants.MESSAGE_TEXT_KEY].toString()
         mMessageReplyLayout.visibility = View.VISIBLE

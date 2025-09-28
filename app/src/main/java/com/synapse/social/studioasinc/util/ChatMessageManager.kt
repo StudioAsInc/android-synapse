@@ -1,15 +1,13 @@
 package com.synapse.social.studioasinc.util
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
-import java.util.Calendar
-import java.util.HashMap
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
-object ChatMessageManager {
+class ChatMessageManager(
+    private val dbService: IDatabaseService,
+    private val authService: IAuthenticationService
+) {
 
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
 
     private const val SKYLINE_REF = "skyline"
     private const val CHATS_REF = "chats"
@@ -43,8 +41,8 @@ object ChatMessageManager {
         isGroup: Boolean
     ) {
         if (isGroup) {
-            firebaseDatabase.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey)
-                .setValue(messageMap)
+            dbService.setValue(dbService.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey),
+                messageMap, (result, error) -> {})
         } else {
             val chatId = getChatId(senderUid, recipientUid)
             val fanOutObject = hashMapOf<String, Any?>(
@@ -52,32 +50,38 @@ object ChatMessageManager {
                 "/$USER_CHATS_REF/$senderUid/$chatId" to true,
                 "/$USER_CHATS_REF/$recipientUid/$chatId" to true
             )
-            firebaseDatabase.reference.updateChildren(fanOutObject)
+            dbService.updateChildren(dbService.getReference(""), fanOutObject, (result, error) -> {})
         }
     }
 
     fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = auth.currentUser?.uid ?: return
+        val senderUid = authService.getCurrentUser()?.uid ?: return
 
         if (isGroup) {
-            val groupRef = firebaseDatabase.getReference(SKYLINE_REF).child("groups").child(recipientUid)
-            groupRef.child("members").get().addOnSuccessListener { dataSnapshot ->
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
-                            val inboxUpdate = createInboxUpdate(
-                                chatId = recipientUid,
-                                conversationPartnerUid = recipientUid,
-                                lastMessage = lastMessage,
-                                isGroup = true
-                            )
-                            firebaseDatabase.getReference(INBOX_REF).child(memberUid).child(recipientUid)
-                                .setValue(inboxUpdate)
+            val groupRef = dbService.getReference(SKYLINE_REF).child("groups").child(recipientUid)
+            dbService.getData(groupRef.child("members"), object : IDataListener {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        for (memberSnapshot in dataSnapshot.children) {
+                            val memberUid = memberSnapshot.key
+                            if (memberUid != null) {
+                                val inboxUpdate = createInboxUpdate(
+                                    chatId = recipientUid,
+                                    conversationPartnerUid = recipientUid,
+                                    lastMessage = lastMessage,
+                                    isGroup = true
+                                )
+                                dbService.setValue(dbService.getReference(INBOX_REF).child(memberUid).child(recipientUid),
+                                    inboxUpdate, (result, error) -> {})
+                            }
                         }
                     }
                 }
-            }
+
+                override fun onCancelled(databaseError: IDatabaseError) {
+                    // Handle error
+                }
+            })
         } else {
             // Update inbox for the current user
             val senderInboxUpdate = createInboxUpdate(
@@ -86,8 +90,8 @@ object ChatMessageManager {
                 lastMessage = lastMessage,
                 isGroup = false
             )
-            firebaseDatabase.getReference(INBOX_REF).child(senderUid).child(recipientUid)
-                .setValue(senderInboxUpdate)
+            dbService.setValue(dbService.getReference(INBOX_REF).child(senderUid).child(recipientUid),
+                senderInboxUpdate, (result, error) -> {})
 
             // Update inbox for the other user
             val recipientInboxUpdate = createInboxUpdate(
@@ -96,8 +100,8 @@ object ChatMessageManager {
                 lastMessage = lastMessage,
                 isGroup = false
             )
-            firebaseDatabase.getReference(INBOX_REF).child(recipientUid).child(senderUid)
-                .setValue(recipientInboxUpdate)
+            dbService.setValue(dbService.getReference(INBOX_REF).child(recipientUid).child(senderUid),
+                recipientInboxUpdate, (result, error) -> {})
         }
     }
 
@@ -107,7 +111,7 @@ object ChatMessageManager {
         lastMessage: String,
         isGroup: Boolean
     ): HashMap<String, Any> {
-        val senderUid = auth.currentUser?.uid ?: ""
+        val senderUid = authService.getCurrentUser()?.uid ?: ""
         return hashMapOf(
             CHAT_ID_KEY to chatId,
             UID_KEY to conversationPartnerUid,

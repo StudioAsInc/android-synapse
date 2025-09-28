@@ -6,8 +6,8 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class ChatKeyboardHandler(
@@ -17,33 +17,34 @@ class ChatKeyboardHandler(
     private val btn_sendMessage: MaterialButton,
     private val messageInputOutlinedRound: LinearLayout,
     private val messageInputOverallContainer: LinearLayout,
-    private val auth: FirebaseAuth
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService
 ) {
 
-    private val firebase = FirebaseDatabase.getInstance()
+
 
     fun setup() {
         messageEt.addTextChangedListener(object : TextWatcher {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val charSeq = s.toString()
-                val chatID = ChatMessageManager.getChatId(
-                    auth.currentUser!!.uid,
+                val chatID = ChatMessageManager(dbService, authService).getChatId(
+                    authService.getCurrentUser()!!.uid,
                     activity.intent.getStringExtra(ChatConstants.UID_KEY)
                 )
-                val typingRef = firebase.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
+                val typingRef = dbService.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
 
                 if (charSeq.isEmpty()) {
-                    typingRef.removeValue()
+                    dbService.setValue(typingRef, null, (result, error) -> {})
                     activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.VISIBLE
                     btn_sendMessage.visibility = View.GONE
                     messageInputOutlinedRound.orientation = LinearLayout.HORIZONTAL
                 } else {
                     val typingSnd = hashMapOf<String, Any>(
-                        ChatConstants.UID_KEY to auth.currentUser!!.uid,
+                        ChatConstants.UID_KEY to authService.getCurrentUser()!!.uid,
                         "typingMessageStatus" to "true"
                     )
-                    typingRef.updateChildren(typingSnd)
+                    dbService.updateChildren(typingRef, typingSnd, (result, error) -> {})
                     activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.GONE
                     btn_sendMessage.visibility = View.VISIBLE

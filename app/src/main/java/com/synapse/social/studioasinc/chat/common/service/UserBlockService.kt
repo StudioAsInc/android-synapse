@@ -3,32 +3,34 @@ package com.synapse.social.studioasinc.chat.common.service
 import android.app.Activity
 import android.content.Intent
 import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
-class UserBlockService(private val activity: Activity) {
+class UserBlockService(
+    private val activity: Activity,
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService
+) {
 
-    private val blocklistRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("skyline/blocklist")
-    private val myUid: String? = FirebaseAuth.getInstance().currentUser?.uid
+
 
     fun blockUser(uid: String) {
-        if (myUid == null) return
+        val myUid = authService.getCurrentUser()?.uid ?: return
         val blockData = mapOf(uid to "true")
-        blocklistRef.child(myUid).updateChildren(blockData)
+        dbService.updateChildren(dbService.getReference("skyline/blocklist").child(myUid), blockData) { _, _ -> }
     }
 
     fun unblockUser(uid: String) {
-        if (myUid == null) return
-        blocklistRef.child(myUid).child(uid).removeValue()
-            .addOnSuccessListener {
+        val myUid = authService.getCurrentUser()?.uid ?: return
+        dbService.setValue(dbService.getReference("skyline/blocklist").child(myUid).child(uid), null) { _, error ->
+            if (error == null) {
                 val intent = activity.intent
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                 activity.finish()
                 activity.startActivity(intent)
+            } else {
+                Log.e("UserBlockService", "Failed to unblock user", error)
             }
-            .addOnFailureListener { e ->
-                Log.e("UserBlockService", "Failed to unblock user", e)
-            }
+        }
     }
 }

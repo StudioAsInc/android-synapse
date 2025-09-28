@@ -8,37 +8,13 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import android.view.View
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
-import com.google.firebase.database.ValueEventListener
-import com.synapse.social.studioasinc.ChatAdapter
-import com.synapse.social.studioasinc.NotificationHelper
-import com.synapse.social.studioasinc.PresenceManager
-import com.synapse.social.studioasinc.util.ChatMessageManager
-import java.util.ArrayList
-import java.util.HashMap
-import android.widget.RelativeLayout
-import com.synapse.social.studioasinc.ChatConstants.SKYLINE_REF
-import com.synapse.social.studioasinc.ChatConstants.TYPE_KEY
-import com.synapse.social.studioasinc.ChatConstants.ATTACHMENT_MESSAGE_TYPE
-import com.synapse.social.studioasinc.ChatConstants.ATTACHMENTS_KEY
-import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TYPE
-import com.synapse.social.studioasinc.ChatConstants.UID_KEY
-import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
-import com.synapse.social.studioasinc.ChatConstants.MESSAGE_STATE_KEY
-import com.synapse.social.studioasinc.ChatConstants.REPLIED_MESSAGE_ID_KEY
-import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
-import com.synapse.social.studioasinc.ChatConstants.PUSH_DATE_KEY
-import com.synapse.social.studioasinc.ChatConstants.USERS_REF
-import com.synapse.social.studioasinc.ChatConstants.VOICE_MESSAGE_TYPE
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 class MessageSendingHandler(
     private val context: Context,
-    private val auth: FirebaseAuth,
-    private val _firebase: FirebaseDatabase,
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val chatAdapter: ChatAdapter,
@@ -51,7 +27,7 @@ class MessageSendingHandler(
     private val isGroup: Boolean
 ) {
 
-    private val main = _firebase.getReference(SKYLINE_REF)
+    private val main = dbService.getReference(SKYLINE_REF)
 
     fun setFirstUserName(name: String) {
         this.firstUserName = name
@@ -59,7 +35,7 @@ class MessageSendingHandler(
 
     fun sendButtonAction(messageEt: EditText, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
         val messageText = messageEt.text.toString().trim()
-        val senderUid = auth.currentUser?.uid ?: return
+        val senderUid = authService.currentUser?.uid ?: return
 
         proceedWithMessageSending(messageText, senderUid, recipientUid, replyMessageID, messageEt, mMessageReplyLayout)
     }
@@ -117,7 +93,7 @@ class MessageSendingHandler(
         messageToSend[MESSAGE_STATE_KEY] = "sended"
         if (replyMessageID != "null") messageToSend[REPLIED_MESSAGE_ID_KEY] = replyMessageID
         messageToSend[KEY_KEY] = uniqueMessageKey
-        messageToSend[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
+        messageToSend[PUSH_DATE_KEY] = System.currentTimeMillis()
 
         ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
@@ -145,24 +121,28 @@ class MessageSendingHandler(
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
 
-        _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(dbService.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid),
+            object : IDataListener {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
                     var recipientOneSignalPlayerId = "missing_id"
-                    if (dataSnapshot.exists() && dataSnapshot.hasChild("oneSignalPlayerId")) {
-                        val fetchedId = dataSnapshot.child("oneSignalPlayerId").getValue(String::class.java)
-                        if (fetchedId != null && !fetchedId.isEmpty()) {
-                            recipientOneSignalPlayerId = fetchedId
+                    if (dataSnapshot.exists()) {
+                        val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
+                        if (user.containsKey("oneSignalPlayerId")) {
+                            val fetchedId = user["oneSignalPlayerId"] as String
+                            if (fetchedId.isNotEmpty()) {
+                                recipientOneSignalPlayerId = fetchedId
+                            }
                         }
                     }
                     NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId)
                 }
 
-                override fun onCancelled(databaseError: DatabaseError) {
-                    Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", databaseError.toException())
+                override fun onCancelled(databaseError: IDatabaseError) {
+                    Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", Exception(databaseError.message))
                     NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, "missing_id", notificationMessage, chatId)
                 }
             })
+
     }
 
     fun sendVoiceMessage(audioUrl: String, duration: Long, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
@@ -177,7 +157,7 @@ class MessageSendingHandler(
         chatSendMap[MESSAGE_STATE_KEY] = "sended"
         if (replyMessageID != "null") chatSendMap[REPLIED_MESSAGE_ID_KEY] = replyMessageID
         chatSendMap[KEY_KEY] = uniqueMessageKey
-        chatSendMap[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
+        chatSendMap[PUSH_DATE_KEY] = System.currentTimeMillis()
 
         ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
