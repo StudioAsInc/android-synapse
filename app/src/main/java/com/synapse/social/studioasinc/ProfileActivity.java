@@ -171,24 +171,6 @@ public class ProfileActivity extends AppCompatActivity {
 	private ChildEventListener _main_child_listener;
 	private Vibrator vbr;
 	private Calendar cc = Calendar.getInstance();
-
-class c {
-	Context co;
-	public <T extends Activity> c(T a) {
-		co = a;
-	}
-	public <T extends Fragment> c(T a) {
-		co = a.getActivity();
-	}
-	public <T extends DialogFragment> c(T a) {
-		co = a.getActivity();
-	}
-
-	public Context getContext() {
-		return co;
-	}
-
-}
 	private RequestNetwork req;
 	private RequestNetwork.RequestListener _req_request_listener;
 	private Calendar JoinDateCC = Calendar.getInstance();
@@ -888,31 +870,6 @@ if ( || ( || )) {
 	}
 
 
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-
-		boolean _default = false;
-
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		} else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		} else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-
-	}
 
 
 	public void _getUserCountReference() {

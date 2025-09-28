@@ -85,33 +85,19 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 
 public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener {
 
-	private Handler recordHandler = new Handler();
-	private Runnable recordRunnable;
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
-	private HashMap<String, Object> ChatSendMap = new HashMap<>();
-	private HashMap<String, Object> ChatInboxSend = new HashMap<>();
-	private double recordMs = 0;
-	private HashMap<String, Object> ChatInboxSend2 = new HashMap<>();
 	private String SecondUserAvatar = "";
-	private HashMap<String, Object> typingSnd = new HashMap<>();
 	private String ReplyMessageID = "";
 	private String SecondUserName = "";
 	private String FirstUserName = "";
 	private String oldestMessageKey = null;
-	private static final int CHAT_PAGE_SIZE = 80;
 	private boolean is_group = false;
-	private String object_clicked = "";
-	private String handle = "";
-	private HashMap<String, Object> block = new HashMap<>();
-	private double block_switch = 0;
 	private String path = "";
 	private String AndroidDevelopersBlogURL = "";
-	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
 	private boolean isLoading = false;
-	private ChildEventListener _chat_child_listener;
 	private DatabaseReference chatMessagesRef;
 	private ValueEventListener _userStatusListener;
 	private DatabaseReference userRef;
@@ -122,37 +108,25 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
 	public ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
-	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
 	private ImageView ivBGimage;
-	private LinearLayout body;
-	private LinearLayout appBar;
-	private LinearLayout middle;
 	public RelativeLayout attachmentLayoutListHolder;
 	private LinearLayout mMessageReplyLayout;
 	private LinearLayout message_input_overall_container;
 	private TextView blocked_txt;
 	private ImageView back;
 	private LinearLayout topProfileLayout;
-	private LinearLayout topProfileLayoutSpace;
 	private ImageView ic_video_call;
 	private ImageView ic_audio_call;
 	private ImageView ic_more;
-	private CardView topProfileCard;
-	private LinearLayout topProfileLayoutRight;
 	private ImageView topProfileLayoutProfileImage;
-	private LinearLayout topProfileLayoutRightTop;
 	private TextView topProfileLayoutStatus;
 	private TextView topProfileLayoutUsername;
 	private ImageView topProfileLayoutGenderBadge;
 	private ImageView topProfileLayoutVerifiedBadge;
 	private TextView noChatText;
 	private RecyclerView ChatMessagesListRecycler;
-	private CardView card_attactmentListRVHolder;
 	public RecyclerView rv_attacmentList;
 	private LinearLayout mMessageReplyLayoutBody;
-	private LinearLayout mMessageReplyLayoutSpace;
-	private ImageView mMessageReplyLayoutBodyIc;
-	private LinearLayout mMessageReplyLayoutBodyRight;
 	private ImageView mMessageReplyLayoutBodyCancel;
 	private TextView mMessageReplyLayoutBodyRightUsername;
 	private TextView mMessageReplyLayoutBodyRightMessage;
@@ -162,21 +136,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private LinearLayout toolContainer;
 	private ImageView btn_voice_message;
 	private ImageView close_attachments_btn;
-	private View divider_mic_camera;
 	private ImageView galleryBtn;
 
-	private Intent intent = new Intent();
-	private DatabaseReference main = _firebase.getReference(SKYLINE_REF);
 	private FirebaseAuth auth;
-	private TimerTask loadTimer;
-	private Calendar cc = Calendar.getInstance();
 	private Vibrator vbr;
 	private DatabaseReference blocklist = _firebase.getReference(SKYLINE_REF).child(BLOCKLIST_REF);
 	private ChildEventListener _blocklist_child_listener;
-	private SharedPreferences blocked;
-	private SharedPreferences theme;
 	private Intent i = new Intent();
-	private SharedPreferences appSettings;
 	private Gemini gemini;
     private AiFeatureHandler aiFeatureHandler;
     private ActivityResultHandler activityResultHandler;
@@ -222,37 +188,25 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		relativelayout1 = findViewById(R.id.relativelayout1);
 		ivBGimage = findViewById(R.id.ivBGimage);
-		body = findViewById(R.id.body);
-		appBar = findViewById(R.id.appBar);
-		middle = findViewById(R.id.middle);
 		attachmentLayoutListHolder = findViewById(R.id.attachmentLayoutListHolder);
 		mMessageReplyLayout = findViewById(R.id.mMessageReplyLayout);
 		message_input_overall_container = findViewById(R.id.message_input_overall_container);
 		blocked_txt = findViewById(R.id.blocked_txt);
 		back = findViewById(R.id.back);
 		topProfileLayout = findViewById(R.id.topProfileLayout);
-		topProfileLayoutSpace = findViewById(R.id.topProfileLayoutSpace);
 		ic_video_call = findViewById(R.id.ic_video_call);
 		ic_audio_call = findViewById(R.id.ic_audio_call);
 		ic_more = findViewById(R.id.ic_more);
-		topProfileCard = findViewById(R.id.topProfileCard);
-		topProfileLayoutRight = findViewById(R.id.topProfileLayoutRight);
 		topProfileLayoutProfileImage = findViewById(R.id.topProfileLayoutProfileImage);
-		topProfileLayoutRightTop = findViewById(R.id.topProfileLayoutRightTop);
 		topProfileLayoutStatus = findViewById(R.id.topProfileLayoutStatus);
 		topProfileLayoutUsername = findViewById(R.id.topProfileLayoutUsername);
 		topProfileLayoutGenderBadge = findViewById(R.id.topProfileLayoutGenderBadge);
 		topProfileLayoutVerifiedBadge = findViewById(R.id.topProfileLayoutVerifiedBadge);
 		noChatText = findViewById(R.id.noChatText);
 		ChatMessagesListRecycler = findViewById(R.id.ChatMessagesListRecycler);
-		card_attactmentListRVHolder = findViewById(R.id.card_attactmentListRVHolder);
 		rv_attacmentList = findViewById(R.id.rv_attacmentList);
 		mMessageReplyLayoutBody = findViewById(R.id.mMessageReplyLayoutBody);
-		mMessageReplyLayoutSpace = findViewById(R.id.mMessageReplyLayoutSpace);
-		mMessageReplyLayoutBodyIc = findViewById(R.id.mMessageReplyLayoutBodyIc);
-		mMessageReplyLayoutBodyRight = findViewById(R.id.mMessageReplyLayoutBodyRight);
 		mMessageReplyLayoutBodyCancel = findViewById(R.id.mMessageReplyLayoutBodyCancel);
 		mMessageReplyLayoutBodyRightUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername);
 		mMessageReplyLayoutBodyRightMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage);
@@ -261,14 +215,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		message_et = findViewById(R.id.message_et);
 		toolContainer = findViewById(R.id.toolContainer);
 		btn_voice_message = findViewById(R.id.btn_voice_message);
-		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
 		auth = FirebaseAuth.getInstance();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		blocked = getSharedPreferences("block", Activity.MODE_PRIVATE);
-		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
-		appSettings = getSharedPreferences("appSettings", Activity.MODE_PRIVATE);
 
 		back.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -326,23 +276,11 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 
 			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
 			}
 
 			@Override
 			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
 			}
 		};
 	}
@@ -689,54 +627,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
 		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
-	}
-
-
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-
-		boolean _default = false;
-
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-
-
-	}
-
-	class c {
-		Context co;
-		public <T extends Activity> c(T a) {
-			co = a;
-		}
-		public <T extends Fragment> c(T a) {
-			co = a.getActivity();
-		}
-		public <T extends DialogFragment> c(T a) {
-			co = a.getActivity();
-		}
-
-		public Context getContext() {
-			return co;
-		}
-
 	}
 
 

@@ -67,15 +67,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
+import com.synapse.social.studioasinc.util.MarginUtils;
 
 public class SelectRegionActivity extends AppCompatActivity {
-	
+
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
 	private String CurrentRegionCode = "";
-	
+
 	private ArrayList<HashMap<String, Object>> regionsList = new ArrayList<>();
-	
+
 	private LinearLayout body;
 	private LinearLayout top;
 	private RecyclerView mRegionList;
@@ -84,7 +85,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 	private TextView mTitle;
 	private ImageView spc;
 	private ProgressBar mLoadingBar;
-	
+
 	private Intent intent = new Intent();
 	private FirebaseAuth auth;
 	private OnCompleteListener<AuthResult> _auth_create_user_listener;
@@ -103,7 +104,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 	private RequestNetwork.RequestListener _getRegionsRef_request_listener;
 	private Vibrator vbr;
 	private SharedPreferences appSavedData;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
@@ -112,7 +113,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		body = findViewById(R.id.body);
 		top = findViewById(R.id.top);
@@ -126,53 +127,53 @@ public class SelectRegionActivity extends AppCompatActivity {
 		getRegionsRef = new RequestNetwork(this);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		appSavedData = getSharedPreferences("data", Activity.MODE_PRIVATE);
-		
+
 		mBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		_main_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		main.addChildEventListener(_main_child_listener);
-		
+
 		_getRegionsRef_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -185,105 +186,105 @@ public class SelectRegionActivity extends AppCompatActivity {
 				mRegionList.setVisibility(View.VISIBLE);
 				mLoadingBody.setVisibility(View.GONE);
 			}
-			
+
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
 				final String _message = _param2;
-				
+
 			}
 		};
-		
+
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-				
+
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		_stateColor(0xFFFFFFFF, 0xFFF5F5F5);
 		_viewGraphics(mBack, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
@@ -293,7 +294,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 		mRegionList.setLayoutManager(new LinearLayoutManager(this));
 		_getRegionsStart();
 	}
-	
+
 	@Override
 	public void onBackPressed() {
 		finish();
@@ -303,13 +304,13 @@ public class SelectRegionActivity extends AppCompatActivity {
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-	
-	
+
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -319,60 +320,12 @@ public class SelectRegionActivity extends AppCompatActivity {
 		_view.setBackground(RE);
 	}
 	
-	
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-		
-		boolean _default = false;
-		
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		
-		
-	}
-	
-	class c {
-		Context co;
-		public <T extends Activity> c(T a) {
-			co = a;
-		}
-		public <T extends Fragment> c(T a) {
-			co = a.getActivity();
-		}
-		public <T extends DialogFragment> c(T a) {
-			co = a.getActivity();
-		}
-		
-		public Context getContext() {
-			return co;
-		}
-		
-	}
-	
-	
+
 	{
 		
 	}
-	
-	
+
+
 	public void _getRegionsStart() {
 		if (getResources().getString(R.string.lang).equals("en")) {
 			getRegionsRef.startRequestNetwork(RequestNetworkController.GET, "https://unepix.github.io/regions/countries-en.json", "regions", _getRegionsRef_request_listener);
@@ -406,15 +359,15 @@ public class SelectRegionActivity extends AppCompatActivity {
 			}
 		});
 	}
-	
+
 	public class MRegionListAdapter extends RecyclerView.Adapter<MRegionListAdapter.ViewHolder> {
-		
+
 		ArrayList<HashMap<String, Object>> _data;
-		
+
 		public MRegionListAdapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-		
+
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -423,24 +376,24 @@ public class SelectRegionActivity extends AppCompatActivity {
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
 		}
-		
+
 		@Override
 		public void onBindViewHolder(ViewHolder _holder, final int _position) {
 			View _view = _holder.itemView;
-			
+
 			final LinearLayout body = _view.findViewById(R.id.body);
 			final androidx.cardview.widget.CardView flagCard = _view.findViewById(R.id.flagCard);
 			final TextView name = _view.findViewById(R.id.name);
 			final ImageView checkbox = _view.findViewById(R.id.checkbox);
 			final ImageView flag = _view.findViewById(R.id.flag);
-			
+
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_view.setLayoutParams(_lp);
 			_viewGraphics(body, 0xFFFFFFFF, 0xFFEEEEEE, 28, 0, Color.TRANSPARENT);
 			if (_position == 0) {
-				_setMargin(body, 14, 14, 14, 14);
+				MarginUtils.setMargin(body, 14, 14, 14, 14);
 			} else {
-				_setMargin(body, 14, 14, 0, 14);
+				MarginUtils.setMargin(body, 14, 14, 0, 14);
 			}
 			Glide.with(getApplicationContext()).load(Uri.parse("https://flagcdn.com/w640/".concat(_data.get((int)_position).get("code").toString().concat(".png")))).into(flag);
 			name.setText(_data.get((int)_position).get("name").toString());
@@ -459,16 +412,16 @@ public class SelectRegionActivity extends AppCompatActivity {
 				}
 			});
 		}
-		
+
 		@Override
 		public int getItemCount() {
 			return _data.size();
 		}
-		
+
 		public class ViewHolder extends RecyclerView.ViewHolder {
 			public ViewHolder(View v) {
 				super(v);
 			}
 		}
 	}
-}
+}

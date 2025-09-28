@@ -67,6 +67,7 @@ import java.util.regex.*;
 import org.json.*;
 import androidx.core.widget.NestedScrollView;
 import com.google.firebase.database.Query;
+import com.synapse.social.studioasinc.util.MarginUtils;
 
 
 import androidx.annotation.NonNull;
@@ -551,52 +552,6 @@ public class SearchActivity extends AppCompatActivity {
 	}
 
 
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-
-		boolean _default = false;
-
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-		else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-
-
-	}
-
-	class c {
-		Context co;
-		public <T extends Activity> c(T a) {
-			co = a;
-		}
-		public <T extends Fragment> c(T a) {
-			co = a.getActivity();
-		}
-		public <T extends DialogFragment> c(T a) {
-			co = a.getActivity();
-		}
-
-		public Context getContext() {
-			return co;
-		}
-
-	}
 
 
 	{
@@ -764,9 +719,9 @@ public class SearchActivity extends AppCompatActivity {
 					userStatusCircleBG.setVisibility(View.GONE);
 				}
 				if (_position == 0) {
-					_setMargin(body, 18, 18, 10, 10);
+					MarginUtils.setMargin(body, 18, 18, 10, 10);
 				} else {
-					_setMargin(body, 18, 18, 0, 10);
+					MarginUtils.setMargin(body, 18, 18, 0, 10);
 				}
 				body.setOnClickListener(new View.OnClickListener() {
 					@Override
