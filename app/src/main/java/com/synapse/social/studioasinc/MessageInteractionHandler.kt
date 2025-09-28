@@ -121,7 +121,7 @@ class MessageInteractionHandler(
                 if (otherUid == null || msgKey == null) return@setPositiveButton
                 val chatID = ChatMessageManager(dbService, authService).getChatId(myUid, otherUid)
                 val msgRef = dbService.getReference(CHATS_REF).child(chatID).child(msgKey)
-                dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText, (result, error) -> {})
+                dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText) { _, _ -> }
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()

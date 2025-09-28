@@ -34,7 +34,7 @@ class ChatKeyboardHandler(
                 val typingRef = dbService.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
 
                 if (charSeq.isEmpty()) {
-                    dbService.setValue(typingRef, null, (result, error) -> {})
+                    dbService.setValue(typingRef, null) { _, _ -> }
                     activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.VISIBLE
                     btn_sendMessage.visibility = View.GONE
@@ -44,7 +44,7 @@ class ChatKeyboardHandler(
                         ChatConstants.UID_KEY to authService.getCurrentUser()!!.uid,
                         "typingMessageStatus" to "true"
                     )
-                    dbService.updateChildren(typingRef, typingSnd, (result, error) -> {})
+                    dbService.updateChildren(typingRef, typingSnd) { _, _ -> }
                     activity._TransitionManager(messageInputOverallContainer, 150.0)
                     toolContainer.visibility = View.GONE
                     btn_sendMessage.visibility = View.VISIBLE

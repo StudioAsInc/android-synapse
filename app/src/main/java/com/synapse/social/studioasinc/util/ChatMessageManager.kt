@@ -42,7 +42,7 @@ class ChatMessageManager(
     ) {
         if (isGroup) {
             dbService.setValue(dbService.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey),
-                messageMap, (result, error) -> {})
+                messageMap) { _, _ -> }
         } else {
             val chatId = getChatId(senderUid, recipientUid)
             val fanOutObject = hashMapOf<String, Any?>(
@@ -50,7 +50,7 @@ class ChatMessageManager(
                 "/$USER_CHATS_REF/$senderUid/$chatId" to true,
                 "/$USER_CHATS_REF/$recipientUid/$chatId" to true
             )
-            dbService.updateChildren(dbService.getReference(""), fanOutObject, (result, error) -> {})
+            dbService.updateChildren(dbService.getReference(""), fanOutObject) { _, _ -> }
         }
     }
 
@@ -72,7 +72,7 @@ class ChatMessageManager(
                                     isGroup = true
                                 )
                                 dbService.setValue(dbService.getReference(INBOX_REF).child(memberUid).child(recipientUid),
-                                    inboxUpdate, (result, error) -> {})
+                                    inboxUpdate) { _, _ -> }
                             }
                         }
                     }
@@ -91,7 +91,7 @@ class ChatMessageManager(
                 isGroup = false
             )
             dbService.setValue(dbService.getReference(INBOX_REF).child(senderUid).child(recipientUid),
-                senderInboxUpdate, (result, error) -> {})
+                senderInboxUpdate) { _, _ -> }
 
             // Update inbox for the other user
             val recipientInboxUpdate = createInboxUpdate(
@@ -101,7 +101,7 @@ class ChatMessageManager(
                 isGroup = false
             )
             dbService.setValue(dbService.getReference(INBOX_REF).child(recipientUid).child(senderUid),
-                recipientInboxUpdate, (result, error) -> {})
+                recipientInboxUpdate) { _, _ -> }
         }
     }
 
