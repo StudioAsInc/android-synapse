@@ -84,8 +84,6 @@ synapse-android/
 - **`SelectRegionActivity.java`** - Region selection
 - **`ChatsettingsActivity.java`** - Chat-specific settings
 - **`DisappearingMessageSettingsActivity.java`** - Message expiration settings
-- **`SettingsActivity.java`** - `[REMOVED]`
-- **`BgWallpapersActivity.java`** - `[REMOVED]`
 
 ### Supporting Components
 
@@ -95,7 +93,6 @@ synapse-android/
 - **`ContentDisplayBottomSheetDialogFragment.java`** - Content summary display
 
 #### Utility Classes
-- **`FileUtil.java`** - `[REMOVED]` (Functionality likely moved to `MediaStorageUtils.java` or other utils)
 - **`StorageUtil.java`** - Exists
 - **`SketchwareUtil.java`** - Exists
 - **`RequestNetwork.java`** - Exists
@@ -195,10 +192,6 @@ com.synapse.social.studioasinc/
 - `loading.json` - Loading indicator
 - `typing.json` - Typing indicator
 - `update_animation.json` - Update notification animation
-
-### Web Integration
-- `firebase-presence.js` - `[REMOVED]`
-- `presence-integration-example.html` - `[REMOVED]`
 
 ## CI/CD Pipeline
 
@@ -402,11 +395,7 @@ com.synapse.social.studioasinc/
 - **`FragInboxStoriesActivity.java`**: Renamed to `fragments/InboxStoriesFragment.java`.
 - **`CreateImagePostActivity.java`**: Replaced by `CreatePostActivity.kt`. The new file is in Kotlin and likely handles more post types.
 - **`CreateImagePostNextStepActivity.java`**: Functionality appears to be merged into `CreatePostActivity.kt`.
-- **`SettingsActivity.java`**: Removed. Its functionality may have been integrated into other activities like `ProfileActivity.java` or `HomeActivity.java`.
-- **`BgWallpapersActivity.java`**: Removed. This feature might be deprecated or moved.
-- **`FileUtil.java`**: Removed. File operations are likely now handled by more specific utilities like `MediaStorageUtils.java` or other classes in the `util` package.
 - **`.github/` directory**: This directory was mentioned but is not present in the repository. CI/CD configurations may have been removed or are stored elsewhere.
-- **`firebase-presence.js` & `presence-integration-example.html`**: Removed. Web-based presence examples are no longer in the repository.
 
 ---
 
