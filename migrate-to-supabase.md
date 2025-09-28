@@ -15,9 +15,15 @@ This document tracks the progress of migrating the Synapse Android application f
     - [x] Created `IUser`, `IAuthResult`, `IDataSnapshot`, `IDatabaseError`, `IQuery`, `IDatabaseReference`, `IRealtimeListener`, and `IRealtimeChannel` interfaces to support the abstraction layer.
 - [x] **AuthActivity:**
     - [x] Refactored `AuthActivity` to use `IAuthenticationService` and `IDatabaseService` instead of directly using Firebase.
+    - [x] Replaced `FirebaseAuth.getInstance()` calls with `authService.getCurrentUser()`.
+    - [x] Replaced `FirebaseApp.initializeApp()` call with `initializeSupabase()`.
+    - [x] Replaced `fauth.createUserWithEmailAndPassword()` with `supabase.getAuth().signUpWithEmail()`.
+    - [x] Replaced `fauth.signInWithEmailAndPassword()` with `supabase.getAuth().signInWithEmail()`.
+    - [x] Replaced `FirebaseDatabase.getInstance().getReference()` calls with `dbService.getReference()`.
 - [x] **ChatMessageManager:**
-    - [x] Refactored `ChatMessageManager` to a class that accepts `IDatabaseService` and `IAuthenticationService` as dependencies.
-    - [x] Replaced all Firebase calls with the corresponding service methods.
+    - [x] Refactored `ChatMessageManager` from an object to a class that accepts `IDatabaseService` and `IAuthenticationService` as dependencies.
+    - [x] Replaced all `FirebaseDatabase` calls with `dbService` methods.
+    - [x] Replaced all `FirebaseAuth` calls with `authService` methods.
 - [x] **DatabaseHelper:**
     - [x] Refactored `DatabaseHelper` to use `IDatabaseService` and `IAuthenticationService`.
     - [x] Replaced all `FirebaseDatabase` and `FirebaseAuth` calls with the corresponding service methods.
@@ -46,6 +52,7 @@ This document tracks the progress of migrating the Synapse Android application f
 - [x] **ChatActivity:**
     - [x] Replaced all `ChatMessageManager.INSTANCE` calls with an instance of the `ChatMessageManager` class.
     - [x] Removed all direct Firebase dependencies.
+    - [x] Updated instantiations of `DatabaseHelper`, `MessageSendingHandler`, `MessageInteractionHandler`, `AiFeatureHandler`, `AttachmentHandler`, `ChatKeyboardHandler`, `ChatUIUpdater`, and `UserBlockService` to pass the new service interfaces.
 
 ## TODO
 
