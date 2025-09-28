@@ -5,14 +5,18 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.GlobalScope
+import io.github.jan.supabase.postgrest.query.PostgrestQuery
+import io.github.jan.supabase.realtime.PostgresChange
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 class SupabaseDatabaseService : IDatabaseService {
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val supabase: SupabaseClient = createSupabaseClient(
         supabaseUrl = "YOUR_SUPABASE_URL",
         supabaseKey = "YOUR_SUPABASE_KEY"
@@ -27,36 +31,56 @@ class SupabaseDatabaseService : IDatabaseService {
 
     override fun getData(query: IQuery, listener: IDataListener) {
         val supabaseQuery = query as SupabaseQuery
-        GlobalScope.launch {
+        serviceScope.launch {
             try {
                 val response = supabaseQuery.query.select().decodeList<Map<String, Any?>>()
-                listener.onDataChange(SupabaseDataSnapshot(response))
+                withContext(Dispatchers.Main) {
+                    listener.onDataChange(SupabaseDataSnapshot(response))
+                }
             } catch (e: Exception) {
-                listener.onCancelled(SupabaseDatabaseError(e.message ?: "Unknown error", 0))
+                withContext(Dispatchers.Main) {
+                    listener.onCancelled(SupabaseDatabaseError(e.message ?: "Unknown error", 0))
+                }
             }
         }
     }
 
     override fun setValue(ref: IDatabaseReference, value: Any?, listener: ICompletionListener<Unit>) {
         val supabaseRef = ref as SupabaseDatabaseReference
-        GlobalScope.launch {
+        serviceScope.launch {
             try {
-                supabaseRef.reference.upsert(value!!)
-                listener.onComplete(Unit, null)
+                if (value == null) {
+                    supabaseRef.reference.delete()
+                } else {
+                    supabaseRef.reference.upsert(value)
+                }
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(Unit, null)
+                }
             } catch (e: Exception) {
-                listener.onComplete(null, e)
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(null, e)
+                }
             }
         }
     }
 
-    override fun updateChildren(ref: IDatabaseReference, updates: Map<String, Any?>, listener: ICompletionListener<Unit>) {
+    override fun updateChildren(
+        ref: IDatabaseReference,
+        updates: Map<String, Any?>,
+        listener: ICompletionListener<Unit>
+    ) {
         val supabaseRef = ref as SupabaseDatabaseReference
-        GlobalScope.launch {
+        serviceScope.launch {
             try {
                 supabaseRef.reference.update(updates)
-                listener.onComplete(Unit, null)
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(Unit, null)
+                }
             } catch (e: Exception) {
-                listener.onComplete(null, e)
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(null, e)
+                }
             }
         }
     }
@@ -64,23 +88,29 @@ class SupabaseDatabaseService : IDatabaseService {
     override fun addRealtimeListener(ref: IDatabaseReference, listener: IRealtimeListener): IRealtimeChannel {
         val supabaseRef = ref as SupabaseDatabaseReference
         val channel = supabase.channel(supabaseRef.path)
-        GlobalScope.launch {
-            channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+        serviceScope.launch {
+            channel.postgresChangeFlow<PostgresChange.Insert>(schema = "public") {
                 table = supabaseRef.path
-            }.onEach { 
-                listener.onInsert(SupabaseDataSnapshot(it.newRecord))
+            }.onEach {
+                withContext(Dispatchers.Main) {
+                    listener.onInsert(SupabaseDataSnapshot(it.newRecord))
+                }
             }.launchIn(this)
 
-            channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
+            channel.postgresChangeFlow<PostgresChange.Update>(schema = "public") {
                 table = supabaseRef.path
-            }.onEach { 
-                listener.onUpdate(SupabaseDataSnapshot(it.newRecord))
+            }.onEach {
+                withContext(Dispatchers.Main) {
+                    listener.onUpdate(SupabaseDataSnapshot(it.newRecord))
+                }
             }.launchIn(this)
 
-            channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
+            channel.postgresChangeFlow<PostgresChange.Delete>(schema = "public") {
                 table = supabaseRef.path
-            }.onEach { 
-                listener.onDelete(SupabaseDataSnapshot(it.oldRecord))
+            }.onEach {
+                withContext(Dispatchers.Main) {
+                    listener.onDelete(SupabaseDataSnapshot(it.oldRecord))
+                }
             }.launchIn(this)
 
             channel.subscribe()
@@ -90,48 +120,76 @@ class SupabaseDatabaseService : IDatabaseService {
 
     override fun removeRealtimeListener(channel: IRealtimeChannel) {
         val supabaseChannel = channel as SupabaseRealtimeChannel
-        GlobalScope.launch {
+        serviceScope.launch {
             supabaseChannel.channel.unsubscribe()
         }
     }
 }
 
-abstract class SupabaseQuery(val query: io.github.jan.supabase.postgrest.query.PostgrestQuery) : IQuery {
+abstract class SupabaseQuery(val query: PostgrestQuery) : IQuery {
 
     override fun orderByChild(path: String): IQuery {
+        // Not directly applicable to PostgREST in the same way as Firebase.
+        // Could be implemented with .order() on a specific column.
         return this
     }
 
     override fun equalTo(value: String?): IQuery {
+        // This would require knowing the column to filter on.
+        // e.g., query.eq("column_name", value)
         return this
     }
 
     override fun limitToLast(limit: Int): IQuery {
+        // No direct equivalent. PostgREST has range(), but not from the end.
         return this
     }
 
     override fun limitToFirst(limit: Int): IQuery {
+        query.limit(limit)
         return this
     }
 
     override fun startAt(value: String): IQuery {
+        // Requires column and is typically used with order().
         return this
     }
 
     override fun endAt(value: String): IQuery {
+        // Requires column and is typically used with order().
+        return this
+    }
+
+    override fun orderByKey(): IQuery {
+        query.order("id") // Assuming 'id' is the primary key
+        return this
+    }
+
+    override fun endBefore(value: String?): IQuery {
+        if (value != null) {
+            query.lt("id", value) // Assuming 'id' is the primary key
+        }
         return this
     }
 }
 
-class SupabaseDatabaseReference(private val supabase: SupabaseClient, private val path: String) : SupabaseQuery(supabase.from(path)), IDatabaseReference {
+class SupabaseDatabaseReference(
+    private val supabase: SupabaseClient,
+    internal val path: String
+) : SupabaseQuery(supabase.from(path)), IDatabaseReference {
 
     val reference = supabase.from(path)
 
-    override fun child(path: String): IDatabaseReference {
-        return SupabaseDatabaseReference(supabase, "${this.path}/$path")
+    override fun child(pathString: String): IDatabaseReference {
+        // This is a simplification. In a real scenario, this would likely involve
+        // more complex logic to handle table relations.
+        return SupabaseDatabaseReference(supabase, "$path/$pathString")
     }
 
     override fun push(): IDatabaseReference {
+        // Returns a reference to a new, unique key, but the key generation is
+        // typically handled by the database (e.g., UUID).
+        // This implementation is a placeholder.
         return this
     }
 
@@ -157,7 +215,7 @@ class SupabaseDataSnapshot(private val data: Any?) : IDataSnapshot {
         }
 
     override val key: String?
-        get() = null
+        get() = (data as? Map<*, *>)?.get("id")?.toString()
 }
 
 class SupabaseDatabaseError(override val message: String, override val code: Int) : IDatabaseError

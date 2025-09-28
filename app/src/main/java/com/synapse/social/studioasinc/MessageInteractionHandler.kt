@@ -28,6 +28,8 @@ import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
 import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
 import com.synapse.social.studioasinc.ChatConstants.UID_KEY
 
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
+
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val listener: ChatInteractionListener,
@@ -57,7 +59,7 @@ class MessageInteractionHandler(
         val messageData = chatMessagesList[position]
         val currentUser = authService.getCurrentUser()
         val senderUid = messageData[UID_KEY]?.toString()
-        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
+        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.getUid()
         val messageText = messageData[MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
@@ -114,14 +116,18 @@ class MessageInteractionHandler(
             dialog.setPositiveButton("Save") { _, _ ->
                 val newText = editText.text.toString()
                 val cu = authService.getCurrentUser()
-                val myUid = cu?.uid
+                val myUid = cu?.getUid()
                 if (myUid == null) return@setPositiveButton
                 val otherUid = activity.intent.getStringExtra(UID_KEY)
                 val msgKey = messageData[KEY_KEY]?.toString()
                 if (otherUid == null || msgKey == null) return@setPositiveButton
                 val chatID = ChatMessageManager(dbService, authService).getChatId(myUid, otherUid)
                 val msgRef = dbService.getReference(CHATS_REF).child(chatID).child(msgKey)
-                dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText, (result, error) -> {})
+                dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText, object : ICompletionListener<Unit> {
+                    override fun onComplete(result: Unit?, error: Exception?) {
+                        // Optionally handle completion
+                    }
+                })
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -200,7 +206,7 @@ class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message[UID_KEY].toString() == authService.getCurrentUser()?.uid
+        val isMyMessage = message[UID_KEY].toString() == authService.getCurrentUser()?.getUid()
         return if (isMyMessage) firstUserName else secondUserName
     }
 

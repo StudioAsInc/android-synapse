@@ -111,26 +111,14 @@ android {
 
 dependencies {
     // Supabase
-    implementation "io.github.jan-tennert.supabase:postgrest-kt:2.5.0"
-    implementation "io.github.jan-tennert.supabase:auth-kt:2.5.0"
-    implementation "io.github.jan-tennert.supabase:storage-kt:2.5.0"
-    implementation "io.github.jan-tennert.supabase:realtime-kt:2.5.0"
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.5.0"))
+    implementation "io.github.jan-tennert.supabase:postgrest-kt"
+    implementation "io.github.jan-tennert.supabase:gotrue-kt"
+    implementation "io.github.jan-tennert.supabase:storage-kt"
+    implementation "io.github.jan-tennert.supabase:realtime-kt"
     implementation "io.ktor:ktor-client-android:2.3.11"
     implementation "io.ktor:ktor-client-core:2.3.11"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
-
-
-    // Import the Firebase BoM (downgraded to avoid gRPC conflict)
-    //implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
-
-    // When using the BoM, don't specify versions in Firebase dependencies
-    // Re-adding -ktx suffixes as they are included in this BoM version
-    //implementation 'com.google.firebase:firebase-auth-ktx'
-    //implementation 'com.google.firebase:firebase-database-ktx'
-    //implementation 'com.google.firebase:firebase-storage-ktx'
-    //implementation 'com.google.firebase:firebase-perf-ktx'
-    //implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    //implementation 'com.google.firebase:firebase-analytics-ktx'
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'

@@ -61,7 +61,7 @@ class AiFeatureHandler(
 
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
-                        val sender = if (message[UID_KEY].toString() == authService.getCurrentUser()?.uid) "Me" else secondUserName
+                        val sender = if (message[UID_KEY].toString() == authService.getCurrentUser()?.getUid()) "Me" else secondUserName
                         contextBuilder.append("$sender: ${message[MESSAGE_TEXT_KEY]}\n")
                     }
 

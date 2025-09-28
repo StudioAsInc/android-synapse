@@ -1,6 +1,10 @@
 package com.synapse.social.studioasinc.util
 
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 class ChatMessageManager(
@@ -8,19 +12,20 @@ class ChatMessageManager(
     private val authService: IAuthenticationService
 ) {
 
+    companion object {
+        const val SKYLINE_REF = "skyline"
+        const val CHATS_REF = "chats"
+        const val USER_CHATS_REF = "user-chats"
+        const val GROUP_CHATS_REF = "group-chats"
+        const val INBOX_REF = "inbox"
 
-    private const val SKYLINE_REF = "skyline"
-    private const val CHATS_REF = "chats"
-    private const val USER_CHATS_REF = "user-chats"
-    private const val GROUP_CHATS_REF = "group-chats"
-    private const val INBOX_REF = "inbox"
-
-    private const val CHAT_ID_KEY = "chatID"
-    private const val UID_KEY = "uid"
-    private const val LAST_MESSAGE_UID_KEY = "last_message_uid"
-    private const val LAST_MESSAGE_TEXT_KEY = "last_message_text"
-    private const val LAST_MESSAGE_STATE_KEY = "last_message_state"
-    private const val PUSH_DATE_KEY = "push_date"
+        const val CHAT_ID_KEY = "chatID"
+        const val UID_KEY = "uid"
+        const val LAST_MESSAGE_UID_KEY = "last_message_uid"
+        const val LAST_MESSAGE_TEXT_KEY = "last_message_text"
+        const val LAST_MESSAGE_STATE_KEY = "last_message_state"
+        const val PUSH_DATE_KEY = "push_date"
+    }
 
     fun getChatId(uid1: String?, uid2: String?): String {
         if (uid1 == null || uid2 == null) {
@@ -40,9 +45,18 @@ class ChatMessageManager(
         uniqueMessageKey: String,
         isGroup: Boolean
     ) {
+        val emptyListener = object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                // Not implemented
+            }
+        }
+
         if (isGroup) {
-            dbService.setValue(dbService.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey),
-                messageMap, (result, error) -> {})
+            dbService.setValue(
+                dbService.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey),
+                messageMap,
+                emptyListener
+            )
         } else {
             val chatId = getChatId(senderUid, recipientUid)
             val fanOutObject = hashMapOf<String, Any?>(
@@ -50,12 +64,17 @@ class ChatMessageManager(
                 "/$USER_CHATS_REF/$senderUid/$chatId" to true,
                 "/$USER_CHATS_REF/$recipientUid/$chatId" to true
             )
-            dbService.updateChildren(dbService.getReference(""), fanOutObject, (result, error) -> {})
+            dbService.updateChildren(dbService.getReference(""), fanOutObject, emptyListener)
         }
     }
 
     fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = authService.getCurrentUser()?.uid ?: return
+        val senderUid = authService.getCurrentUser()?.getUid() ?: return
+        val emptyListener = object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                // Not implemented
+            }
+        }
 
         if (isGroup) {
             val groupRef = dbService.getReference(SKYLINE_REF).child("groups").child(recipientUid)
@@ -71,8 +90,11 @@ class ChatMessageManager(
                                     lastMessage = lastMessage,
                                     isGroup = true
                                 )
-                                dbService.setValue(dbService.getReference(INBOX_REF).child(memberUid).child(recipientUid),
-                                    inboxUpdate, (result, error) -> {})
+                                dbService.setValue(
+                                    dbService.getReference(INBOX_REF).child(memberUid).child(recipientUid),
+                                    inboxUpdate,
+                                    emptyListener
+                                )
                             }
                         }
                     }
@@ -83,25 +105,29 @@ class ChatMessageManager(
                 }
             })
         } else {
-            // Update inbox for the current user
             val senderInboxUpdate = createInboxUpdate(
                 chatId = getChatId(senderUid, recipientUid),
                 conversationPartnerUid = recipientUid,
                 lastMessage = lastMessage,
                 isGroup = false
             )
-            dbService.setValue(dbService.getReference(INBOX_REF).child(senderUid).child(recipientUid),
-                senderInboxUpdate, (result, error) -> {})
+            dbService.setValue(
+                dbService.getReference(INBOX_REF).child(senderUid).child(recipientUid),
+                senderInboxUpdate,
+                emptyListener
+            )
 
-            // Update inbox for the other user
             val recipientInboxUpdate = createInboxUpdate(
                 chatId = getChatId(senderUid, recipientUid),
                 conversationPartnerUid = senderUid,
                 lastMessage = lastMessage,
                 isGroup = false
             )
-            dbService.setValue(dbService.getReference(INBOX_REF).child(recipientUid).child(senderUid),
-                recipientInboxUpdate, (result, error) -> {})
+            dbService.setValue(
+                dbService.getReference(INBOX_REF).child(recipientUid).child(senderUid),
+                recipientInboxUpdate,
+                emptyListener
+            )
         }
     }
 
@@ -111,7 +137,7 @@ class ChatMessageManager(
         lastMessage: String,
         isGroup: Boolean
     ): HashMap<String, Any> {
-        val senderUid = authService.getCurrentUser()?.uid ?: ""
+        val senderUid = authService.getCurrentUser()?.getUid() ?: ""
         return hashMapOf(
             CHAT_ID_KEY to chatId,
             UID_KEY to conversationPartnerUid,

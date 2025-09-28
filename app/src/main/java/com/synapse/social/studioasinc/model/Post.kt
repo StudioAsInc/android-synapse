@@ -40,8 +40,10 @@ data class Post(
     
     // Convert legacy single image to media items
     fun convertLegacyImage() {
-        if (!postImage.isNullOrEmpty() && mediaItems.isEmpty()) {
-            mediaItems.add(MediaItem(url = postImage!!, type = MediaType.IMAGE))
+        postImage?.let { url ->
+            if (url.isNotEmpty() && mediaItems.isEmpty()) {
+                mediaItems.add(MediaItem(url = url, type = MediaType.IMAGE))
+            }
         }
     }
     

@@ -10,6 +10,8 @@ interface IQuery {
     fun limitToFirst(limit: Int): IQuery
     fun startAt(value: String): IQuery
     fun endAt(value: String): IQuery
+    fun orderByKey(): IQuery
+    fun endBefore(value: String?): IQuery
 }
 
 /** A generic representation of a database reference, which is also a basic query. */

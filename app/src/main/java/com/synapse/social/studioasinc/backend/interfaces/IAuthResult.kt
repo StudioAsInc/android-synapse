@@ -8,11 +8,3 @@ interface IAuthResult {
     fun isSuccessful(): Boolean
     fun getUser(): IUser?
 }
-
-/**
- * A generic interface representing a user from the BaaS provider.
- * This abstracts the underlying BaaS provider's specific User class.
- */
-interface IUser {
-    fun getUid(): String
-}

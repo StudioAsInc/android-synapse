@@ -10,34 +10,30 @@ import androidx.recyclerview.widget.RecyclerView
 import android.view.View
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class MessageSendingHandler(
     private val context: Context,
     private val authService: IAuthenticationService,
     private val dbService: IDatabaseService,
-    private val chatMessagesList: ArrayList<HashMap<String, Any>>,
+    private val messageEt: EditText,
+    private val attachmentLayoutListHolder: View,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
-    private val chatAdapter: ChatAdapter,
-    private val chatMessagesListRecycler: RecyclerView,
-    private val rv_attacmentList: RecyclerView,
-    private val attachmentLayoutListHolder: RelativeLayout,
-    private val messageKeys: MutableSet<String>,
-    private val recipientUid: String,
-    private var firstUserName: String,
-    private val isGroup: Boolean
+    private val repliedMessageId: String?,
+    private val isGroup: Boolean,
+    private val recipientUid: String
 ) {
 
-    private val main = dbService.getReference(SKYLINE_REF)
+    private val chatMessageManager = ChatMessageManager(dbService, authService)
 
-    fun setFirstUserName(name: String) {
-        this.firstUserName = name
-    }
-
-    fun sendButtonAction(messageEt: EditText, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
+    fun sendMessage() {
         val messageText = messageEt.text.toString().trim()
-        val senderUid = authService.currentUser?.uid ?: return
+        val senderUid = authService.getCurrentUser()?.getUid() ?: return
 
-        proceedWithMessageSending(messageText, senderUid, recipientUid, replyMessageID, messageEt, mMessageReplyLayout)
+        proceedWithMessageSending(messageText, senderUid, recipientUid, repliedMessageId ?: "null", messageEt)
     }
 
     private fun proceedWithMessageSending(
@@ -45,17 +41,14 @@ class MessageSendingHandler(
         senderUid: String,
         recipientUid: String,
         replyMessageID: String,
-        messageEt: EditText,
-        mMessageReplyLayout: LinearLayout
+        messageEt: EditText
     ) {
-        auth.currentUser?.uid?.let { PresenceManager.setActivity(it, "Idle") }
-
         if (attactmentmap.isEmpty() && messageText.isEmpty()) {
             Log.w("MessageSendingHandler", "No message text and no attachments - nothing to send")
             return
         }
 
-        val uniqueMessageKey = main.push().key ?: ""
+        val uniqueMessageKey = dbService.getReference("chats").push().key ?: ""
         val messageToSend = HashMap<String, Any>()
         val lastMessageForInbox: String
 
@@ -80,104 +73,64 @@ class MessageSendingHandler(
                 return
             }
 
-            messageToSend[TYPE_KEY] = ATTACHMENT_MESSAGE_TYPE
-            messageToSend[ATTACHMENTS_KEY] = successfulAttachments
+            messageToSend[ChatConstants.TYPE_KEY] = ChatConstants.ATTACHMENT_MESSAGE_TYPE
+            messageToSend[ChatConstants.ATTACHMENTS_KEY] = successfulAttachments
             lastMessageForInbox = if (messageText.isEmpty()) "${successfulAttachments.size} attachment(s)" else messageText
         } else { // Text-only message
-            messageToSend[TYPE_KEY] = MESSAGE_TYPE
+            messageToSend[ChatConstants.TYPE_KEY] = ChatConstants.MESSAGE_TYPE
             lastMessageForInbox = messageText
         }
 
-        messageToSend[UID_KEY] = senderUid
-        messageToSend[MESSAGE_TEXT_KEY] = messageText
-        messageToSend[MESSAGE_STATE_KEY] = "sended"
-        if (replyMessageID != "null") messageToSend[REPLIED_MESSAGE_ID_KEY] = replyMessageID
-        messageToSend[KEY_KEY] = uniqueMessageKey
-        messageToSend[PUSH_DATE_KEY] = System.currentTimeMillis()
+        messageToSend[ChatConstants.UID_KEY] = senderUid
+        messageToSend[ChatConstants.MESSAGE_TEXT_KEY] = messageText
+        messageToSend[ChatConstants.MESSAGE_STATE_KEY] = "sended"
+        if (replyMessageID != "null") messageToSend[ChatConstants.REPLIED_MESSAGE_ID_KEY] = replyMessageID
+        messageToSend[ChatConstants.KEY_KEY] = uniqueMessageKey
+        messageToSend[ChatConstants.PUSH_DATE_KEY] = System.currentTimeMillis()
 
-        ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
-
-        val localMessage = HashMap(messageToSend)
-        localMessage["isLocalMessage"] = true
-        messageKeys.add(uniqueMessageKey)
-        chatMessagesList.add(localMessage)
-
-        val newPosition = chatMessagesList.size - 1
-        chatAdapter.notifyItemInserted(newPosition)
-        if (newPosition > 0) chatAdapter.notifyItemChanged(newPosition - 1)
-
-        chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
-
-        ChatMessageManager.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
+        chatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
+        chatMessageManager.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
 
         messageEt.setText("")
-        mMessageReplyLayout.visibility = View.GONE
         if (attactmentmap.isNotEmpty()) {
             resetAttachmentState()
         }
-
-        // --- Background Action: Fetch recipient's notification ID and send notification ---
-        val chatId = ChatMessageManager.getChatId(senderUid, recipientUid)
-        val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
-        val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
-
-        dbService.getData(dbService.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid),
-            object : IDataListener {
-                override fun onDataChange(dataSnapshot: IDataSnapshot) {
-                    var recipientOneSignalPlayerId = "missing_id"
-                    if (dataSnapshot.exists()) {
-                        val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
-                        if (user.containsKey("oneSignalPlayerId")) {
-                            val fetchedId = user["oneSignalPlayerId"] as String
-                            if (fetchedId.isNotEmpty()) {
-                                recipientOneSignalPlayerId = fetchedId
-                            }
-                        }
-                    }
-                    NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId)
-                }
-
-                override fun onCancelled(databaseError: IDatabaseError) {
-                    Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", Exception(databaseError.message))
-                    NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, "missing_id", notificationMessage, chatId)
-                }
-            })
-
     }
 
-    fun sendVoiceMessage(audioUrl: String, duration: Long, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
-        val senderUid = auth.currentUser?.uid ?: return
-        val uniqueMessageKey = main.push().key ?: ""
+    fun sendVoiceMessage(audioFilePath: String, duration: Long) {
+        AsyncUploadService.uploadWithNotification(context, audioFilePath, java.io.File(audioFilePath).name, object : AsyncUploadService.UploadProgressListener {
+            override fun onProgress(filePath: String, percent: Int) {}
+            override fun onSuccess(filePath: String, url: String, publicId: String) {
+                val senderUid = authService.getCurrentUser()?.getUid() ?: return
+                val uniqueMessageKey = dbService.getReference("chats").push().key ?: ""
 
-        val chatSendMap = HashMap<String, Any>()
-        chatSendMap[UID_KEY] = senderUid
-        chatSendMap[TYPE_KEY] = VOICE_MESSAGE_TYPE
-        chatSendMap["audio_url"] = audioUrl
-        chatSendMap["audio_duration"] = duration
-        chatSendMap[MESSAGE_STATE_KEY] = "sended"
-        if (replyMessageID != "null") chatSendMap[REPLIED_MESSAGE_ID_KEY] = replyMessageID
-        chatSendMap[KEY_KEY] = uniqueMessageKey
-        chatSendMap[PUSH_DATE_KEY] = System.currentTimeMillis()
+                val chatSendMap = HashMap<String, Any>()
+                chatSendMap[ChatConstants.UID_KEY] = senderUid
+                chatSendMap[ChatConstants.TYPE_KEY] = ChatConstants.VOICE_MESSAGE_TYPE
+                chatSendMap["audio_url"] = url
+                chatSendMap["audio_duration"] = duration
+                chatSendMap[ChatConstants.MESSAGE_STATE_KEY] = "sended"
+                if (repliedMessageId != "null") chatSendMap[ChatConstants.REPLIED_MESSAGE_ID_KEY] = repliedMessageId!!
+                chatSendMap[ChatConstants.KEY_KEY] = uniqueMessageKey
+                chatSendMap[ChatConstants.PUSH_DATE_KEY] = System.currentTimeMillis()
 
-        ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
+                chatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
+                chatMessageManager.updateInbox("Voice Message", recipientUid, isGroup, null)
+            }
 
-        chatSendMap["isLocalMessage"] = true
-        messageKeys.add(uniqueMessageKey)
-        chatMessagesList.add(chatSendMap)
-        chatAdapter.notifyItemInserted(chatMessagesList.size - 1)
-        chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
-
-        ChatMessageManager.updateInbox("Voice Message", recipientUid, isGroup, null)
-
-        mMessageReplyLayout.visibility = View.GONE
+            override fun onFailure(filePath: String, error: String) {
+                Toast.makeText(context, "Failed to upload audio.", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun resetAttachmentState() {
         attachmentLayoutListHolder.visibility = View.GONE
+        val rvAdapter = (attachmentLayoutListHolder.findViewById<RecyclerView>(R.id.rv_attacmentList)).adapter
         val oldSize = attactmentmap.size
         if (oldSize > 0) {
             attactmentmap.clear()
-            rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
+            rvAdapter?.notifyItemRangeRemoved(0, oldSize)
         }
     }
 }

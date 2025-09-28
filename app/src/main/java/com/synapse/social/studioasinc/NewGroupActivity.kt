@@ -13,7 +13,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.User
 
 class NewGroupActivity : AppCompatActivity() {
@@ -26,7 +30,8 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val database by lazy { dbService.getReference("skyline/users") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,20 +86,26 @@ class NewGroupActivity : AppCompatActivity() {
     }
 
     private fun fetchUsers() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
+        dbService.getData(database, object : IDataListener {
+            override fun onDataChange(snapshot: IDataSnapshot) {
                 usersList.clear()
-                for (userSnapshot in snapshot.children) {
-                    val user = userSnapshot.getValue(User::class.java)
-                    if (user != null) {
+                if (snapshot.exists()) {
+                    val userMaps = snapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    userMaps?.forEach { userMap ->
+                        val user = User(
+                            userMap["uid"] as? String ?: "",
+                            userMap["username"] as? String ?: "",
+                            userMap["nickname"] as? String ?: "",
+                            userMap["avatar"] as? String ?: ""
+                        )
                         usersList.add(user)
                     }
                 }
                 usersAdapter.notifyDataSetChanged()
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
+            override fun onCancelled(error: IDatabaseError) {
+                Toast.makeText(this@NewGroupActivity, "Failed to load users: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }

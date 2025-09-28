@@ -14,30 +14,34 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
 import com.synapse.social.studioasinc.PostMoreBottomSheetDialog
 import com.synapse.social.studioasinc.ProfileActivity
 import com.synapse.social.studioasinc.R
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toPost
 import com.synapse.social.studioasinc.styling.MarkdownRenderer
-import com.synapse.social.studioasinc.util.TimeUtils
 import com.synapse.social.studioasinc.util.CountUtils
+import com.synapse.social.studioasinc.util.MentionUtils
+import com.synapse.social.studioasinc.util.NotificationUtils
+import com.synapse.social.studioasinc.util.TimeUtils
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 
 class PostsAdapter(
     private val context: Context,
     private val posts: ArrayList<HashMap<String, Any>>,
     private val userInfoCache: HashMap<String, Any>,
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService,
     private val onMediaClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<PostsAdapter.PostViewHolder>() {
 
-    private val firebase = FirebaseDatabase.getInstance()
-    private val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val currentUserUid = authService.getCurrentUser()?.getUid() ?: ""
     private val mediaPagerAdapters = mutableMapOf<Int, MediaPagerAdapter>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -49,7 +53,7 @@ class PostsAdapter(
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
         val postMap = posts[position]
         val post = postMap.toPost()
-        
+
         holder.bind(post, postMap)
     }
 
@@ -79,14 +83,14 @@ class PostsAdapter(
         private val postPublishDate: TextView = itemView.findViewById(R.id.postPublishDate)
         private val postPrivateStateIcon: ImageView = itemView.findViewById(R.id.postPrivateStateIcon)
         private val postMessageTextMiddle: TextView = itemView.findViewById(R.id.postMessageTextMiddle)
-        
+
         // Media views
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
         private val mediaContainer: View = itemView.findViewById(R.id.mediaContainer)
         private val mediaViewPager: ViewPager2 = itemView.findViewById(R.id.mediaViewPager)
         private val pageIndicatorContainer: LinearLayout = itemView.findViewById(R.id.pageIndicatorContainer)
         private val mediaCountBadge: TextView = itemView.findViewById(R.id.mediaCountBadge)
-        
+
         // Action buttons
         private val likeButton: LinearLayout = itemView.findViewById(R.id.likeButton)
         private val commentsButton: LinearLayout = itemView.findViewById(R.id.commentsButton)
@@ -96,16 +100,11 @@ class PostsAdapter(
         private val commentsButtonCount: TextView = itemView.findViewById(R.id.commentsButtonCount)
 
         fun bind(post: Post, originalMap: HashMap<String, Any>) {
-            // Setup basic post info
             setupPostContent(post)
             setupUserInfo(post.uid)
             setupMediaContent(post)
             setupActionButtons(post, originalMap)
-            
-            // Set publish date
             TimeUtils.setTime(post.publishDate.toDoubleOrNull() ?: 0.0, postPublishDate, context)
-            
-            // Handle visibility
             updatePostVisibility(post)
         }
 
@@ -120,7 +119,7 @@ class PostsAdapter(
         }
 
         private fun handleMentions(textView: TextView, text: String) {
-            com.synapse.social.studioasinc.util.MentionUtils.handleMentions(context, textView, text)
+            MentionUtils.handleMentions(context, textView, text)
         }
 
         private fun setupUserInfo(uid: String) {
@@ -133,32 +132,20 @@ class PostsAdapter(
         }
 
         private fun setupMediaContent(post: Post) {
-            // Convert legacy image if needed
             post.convertLegacyImage()
-            
             when {
                 post.mediaItems.isNotEmpty() -> {
-                    // Show ViewPager2 for multiple media
                     postImage.visibility = View.GONE
                     mediaContainer.visibility = View.VISIBLE
-                    
                     setupMediaViewPager(post)
                 }
                 !post.postImage.isNullOrEmpty() -> {
-                    // Show legacy single image
                     mediaContainer.visibility = View.GONE
                     postImage.visibility = View.VISIBLE
-                    
-                    Glide.with(context)
-                        .load(post.postImage)
-                        .into(postImage)
-                    
-                    postImage.setOnClickListener {
-                        onMediaClick?.invoke(post.postImage!!)
-                    }
+                    Glide.with(context).load(post.postImage).into(postImage)
+                    postImage.setOnClickListener { onMediaClick?.invoke(post.postImage!!) }
                 }
                 else -> {
-                    // No media
                     postImage.visibility = View.GONE
                     mediaContainer.visibility = View.GONE
                 }
@@ -169,16 +156,13 @@ class PostsAdapter(
             val adapter = MediaPagerAdapter(context, post.mediaItems) { mediaItem, position ->
                 onMediaClick?.invoke(mediaItem.url)
             }
-            
             mediaPagerAdapters[bindingAdapterPosition] = adapter
             mediaViewPager.adapter = adapter
-            
-            // Setup page indicator
+
             if (post.mediaItems.size > 1) {
                 setupPageIndicator(post.mediaItems.size)
                 mediaCountBadge.visibility = View.VISIBLE
                 mediaCountBadge.text = "1/${post.mediaItems.size}"
-                
                 mediaViewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                     override fun onPageSelected(position: Int) {
                         updatePageIndicator(position)
@@ -194,7 +178,6 @@ class PostsAdapter(
         private fun setupPageIndicator(count: Int) {
             pageIndicatorContainer.removeAllViews()
             pageIndicatorContainer.visibility = View.VISIBLE
-            
             for (i in 0 until count) {
                 val dot = View(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
@@ -218,17 +201,14 @@ class PostsAdapter(
         }
 
         private fun setupActionButtons(post: Post, originalMap: HashMap<String, Any>) {
-            // Hide/show counts based on settings
             likeButtonCount.visibility = if (post.postHideLikeCount == "true") View.GONE else View.VISIBLE
             commentsButtonCount.visibility = if (post.postHideCommentsCount == "true") View.GONE else View.VISIBLE
             commentsButton.visibility = if (post.postDisableComments == "true") View.GONE else View.VISIBLE
-            
-            // Load interaction data
+
             loadLikeStatus(post.key)
             loadCounts(post.key)
             loadFavoriteStatus(post.key)
-            
-            // Setup click listeners
+
             likeButton.setOnClickListener { toggleLike(post) }
             commentsButton.setOnClickListener { showComments(post, originalMap) }
             favoritePostButton.setOnClickListener { toggleFavorite(post.key) }
@@ -262,7 +242,6 @@ class PostsAdapter(
             val verified = userInfoCache["verify-$uid"] as? String
             val banned = userInfoCache["banned-$uid"] as? String
 
-            // Set avatar
             if (banned == "true") {
                 userInfoProfileImage.setImageResource(R.drawable.banned_avatar)
             } else if (!avatarUrl.isNullOrEmpty() && avatarUrl != "null") {
@@ -271,14 +250,12 @@ class PostsAdapter(
                 userInfoProfileImage.setImageResource(R.drawable.avatar)
             }
 
-            // Set username
             userInfoUsername.text = when {
                 !nickname.isNullOrEmpty() && nickname != "null" -> nickname
                 !username.isNullOrEmpty() -> "@$username"
                 else -> "Unknown User"
             }
 
-            // Set gender badge
             userInfoGenderBadge.visibility = when (gender) {
                 "male" -> {
                     userInfoGenderBadge.setImageResource(R.drawable.male_badge)
@@ -291,7 +268,6 @@ class PostsAdapter(
                 else -> View.GONE
             }
 
-            // Set verification badge
             userInfoUsernameVerifiedBadge.visibility = when (accountType) {
                 "admin" -> {
                     userInfoUsernameVerifiedBadge.setImageResource(R.drawable.admin_badge)
@@ -311,117 +287,107 @@ class PostsAdapter(
         }
 
         private fun loadUserInfo(uid: String) {
-            firebase.getReference("skyline/users").child(uid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        if (snapshot.exists()) {
-                            // Cache user info
+            dbService.getData(dbService.getReference("skyline/users").child(uid), object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    if (snapshot.exists()) {
+                        val userList = snapshot.getValue(List::class.java) as? List<Map<String, Any?>>
+                        val userMap = userList?.firstOrNull()
+                        if (userMap != null) {
                             userInfoCache["uid-$uid"] = uid
-                            userInfoCache["banned-$uid"] = snapshot.child("banned").getValue(String::class.java) ?: "false"
-                            userInfoCache["nickname-$uid"] = snapshot.child("nickname").getValue(String::class.java) ?: ""
-                            userInfoCache["username-$uid"] = snapshot.child("username").getValue(String::class.java) ?: ""
-                            userInfoCache["avatar-$uid"] = snapshot.child("avatar").getValue(String::class.java) ?: ""
-                            userInfoCache["gender-$uid"] = snapshot.child("gender").getValue(String::class.java) ?: "hidden"
-                            userInfoCache["verify-$uid"] = snapshot.child("verify").getValue(String::class.java) ?: "false"
-                            userInfoCache["acc_type-$uid"] = snapshot.child("account_type").getValue(String::class.java) ?: "user"
-                            
+                            userInfoCache["banned-$uid"] = userMap["banned"]?.toString() ?: "false"
+                            userInfoCache["nickname-$uid"] = userMap["nickname"]?.toString() ?: ""
+                            userInfoCache["username-$uid"] = userMap["username"]?.toString() ?: ""
+                            userInfoCache["avatar-$uid"] = userMap["avatar"]?.toString() ?: ""
+                            userInfoCache["gender-$uid"] = userMap["gender"]?.toString() ?: "hidden"
+                            userInfoCache["verify-$uid"] = userMap["verify"]?.toString() ?: "false"
+                            userInfoCache["acc_type-$uid"] = userMap["account_type"]?.toString() ?: "user"
                             displayUserInfoFromCache(uid)
                         }
                     }
+                }
 
-                    override fun onCancelled(error: DatabaseError) {
-                        userInfoProfileImage.setImageResource(R.drawable.avatar)
-                        userInfoUsername.text = "Error User"
-                    }
-                })
+                override fun onCancelled(error: IDatabaseError) {
+                    userInfoProfileImage.setImageResource(R.drawable.avatar)
+                    userInfoUsername.text = "Error User"
+                }
+            })
         }
 
         private fun loadLikeStatus(postKey: String) {
-            firebase.getReference("skyline/posts-likes").child(postKey).child(currentUserUid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        likeButtonIc.setImageResource(
-                            if (snapshot.exists()) R.drawable.post_icons_1_2 
-                            else R.drawable.post_icons_1_1
-                        )
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+            val query = dbService.getReference("skyline/posts-likes").child(postKey).child(currentUserUid)
+            dbService.getData(query, object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    likeButtonIc.setImageResource(if (snapshot.exists()) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1)
+                }
+                override fun onCancelled(error: IDatabaseError) {}
+            })
         }
 
         private fun loadCounts(postKey: String) {
-            // Load like count
-            firebase.getReference("skyline/posts-likes").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(likeButtonCount, snapshot.childrenCount.toDouble())
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
-
-            // Load comment count
-            firebase.getReference("skyline/posts-comments").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(commentsButtonCount, snapshot.childrenCount.toDouble())
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+            dbService.getData(dbService.getReference("skyline/posts-likes").child(postKey), object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    val count = if (snapshot.exists()) (snapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
+                    CountUtils.setCount(likeButtonCount, count.toDouble())
+                }
+                override fun onCancelled(error: IDatabaseError) {}
+            })
+            dbService.getData(dbService.getReference("skyline/posts-comments").child(postKey), object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    val count = if (snapshot.exists()) (snapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
+                    CountUtils.setCount(commentsButtonCount, count.toDouble())
+                }
+                override fun onCancelled(error: IDatabaseError) {}
+            })
         }
 
         private fun loadFavoriteStatus(postKey: String) {
-            firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        favoritePostButton.setImageResource(
-                            if (snapshot.exists()) R.drawable.delete_favorite_post_ic
-                            else R.drawable.add_favorite_post_ic
-                        )
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+            val query = dbService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
+            dbService.getData(query, object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    favoritePostButton.setImageResource(if (snapshot.exists()) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic)
+                }
+                override fun onCancelled(error: IDatabaseError) {}
+            })
         }
 
         private fun toggleLike(post: Post) {
-            val likeRef = firebase.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
-            likeRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
+            val likeRef = dbService.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
+            val emptyListener = object : ICompletionListener<Unit> {
+                override fun onComplete(result: Unit?, error: Exception?) { loadCounts(post.key) }
+            }
+            dbService.getData(likeRef, object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
-                        likeRef.removeValue()
+                        dbService.setValue(likeRef, null, emptyListener)
                         likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
                     } else {
-                        likeRef.setValue(currentUserUid)
+                        val likeData = mapOf("post_id" to post.key, "user_id" to currentUserUid)
+                        dbService.setValue(likeRef, likeData, emptyListener)
                         likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
-                        // Send notification
-                        com.synapse.social.studioasinc.util.NotificationUtils
-                            .sendPostLikeNotification(post.key, post.uid)
+                        NotificationUtils.sendPostLikeNotification(post.key, post.uid)
                     }
-                    // Reload count
-                    loadCounts(post.key)
                 }
-
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onCancelled(error: IDatabaseError) {}
             })
         }
 
         private fun toggleFavorite(postKey: String) {
-            val favoriteRef = firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-            favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
+            val favoriteRef = dbService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
+            val emptyListener = object : ICompletionListener<Unit> {
+                override fun onComplete(result: Unit?, error: Exception?) {}
+            }
+            dbService.getData(favoriteRef, object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
-                        favoriteRef.removeValue()
+                        dbService.setValue(favoriteRef, null, emptyListener)
                         favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
                     } else {
-                        favoriteRef.setValue(postKey)
+                        val favData = mapOf("post_id" to postKey, "user_id" to currentUserUid)
+                        dbService.setValue(favoriteRef, favData, emptyListener)
                         favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
                     }
                 }
-
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onCancelled(error: IDatabaseError) {}
             })
         }
 
@@ -431,13 +397,8 @@ class PostsAdapter(
                 putString("postPublisherUID", post.uid)
                 putString("postPublisherAvatar", userInfoCache["avatar-${post.uid}"] as? String ?: "")
             }
-            
-            val bottomSheet = PostCommentsBottomSheetDialog().apply {
-                arguments = bundle
-            }
-            
+            val bottomSheet = PostCommentsBottomSheetDialog().apply { arguments = bundle }
             // Note: You'll need to pass FragmentManager from the Fragment/Activity
-            // bottomSheet.show(fragmentManager, bottomSheet.tag)
         }
 
         private fun showMoreOptions(post: Post, originalMap: HashMap<String, Any>) {
@@ -450,13 +411,8 @@ class PostsAdapter(
                     putString("postImg", post.postImage)
                 }
             }
-            
-            val bottomSheet = PostMoreBottomSheetDialog().apply {
-                arguments = bundle
-            }
-            
+            val bottomSheet = PostMoreBottomSheetDialog().apply { arguments = bundle }
             // Note: You'll need to pass FragmentManager from the Fragment/Activity
-            // bottomSheet.show(fragmentManager, bottomSheet.tag)
         }
 
         private fun openProfile(uid: String) {

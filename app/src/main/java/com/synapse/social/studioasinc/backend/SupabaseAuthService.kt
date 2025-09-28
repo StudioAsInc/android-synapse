@@ -1,19 +1,28 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IUser
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.coroutines.GlobalScope
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.user.UserInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class SupabaseAuthService : IAuthenticationService {
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val supabase: SupabaseClient = createSupabaseClient(
+        // TODO: IMPORTANT! Replace these placeholder credentials.
+        // It is strongly recommended to load these from a secure configuration file (e.g., local.properties)
+        // rather than hardcoding them in the source code.
         supabaseUrl = "YOUR_SUPABASE_URL",
         supabaseKey = "YOUR_SUPABASE_KEY"
     ) {
@@ -21,22 +30,17 @@ class SupabaseAuthService : IAuthenticationService {
     }
 
     override fun getCurrentUser(): IUser? {
-        val user = supabase.auth.currentUserOrNull()
-        return if (user != null) {
-            SupabaseUser(user)
-        } else {
-            null
-        }
+        return supabase.auth.currentUserOrNull()?.let { SupabaseUser(it) }
     }
 
     override fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        GlobalScope.launch {
+        serviceScope.launch {
             try {
-                supabase.auth.signInWith(io.github.jan.supabase.gotrue.providers.builtin.Email.Provider) {
+                supabase.auth.signInWith(Email) {
                     this.email = email
                     this.password = pass
                 }
-                listener.onComplete(SupabaseAuthResult(true), null)
+                listener.onComplete(SupabaseAuthResult(true, getCurrentUser()), null)
             } catch (e: Exception) {
                 listener.onComplete(null, e)
             }
@@ -44,13 +48,13 @@ class SupabaseAuthService : IAuthenticationService {
     }
 
     override fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        GlobalScope.launch {
+        serviceScope.launch {
             try {
-                supabase.auth.signUpWith(io.github.jan.supabase.gotrue.providers.builtin.Email.Provider) {
+                supabase.auth.signUpWith(Email) {
                     this.email = email
                     this.password = pass
                 }
-                listener.onComplete(SupabaseAuthResult(true), null)
+                listener.onComplete(SupabaseAuthResult(true, getCurrentUser()), null)
             } catch (e: Exception) {
                 listener.onComplete(null, e)
             }
@@ -58,7 +62,7 @@ class SupabaseAuthService : IAuthenticationService {
     }
 
     override fun signOut() {
-        GlobalScope.launch {
+        serviceScope.launch {
             supabase.auth.signOut()
         }
     }
@@ -70,14 +74,21 @@ class SupabaseAuthService : IAuthenticationService {
     }
 }
 
-class SupabaseUser(private val user: io.github.jan.supabase.gotrue.user.User) : IUser {
+class SupabaseUser(private val user: UserInfo) : IUser {
     override fun getUid(): String {
         return user.id
     }
 }
 
-class SupabaseAuthResult(private val isSuccess: Boolean) : IAuthResult {
+class SupabaseAuthResult(
+    private val isSuccess: Boolean,
+    private val user: IUser?
+) : IAuthResult {
     override fun isSuccessful(): Boolean {
         return isSuccess
+    }
+
+    override fun getUser(): IUser? {
+        return user
     }
 }

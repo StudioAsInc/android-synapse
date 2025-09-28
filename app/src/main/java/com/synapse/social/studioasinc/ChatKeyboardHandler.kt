@@ -7,6 +7,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
@@ -21,34 +22,41 @@ class ChatKeyboardHandler(
     private val dbService: IDatabaseService
 ) {
 
-
-
     fun setup() {
+        val emptyListener = object : ICompletionListener<Unit> {
+            override fun onComplete(result: Unit?, error: Exception?) {
+                // Not implemented
+            }
+        }
+
         messageEt.addTextChangedListener(object : TextWatcher {
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 val charSeq = s.toString()
-                val chatID = ChatMessageManager(dbService, authService).getChatId(
-                    authService.getCurrentUser()!!.uid,
-                    activity.intent.getStringExtra(ChatConstants.UID_KEY)
-                )
-                val typingRef = dbService.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
-
-                if (charSeq.isEmpty()) {
-                    dbService.setValue(typingRef, null, (result, error) -> {})
-                    activity._TransitionManager(messageInputOverallContainer, 150.0)
-                    toolContainer.visibility = View.VISIBLE
-                    btn_sendMessage.visibility = View.GONE
-                    messageInputOutlinedRound.orientation = LinearLayout.HORIZONTAL
-                } else {
-                    val typingSnd = hashMapOf<String, Any>(
-                        ChatConstants.UID_KEY to authService.getCurrentUser()!!.uid,
-                        "typingMessageStatus" to "true"
+                val currentUser = authService.getCurrentUser()
+                if (currentUser != null) {
+                    val chatID = ChatMessageManager(dbService, authService).getChatId(
+                        currentUser.getUid(),
+                        activity.intent.getStringExtra(ChatConstants.UID_KEY)
                     )
-                    dbService.updateChildren(typingRef, typingSnd, (result, error) -> {})
-                    activity._TransitionManager(messageInputOverallContainer, 150.0)
-                    toolContainer.visibility = View.GONE
-                    btn_sendMessage.visibility = View.VISIBLE
-                    messageInputOutlinedRound.orientation = LinearLayout.VERTICAL
+                    val typingRef = dbService.getReference("chats").child(chatID).child(ChatConstants.TYPING_MESSAGE_REF)
+
+                    if (charSeq.isEmpty()) {
+                        dbService.setValue(typingRef, null, emptyListener)
+                        activity._TransitionManager(messageInputOverallContainer, 150.0)
+                        toolContainer.visibility = View.VISIBLE
+                        btn_sendMessage.visibility = View.GONE
+                        messageInputOutlinedRound.orientation = LinearLayout.HORIZONTAL
+                    } else {
+                        val typingSnd = hashMapOf<String, Any>(
+                            ChatConstants.UID_KEY to currentUser.getUid(),
+                            "typingMessageStatus" to "true"
+                        )
+                        dbService.updateChildren(typingRef, typingSnd, emptyListener)
+                        activity._TransitionManager(messageInputOverallContainer, 150.0)
+                        toolContainer.visibility = View.GONE
+                        btn_sendMessage.visibility = View.VISIBLE
+                        messageInputOutlinedRound.orientation = LinearLayout.VERTICAL
+                    }
                 }
             }
 
