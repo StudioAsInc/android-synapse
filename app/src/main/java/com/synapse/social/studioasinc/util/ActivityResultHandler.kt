@@ -80,7 +80,7 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                     // Start upload for each item
                     for (i in resolvedFilePaths.indices) {
                         try {
-                            activity._startUploadForItem(startingPosition + i)
+                            activity._startUploadForItem((startingPosition + i).toDouble())
                         } catch (e: Exception) {
                             Log.e("ChatActivity", "Error starting upload for item " + i + ": " + e.message)
                         }
