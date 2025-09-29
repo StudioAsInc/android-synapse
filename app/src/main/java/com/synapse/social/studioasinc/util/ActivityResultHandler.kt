@@ -60,12 +60,12 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                             options.inJustDecodeBounds = true
                             try {
                                 BitmapFactory.decodeFile(filePath, options)
-                                itemMap["width"] = if (options.outWidth > 0) options.outWidth else 100
-                                itemMap["height"] = if (options.outHeight > 0) options.outHeight else 100
+                                itemMap["width"] = (if (options.outWidth > 0) options.outWidth else 100).toDouble()
+                                itemMap["height"] = (if (options.outHeight > 0) options.outHeight else 100).toDouble()
                             } catch (e: Exception) {
                                 Log.w("ChatActivity", "Could not decode image dimensions for: $filePath")
-                                itemMap["width"] = 100
-                                itemMap["height"] = 100
+                                itemMap["width"] = 100.0
+                                itemMap["height"] = 100.0
                             }
 
                             activity.attactmentmap.add(itemMap)

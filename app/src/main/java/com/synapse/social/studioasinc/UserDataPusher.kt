@@ -57,7 +57,8 @@ class UserDataPusher {
         // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
 
         val main = dbService.getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap, object : ICompletionListener<Unit> {
+        val userRef = main.child("users").child(uid)
+        dbService.updateChildren(userRef, createUserMap, object : ICompletionListener<Unit> {
             override fun onComplete(result: Unit?, error: Exception?) {
                 if (error == null) {
                     val map = HashMap<String, Any>()
@@ -65,7 +66,8 @@ class UserDataPusher {
                     map["email"] = email
                     map["username"] = username
                     val pushusername = dbService.getReference("synapse/username")
-                    pushusername.child(username).updateChildren(map, object : ICompletionListener<Unit> {
+                    val usernameRef = pushusername.child(username)
+                    dbService.updateChildren(usernameRef, map, object : ICompletionListener<Unit> {
                         override fun onComplete(result: Unit?, pushError: Exception?) {
                             if (pushError == null) {
                                 onComplete(true, null)
