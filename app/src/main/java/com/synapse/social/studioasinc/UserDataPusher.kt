@@ -1,14 +1,17 @@
 package com.synapse.social.studioasinc
 
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.IDatabaseService
+import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import java.util.Calendar
 import java.util.HashMap
 
-class UserDataPusher {
-
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+class UserDataPusher(
+    private val authService: IAuthenticationService,
+    private val dbService: IDatabaseService
+) {
 
     fun pushData(
         username: String,
@@ -68,11 +71,11 @@ class UserDataPusher {
                     val pushusername = dbService.getReference("synapse/username")
                     val usernameRef = pushusername.child(username)
                     dbService.updateChildren(usernameRef, map, object : ICompletionListener<Unit> {
-                        override fun onComplete(result: Unit?, pushError: Exception?) {
-                            if (pushError == null) {
+                        override fun onComplete(result: Unit?, error: Exception?) {
+                            if (error == null) {
                                 onComplete(true, null)
                             } else {
-                                onComplete(false, pushError.message)
+                                onComplete(false, error.message)
                             }
                         }
                     })

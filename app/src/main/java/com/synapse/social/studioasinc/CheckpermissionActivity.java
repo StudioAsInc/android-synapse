@@ -28,7 +28,6 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -56,40 +55,39 @@ import android.os.Build;
 import androidx.core.content.ContextCompat;
 import java.util.Timer;
 import java.util.TimerTask;
-import com.synapse.social.studioasinc.permissionreq.AskPermission;
+import com.synapse.social.studioasinc.permissionreq.AskPermission;
 
 public class CheckpermissionActivity extends AppCompatActivity {
-	
+
 	private Timer _timer = new Timer();
-	
+
 	private LinearLayout linear1;
-	
+
 	private Intent i = new Intent();
 	private TimerTask t;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_checkpermission);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		linear1 = findViewById(R.id.linear1);
 	}
-	
+
 	private void initializeLogic() {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) { Window w = getWindow();  w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS); };
 		// In your Activity's onCreate:
 		AskPermission askPermission = new AskPermission(this);
 		askPermission.checkAndRequestPermissions();
 	}
-	
+
 	@Override
 	public void onBackPressed() {
-		
+
 	}
-	
-}
+
+}

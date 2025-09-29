@@ -27,6 +27,7 @@ class GroupDetailsLoader(
     fun loadGroupDetails() {
         val groupRef = dbService.getReference("groups").child(groupId)
         dbService.getData(groupRef, object : IDataListener {
+            @Suppress("UNCHECKED_CAST")
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
                     val group = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>

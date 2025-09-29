@@ -24,6 +24,7 @@ class UserProfileUpdater(
     var secondUserName: String = "Unknown User"
     var secondUserAvatar: String = "null"
 
+    @Suppress("UNCHECKED_CAST")
     fun updateAll(dataSnapshot: IDataSnapshot) {
         if (!dataSnapshot.exists()) {
             Log.w("UserProfileUpdater", "User profile data snapshot is null or doesn't exist")

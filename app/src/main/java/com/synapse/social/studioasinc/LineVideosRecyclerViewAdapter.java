@@ -31,21 +31,12 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.database.Query;
-
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
@@ -56,8 +47,8 @@ import java.io.File;
 public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVideosRecyclerViewAdapter.ViewHolder> {
 
 	private FragmentManager postCommentsFragMng;
-	private FirebaseAuth auth;
-	private DatabaseReference main = FirebaseDatabase.getInstance().getReference("skyline");
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 	private Vibrator vbr;
 	private Intent intent = new Intent();
 
@@ -71,11 +62,11 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 
 	private ArrayList<HashMap<String, Object>> _data;
 
-	public LineVideosRecyclerViewAdapter(Context context, FragmentManager fragment, ArrayList<HashMap<String, Object>> _arr) {
+	public LineVideosRecyclerViewAdapter(Context context, FragmentManager fragment, ArrayList<HashMap<String, Object>> _arr, IAuthenticationService authService, IDatabaseService dbService) {
 		this.context = context;
 		this.postCommentsFragMng = fragment;
-		FirebaseApp.initializeApp(context);
-		this.auth = FirebaseAuth.getInstance();
+		this.authService = authService;
+		this.dbService = dbService;
 		this.vbr = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
 		_data = _arr;
 	}
@@ -111,11 +102,11 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 		String key = keyObj.toString();
 		String videoUri = videoUriObj.toString();
 
-		DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
-		DatabaseReference checkLike = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		DatabaseReference getLikesCount = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(key);
-		DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(key);
-		DatabaseReference getShareCount = FirebaseDatabase.getInstance().getReference("skyline/posts-share").child(key);
+		IDatabaseReference getUserDetails = dbService.getReference("skyline/users").child(uid);
+		IDatabaseReference checkLike = dbService.getReference("skyline/posts-likes").child(key).child(authService.getCurrentUser().getUid());
+		IDatabaseReference getLikesCount = dbService.getReference("skyline/posts-likes").child(key);
+		IDatabaseReference getCommentsCount = dbService.getReference("skyline/posts-comments").child(key);
+		IDatabaseReference getShareCount = dbService.getReference("skyline/posts-share").child(key);
 
 		final RelativeLayout body = _view.findViewById(R.id.body);
 		final FrameLayout middle = _view.findViewById(R.id.middle);
@@ -224,9 +215,9 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 				}
 			}
 		} else {
-			getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
+			getUserDetails.addListenerForSingleValueEvent(new IDataListener() {
 				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 					if(dataSnapshot.exists()) {
 						buttonsRelativeBottomUserInf.setVisibility(View.VISIBLE);
 						UserInfoCacheMap.put("uid-".concat(uid), uid);
@@ -292,7 +283,7 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 					}
 				}
 				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
+				public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 				}
 			});
@@ -301,12 +292,12 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 		likeButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				checkLike.addListenerForSingleValueEvent(new ValueEventListener() {
+				checkLike.addListenerForSingleValueEvent(new IDataListener() {
 					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 						try {
 							if(dataSnapshot.exists()) {
-								checkLike.removeValue();
+								checkLike.removeValue((databaseError, aBoolean) -> {});
 								likeButtonIc.setImageResource(R.drawable.line_video_player_icons_2);
 								_ImageColor(likeButtonIc, 0xFFFFFFFF);
 								double currentLikes = Double.parseDouble(String.valueOf(postLikeCountCache.get(key)));
@@ -314,7 +305,7 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 								postLikeCountCache.put(key, String.valueOf(currentLikes));
 								likeButtonCount.setText(String.valueOf((long)currentLikes));
 							} else {
-								checkLike.setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
+								checkLike.setValue(authService.getCurrentUser().getUid(), (databaseError, aBoolean) -> {});
 								likeButtonIc.setImageResource(R.drawable.line_video_player_icons_1);
 								_ImageColor(likeButtonIc, 0xFFE91E63);
 								double currentLikes = Double.parseDouble(String.valueOf(postLikeCountCache.get(key)));
@@ -328,7 +319,7 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 					}
 
 					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 					}
 				});
@@ -362,9 +353,9 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 			}
 		});
 
-		checkLike.addListenerForSingleValueEvent(new ValueEventListener() {
+		checkLike.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					likeButtonIc.setImageResource(R.drawable.line_video_player_icons_1);
 					_ImageColor(likeButtonIc, 0xFFE91E63);
@@ -375,44 +366,44 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
-		getLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		getLikesCount.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				postLikeCountCache.put(key, String.valueOf((long)(count)));
 				likeButtonCount.setText(String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});
-		getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		getCommentsCount.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				commentsButtonCount.setText(String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});
-		getShareCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		getShareCount.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				shareButtonCount.setText(String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});

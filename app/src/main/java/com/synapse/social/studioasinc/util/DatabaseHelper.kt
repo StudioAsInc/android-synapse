@@ -36,6 +36,7 @@ class DatabaseHelper(
         private const val TAG = "DatabaseHelper"
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun getUserReference() {
         val currentUserUid = authService.getCurrentUser()?.getUid() ?: return
         val getFirstUserNameRef = dbService.getReference("skyline/users").child(currentUserUid)
@@ -76,6 +77,7 @@ class DatabaseHelper(
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun getChatMessagesRef() {
         val getChatsMessagesQuery = chatMessagesRef.limitToLast(80)
 
@@ -125,6 +127,7 @@ class DatabaseHelper(
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun getOldChatMessagesRef() {
         if (isLoading || oldestMessageKey == null || oldestMessageKey!!.isEmpty() || oldestMessageKey == "null") {
             return
@@ -193,6 +196,7 @@ class DatabaseHelper(
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun fetchRepliedMessages(messages: ArrayList<HashMap<String, Any>>) {
         val repliedIdsToFetch = HashSet<String>()
         for (message in messages) {
@@ -212,19 +216,17 @@ class DatabaseHelper(
             repliedMessagesCache[messageKey] = HashMap()
 
             dbService.getData(chatMessagesRef.child(messageKey), object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    if (snapshot.exists()) {
-                        val repliedMessage = snapshot.getValue(HashMap::class.java) as HashMap<String, Any>
-                        if (repliedMessage != null) {
-                            repliedMessagesCache[messageKey] = repliedMessage
-                            updateMessageInRecyclerView(messageKey)
-                        }
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        val repliedMessage = dataSnapshot.getValue(HashMap::class.java) as HashMap<String, Any>
+                        repliedMessagesCache[messageKey] = repliedMessage
+                        updateMessageInRecyclerView(messageKey)
                     }
                 }
 
-                override fun onCancelled(error: IDatabaseError) {
+                override fun onCancelled(databaseError: IDatabaseError) {
                     repliedMessagesCache.remove(messageKey)
-                    Log.e(TAG, "Failed to fetch replied message", Exception(error.message))
+                    Log.e(TAG, "Failed to fetch replied message", Exception(databaseError.message))
                 }
             })
         }
@@ -273,38 +275,38 @@ class DatabaseHelper(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun handleChildAdded(dataSnapshot: IDataSnapshot) {
         if (dataSnapshot.exists()) {
             val newMessage = dataSnapshot.getValue(HashMap::class.java) as HashMap<String, Any>
-            if (newMessage != null && newMessage["key"] != null) {
-                val messageKey = newMessage["key"].toString()
-                if (!messageKeys.contains(messageKey)) {
-                    messageKeys.add(messageKey)
-                    val insertPosition = findCorrectInsertPosition(newMessage)
-                    chatMessagesList.add(insertPosition, newMessage)
-                    chatAdapter?.notifyItemInserted(insertPosition)
-                    if (insertPosition > 0) chatAdapter?.notifyItemChanged(insertPosition - 1)
-                    if (insertPosition < chatMessagesList.size - 1) chatAdapter?.notifyItemChanged(insertPosition + 1)
-                    if (insertPosition == chatMessagesList.size - 1) {
-                        recyclerView.post { recyclerView.smoothScrollToPosition(chatMessagesList.size - 1) }
-                    }
-                    if (newMessage.containsKey("replied_message_id")) {
-                        val singleMessageList = ArrayList<HashMap<String, Any>>()
-                        singleMessageList.add(newMessage)
-                        fetchRepliedMessages(singleMessageList)
-                    }
+            val messageKey = newMessage["key"]?.toString()
+            if (messageKey != null && !messageKeys.contains(messageKey)) {
+                messageKeys.add(messageKey)
+                val insertPosition = findCorrectInsertPosition(newMessage)
+                chatMessagesList.add(insertPosition, newMessage)
+                chatAdapter?.notifyItemInserted(insertPosition)
+                if (insertPosition > 0) chatAdapter?.notifyItemChanged(insertPosition - 1)
+                if (insertPosition < chatMessagesList.size - 1) chatAdapter?.notifyItemChanged(insertPosition + 1)
+                if (insertPosition == chatMessagesList.size - 1) {
+                    recyclerView.post { recyclerView.smoothScrollToPosition(chatMessagesList.size - 1) }
+                }
+                if (newMessage.containsKey("replied_message_id")) {
+                    val singleMessageList = ArrayList<HashMap<String, Any>>()
+                    singleMessageList.add(newMessage)
+                    fetchRepliedMessages(singleMessageList)
                 }
             }
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun handleChildChanged(snapshot: IDataSnapshot) {
         if (snapshot.exists()) {
             val updatedMessage = snapshot.getValue(HashMap::class.java) as HashMap<String, Any>
-            if (updatedMessage != null && updatedMessage["key"] != null) {
-                val key = updatedMessage["key"].toString()
+            val key = updatedMessage["key"]?.toString()
+            if (key != null) {
                 for (i in chatMessagesList.indices) {
-                    if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == key) {
+                    if (chatMessagesList[i]["key"]?.toString() == key) {
                         chatMessagesList[i] = updatedMessage
                         chatAdapter?.notifyItemChanged(i)
                         break
@@ -314,12 +316,13 @@ class DatabaseHelper(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun handleChildRemoved(snapshot: IDataSnapshot) {
         if (snapshot.exists()) {
             val removedKey = snapshot.key
             if (removedKey != null) {
                 for (i in chatMessagesList.indices) {
-                    if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == removedKey) {
+                    if (chatMessagesList[i]["key"]?.toString() == removedKey) {
                         chatMessagesList.removeAt(i)
                         messageKeys.remove(removedKey)
                         chatAdapter?.notifyItemRemoved(i)

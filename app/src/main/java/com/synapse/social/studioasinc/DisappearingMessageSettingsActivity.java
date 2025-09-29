@@ -29,7 +29,6 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -39,7 +38,7 @@ import java.util.regex.*;
 import org.json.*;
 
 public class DisappearingMessageSettingsActivity extends AppCompatActivity {
-	
+
 	private LinearLayout parent_layout;
 	private LinearLayout linear2;
 	private ScrollView vscroll1;
@@ -59,16 +58,15 @@ public class DisappearingMessageSettingsActivity extends AppCompatActivity {
 	private RadioButton radiobutton4;
 	private RadioButton radiobutton5;
 	private RadioButton radiobutton2;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_disappearing_message_settings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		parent_layout = findViewById(R.id.parent_layout);
 		linear2 = findViewById(R.id.linear2);
@@ -90,8 +88,8 @@ public class DisappearingMessageSettingsActivity extends AppCompatActivity {
 		radiobutton5 = findViewById(R.id.radiobutton5);
 		radiobutton2 = findViewById(R.id.radiobutton2);
 	}
-	
+
 	private void initializeLogic() {
 	}
-	
-}
+
+}

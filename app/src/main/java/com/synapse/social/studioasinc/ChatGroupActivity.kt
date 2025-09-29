@@ -24,7 +24,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
-import androidx.activity.OnBackPressedCallback
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
@@ -138,7 +137,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         chatRecyclerLayoutManager.stackFromEnd = true
         ChatMessagesListRecycler.layoutManager = chatRecyclerLayoutManager
 
-        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this)
+        chatAdapter = ChatAdapter(ChatMessagesList, repliedMessagesCache, this, authService, dbService)
         chatAdapter?.setHasStableIds(true)
         chatAdapter?.setGroupChat(true) // This is a group chat
         ChatMessagesListRecycler.adapter = chatAdapter
@@ -233,6 +232,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun _getGroupReference() {
         val groupId = intent.getStringExtra("uid") ?: return
         val groupRef = dbService.getReference("groups").child(groupId)
@@ -261,6 +261,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun _getChatMessagesRef() {
         isLoading = true
         chatMessagesRef?.limitToFirst(CHAT_PAGE_SIZE)?.let { query ->
@@ -301,6 +302,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         } ?: run { isLoading = false }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun _attachChatListener() {
         if (chatMessagesRef == null) return
 
@@ -330,6 +332,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         dbService.addRealtimeListener(chatMessagesRef!!, realtimeListener)
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun fetchMemberUsernames(groupData: Map<String, Any>) {
         val members = groupData["members"] as? Map<String, Any>
         if (members != null) {
@@ -347,8 +350,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             for (memberUid in memberUids) {
                 val userRef = dbService.getReference("skyline/users").child(memberUid).child("username")
                 dbService.getData(userRef, object : IDataListener {
-                    override fun onDataChange(userSnapshot: IDataSnapshot) {
-                        val username = userSnapshot.getValue(String::class.java)
+                    override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                        val username = dataSnapshot.getValue(String::class.java)
                         if (username != null) {
                             memberNamesMap[memberUid] = username
                             if (memberUid == authService.getCurrentUser()?.getUid()) {
@@ -364,7 +367,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                         }
                     }
 
-                    override fun onCancelled(error: IDatabaseError) {
+                    override fun onCancelled(databaseError: IDatabaseError) {
                         membersProcessed++
                         if (membersProcessed == totalMembers) {
                             chatAdapter?.setUserNamesMap(memberNamesMap)
@@ -427,6 +430,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
 
+    @Suppress("DEPRECATION")
     private fun _AudioRecorderStart() {
         val cc = Calendar.getInstance()
         recordMs = 0

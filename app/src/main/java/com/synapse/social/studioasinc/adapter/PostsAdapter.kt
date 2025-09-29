@@ -286,11 +286,12 @@ class PostsAdapter(
             }
         }
 
+        @Suppress("UNCHECKED_CAST")
         private fun loadUserInfo(uid: String) {
             dbService.getData(dbService.getReference("skyline/users").child(uid), object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    if (snapshot.exists()) {
-                        val userList = snapshot.getValue(List::class.java) as? List<Map<String, Any?>>
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        val userList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any?>>
                         val userMap = userList?.firstOrNull()
                         if (userMap != null) {
                             userInfoCache["uid-$uid"] = uid
@@ -306,7 +307,7 @@ class PostsAdapter(
                     }
                 }
 
-                override fun onCancelled(error: IDatabaseError) {
+                override fun onCancelled(databaseError: IDatabaseError) {
                     userInfoProfileImage.setImageResource(R.drawable.avatar)
                     userInfoUsername.text = "Error User"
                 }
@@ -316,37 +317,38 @@ class PostsAdapter(
         private fun loadLikeStatus(postKey: String) {
             val query = dbService.getReference("skyline/posts-likes").child(postKey).child(currentUserUid)
             dbService.getData(query, object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    likeButtonIc.setImageResource(if (snapshot.exists()) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1)
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    likeButtonIc.setImageResource(if (dataSnapshot.exists()) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1)
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
         }
 
+        @Suppress("UNCHECKED_CAST")
         private fun loadCounts(postKey: String) {
             dbService.getData(dbService.getReference("skyline/posts-likes").child(postKey), object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    val count = if (snapshot.exists()) (snapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    val count = if (dataSnapshot.exists()) (dataSnapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
                     CountUtils.setCount(likeButtonCount, count.toDouble())
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
             dbService.getData(dbService.getReference("skyline/posts-comments").child(postKey), object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    val count = if (snapshot.exists()) (snapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    val count = if (dataSnapshot.exists()) (dataSnapshot.getValue(List::class.java) as? List<*>)?.size ?: 0 else 0
                     CountUtils.setCount(commentsButtonCount, count.toDouble())
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
         }
 
         private fun loadFavoriteStatus(postKey: String) {
             val query = dbService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
             dbService.getData(query, object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    favoritePostButton.setImageResource(if (snapshot.exists()) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic)
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    favoritePostButton.setImageResource(if (dataSnapshot.exists()) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic)
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
         }
 
@@ -356,8 +358,8 @@ class PostsAdapter(
                 override fun onComplete(result: Unit?, error: Exception?) { loadCounts(post.key) }
             }
             dbService.getData(likeRef, object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    if (snapshot.exists()) {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
                         dbService.setValue(likeRef, null, emptyListener)
                         likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
                     } else {
@@ -367,7 +369,7 @@ class PostsAdapter(
                         NotificationUtils.sendPostLikeNotification(post.key, post.uid)
                     }
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
         }
 
@@ -377,8 +379,8 @@ class PostsAdapter(
                 override fun onComplete(result: Unit?, error: Exception?) {}
             }
             dbService.getData(favoriteRef, object : IDataListener {
-                override fun onDataChange(snapshot: IDataSnapshot) {
-                    if (snapshot.exists()) {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                    if (dataSnapshot.exists()) {
                         dbService.setValue(favoriteRef, null, emptyListener)
                         favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
                     } else {
@@ -387,7 +389,7 @@ class PostsAdapter(
                         favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
                     }
                 }
-                override fun onCancelled(error: IDatabaseError) {}
+                override fun onCancelled(databaseError: IDatabaseError) {}
             })
         }
 

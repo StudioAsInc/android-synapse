@@ -44,25 +44,17 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -76,7 +68,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
 import androidx.core.view.WindowCompat;
@@ -90,7 +81,8 @@ import androidx.core.content.ContextCompat;
 
 public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -115,19 +107,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 	private TextView isDataNotExistsLayoutSubTitle;
 	private ProgressBar mLoadingBar;
 
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private AlertDialog.Builder Dialogs;
@@ -137,10 +116,9 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_photo_history);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
-		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+				|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);} else {
 			initializeLogic();
 		}
@@ -155,6 +133,9 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
+		authService = new SupabaseAuthService();
+		dbService = new SupabaseDatabaseService();
+
 		_fab = findViewById(R.id._fab);
 		main = findViewById(R.id.main);
 		top = findViewById(R.id.top);
@@ -170,7 +151,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutTitle = findViewById(R.id.isDataNotExistsLayoutTitle);
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
 		Dialogs = new AlertDialog.Builder(this);
 
 		back.setOnClickListener(new View.OnClickListener() {
@@ -193,135 +173,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 				_addProfilePhotoUrlDialog();
 			}
 		});
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -367,16 +218,16 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 				SynapseLoadingDialog = new ProgressDialog(this);
 				SynapseLoadingDialog.setCancelable(false);
 				SynapseLoadingDialog.setCanceledOnTouchOutside(false);
-				
-				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE); 
+
+				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 				SynapseLoadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-				
+
 			}
 			SynapseLoadingDialog.show();
 			SynapseLoadingDialog.setContentView(R.layout.loading_synapse);
-			
+
 			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
-			
+
 
 			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
 		} else {
@@ -393,25 +244,25 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayout.setVisibility(View.GONE);
 		mSwipeLayout.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addValueEventListener(new ValueEventListener() {
+		IDatabaseReference getUserReference = dbService.getReference("skyline/users").child(authService.getCurrentUser().getUid());
+		getUserReference.addValueEventListener(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
 				} else {
 				}
 			}
-			
+
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
+
 			}
 		});
-		Query getProfileHistoryRef = FirebaseDatabase.getInstance().getReference("skyline/profile-history").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getProfileHistoryRef.addListenerForSingleValueEvent(new ValueEventListener() {
+		IQuery getProfileHistoryRef = dbService.getReference("skyline/profile-history").child(authService.getCurrentUser().getUid());
+		getProfileHistoryRef.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					isDataExistsLayout.setVisibility(View.VISIBLE);
 					isDataNotExistsLayout.setVisibility(View.GONE);
@@ -419,15 +270,14 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 					mLoadingBody.setVisibility(View.GONE);
 					ProfileHistoryList.clear();
 					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
+						for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue();
 							ProfileHistoryList.add(_map);
 						}
 					} catch (Exception _e) {
 						_e.printStackTrace();
 					}
-					
+
 					SketchwareUtil.sortListMap(ProfileHistoryList, "upload_date", false, false);
 					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
 				} else {
@@ -437,10 +287,10 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 					mLoadingBody.setVisibility(View.GONE);
 				}
 			}
-			
+
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
+
 			}
 		});
 		mSwipeLayout.setRefreshing(false);
@@ -454,7 +304,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 			View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
 			NewCustomDialog.setView(NewCustomDialogCV);
 			NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-			
+
 			final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
 			final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
 			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
@@ -480,11 +330,11 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", "null");
 						mSendMap.put("avatar_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("skyline/users").child(authService.getCurrentUser().getUid()).updateChildren(mSendMap, (databaseError, aBoolean) -> {});
 						CurrentAvatarUri = "null";
 						mSendMap.clear();
 					}
-					maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
+					dbService.getReference("skyline/profile-history").child(authService.getCurrentUser().getUid()).child(_key).removeValue((databaseError, aBoolean) -> {});
 					_getReference();
 					NewCustomDialog.dismiss();
 				}
@@ -508,13 +358,13 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 			public void onClick(DialogInterface _dialog, int _which) {
 				if (!edittext1.getText().toString().trim().equals("")) {
 					if (_checkValidUrl(edittext1.getText().toString().trim())) {
-						String ProfileHistoryKey = maindb.push().getKey();
+						String ProfileHistoryKey = dbService.getReference("skyline/profile-history").child(authService.getCurrentUser().getUid()).push().getKey();
 						mAddProfilePhotoMap = new HashMap<>();
 						mAddProfilePhotoMap.put("key", ProfileHistoryKey);
 						mAddProfilePhotoMap.put("image_url", edittext1.getText().toString().trim());
 						mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
 						mAddProfilePhotoMap.put("type", "url");
-						maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
+						dbService.getReference("skyline/profile-history").child(authService.getCurrentUser().getUid()).child(ProfileHistoryKey).updateChildren(mAddProfilePhotoMap, (databaseError, aBoolean) -> {});
 						_getReference();
 					}
 				}
@@ -523,11 +373,11 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		Dialogs.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface _dialog, int _which) {
-				
+
 			}
 		});
 		androidx.appcompat.app.AlertDialog edittextDialog = Dialogs.create();
-		
+
 		edittextDialog.setCancelable(true);
 		edittextDialog.show();
 	}
@@ -585,7 +435,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", "null");
 						mSendMap.put("avatar_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("skyline/users").child(authService.getCurrentUser().getUid()).updateChildren(mSendMap, (databaseError, aBoolean) -> {});
 						CurrentAvatarUri = "null";
 						mSendMap.clear();
 						notifyDataSetChanged();
@@ -593,7 +443,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", _data.get((int)_position).get("image_url").toString());
 						mSendMap.put("avatar_history_type", _data.get((int)_position).get("type").toString());
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("skyline/users").child(authService.getCurrentUser().getUid()).updateChildren(mSendMap, (databaseError, aBoolean) -> {});
 						CurrentAvatarUri = _data.get((int)_position).get("image_url").toString();
 						mSendMap.clear();
 						notifyDataSetChanged();

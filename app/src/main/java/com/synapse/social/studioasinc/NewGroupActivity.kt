@@ -85,12 +85,13 @@ class NewGroupActivity : AppCompatActivity() {
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun fetchUsers() {
         dbService.getData(database, object : IDataListener {
-            override fun onDataChange(snapshot: IDataSnapshot) {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 usersList.clear()
-                if (snapshot.exists()) {
-                    val userMaps = snapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                if (dataSnapshot.exists()) {
+                    val userMaps = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
                     userMaps?.forEach { userMap ->
                         val user = User(
                             userMap["uid"] as? String ?: "",
@@ -104,14 +105,14 @@ class NewGroupActivity : AppCompatActivity() {
                 usersAdapter.notifyDataSetChanged()
             }
 
-            override fun onCancelled(error: IDatabaseError) {
-                Toast.makeText(this@NewGroupActivity, "Failed to load users: ${error.message}", Toast.LENGTH_SHORT).show()
+            override fun onCancelled(databaseError: IDatabaseError) {
+                Toast.makeText(this@NewGroupActivity, "Failed to load users: ${databaseError.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        onBackPressed()
+        finish()
         return true
     }
 }

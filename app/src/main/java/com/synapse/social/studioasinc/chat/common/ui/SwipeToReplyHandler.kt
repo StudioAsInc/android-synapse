@@ -27,7 +27,7 @@ class SwipeToReplyHandler(
     }
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-        val position = viewHolder.adapterPosition
+        val position = viewHolder.bindingAdapterPosition
         if (position < 0 || position >= chatMessagesList.size) {
             return
         }
@@ -50,6 +50,7 @@ class SwipeToReplyHandler(
         return false
     }
 
+    @Suppress("DEPRECATION")
     override fun onChildDraw(
         c: Canvas,
         recyclerView: RecyclerView,
