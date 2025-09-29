@@ -131,6 +131,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
         val getUserReference = dbService.getReference(REF_SKYLINE).child(REF_USERS).child(userId)
 
         dbService.getData(getUserReference, object : IDataListener {
+            @Suppress("UNCHECKED_CAST")
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
                     val userList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>

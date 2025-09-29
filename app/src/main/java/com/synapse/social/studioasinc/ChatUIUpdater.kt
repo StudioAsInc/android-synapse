@@ -35,6 +35,7 @@ class ChatUIUpdater(
     }
 
     fun updateUserProfile(dataSnapshot: IDataSnapshot) {
+        @Suppress("UNCHECKED_CAST")
         val user = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
         val nickname = user["nickname"] as? String
         val username = user["username"] as? String

@@ -43,22 +43,17 @@ import androidx.recyclerview.widget.*;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.CenterCropLinearLayoutNoEffect;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -69,16 +64,17 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.slider.Slider;
+import com.google.android.material.slider.Slider;
 
 public class ChatsettingsActivity extends AppCompatActivity {
-	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
+
 	private String UserAvatarUri = "";
 	private double theme = 0;
 	private double inAppBrowserSw = 0;
-	
+
 	private androidx.constraintlayout.widget.ConstraintLayout top;
 	private ScrollView scrollMain;
 	private ImageView mBack;
@@ -189,36 +185,24 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private ImageView imageview29;
 	private TextView textview55;
 	private TextView textview56;
-	
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
+
 	private Intent intent = new Intent();
-	private DatabaseReference mainDb = _firebase.getReference("/");
-	private ChildEventListener _mainDb_child_listener;
 	private AlertDialog.Builder d;
 	private Vibrator v;
 	private AlertDialog.Builder zorry;
 	private SharedPreferences appSettings;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_chatsettings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
+		authService = new SupabaseAuthService();
+		dbService = new SupabaseDatabaseService();
 		top = findViewById(R.id.top);
 		scrollMain = findViewById(R.id.scrollMain);
 		mBack = findViewById(R.id.mBack);
@@ -329,150 +313,19 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		imageview29 = findViewById(R.id.imageview29);
 		textview55 = findViewById(R.id.textview55);
 		textview56 = findViewById(R.id.textview56);
-		auth = FirebaseAuth.getInstance();
 		d = new AlertDialog.Builder(this);
 		v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		zorry = new AlertDialog.Builder(this);
 		appSettings = getSharedPreferences("appSettings", Activity.MODE_PRIVATE);
-		
+
 		mBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				finish();
 			}
 		});
-		
-		
-		
-		_mainDb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		mainDb.addChildEventListener(_mainDb_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
 	}
-	
+
 	private void initializeLogic() {
 		try{
 			try {
@@ -589,19 +442,19 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		mProfileImage.setImageResource(R.drawable.ashik_dp);
 		_ImgRound(mProfileImage, 300);
 	}
-	
+
 	public void _stateColor(final int _statusColor, final int _navigationColor) {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-	
-	
+
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -610,56 +463,56 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _getUserReference() {
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+		IDatabaseReference getUserReference = dbService.getReference("skyline/users").child(authService.getCurrentUser().getUid());
+		getUserReference.addListenerForSingleValueEvent(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
-						
+
 					} else {
 						if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-							
+
 						} else {
-							
+
 						}
 					}
 					if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
-						
+
 					} else {
-						
+
 					}
 					if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
-						
+
 					} else {
 						if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
-							
+
 						} else {
 							if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
-								
+
 							}
 						}
 					}
 					if (dataSnapshot.child("user_region").getValue(String.class) != null) {
-						
+
 					} else {
-						
+
 					}
 				} else {
 				}
 			}
 			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 				
 			}
 		});
 	}
-	
-	
+
+
 	public void _ImgRound(final ImageView _imageview, final double _value) {
 		android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable ();
 		gd.setColor(android.R.color.transparent);
@@ -667,8 +520,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		_imageview.setClipToOutline(true);
 		_imageview.setBackground(gd);
 	}
-	
-	
+
+
 	public void _Shape(final double _t1, final double _t2, final double _b1, final double _b2, final String _Background, final double _Stroke, final String _stroke, final double _Elevation, final View _view) {
 		android.graphics.drawable.GradientDrawable gs = new android.graphics.drawable.GradientDrawable();
 		
@@ -681,8 +534,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		_view.setBackground(gs);
 		_view.setElevation((int)_Elevation);
 	}
-	
-	
+
+
 	public void _Corner_Of(final double _top1, final double _top2, final double _bottom1, final double _bottom2, final String _inside_color, final String _side_color, final double _side_size, final View _view) {
 		Double tlr = _top1;
 		Double trr = _top2;
@@ -692,10 +545,10 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		android.graphics.drawable.GradientDrawable s = new android.graphics.drawable.GradientDrawable();
 		s.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
 		s.setCornerRadii(new float[] {tlr.floatValue(),tlr.floatValue(), trr.floatValue(),trr.floatValue(), blr.floatValue(),blr.floatValue(), brr.floatValue(),brr.floatValue()}); 
-		
+
 		s.setColor(Color.parseColor(_inside_color));
 		s.setStroke(sw.intValue(), Color.parseColor(_side_color));
 		_view.setBackground(s);
 	}
-	
-}
+
+}

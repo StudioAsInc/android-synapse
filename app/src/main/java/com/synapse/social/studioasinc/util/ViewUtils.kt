@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
 
+@Suppress("DEPRECATION")
 fun Activity.setStateColor(statusColor: Int, navigationColor: Int) {
     window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
     window.statusBarColor = statusColor

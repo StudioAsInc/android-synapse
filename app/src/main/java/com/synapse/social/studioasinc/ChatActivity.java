@@ -320,7 +320,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatMessagesListRecycler.setLongClickable(true);
 		ChatMessagesListRecycler.setClickable(true);
 		
-		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this);
+		chatAdapter = new ChatAdapter(ChatMessagesList, repliedMessagesCache, this, authService, dbService);
 		chatAdapter.setHasStableIds(true);
 		ChatMessagesListRecycler.setAdapter(chatAdapter);
 		

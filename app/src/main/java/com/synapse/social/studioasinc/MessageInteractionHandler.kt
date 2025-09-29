@@ -84,6 +84,7 @@ class MessageInteractionHandler(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
+                @Suppress("DEPRECATION")
                 vbr.vibrate(48)
             }
             popupWindow.dismiss()
@@ -96,6 +97,7 @@ class MessageInteractionHandler(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vbr.vibrate(VibrationEffect.createOneShot(48, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
+                @Suppress("DEPRECATION")
                 vbr.vibrate(48)
             }
             popupWindow.dismiss()

@@ -53,6 +53,7 @@ object NotificationHelper {
 
         val userDb = dbService.getReference("skyline/users").child(recipientUid)
         dbService.getData(userDb, object : IDataListener {
+            @Suppress("UNCHECKED_CAST")
             override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (!dataSnapshot.exists()) {
                     Log.w(TAG, "Recipient user not found. Cannot send notification.")
@@ -117,6 +118,7 @@ object NotificationHelper {
      */
     @JvmStatic
     @Deprecated("Use sendNotification instead.")
+    @Suppress("DEPRECATION")
     fun sendMessageAndNotifyIfNeeded(
         senderUid: String,
         recipientUid: String,

@@ -74,9 +74,7 @@ class AttachmentHandler(
     }
 
     public fun resetAttachmentState() {
-        if (attachmentLayoutListHolder != null) {
-            attachmentLayoutListHolder.visibility = View.GONE
-        }
+        attachmentLayoutListHolder.visibility = View.GONE
         if (rv_attacmentList.adapter != null) {
             val oldSize = attactmentmap.size
             if (oldSize > 0) {

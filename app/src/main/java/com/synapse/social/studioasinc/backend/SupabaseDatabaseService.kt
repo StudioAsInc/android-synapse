@@ -196,10 +196,9 @@ class SupabaseDatabaseReference(
 
     val reference = supabase.from(path)
 
-    override fun child(pathString: String): IDatabaseReference {
-        // This is a simplification. In a real scenario, this would likely involve
-        // more complex logic to handle table relations.
-        return SupabaseDatabaseReference(supabase, "$path/$pathString")
+    override fun child(path: String): IDatabaseReference {
+        val newPath = "${this.path.removeSuffix("/")}/${path.removePrefix("/")}"
+        return SupabaseDatabaseReference(supabase, newPath)
     }
 
     override fun push(): IDatabaseReference {
@@ -215,6 +214,7 @@ class SupabaseDatabaseReference(
 
 class SupabaseDataSnapshot(private val data: Any?) : IDataSnapshot {
 
+    @Suppress("UNCHECKED_CAST")
     override fun <T> getValue(valueType: Class<T>): T? {
         return data as? T
     }

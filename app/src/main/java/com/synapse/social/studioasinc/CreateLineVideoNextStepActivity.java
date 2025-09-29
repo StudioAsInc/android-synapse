@@ -47,22 +47,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -79,8 +68,6 @@ import org.json.*;
 
 
 public class CreateLineVideoNextStepActivity extends AppCompatActivity {
-
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
 	private HashMap<String, Object> PostSendMap = new HashMap<>();
@@ -103,24 +90,11 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	private EditText postDescription;
 	private RecyclerView recyclerview1;
 
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private SharedPreferences appSavedData;
-	private DatabaseReference fdb = _firebase.getReference("notify");
-	private ChildEventListener _fdb_child_listener;
 	private SharedPreferences theme;
 
 	@Override
@@ -128,7 +102,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_create_line_video_next_step);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -146,6 +119,8 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
+		authService = new SupabaseAuthService();
+		dbService = new SupabaseDatabaseService();
 		top = findViewById(R.id.top);
 		topSpace = findViewById(R.id.topSpace);
 		scroll = findViewById(R.id.scroll);
@@ -157,7 +132,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		topSpace2 = findViewById(R.id.topSpace2);
 		postDescription = findViewById(R.id.postDescription);
 		recyclerview1 = findViewById(R.id.recyclerview1);
-		auth = FirebaseAuth.getInstance();
 		appSavedData = getSharedPreferences("data", Activity.MODE_PRIVATE);
 		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
 
@@ -206,173 +180,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 
 			}
 		});
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-		_fdb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		fdb.addChildEventListener(_fdb_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -393,8 +200,8 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 		m.put("title", "".concat(" has recently shared a video".concat(".")));
 		m.put("date", new SimpleDateFormat("dd MMMM yyyy | hh:mm a").format(cc.getTime()));
 		m.put("image", "");
-		m.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-		fdb.push().updateChildren(m);
+		m.put("uid", authService.getCurrentUser().getUid());
+		dbService.getReference("notify").push().updateChildren(m, (error, success) -> {});
 		m.clear();
 		if (_visibility) {
 			if (SynapseLoadingDialog== null){
@@ -447,11 +254,11 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	public void _uploadLineVideo(final String _path, final boolean _isUrl) {
 		if (_isUrl) {
 			_LoadingDialog(true);
-			UniquePostKey = maindb.push().getKey();
+			UniquePostKey = dbService.getReference("skyline/line-posts").push().getKey();
 			cc = Calendar.getInstance();
 			PostSendMap = new HashMap<>();
 			PostSendMap.put("key", UniquePostKey);
-			PostSendMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+			PostSendMap.put("uid", authService.getCurrentUser().getUid());
 			PostSendMap.put("post_type", "LINE_VIDEO");
 			if (!postDescription.getText().toString().trim().equals("")) {
 				PostSendMap.put("post_text", postDescription.getText().toString().trim());
@@ -463,22 +270,19 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 				PostSendMap.put("post_region", appSavedData.getString("user_region_data", ""));
 			}
 			PostSendMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-			FirebaseDatabase.getInstance().getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, new DatabaseReference.CompletionListener() {
-				@Override
-				public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-					if (databaseError == null) {
-						SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
-						_LoadingDialog(false);
-						finish();
-					} else {
-						SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-						_LoadingDialog(false);
-					}
+			dbService.getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, (databaseError, aBoolean) -> {
+				if (databaseError == null) {
+					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
+					_LoadingDialog(false);
+					finish();
+				} else {
+					SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
+					_LoadingDialog(false);
 				}
 			});
 
 		} else {
-			UniquePostKey = maindb.push().getKey();
+			UniquePostKey = dbService.getReference("skyline/line-posts").push().getKey();
 			_LoadingDialog(true);
 			UploadFiles.uploadFile(_path, new File(_path).getName(), new UploadFiles.UploadCallback() {
 				@Override
@@ -491,7 +295,7 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 					cc = Calendar.getInstance();
 					PostSendMap = new HashMap<>();
 					PostSendMap.put("key", UniquePostKey);
-					PostSendMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+					PostSendMap.put("uid", authService.getCurrentUser().getUid());
 					PostSendMap.put("post_type", "LINE_VIDEO");
 					if (!postDescription.getText().toString().trim().equals("")) {
 						PostSendMap.put("post_text", postDescription.getText().toString().trim());
@@ -503,17 +307,14 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 						PostSendMap.put("post_region", appSavedData.getString("user_region_data", ""));
 					}
 					PostSendMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-					FirebaseDatabase.getInstance().getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, new DatabaseReference.CompletionListener() {
-						@Override
-						public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-							if (databaseError == null) {
-								SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
-								_LoadingDialog(false);
-								finish();
-							} else {
-								SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-								_LoadingDialog(false);
-							}
+					dbService.getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, (databaseError, aBoolean) -> {
+						if (databaseError == null) {
+							SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
+							_LoadingDialog(false);
+							finish();
+						} else {
+							SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
+							_LoadingDialog(false);
 						}
 					});
 				}
