@@ -16,11 +16,13 @@ object UserActivity {
 
     @JvmStatic
     fun setActivity(uid: String, activity: String) {
-        usersRef.child(uid).child("activity").setValue(activity, emptyListener)
+        val ref = usersRef.child(uid).child("activity")
+        dbService.setValue(ref, activity, emptyListener)
     }
 
     @JvmStatic
     fun clearActivity(uid: String) {
-        usersRef.child(uid).child("activity").setValue(null, emptyListener)
+        val ref = usersRef.child(uid).child("activity")
+        dbService.setValue(ref, null, emptyListener)
     }
 }

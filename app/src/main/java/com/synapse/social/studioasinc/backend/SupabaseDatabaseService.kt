@@ -5,8 +5,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.PostgrestQuery
-import io.github.jan.supabase.realtime.PostgresChange
+import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
+import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
@@ -52,7 +52,7 @@ class SupabaseDatabaseService : IDatabaseService {
                 if (value == null) {
                     supabaseRef.reference.delete()
                 } else {
-                    supabaseRef.reference.upsert(value)
+                    supabaseRef.reference.upsert(value, onConflict = "id")
                 }
                 withContext(Dispatchers.Main) {
                     listener.onComplete(Unit, null)
@@ -89,23 +89,23 @@ class SupabaseDatabaseService : IDatabaseService {
         val supabaseRef = ref as SupabaseDatabaseReference
         val channel = supabase.channel(supabaseRef.path)
         serviceScope.launch {
-            channel.postgresChangeFlow<PostgresChange.Insert>(schema = "public") {
+            channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
                 table = supabaseRef.path
             }.onEach {
                 withContext(Dispatchers.Main) {
-                    listener.onInsert(SupabaseDataSnapshot(it.newRecord))
+                    listener.onInsert(SupabaseDataSnapshot(it.record))
                 }
             }.launchIn(this)
 
-            channel.postgresChangeFlow<PostgresChange.Update>(schema = "public") {
+            channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
                 table = supabaseRef.path
             }.onEach {
                 withContext(Dispatchers.Main) {
-                    listener.onUpdate(SupabaseDataSnapshot(it.newRecord))
+                    listener.onUpdate(SupabaseDataSnapshot(it.record))
                 }
             }.launchIn(this)
 
-            channel.postgresChangeFlow<PostgresChange.Delete>(schema = "public") {
+            channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
                 table = supabaseRef.path
             }.onEach {
                 withContext(Dispatchers.Main) {
@@ -126,11 +126,10 @@ class SupabaseDatabaseService : IDatabaseService {
     }
 }
 
-abstract class SupabaseQuery(val query: PostgrestQuery) : IQuery {
+abstract class SupabaseQuery(var query: PostgrestQueryBuilder) : IQuery {
 
     override fun orderByChild(path: String): IQuery {
-        // Not directly applicable to PostgREST in the same way as Firebase.
-        // Could be implemented with .order() on a specific column.
+        this.query = query.order(path)
         return this
     }
 
@@ -146,7 +145,7 @@ abstract class SupabaseQuery(val query: PostgrestQuery) : IQuery {
     }
 
     override fun limitToFirst(limit: Int): IQuery {
-        query.limit(limit)
+        this.query = query.limit(limit)
         return this
     }
 
@@ -161,13 +160,13 @@ abstract class SupabaseQuery(val query: PostgrestQuery) : IQuery {
     }
 
     override fun orderByKey(): IQuery {
-        query.order("id") // Assuming 'id' is the primary key
+        this.query = query.order("id") // Assuming 'id' is the primary key
         return this
     }
 
     override fun endBefore(value: String?): IQuery {
         if (value != null) {
-            query.lt("id", value) // Assuming 'id' is the primary key
+            this.query = query.lt("id", value) // Assuming 'id' is the primary key
         }
         return this
     }

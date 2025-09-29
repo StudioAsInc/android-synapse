@@ -31,7 +31,7 @@ object PresenceManager {
     @JvmStatic
     fun goOnline(uid: String) {
         val statusRef = getUserStatusRef(uid)
-        statusRef.setValue("online", emptyListener)
+        dbService.setValue(statusRef, "online", emptyListener)
         /*
          * TODO: onDisconnect functionality needs to be re-implemented using Supabase Realtime and Presence.
          *
@@ -55,7 +55,7 @@ object PresenceManager {
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString(), emptyListener)
+        dbService.setValue(getUserStatusRef(uid), System.currentTimeMillis().toString(), emptyListener)
     }
 
     /**
