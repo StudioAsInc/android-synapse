@@ -33,7 +33,19 @@ class SupabaseDatabaseService : IDatabaseService {
         val supabaseQuery = query as SupabaseQuery
         serviceScope.launch {
             try {
-                val response = supabaseQuery.query.select().decodeList<Map<String, Any?>>()
+                val response = supabaseQuery.query.select {
+                    supabaseQuery.orderBy?.let { (column, order) ->
+                        order(column, order)
+                    }
+                    supabaseQuery.limit?.let {
+                        limit(it.toLong())
+                    }
+                    supabaseQuery.endBeforeValue?.let {
+                        filter {
+                            lt("id", it)
+                        }
+                    }
+                }.decodeList<Map<String, Any?>>()
                 withContext(Dispatchers.Main) {
                     listener.onDataChange(SupabaseDataSnapshot(response))
                 }
@@ -126,10 +138,14 @@ class SupabaseDatabaseService : IDatabaseService {
     }
 }
 
-abstract class SupabaseQuery(var query: PostgrestQueryBuilder) : IQuery {
+abstract class SupabaseQuery(internal var query: PostgrestQueryBuilder) : IQuery {
+
+    internal var orderBy: Pair<String, io.github.jan.supabase.postgrest.query.Order>? = null
+    internal var limit: Int? = null
+    internal var endBeforeValue: String? = null
 
     override fun orderByChild(path: String): IQuery {
-        this.query = query.order(path)
+        this.orderBy = Pair(path, io.github.jan.supabase.postgrest.query.Order.ASC)
         return this
     }
 
@@ -145,7 +161,7 @@ abstract class SupabaseQuery(var query: PostgrestQueryBuilder) : IQuery {
     }
 
     override fun limitToFirst(limit: Int): IQuery {
-        this.query = query.limit(limit)
+        this.limit = limit
         return this
     }
 
@@ -160,13 +176,13 @@ abstract class SupabaseQuery(var query: PostgrestQueryBuilder) : IQuery {
     }
 
     override fun orderByKey(): IQuery {
-        this.query = query.order("id") // Assuming 'id' is the primary key
+        this.orderBy = Pair("id", io.github.jan.supabase.postgrest.query.Order.ASC) // Assuming 'id' is the primary key
         return this
     }
 
     override fun endBefore(value: String?): IQuery {
         if (value != null) {
-            this.query = query.lt("id", value) // Assuming 'id' is the primary key
+            this.endBeforeValue = value
         }
         return this
     }
