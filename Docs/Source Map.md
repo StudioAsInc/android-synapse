@@ -9,7 +9,7 @@
 
 - **Language Distribution**: Primarily Java with Kotlin components (exact distribution may vary)
 - **Package**: `com.synapse.social.studioasinc`
-- **Version**: 1.0.0-alpha06 (versionCode: 14) *- Check app/build.gradle for current version*
+- **Version**: 1.0.0-alpha07 (versionCode: 15) *- Check app/build.gradle for current version*
 - **Min SDK**: 26, Target SDK: 32, Compile SDK: 36 *- Check app/build.gradle for current SDK levels*
 
 ## Project Structure
@@ -17,18 +17,15 @@
 ```
 synapse-android/
 ├── app/                              # Main Android application module
+│   ├── libs/                         # Local AAR dependencies
 │   ├── src/main/                     # Main source directory
-│   │   ├── java/com/synapse/social/studioasinc/  # Core application code
+│   │   ├── java/com/studioasinc/synapse/ # Core application code
 │   │   ├── res/                      # Android resources
 │   │   ├── assets/                   # Application assets
 │   │   └── AndroidManifest.xml       # App configuration and permissions
-│   ├── libs/                         # Local AAR dependencies
 │   ├── build.gradle                  # App-level build configuration
 │   └── proguard-rules.pro           # Code obfuscation rules
 ├── gradle/                           # Gradle wrapper files
-├── .github/                          # GitHub Actions and templates
-│   ├── workflows/                    # CI/CD pipelines
-│   └── ISSUE_TEMPLATE/              # Issue templates
 ├── Docs/                            # Project documentation
 ├── build.gradle                     # Project-level build configuration
 ├── settings.gradle                  # Gradle settings
@@ -39,81 +36,12 @@ synapse-android/
 
 ## Core Architecture
 
-### Application Entry Points
-
-#### Main Application Class
-- **`SynapseApp.java`** - Application class handling:
-  - Firebase initialization
-  - OneSignal push notifications setup
-  - Global exception handling
-  - User presence management
-
-#### Primary Activities
-- **`MainActivity.java`** - App launcher and authentication entry point
-- **`HomeActivity.java`** - Main social feed and navigation hub
-- **`AuthActivity.java`** - User authentication and registration
-- **`CheckpermissionActivity.java`** - Runtime permissions handling
-
-### Feature Modules
-
-#### Social Features
-- **`ProfileActivity.java`** - User profile management
-- **`ProfileEditActivity.java`** - Profile editing functionality
-- **`SearchActivity.java`** - User and content search
-- **`UserFollowsListActivity.java`** - Following/followers management
-
-#### Messaging System
-- **`InboxActivity.java`** - Message inbox interface
-- **`ChatActivity.java`** - Individual chat conversations
-- **`ChatAdapter.java`** - Message display adapter
-- **`FragInboxChatsActivity.java`** - Chat list fragment
-- **`FragInboxCallsActivity.java`** - Call history fragment
-- **`FragInboxStoriesActivity.java`** - Stories inbox fragment
-
-#### Content Creation
-- **`CreateImagePostActivity.java`** - Image post creation
-- **`CreateImagePostNextStepActivity.java`** - Post publishing workflow
-- **`CreateLineVideoActivity.java`** - Short video creation
-- **`CreateLineVideoNextStepActivity.java`** - Video publishing workflow
-- **`LineVideoPlayerActivity.java`** - Video playback interface
-
-#### Settings & Configuration
-- **`SettingsActivity.java`** - App settings
-- **`SelectRegionActivity.java`** - Region selection
-- **`BgWallpapersActivity.java`** - Background wallpaper selection
-- **`ChatsettingsActivity.java`** - Chat-specific settings
-- **`DisappearingMessageSettingsActivity.java`** - Message expiration settings
-
-### Supporting Components
-
-#### UI Components
-- **`PostCommentsBottomSheetDialog.java`** - Comment interface
-- **`PostMoreBottomSheetDialog.java`** - Post action menu
-- **`ContentDisplayBottomSheetDialogFragment.java`** - Content summary display
-
-#### Utility Classes
-- **`FileUtil.java`** - File operations and management
-- **`StorageUtil.java`** - Data storage utilities
-- **`SketchwareUtil.java`** - UI utility functions
-- **`RequestNetwork.java`** - Network request wrapper
-- **`RequestNetworkController.java`** - HTTP request management
-- **`UploadFiles.java`** - File upload functionality
-- **`ImageUploader.java`** - Image upload handling
-
-#### Specialized Components
-- **`PresenceManager.kt`** (Kotlin) - User online status management
-- **`NotificationHelper.kt`** (Kotlin) - Push notification handling
-- **`OneSignalManager.kt`** (Kotlin) - OneSignal integration
-- **`RadialProgress.java`** - Custom progress indicator
-- **`FadeEditText.java`** - Custom text input with fade effects
-
-### AI Integration
-- **`AI/Gemini.java`** - Google Gemini AI integration for content generation and assistance
+A more detailed architecture document is available at [Architecture.md](Architecture.md).
 
 ### Package Organization
 
 ```
-com.synapse.social.studioasinc/
+com.studioasinc.synapse/
 ├── [root]                           # Main activities and core classes
 ├── AI/                              # Artificial Intelligence components
 ├── animations/                      # Animation utilities
@@ -187,8 +115,13 @@ com.synapse.social.studioasinc/
 - `update_animation.json` - Update notification animation
 
 ### Web Integration
+- **`worker.js`**: A Cloudflare Worker that serves as a secure proxy for the OneSignal REST API. It receives notification requests from the application and forwards them to OneSignal, abstracting away the API key.
 - `firebase-presence.js` - Firebase presence integration
 - `presence-integration-example.html` - Web presence example
+
+## Notification System
+- **Deep Linking**: The application supports deep linking from notifications, allowing users to navigate directly to specific content (e.g., a chat, post, or profile) from a notification. For more details, see [NOTIFICATION_DEEP_LINKING.md](../NOTIFICATION_DEEP_LINKING.md).
+- **OneSignal**: Push notifications are handled by OneSignal and managed through the `OneSignalManager.kt` and `NotificationHelper.kt` classes.
 
 ## CI/CD Pipeline
 
