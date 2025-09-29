@@ -5,6 +5,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
@@ -145,7 +146,7 @@ abstract class SupabaseQuery(internal var query: PostgrestQueryBuilder) : IQuery
     internal var endBeforeValue: String? = null
 
     override fun orderByChild(path: String): IQuery {
-        this.orderBy = Pair(path, io.github.jan.supabase.postgrest.query.Order.ASC)
+        this.orderBy = Pair(path, io.github.jan.supabase.postgrest.query.Order.ASCENDING)
         return this
     }
 
@@ -176,7 +177,7 @@ abstract class SupabaseQuery(internal var query: PostgrestQueryBuilder) : IQuery
     }
 
     override fun orderByKey(): IQuery {
-        this.orderBy = Pair("id", io.github.jan.supabase.postgrest.query.Order.ASC) // Assuming 'id' is the primary key
+        this.orderBy = Pair("id", io.github.jan.supabase.postgrest.query.Order.ASCENDING) // Assuming 'id' is the primary key
         return this
     }
 
