@@ -1,7 +1,7 @@
 package com.synapse.social.studioasinc
 
-import com.synapse.social.studioasinc.backend.IAuthenticationService
-import com.synapse.social.studioasinc.backend.IDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
