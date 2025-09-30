@@ -31,8 +31,8 @@ import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
 import com.synapse.social.studioasinc.backend.SupabaseAuthService;
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;

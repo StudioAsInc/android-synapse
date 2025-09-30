@@ -3,9 +3,9 @@ package com.synapse.social.studioasinc.chat.common.service
 import android.app.Activity
 import android.content.Intent
 import android.util.Log
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.ICompletionListener
+import com.synapse.social.studioasinc.backend.IDatabaseService
 
 class UserBlockService(
     private val activity: Activity,

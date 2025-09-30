@@ -1,6 +1,6 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.backend.interfaces.*
+import com.synapse.social.studioasinc.backend.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest

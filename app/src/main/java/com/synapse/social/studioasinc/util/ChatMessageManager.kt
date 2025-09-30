@@ -1,11 +1,11 @@
 package com.synapse.social.studioasinc.util
 
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.ICompletionListener
+import com.synapse.social.studioasinc.backend.IDataListener
+import com.synapse.social.studioasinc.backend.IDatabaseError
+import com.synapse.social.studioasinc.backend.IDataSnapshot
+import com.synapse.social.studioasinc.backend.IDatabaseService
 
 class ChatMessageManager(
     private val dbService: IDatabaseService,

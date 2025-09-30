@@ -1,9 +1,9 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IDataListener
+import com.synapse.social.studioasinc.backend.IDataSnapshot
+import com.synapse.social.studioasinc.backend.IDatabaseError
+import com.synapse.social.studioasinc.backend.IDatabaseService
 
 class UserService(private val dbService: IDatabaseService) {
 

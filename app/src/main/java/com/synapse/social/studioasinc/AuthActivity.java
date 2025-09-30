@@ -31,14 +31,14 @@ import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
 import com.synapse.social.studioasinc.backend.SupabaseAuthService;
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.IAuthResult;
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
-import com.synapse.social.studioasinc.backend.interfaces.IUser;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.IAuthResult;
+import com.synapse.social.studioasinc.backend.ICompletionListener;
+import com.synapse.social.studioasinc.backend.IDataListener;
+import com.synapse.social.studioasinc.backend.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.IDatabaseError;
+import com.synapse.social.studioasinc.backend.IUser;
 
 public class AuthActivity extends AppCompatActivity {
 

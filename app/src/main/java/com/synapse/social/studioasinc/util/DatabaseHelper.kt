@@ -5,9 +5,9 @@ import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
-import com.synapse.social.studioasinc.ChatAdapter
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.IDatabaseService
+import com.synapse.social.studioasinc.backend.*
 import com.synapse.social.studioasinc.ChatUIUpdater
 import com.synapse.social.studioasinc.backend.interfaces.*
 import java.util.ArrayList

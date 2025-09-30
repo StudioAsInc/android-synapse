@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.backend.interfaces
+package com.synapse.social.studioasinc.backend
 
 // --- Generic Database Abstractions ---
 

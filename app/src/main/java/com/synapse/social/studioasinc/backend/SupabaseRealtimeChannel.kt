@@ -1,6 +1,6 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.backend.interfaces.IRealtimeChannel
+import com.synapse.social.studioasinc.backend.IRealtimeChannel
 import io.github.jan.supabase.realtime.RealtimeChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

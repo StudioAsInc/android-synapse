@@ -19,8 +19,8 @@ import android.widget.PopupWindow
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 import com.synapse.social.studioasinc.ChatConstants.CHATS_REF

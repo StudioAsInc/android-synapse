@@ -6,9 +6,9 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.ICompletionListener
+import com.synapse.social.studioasinc.backend.IDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class ChatKeyboardHandler(

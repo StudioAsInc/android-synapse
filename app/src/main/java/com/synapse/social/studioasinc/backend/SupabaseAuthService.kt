@@ -1,9 +1,9 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.backend.interfaces.IAuthResult
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
-import com.synapse.social.studioasinc.backend.interfaces.IUser
+import com.synapse.social.studioasinc.backend.IAuthResult
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.ICompletionListener
+import com.synapse.social.studioasinc.backend.IUser
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth

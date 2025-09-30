@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.PresenceManager
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
 import java.io.File
 
 class ItemUploadHandler(

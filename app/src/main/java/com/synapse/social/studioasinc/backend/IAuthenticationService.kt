@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.backend.interfaces
+package com.synapse.social.studioasinc.backend
 
 /**
  * Defines the contract for authentication operations, fully abstracted from the underlying provider.

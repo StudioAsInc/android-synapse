@@ -31,8 +31,8 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.synapse.social.studioasinc.backend.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;

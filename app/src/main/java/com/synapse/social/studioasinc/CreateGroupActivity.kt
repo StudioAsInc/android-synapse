@@ -12,9 +12,9 @@ import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
-import com.synapse.social.studioasinc.AsyncUploadService
+import com.synapse.social.studioasinc.backend.IAuthenticationService
+import com.synapse.social.studioasinc.backend.IDatabaseService
+import com.synapse.social.studioasinc.backend.ICompletionListener
 import com.synapse.social.studioasinc.StorageUtil
 import com.theartofdev.edmodo.cropper.CropImage
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener

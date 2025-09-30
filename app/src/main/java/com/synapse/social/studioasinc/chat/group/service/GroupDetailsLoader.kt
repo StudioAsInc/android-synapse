@@ -6,10 +6,10 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.IDataListener
+import com.synapse.social.studioasinc.backend.IDataSnapshot
+import com.synapse.social.studioasinc.backend.IDatabaseError
+import com.synapse.social.studioasinc.backend.IDatabaseService
 
 class GroupDetailsLoader(
     private val context: Context,
