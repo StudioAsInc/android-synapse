@@ -1,7 +1,5 @@
 package com.synapse.social.studioasinc
 
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 import android.Manifest
 import android.app.Activity
