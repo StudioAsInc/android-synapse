@@ -1,5 +1,7 @@
 package com.synapse.social.studioasinc
 
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 import android.Manifest
 import android.app.Activity
@@ -28,12 +30,10 @@ import com.google.android.material.button.MaterialButton
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IRealtimeListener
 import java.util.ArrayList
 import java.util.Calendar
