@@ -11,6 +11,12 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
 def getGitCommitHash = { ->
     def stdout = new ByteArrayOutputStream()
     exec {
@@ -59,6 +65,9 @@ android {
         versionCode = 15
         versionName = "1.0.0-alpha07"
         multiDexEnabled = true
+
+        buildConfigField "String", "SUPABASE_URL", localProperties.getProperty('supabase_url') != null ? "\"${localProperties.getProperty('supabase_url')}\"" : "\"\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", localProperties.getProperty('supabase_anon_key') != null ? "\"${localProperties.getProperty('supabase_anon_key')}\"" : "\"\""
 
         vectorDrawables.useSupportLibrary = true
 

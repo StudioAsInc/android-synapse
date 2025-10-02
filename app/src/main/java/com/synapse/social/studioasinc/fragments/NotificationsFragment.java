@@ -11,15 +11,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.adapter.NotificationAdapter;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
 import com.synapse.social.studioasinc.model.Notification;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +27,7 @@ public class NotificationsFragment extends Fragment {
     private List<Notification> notificationList;
     private ProgressBar progressBar;
     private TextView noNotificationsText;
+    private IAuthenticationService authService;
 
     @Nullable
     @Override
@@ -41,6 +37,7 @@ public class NotificationsFragment extends Fragment {
         recyclerView = view.findViewById(R.id.notifications_list);
         progressBar = view.findViewById(R.id.loading_bar);
         noNotificationsText = view.findViewById(R.id.no_notifications_text);
+        authService = new SupabaseAuthenticationService(getContext());
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -55,8 +52,7 @@ public class NotificationsFragment extends Fragment {
 
     private void fetchNotifications() {
         progressBar.setVisibility(View.VISIBLE);
-        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser == null) {
+        if (authService.getCurrentUserId() == null) {
             progressBar.setVisibility(View.GONE);
             noNotificationsText.setVisibility(View.VISIBLE);
             return;

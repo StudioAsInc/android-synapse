@@ -93,4 +93,6 @@ interface IDatabaseService {
     fun addRealtimeListener(ref: IDatabaseReference, listener: IRealtimeListener): IRealtimeChannel
 
     fun removeRealtimeListener(channel: IRealtimeChannel)
+
+    fun uploadFile(bucket: String, path: String, filePath: String, listener: ICompletionListener<String>)
 }

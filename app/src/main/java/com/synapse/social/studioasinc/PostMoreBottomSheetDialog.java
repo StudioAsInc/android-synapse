@@ -42,18 +42,18 @@ import com.bumptech.glide.Glide;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.database.Query;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.CoroutineStart;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.GlobalScope;
+import kotlinx.coroutines.withContext;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
@@ -92,8 +92,8 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
     private ImageView reportIc;
     private TextView reportTitle;
     
-    private FirebaseAuth auth;
-    private DatabaseReference main = FirebaseDatabase.getInstance().getReference("skyline");
+    private IAuthenticationService authService;
+    private IDatabaseService dbService;
     private Calendar cc = Calendar.getInstance();
     
     private String postKey = null;
@@ -163,8 +163,8 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
             }
         });
         
-        FirebaseApp.initializeApp(getContext());
-        auth = FirebaseAuth.getInstance();
+        authService = new SupabaseAuthenticationService(getContext());
+        dbService = new SupabaseDatabaseService();
         
         Display display = getActivity().getWindowManager().getDefaultDisplay();
         int screenHeight = display.getHeight();
@@ -215,7 +215,7 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
             copyPostText.setVisibility(View.GONE);
         }
         
-        if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid()) || FirebaseAuth.getInstance().getCurrentUser().getEmail().equals("mashikahamed0@gmail.com")) {
+        if (postPublisherUID.equals(authService.getCurrentUserId()) || "mashikahamed0@gmail.com".equals(authService.getCurrentUserEmail())) {
             share.setVisibility(View.VISIBLE);
             editPost.setVisibility(View.VISIBLE);
             report.setVisibility(View.GONE);
@@ -302,58 +302,59 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
         }
     }
     
-    	private void deletePostDatas(String key) {
-		FirebaseDatabase.getInstance().getReference("skyline/posts").child(key).removeValue();
-		FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(key).removeValue();
-		FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(key).removeValue();
-		FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(key).removeValue();
-	}
-	
-	private void openEditPostActivity() {
-		// Get post settings from database
-		FirebaseDatabase.getInstance().getReference("skyline/posts").child(postKey).addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					HashMap<String, Object> postData = (HashMap<String, Object>) dataSnapshot.getValue();
-					
-					Intent editIntent = new Intent(getActivity(), EditPostActivity.class);
-					editIntent.putExtra("postKey", postKey);
-					editIntent.putExtra("postText", postText);
-					editIntent.putExtra("postImage", postImg);
-					editIntent.putExtra("postType", postType);
-					
-					// Add post settings
-					if (postData.containsKey("post_hide_views_count")) {
-						editIntent.putExtra("hideViewsCount", Boolean.parseBoolean(postData.get("post_hide_views_count").toString()));
-					}
-					if (postData.containsKey("post_hide_like_count")) {
-						editIntent.putExtra("hideLikesCount", Boolean.parseBoolean(postData.get("post_hide_like_count").toString()));
-					}
-					if (postData.containsKey("post_hide_comments_count")) {
-						editIntent.putExtra("hideCommentsCount", Boolean.parseBoolean(postData.get("post_hide_comments_count").toString()));
-					}
-					if (postData.containsKey("post_visibility")) {
-						editIntent.putExtra("hidePostFromEveryone", "private".equals(postData.get("post_visibility").toString()));
-					}
-					if (postData.containsKey("post_disable_favorite")) {
-						editIntent.putExtra("disableSaveToFavorites", Boolean.parseBoolean(postData.get("post_disable_favorite").toString()));
-					}
-					if (postData.containsKey("post_disable_comments")) {
-						editIntent.putExtra("disableComments", Boolean.parseBoolean(postData.get("post_disable_comments").toString()));
-					}
-					
-					dialog.dismiss();
-					startActivity(editIntent);
-				}
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-				SketchwareUtil.showMessage(getActivity(), "Failed to load post data");
-			}
-		});
-	}
+    private void deletePostDatas(String key) {
+        // This is a placeholder. In a real app, you would handle the result.
+        dbService.getReference("posts").child(key).setValue(null, (result, error) -> {});
+        dbService.getReference("posts-comments").child(key).setValue(null, (result, error) -> {});
+        dbService.getReference("posts-comments-like").child(key).setValue(null, (result, error) -> {});
+        dbService.getReference("posts-likes").child(key).setValue(null, (result, error) -> {});
+    }
+
+    private void openEditPostActivity() {
+        dbService.getReference("posts").child(postKey).getData(new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    HashMap<String, Object> postData = dataSnapshot.getValue(HashMap.class);
+                    if (postData == null) return;
+
+                    Intent editIntent = new Intent(getActivity(), EditPostActivity.class);
+                    editIntent.putExtra("postKey", postKey);
+                    editIntent.putExtra("postText", postText);
+                    editIntent.putExtra("postImage", postImg);
+                    editIntent.putExtra("postType", postType);
+
+                    // Add post settings
+                    if (postData.containsKey("post_hide_views_count")) {
+                        editIntent.putExtra("hideViewsCount", Boolean.parseBoolean(postData.get("post_hide_views_count").toString()));
+                    }
+                    if (postData.containsKey("post_hide_like_count")) {
+                        editIntent.putExtra("hideLikesCount", Boolean.parseBoolean(postData.get("post_hide_like_count").toString()));
+                    }
+                    if (postData.containsKey("post_hide_comments_count")) {
+                        editIntent.putExtra("hideCommentsCount", Boolean.parseBoolean(postData.get("post_hide_comments_count").toString()));
+                    }
+                    if (postData.containsKey("post_visibility")) {
+                        editIntent.putExtra("hidePostFromEveryone", "private".equals(postData.get("post_visibility").toString()));
+                    }
+                    if (postData.containsKey("post_disable_favorite")) {
+                        editIntent.putExtra("disableSaveToFavorites", Boolean.parseBoolean(postData.get("post_disable_favorite").toString()));
+                    }
+                    if (postData.containsKey("post_disable_comments")) {
+                        editIntent.putExtra("disableComments", Boolean.parseBoolean(postData.get("post_disable_comments").toString()));
+                    }
+
+                    dialog.dismiss();
+                    startActivity(editIntent);
+                }
+            }
+
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                SketchwareUtil.showMessage(getActivity(), "Failed to load post data");
+            }
+        });
+    }
     
     public void _ImageColor(final ImageView _image, final int _color) {
         _image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
