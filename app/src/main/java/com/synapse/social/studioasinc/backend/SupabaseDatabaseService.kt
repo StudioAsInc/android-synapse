@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.backend
 
+import com.synapse.social.studioasinc.BuildConfig
 import com.synapse.social.studioasinc.backend.interfaces.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
@@ -11,19 +12,23 @@ import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import java.io.File
 
 class SupabaseDatabaseService : IDatabaseService {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val supabase: SupabaseClient = createSupabaseClient(
-        supabaseUrl = "YOUR_SUPABASE_URL",
-        supabaseKey = "YOUR_SUPABASE_KEY"
+        supabaseUrl = BuildConfig.SUPABASE_URL,
+        supabaseKey = BuildConfig.SUPABASE_ANON_KEY
     ) {
         install(Postgrest)
         install(Realtime)
+        install(Storage)
     }
 
     override fun getReference(path: String): IDatabaseReference {
@@ -135,6 +140,24 @@ class SupabaseDatabaseService : IDatabaseService {
         val supabaseChannel = channel as SupabaseRealtimeChannel
         serviceScope.launch {
             supabaseChannel.channel.unsubscribe()
+        }
+    }
+
+    override fun uploadFile(bucket: String, path: String, filePath: String, listener: ICompletionListener<String>) {
+        serviceScope.launch {
+            try {
+                val file = File(filePath)
+                val data = file.readBytes()
+                val url = supabase.storage.from(bucket).upload(path, data, upsert = true)
+                val publicUrl = supabase.storage.from(bucket).publicUrl(path)
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(publicUrl, null)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    listener.onComplete(null, e)
+                }
+            }
         }
     }
 }

@@ -37,8 +37,8 @@ import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
-import com.synapse.social.studioasinc.backend.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.SupabaseAuthService;
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
@@ -93,8 +93,6 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 	private ImageView bottom_chats_ic;
 	private ImageView bottom_profile_ic;
 
-	private RequestNetwork request;
-	private RequestNetwork.RequestListener _request_request_listener;
 	private Intent intent = new Intent();
 
 	@Override
@@ -136,7 +134,6 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 		bottom_videos_ic = findViewById(R.id.bottom_videos_ic);
 		bottom_chats_ic = findViewById(R.id.bottom_chats_ic);
 		bottom_profile_ic = findViewById(R.id.bottom_profile_ic);
-		request = new RequestNetwork(this);
 
 		middleRelativeTopSwipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
@@ -182,54 +179,10 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View _view) {
 				intent.setClass(getApplicationContext(), ProfileActivity.class);
-				intent.putExtra("uid", authService.getCurrentUser().getUid());
+				intent.putExtra("uid", authService.getCurrentUserId());
 				startActivity(intent);
 			}
 		});
-
-		_request_request_listener = new RequestNetwork.RequestListener() {
-			@Override
-			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
-				final String _tag = _param1;
-				final String _response = _param2;
-				final HashMap<String, Object> _responseHeaders = _param3;
-				loadedBody.setVisibility(View.VISIBLE);
-				noInternetBody.setVisibility(View.GONE);
-				IQuery getLineVideosRef = dbService.getReference("skyline/line-posts").orderBy("post_type", IQuery.Order.ASCENDING).equalTo("LINE_VIDEO").limitToLast(50);
-				getLineVideosRef.addListenerForSingleValueEvent(new IDataListener() {
-					@Override
-					public void onDataChange(IDataSnapshot _dataSnapshot) {
-						lineVideosListMap.clear();
-						try {
-							for (IDataSnapshot _data : _dataSnapshot.getChildren()) {
-								HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue();
-								lineVideosListMap.add(_map);
-							}
-							mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(getApplicationContext(), getSupportFragmentManager(),  lineVideosListMap, authService, dbService);
-							videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-
-					@Override
-					public void onCancelled(IDatabaseError _databaseError) {
-
-					}
-				});
-
-				middleRelativeTopSwipe.setRefreshing(false);
-			}
-
-			@Override
-			public void onErrorResponse(String _param1, String _param2) {
-				final String _tag = _param1;
-				final String _message = _param2;
-				loadedBody.setVisibility(View.GONE);
-				noInternetBody.setVisibility(View.VISIBLE);
-				middleRelativeTopSwipe.setRefreshing(false);
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -288,7 +241,37 @@ public class LineVideoPlayerActivity extends AppCompatActivity {
 
 
 	public void _getReference() {
-		request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
+        middleRelativeTopSwipe.setRefreshing(true);
+        loadedBody.setVisibility(View.GONE);
+        noInternetBody.setVisibility(View.GONE);
+
+        IQuery getLineVideosRef = dbService.getReference("line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
+        getLineVideosRef.getData(new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                loadedBody.setVisibility(View.VISIBLE);
+                noInternetBody.setVisibility(View.GONE);
+                lineVideosListMap.clear();
+                try {
+                    for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue(HashMap.class);
+                        lineVideosListMap.add(_map);
+                    }
+                    mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(getApplicationContext(), getSupportFragmentManager(), lineVideosListMap, authService, dbService);
+                    videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                middleRelativeTopSwipe.setRefreshing(false);
+            }
+
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                loadedBody.setVisibility(View.GONE);
+                noInternetBody.setVisibility(View.VISIBLE);
+                middleRelativeTopSwipe.setRefreshing(false);
+            }
+        });
 	}
 
 }
