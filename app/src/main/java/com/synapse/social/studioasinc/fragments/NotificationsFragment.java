@@ -12,9 +12,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.synapse.social.studioasinc.R;
+import com.synapse.social.studioasinc.SynapseApp;
 import com.synapse.social.studioasinc.adapter.NotificationAdapter;
 import com.synapse.social.studioasinc.backend.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
 import com.synapse.social.studioasinc.model.Notification;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +37,7 @@ public class NotificationsFragment extends Fragment {
         recyclerView = view.findViewById(R.id.notifications_list);
         progressBar = view.findViewById(R.id.loading_bar);
         noNotificationsText = view.findViewById(R.id.no_notifications_text);
-        authService = new SupabaseAuthenticationService(getContext());
+        authService = ((SynapseApp) requireActivity().getApplication()).getAuthService();
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -52,7 +52,7 @@ public class NotificationsFragment extends Fragment {
 
     private void fetchNotifications() {
         progressBar.setVisibility(View.VISIBLE);
-        if (authService.getCurrentUserId() == null) {
+        if (authService.getCurrentUser() == null) {
             progressBar.setVisibility(View.GONE);
             noNotificationsText.setVisibility(View.VISIBLE);
             return;

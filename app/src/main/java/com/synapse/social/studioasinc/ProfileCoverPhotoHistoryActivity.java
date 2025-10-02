@@ -44,23 +44,11 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -74,14 +62,13 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
 
 public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-
+	private IAuthenticationService authService;
+    private IDatabaseService dbService;
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
 	private String CurrentAvatarUri = "";
@@ -106,19 +93,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private ProgressBar mLoadingBar;
 
 	private Calendar cc = Calendar.getInstance();
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private Intent intent = new Intent();
 
 	@Override
@@ -126,7 +100,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_cover_photo_history);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -159,7 +132,8 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutTitle = findViewById(R.id.isDataNotExistsLayoutTitle);
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
+		authService = ((SynapseApp) getApplication()).getAuthService();
+        dbService = ((SynapseApp) getApplication()).getDbService();
 
 		back.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -181,135 +155,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 				_addProfilePhotoUrlDialog();
 			}
 		});
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -376,61 +221,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
 
 	public void _getReference() {
-		isDataExistsLayout.setVisibility(View.GONE);
-		isDataNotExistsLayout.setVisibility(View.GONE);
-		mSwipeLayout.setVisibility(View.GONE);
-		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
-				} else {
-				}
-			}
-			
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
-			}
-		});
-		Query getProfileHistoryRef = FirebaseDatabase.getInstance().getReference("skyline/cover-image-history").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getProfileHistoryRef.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					isDataExistsLayout.setVisibility(View.VISIBLE);
-					isDataNotExistsLayout.setVisibility(View.GONE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
-					mLoadingBody.setVisibility(View.GONE);
-					ProfileHistoryList.clear();
-					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
-							ProfileHistoryList.add(_map);
-						}
-					} catch (Exception _e) {
-						_e.printStackTrace();
-					}
-					
-					SketchwareUtil.sortListMap(ProfileHistoryList, "upload_date", false, false);
-					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
-				} else {
-					isDataExistsLayout.setVisibility(View.GONE);
-					isDataNotExistsLayout.setVisibility(View.VISIBLE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
-					mLoadingBody.setVisibility(View.GONE);
-				}
-			}
-			
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
-			}
-		});
-		mSwipeLayout.setRefreshing(false);
+		Log.d("ProfileCoverPhoto", "_getReference - NOT IMPLEMENTED");
 	}
 
 
@@ -496,16 +287,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 				public void onClick(View _view) {
 					if (!user_avatar_url_input.getText().toString().trim().equals("")) {
 						if (_checkValidUrl(user_avatar_url_input.getText().toString().trim())) {
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", user_avatar_url_input.getText().toString().trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-							SketchwareUtil.showMessage(getApplicationContext(), "Cover Image Added");
-							_getReference();
-							NewCustomDialog.dismiss();
+							Log.d("ProfileCoverPhoto", "add_button clicked - NOT IMPLEMENTED");
 						}
 					}
 				}
@@ -553,19 +335,12 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 				@Override
 				public void onClick(View _view) {
 					if (_uri.equals(CurrentAvatarUri)) {
-						mSendMap = new HashMap<>();
-						mSendMap.put("profile_cover_image", "null");
-						mSendMap.put("cover_image_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
-						CurrentAvatarUri = "null";
-						mSendMap.clear();
+						Log.d("ProfileCoverPhoto", "delete current avatar - NOT IMPLEMENTED");
 					}
 					if (_type.equals("local")) {
-						// Firebase Storage removal requested
+						Log.d("ProfileCoverPhoto", "delete local avatar - NOT IMPLEMENTED");
 					}
-					maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
-					_getReference();
-					NewCustomDialog.dismiss();
+					Log.d("ProfileCoverPhoto", "delete avatar - NOT IMPLEMENTED");
 				}
 			});
 			NewCustomDialog.setCancelable(true);
@@ -616,23 +391,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			body.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					if (_data.get((int)_position).get("image_url").toString().equals(CurrentAvatarUri)) {
-						mSendMap = new HashMap<>();
-						mSendMap.put("profile_cover_image", "null");
-						mSendMap.put("cover_image_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
-						CurrentAvatarUri = "null";
-						mSendMap.clear();
-						notifyDataSetChanged();
-					} else {
-						mSendMap = new HashMap<>();
-						mSendMap.put("profile_cover_image", _data.get((int)_position).get("image_url").toString());
-						mSendMap.put("cover_image_history_type", _data.get((int)_position).get("type").toString());
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
-						CurrentAvatarUri = _data.get((int)_position).get("image_url").toString();
-						mSendMap.clear();
-						notifyDataSetChanged();
-					}
+					Log.d("ProfileCoverPhoto", "set new avatar - NOT IMPLEMENTED");
 				}
 			});
 			body.setOnLongClickListener(new View.OnLongClickListener() {

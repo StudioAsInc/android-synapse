@@ -49,9 +49,8 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import com.bumptech.glide.Glide;
 import com.synapse.social.studioasinc.backend.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.IDatabaseService;
-import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -119,8 +118,8 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		authService = new SupabaseAuthService();
-		dbService = new SupabaseDatabaseService();
+		authService = ((SynapseApp) getApplication()).getAuthService();
+		dbService = ((SynapseApp) getApplication()).getDbService();
 		top = findViewById(R.id.top);
 		topSpace = findViewById(R.id.topSpace);
 		scroll = findViewById(R.id.scroll);
@@ -196,13 +195,6 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 
 
 	public void _LoadingDialog(final boolean _visibility) {
-		m = new HashMap<>();
-		m.put("title", "".concat(" has recently shared a video".concat(".")));
-		m.put("date", new SimpleDateFormat("dd MMMM yyyy | hh:mm a").format(cc.getTime()));
-		m.put("image", "");
-		m.put("uid", authService.getCurrentUser().getUid());
-		dbService.getReference("notify").push().updateChildren(m, (error, success) -> {});
-		m.clear();
 		if (_visibility) {
 			if (SynapseLoadingDialog== null){
 				SynapseLoadingDialog = new ProgressDialog(this);
@@ -254,11 +246,13 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 	public void _uploadLineVideo(final String _path, final boolean _isUrl) {
 		if (_isUrl) {
 			_LoadingDialog(true);
-			UniquePostKey = dbService.getReference("skyline/line-posts").push().getKey();
+			Log.d("CreateLineVideo", "_uploadLineVideo(url) - NOT IMPLEMENTED");
 			cc = Calendar.getInstance();
 			PostSendMap = new HashMap<>();
 			PostSendMap.put("key", UniquePostKey);
-			PostSendMap.put("uid", authService.getCurrentUser().getUid());
+			if (authService.getCurrentUser() != null) {
+				PostSendMap.put("uid", authService.getCurrentUser().getUid());
+			}
 			PostSendMap.put("post_type", "LINE_VIDEO");
 			if (!postDescription.getText().toString().trim().equals("")) {
 				PostSendMap.put("post_text", postDescription.getText().toString().trim());
@@ -270,61 +264,10 @@ public class CreateLineVideoNextStepActivity extends AppCompatActivity {
 				PostSendMap.put("post_region", appSavedData.getString("user_region_data", ""));
 			}
 			PostSendMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-			dbService.getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, (databaseError, aBoolean) -> {
-				if (databaseError == null) {
-					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
-					_LoadingDialog(false);
-					finish();
-				} else {
-					SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-					_LoadingDialog(false);
-				}
-			});
+			Log.d("CreateLineVideo", "Submitting post - NOT IMPLEMENTED");
 
 		} else {
-			UniquePostKey = dbService.getReference("skyline/line-posts").push().getKey();
-			_LoadingDialog(true);
-			UploadFiles.uploadFile(_path, new File(_path).getName(), new UploadFiles.UploadCallback() {
-				@Override
-				public void onProgress(int percent) {
-					// You can update the progress dialog here if you want
-				}
-
-				@Override
-				public void onSuccess(String url, String publicId) {
-					cc = Calendar.getInstance();
-					PostSendMap = new HashMap<>();
-					PostSendMap.put("key", UniquePostKey);
-					PostSendMap.put("uid", authService.getCurrentUser().getUid());
-					PostSendMap.put("post_type", "LINE_VIDEO");
-					if (!postDescription.getText().toString().trim().equals("")) {
-						PostSendMap.put("post_text", postDescription.getText().toString().trim());
-					}
-					PostSendMap.put("videoUri", url);
-					if (!appSavedData.contains("user_region_data") && appSavedData.getString("user_region_data", "").equals("none")) {
-						PostSendMap.put("post_region", "none");
-					} else {
-						PostSendMap.put("post_region", appSavedData.getString("user_region_data", ""));
-					}
-					PostSendMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-					dbService.getReference("skyline/line-posts").child(UniquePostKey).updateChildren(PostSendMap, (databaseError, aBoolean) -> {
-						if (databaseError == null) {
-							SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.post_publish_success));
-							_LoadingDialog(false);
-							finish();
-						} else {
-							SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-							_LoadingDialog(false);
-						}
-					});
-				}
-
-				@Override
-				public void onFailure(String error) {
-					_LoadingDialog(false);
-					SketchwareUtil.showMessage(getApplicationContext(), error);
-				}
-			});
+			Log.d("CreateLineVideo", "_uploadLineVideo(local) - NOT IMPLEMENTED");
 		}
 	}
 

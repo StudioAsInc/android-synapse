@@ -146,8 +146,9 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		authService = new SupabaseAuthService();
-		dbService = new SupabaseDatabaseService();
+		SynapseApp app = (SynapseApp) getApplication();
+		authService = app.getAuthenticationService();
+		dbService = app.getDatabaseService();
 		scroll = findViewById(R.id.scroll);
 		body = findViewById(R.id.body);
 		toolbar = findViewById(R.id.toolbar);

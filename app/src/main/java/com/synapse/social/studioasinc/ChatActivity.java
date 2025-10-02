@@ -185,9 +185,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	    private void initialize(Bundle _savedInstanceState) {
-	        authService = new SupabaseAuthService();
-	        dbService = new SupabaseDatabaseService();
-	        auth = authService.getCurrentUser();
+	        authService = ((SynapseApp) getApplication()).getAuthService();
+	        dbService = ((SynapseApp) getApplication()).getDbService();
+	        IUser auth = authService.getCurrentUser();
 	
 	        relativelayout1 = findViewById(R.id.relativelayout1);		ivBGimage = findViewById(R.id.ivBGimage);
 		body = findViewById(R.id.body);
@@ -230,7 +230,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		divider_mic_camera = findViewById(R.id.divider_mic_camera);
 		galleryBtn = findViewById(R.id.galleryBtn);
 		close_attachments_btn = findViewById(R.id.close_attachments_btn);
-		        auth = authService.getCurrentUser();		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+		        vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		blocked = getSharedPreferences("block", Activity.MODE_PRIVATE);
 		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
 		appSettings = getSharedPreferences("appSettings", Activity.MODE_PRIVATE);

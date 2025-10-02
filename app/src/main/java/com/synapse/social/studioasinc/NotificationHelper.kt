@@ -106,34 +106,6 @@ object NotificationHelper {
         })
     }
 
-    /**
-     * Enhanced notification sending with smart presence checking and dual system support.
-     *
-     * @param senderUid The UID of the message sender
-     * @param recipientUid The UID of the message recipient
-     * @param recipientOneSignalPlayerId The OneSignal Player ID of the recipient
-     * @param message The message content to send in the notification
-     * @param chatId Optional chat ID for deep linking (can be null)
-     * @deprecated Use sendNotification instead.
-     */
-    @JvmStatic
-    @Deprecated("Use sendNotification instead.")
-    @Suppress("DEPRECATION")
-    fun sendMessageAndNotifyIfNeeded(
-        senderUid: String,
-        recipientUid: String,
-        recipientOneSignalPlayerId: String,
-        message: String,
-        chatId: String? = null
-    ) {
-        sendNotification(
-            recipientUid,
-            senderUid,
-            message,
-            "chat_message",
-            if (chatId != null) mapOf("chat_id" to chatId) else null
-        )
-    }
 
     /**
      * Sends notification via the existing Cloudflare Worker (server-side).
@@ -272,15 +244,6 @@ object NotificationHelper {
         })
     }
 
-    /**
-     * Legacy method for backward compatibility.
-     * @deprecated Use sendMessageAndNotifyIfNeeded with chatId parameter instead
-     */
-    @JvmStatic
-    @Deprecated("Use sendMessageAndNotifyIfNeeded with chatId parameter for better deep linking")
-    fun triggerPushNotification(recipientId: String, message: String) {
-        sendMessageAndNotifyIfNeeded("", "", recipientId, message)
-    }
 
     /**
      * Gets the current notification system being used.

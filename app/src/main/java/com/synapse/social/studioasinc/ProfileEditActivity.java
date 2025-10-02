@@ -49,8 +49,6 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.synapse.social.studioasinc.backend.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.IDatabaseService;
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
@@ -65,11 +63,6 @@ import java.util.*;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
-import kotlinx.coroutines.BuildersKt;
-import kotlinx.coroutines.CoroutineStart;
-import kotlinx.coroutines.Dispatchers;
-import kotlinx.coroutines.GlobalScope;
-import kotlinx.coroutines.withContext;
 import org.json.*;
 
 public class ProfileEditActivity extends AppCompatActivity {
@@ -225,8 +218,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 		cover_image_history_stage_arrow = findViewById(R.id.cover_image_history_stage_arrow);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		authService = new SupabaseAuthenticationService(this);
-		dbService = new SupabaseDatabaseService();
+		authService = ((SynapseApp) getApplication()).getAuthService();
+		dbService = ((SynapseApp) getApplication()).getDbService();
 		fp.setType("image/*");
 		fp.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		fpcover.setType("image/*");
@@ -256,14 +249,16 @@ public class ProfileEditActivity extends AppCompatActivity {
 					}
 					ProfileEditSendMap.put("gender", genderValue);
 
-					dbService.getReference("users").child(authService.getCurrentUserId()).updateChildren(ProfileEditSendMap, (result, error) -> {
-						_LoadingDialog(false);
-						if (error == null) {
-							SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
-						} else {
-							SketchwareUtil.showMessage(getApplicationContext(), "Error: " + error.getMessage());
-						}
-					});
+					if (authService.getCurrentUser() != null) {
+						dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, error) -> {
+							_LoadingDialog(false);
+							if (error == null) {
+								SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
+							} else {
+								SketchwareUtil.showMessage(getApplicationContext(), "Error: " + error.getMessage());
+							}
+						});
+					}
 				} else {
 					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
 				}
@@ -298,11 +293,13 @@ public class ProfileEditActivity extends AppCompatActivity {
 										public void onDataChange(IDataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
 												boolean isTaken = false;
-												for (IDataSnapshot childSnapshot : dataSnapshot.getChildren()) {
-													String uid = childSnapshot.getValue(HashMap.class).get("uid").toString();
-													if (!uid.equals(authService.getCurrentUserId())) {
-														isTaken = true;
-														break;
+												if (authService.getCurrentUser() != null) {
+													for (IDataSnapshot childSnapshot : dataSnapshot.getChildren()) {
+														String uid = childSnapshot.getValue(HashMap.class).get("uid").toString();
+														if (!uid.equals(authService.getCurrentUser().getUid())) {
+															isTaken = true;
+															break;
+														}
 													}
 												}
 
@@ -325,7 +322,6 @@ public class ProfileEditActivity extends AppCompatActivity {
 											// Handle error
 										}
 									});
-
 								}
 							}
 						} else {
@@ -523,24 +519,25 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				stage1RelativeUpProfileImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-                String supabasePath = "avatar/" + authService.getCurrentUserId() + "/" + System.currentTimeMillis() + ".jpg";
-                dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
-                    if (error != null) {
-                        _LoadingDialog(false);
-                        SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
-                        return;
-                    }
-
-                    ProfileEditSendMap = new HashMap<>();
-                    ProfileEditSendMap.put("avatar", imageUrl);
-                    dbService.getReference("users").child(authService.getCurrentUserId()).updateChildren(ProfileEditSendMap, (result, updateError) -> {
-                        _LoadingDialog(false);
-                        if (updateError != null) {
-                            SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                if (authService.getCurrentUser() != null) {
+                    String supabasePath = "avatar/" + authService.getCurrentUser().getUid() + "/" + System.currentTimeMillis() + ".jpg";
+                    dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
+                        if (error != null) {
+                            _LoadingDialog(false);
+                            SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
+                            return;
                         }
-                    });
-                });
 
+                        ProfileEditSendMap = new HashMap<>();
+                        ProfileEditSendMap.put("avatar", imageUrl);
+                        dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, updateError) -> {
+                            _LoadingDialog(false);
+                            if (updateError != null) {
+                                SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                            }
+                        });
+                    });
+                }
 			}
 			else {
 
@@ -564,23 +561,25 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				profileCoverImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-                String supabasePath = "cover/" + authService.getCurrentUserId() + "/" + System.currentTimeMillis() + ".jpg";
-                dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
-                    if (error != null) {
-                        _LoadingDialog(false);
-                        SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
-                        return;
-                    }
-
-                    ProfileEditSendMap = new HashMap<>();
-                    ProfileEditSendMap.put("profile_cover_image", imageUrl);
-                    dbService.getReference("users").child(authService.getCurrentUserId()).updateChildren(ProfileEditSendMap, (result, updateError) -> {
-                        _LoadingDialog(false);
-                        if (updateError != null) {
-                            SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                if (authService.getCurrentUser() != null) {
+                    String supabasePath = "cover/" + authService.getCurrentUser().getUid() + "/" + System.currentTimeMillis() + ".jpg";
+                    dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
+                        if (error != null) {
+                            _LoadingDialog(false);
+                            SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
+                            return;
                         }
+
+                        ProfileEditSendMap = new HashMap<>();
+                        ProfileEditSendMap.put("profile_cover_image", imageUrl);
+                        dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, updateError) -> {
+                            _LoadingDialog(false);
+                            if (updateError != null) {
+                                SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                            }
+                        });
                     });
-                });
+                }
 			}
 			else {
 
@@ -617,7 +616,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 	public void _getUserReference() {
 		mScroll.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		dbService.getReference("users").child(authService.getCurrentUserId()).getData(new IDataListener() {
+		if (authService.getCurrentUser() == null) return;
+		dbService.getReference("users").child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 			@Override
 			public void onDataChange(IDataSnapshot dataSnapshot) {
 				if (dataSnapshot.exists()) {

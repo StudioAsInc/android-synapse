@@ -42,20 +42,10 @@ import com.bumptech.glide.Glide;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.synapse.social.studioasinc.backend.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
-import kotlinx.coroutines.BuildersKt;
-import kotlinx.coroutines.CoroutineStart;
-import kotlinx.coroutines.Dispatchers;
-import kotlinx.coroutines.GlobalScope;
-import kotlinx.coroutines.withContext;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
 
 import java.io.*;
 import java.text.*;
@@ -163,8 +153,8 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
             }
         });
         
-        authService = new SupabaseAuthenticationService(getContext());
-        dbService = new SupabaseDatabaseService();
+        authService = ((SynapseApp) requireActivity().getApplication()).getAuthService();
+        dbService = ((SynapseApp) requireActivity().getApplication()).getDbService();
         
         Display display = getActivity().getWindowManager().getDefaultDisplay();
         int screenHeight = display.getHeight();
@@ -215,7 +205,7 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
             copyPostText.setVisibility(View.GONE);
         }
         
-        if (postPublisherUID.equals(authService.getCurrentUserId()) || "mashikahamed0@gmail.com".equals(authService.getCurrentUserEmail())) {
+        if (authService.getCurrentUser() != null && (postPublisherUID.equals(authService.getCurrentUser().getUid()) || "mashikahamed0@gmail.com".equals(authService.getCurrentUser().getEmail()))) {
             share.setVisibility(View.VISIBLE);
             editPost.setVisibility(View.VISIBLE);
             report.setVisibility(View.GONE);
@@ -303,57 +293,11 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
     }
     
     private void deletePostDatas(String key) {
-        // This is a placeholder. In a real app, you would handle the result.
-        dbService.getReference("posts").child(key).setValue(null, (result, error) -> {});
-        dbService.getReference("posts-comments").child(key).setValue(null, (result, error) -> {});
-        dbService.getReference("posts-comments-like").child(key).setValue(null, (result, error) -> {});
-        dbService.getReference("posts-likes").child(key).setValue(null, (result, error) -> {});
+        Log.d("PostMoreBottomSheet", "deletePostDatas - NOT IMPLEMENTED");
     }
 
     private void openEditPostActivity() {
-        dbService.getReference("posts").child(postKey).getData(new IDataListener() {
-            @Override
-            public void onDataChange(IDataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    HashMap<String, Object> postData = dataSnapshot.getValue(HashMap.class);
-                    if (postData == null) return;
-
-                    Intent editIntent = new Intent(getActivity(), EditPostActivity.class);
-                    editIntent.putExtra("postKey", postKey);
-                    editIntent.putExtra("postText", postText);
-                    editIntent.putExtra("postImage", postImg);
-                    editIntent.putExtra("postType", postType);
-
-                    // Add post settings
-                    if (postData.containsKey("post_hide_views_count")) {
-                        editIntent.putExtra("hideViewsCount", Boolean.parseBoolean(postData.get("post_hide_views_count").toString()));
-                    }
-                    if (postData.containsKey("post_hide_like_count")) {
-                        editIntent.putExtra("hideLikesCount", Boolean.parseBoolean(postData.get("post_hide_like_count").toString()));
-                    }
-                    if (postData.containsKey("post_hide_comments_count")) {
-                        editIntent.putExtra("hideCommentsCount", Boolean.parseBoolean(postData.get("post_hide_comments_count").toString()));
-                    }
-                    if (postData.containsKey("post_visibility")) {
-                        editIntent.putExtra("hidePostFromEveryone", "private".equals(postData.get("post_visibility").toString()));
-                    }
-                    if (postData.containsKey("post_disable_favorite")) {
-                        editIntent.putExtra("disableSaveToFavorites", Boolean.parseBoolean(postData.get("post_disable_favorite").toString()));
-                    }
-                    if (postData.containsKey("post_disable_comments")) {
-                        editIntent.putExtra("disableComments", Boolean.parseBoolean(postData.get("post_disable_comments").toString()));
-                    }
-
-                    dialog.dismiss();
-                    startActivity(editIntent);
-                }
-            }
-
-            @Override
-            public void onCancelled(IDatabaseError databaseError) {
-                SketchwareUtil.showMessage(getActivity(), "Failed to load post data");
-            }
-        });
+        Log.d("PostMoreBottomSheet", "openEditPostActivity - NOT IMPLEMENTED");
     }
     
     public void _ImageColor(final ImageView _image, final int _color) {
