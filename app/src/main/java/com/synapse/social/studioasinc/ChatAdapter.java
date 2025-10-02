@@ -511,9 +511,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         int count = attachments.size();
         Log.d(TAG, "Processing " + count + " attachments");
 
-        // TEMPORARY FIX: Always use grid layout for now to ensure messages show properly
-        // TODO: Re-enable carousel after debugging
-        boolean useCarousel = false; // count >= 3;
+        boolean useCarousel = count >= 3;
 
         Log.d(TAG, "useCarousel: " + useCarousel + ", count: " + count);
 

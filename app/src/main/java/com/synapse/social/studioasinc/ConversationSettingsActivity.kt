@@ -94,7 +94,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.button1.setOnClickListener {
-            // TODO: Implement action
+            Log.d("ConversationSettings", "Search button clicked - Not implemented")
         }
 
         binding.cardReadReceipt.setOnClickListener {

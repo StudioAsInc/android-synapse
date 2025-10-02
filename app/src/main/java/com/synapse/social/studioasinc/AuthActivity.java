@@ -151,8 +151,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        authService = new SupabaseAuthService();
-        dbService = new SupabaseDatabaseService();
+        authService = ((SynapseApp) getApplication()).getAuthService();
+        dbService = ((SynapseApp) getApplication()).getDbService();
     }
 
     private void setupListeners() {

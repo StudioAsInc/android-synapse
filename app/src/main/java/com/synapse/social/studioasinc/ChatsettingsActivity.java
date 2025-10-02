@@ -201,8 +201,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		authService = new SupabaseAuthService();
-		dbService = new SupabaseDatabaseService();
+		authService = ((SynapseApp) getApplication()).getAuthService();
+		dbService = ((SynapseApp) getApplication()).getDbService();
 		top = findViewById(R.id.top);
 		scrollMain = findViewById(R.id.scrollMain);
 		mBack = findViewById(R.id.mBack);

@@ -18,19 +18,13 @@ import com.google.android.material.tabs.TabLayoutMediator;
 import com.synapse.social.studioasinc.adapter.ViewPagerAdapter;
 import com.synapse.social.studioasinc.backend.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.IDatabaseService;
-import com.synapse.social.studioasinc.backend.SupabaseAuthService;
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
-import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
-import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
+import com.synapse.social.studioasinc.backend.IDatabaseReference;
 
 public class HomeActivity extends AppCompatActivity {
 
     private static final int REELS_TAB_POSITION = 1;
     private IAuthenticationService authService;
     private IDatabaseService dbService;
-    private IDatabaseReference udb;
     private ImageView settings_button;
     private ImageView nav_search_ic;
     private ImageView nav_inbox_ic;
@@ -62,9 +56,8 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void initialize() {
-        authService = new SupabaseAuthService();
-        dbService = new SupabaseDatabaseService();
-        udb = dbService.getReference("skyline/users");
+        authService = ((SynapseApp) getApplication()).getAuthService();
+        dbService = ((SynapseApp) getApplication()).getDbService();
 
         tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
@@ -141,25 +134,30 @@ public class HomeActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        IDatabaseReference getReference = udb.child(authService.getCurrentUser().getUid());
-        dbService.getData(getReference, new IDataListener() {
-            @Override
-            public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
-                if(dataSnapshot.exists()) {
-                    if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-                        Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(nav_profile_ic);
-                    } else {
-                        nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
+        _loadProfileImage();
+    }
+
+    private void _loadProfileImage() {
+        if (authService.getCurrentUser() != null) {
+            dbService.getUserById(authService.getCurrentUser().getUid(), new IDataListener() {
+                @Override
+                public void onDataReceived(IDataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        String avatarUrl = dataSnapshot.getChild("avatar").getValue(String.class);
+                        if (avatarUrl != null && !avatarUrl.equals("null")) {
+                            Glide.with(HomeActivity.this).load(avatarUrl).into(nav_profile_ic);
+                        } else {
+                            nav_profile_ic.setImageResource(R.drawable.avatar);
+                        }
                     }
-                } else {
-                    nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
                 }
-            }
-            @Override
-            public void onCancelled(@NonNull IDatabaseError databaseError) {
-                nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
-            }
-        });
+
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    // Handle error
+                }
+            });
+        }
     }
 
     @Override
