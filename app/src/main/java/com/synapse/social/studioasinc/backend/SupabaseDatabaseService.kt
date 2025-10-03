@@ -133,7 +133,7 @@ class SupabaseDatabaseReference(
         return SupabaseDatabaseReference(supabase, newPath)
     }
 
-    override fun getKey(): String? {
+    override fun getKey(): String {
         return path.substringAfterLast('/')
     }
 }
