@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.PopupWindow;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -28,7 +29,7 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
     private final View sendButton;
 
-    public UserMention(EditText editText, View sendButton, IDatabaseService dbService) {
+    public UserMention(EditText editText, View sendButton, @NonNull IDatabaseService dbService) {
         this.editText = editText;
         this.context = editText.getContext();
         this.dbService = dbService;

@@ -54,7 +54,7 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun updateChildren(path: String, children: Map<String, Any>, listener: ICompletionListener<Any?>) {
+    override fun updateChildren(path: String, children: MutableMap<String, Any>, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
                 // Assuming path is table/id
@@ -66,11 +66,11 @@ class SupabaseDatabaseService : IDatabaseService {
                     }
                 }
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(null, null)
+                    (listener as ICompletionListener<Any?>).onComplete(null, null)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(null, e)
+                    (listener as ICompletionListener<Any?>).onComplete(null, e)
                 }
             }
         }
