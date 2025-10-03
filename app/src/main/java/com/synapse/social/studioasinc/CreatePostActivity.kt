@@ -135,7 +135,7 @@ class CreatePostActivity : AppCompatActivity() {
         addPhotoIcon.setOnClickListener { selectImages() }
         addVideoIcon.setOnClickListener { selectVideo() }
 
-        val userMention = UserMention(postDescriptionEditText)
+        val userMention = UserMention(postDescriptionEditText, publishButton, dbService)
         postDescriptionEditText.addTextChangedListener(userMention)
 
         // Initially hide media recycler if empty

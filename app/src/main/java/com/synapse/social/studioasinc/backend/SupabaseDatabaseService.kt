@@ -1,23 +1,21 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.BuildConfig
-import com.synapse.social.studioasinc.backend.interfaces.*
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
-import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
-import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import java.io.File
+import java.util.Map
+import java.util.UUID
 
 class SupabaseDatabaseService : IDatabaseService {
 
@@ -35,45 +33,18 @@ class SupabaseDatabaseService : IDatabaseService {
         return SupabaseDatabaseReference(supabase, path)
     }
 
-    override fun getData(query: IQuery, listener: IDataListener) {
-        val supabaseQuery = query as SupabaseQuery
-        serviceScope.launch {
-            try {
-                val response = supabaseQuery.query.select {
-                    supabaseQuery.orderBy?.let { (column, order) ->
-                        order(column, order)
-                    }
-                    supabaseQuery.limit?.let {
-                        limit(it.toLong())
-                    }
-                    supabaseQuery.endBeforeValue?.let {
-                        filter {
-                            lt("id", it)
-                        }
-                    }
-                }.decodeList<Map<String, Any?>>()
-                withContext(Dispatchers.Main) {
-                    listener.onDataChange(SupabaseDataSnapshot(response))
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    listener.onCancelled(SupabaseDatabaseError(e.message ?: "Unknown error", 0))
-                }
-            }
-        }
+    override fun getUserById(uid: String, listener: IDataListener) {
+        // Placeholder implementation
+        listener.onCancelled(SupabaseDatabaseError("Not implemented", -1))
     }
 
-    override fun setValue(ref: IDatabaseReference, value: Any?, listener: ICompletionListener<Unit>) {
-        val supabaseRef = ref as SupabaseDatabaseReference
+    override fun setValue(path: String, value: Any, listener: ICompletionListener<Any?>) {
         serviceScope.launch {
             try {
-                if (value == null) {
-                    supabaseRef.reference.delete()
-                } else {
-                    supabaseRef.reference.upsert(value, onConflict = "id")
-                }
+                // Assuming path is table name and value contains primary key.
+                supabase.from(path).upsert(value, onConflict = "id")
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(Unit, null)
+                    listener.onComplete(value, null)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -83,17 +54,19 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun updateChildren(
-        ref: IDatabaseReference,
-        updates: Map<String, Any?>,
-        listener: ICompletionListener<Unit>
-    ) {
-        val supabaseRef = ref as SupabaseDatabaseReference
+    override fun updateChildren(path: String, children: Map<String, Any>, listener: ICompletionListener<Any?>) {
         serviceScope.launch {
             try {
-                supabaseRef.reference.update(updates)
+                // Assuming path is table/id
+                val table = path.substringBeforeLast("/")
+                val id = path.substringAfterLast("/")
+                supabase.from(table).update(children as Map<String, Any?>) {
+                    filter {
+                        eq("id", id)
+                    }
+                }
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(Unit, null)
+                    listener.onComplete(null, null)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -103,53 +76,12 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun addRealtimeListener(ref: IDatabaseReference, listener: IRealtimeListener): IRealtimeChannel {
-        val supabaseRef = ref as SupabaseDatabaseReference
-        val channel = supabase.channel(supabaseRef.path)
-        serviceScope.launch {
-            channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                table = supabaseRef.path
-            }.onEach {
-                withContext(Dispatchers.Main) {
-                    listener.onInsert(SupabaseDataSnapshot(it.record))
-                }
-            }.launchIn(this)
-
-            channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
-                table = supabaseRef.path
-            }.onEach {
-                withContext(Dispatchers.Main) {
-                    listener.onUpdate(SupabaseDataSnapshot(it.record))
-                }
-            }.launchIn(this)
-
-            channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
-                table = supabaseRef.path
-            }.onEach {
-                withContext(Dispatchers.Main) {
-                    listener.onDelete(SupabaseDataSnapshot(it.oldRecord))
-                }
-            }.launchIn(this)
-
-            channel.subscribe()
-        }
-        return SupabaseRealtimeChannel(channel)
-    }
-
-    override fun removeRealtimeListener(channel: IRealtimeChannel) {
-        val supabaseChannel = channel as SupabaseRealtimeChannel
-        serviceScope.launch {
-            supabaseChannel.channel.unsubscribe()
-        }
-    }
-
-    override fun uploadFile(bucket: String, path: String, filePath: String, listener: ICompletionListener<String>) {
+    override fun uploadFile(file: File, path: String, listener: ICompletionListener<Any?>) {
         serviceScope.launch {
             try {
-                val file = File(filePath)
                 val data = file.readBytes()
-                val url = supabase.storage.from(bucket).upload(path, data, upsert = true)
-                val publicUrl = supabase.storage.from(bucket).publicUrl(path)
+                // Assuming a default bucket "synapse" and path is the remote path
+                val publicUrl = supabase.storage.from("synapse").upload(path, data, upsert = true)
                 withContext(Dispatchers.Main) {
                     listener.onComplete(publicUrl, null)
                 }
@@ -160,79 +92,56 @@ class SupabaseDatabaseService : IDatabaseService {
             }
         }
     }
-}
 
-abstract class SupabaseQuery(internal var query: PostgrestQueryBuilder) : IQuery {
-
-    internal var orderBy: Pair<String, io.github.jan.supabase.postgrest.query.Order>? = null
-    internal var limit: Int? = null
-    internal var endBeforeValue: String? = null
-
-    override fun orderByChild(path: String): IQuery {
-        this.orderBy = Pair(path, io.github.jan.supabase.postgrest.query.Order.ASCENDING)
-        return this
+    override fun searchUsers(query: String, listener: IDataListener) {
+        // Placeholder implementation
+        listener.onCancelled(SupabaseDatabaseError("Not implemented", -1))
     }
 
-    override fun equalTo(value: String?): IQuery {
-        // This would require knowing the column to filter on.
-        // e.g., query.eq("column_name", value)
-        return this
+    override fun getFollowers(uid: String, listener: IDataListener) {
+        // Placeholder implementation
+        listener.onCancelled(SupabaseDatabaseError("Not implemented", -1))
     }
 
-    override fun limitToLast(limit: Int): IQuery {
-        // No direct equivalent. PostgREST has range(), but not from the end.
-        return this
+    override fun getFollowing(uid: String, listener: IDataListener) {
+        // Placeholder implementation
+        listener.onCancelled(SupabaseDatabaseError("Not implemented", -1))
     }
 
-    override fun limitToFirst(limit: Int): IQuery {
-        this.limit = limit
-        return this
-    }
-
-    override fun startAt(value: String): IQuery {
-        // Requires column and is typically used with order().
-        return this
-    }
-
-    override fun endAt(value: String): IQuery {
-        // Requires column and is typically used with order().
-        return this
-    }
-
-    override fun orderByKey(): IQuery {
-        this.orderBy = Pair("id", io.github.jan.supabase.postgrest.query.Order.ASCENDING) // Assuming 'id' is the primary key
-        return this
-    }
-
-    override fun endBefore(value: String?): IQuery {
-        if (value != null) {
-            this.endBeforeValue = value
+    override fun getData(path: String, listener: IDataListener) {
+        serviceScope.launch {
+            try {
+                val response = supabase.from(path).select().decodeList<Map<String, Any?>>()
+                withContext(Dispatchers.Main) {
+                    listener.onDataChange(SupabaseDataSnapshot(response))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    listener.onCancelled(SupabaseDatabaseError(e.message ?: "Unknown error", 0))
+                }
+            }
         }
-        return this
     }
 }
 
 class SupabaseDatabaseReference(
     private val supabase: SupabaseClient,
-    internal val path: String
-) : SupabaseQuery(supabase.from(path)), IDatabaseReference {
+    private var _path: String
+) : IDatabaseReference {
 
-    val reference = supabase.from(path)
-
-    override fun child(path: String): IDatabaseReference {
-        val newPath = "${this.path.removeSuffix("/")}/${path.removePrefix("/")}"
+    override fun child(s: String): IDatabaseReference {
+        val newPath = "${_path.removeSuffix("/")}/${s.removePrefix("/")}"
         return SupabaseDatabaseReference(supabase, newPath)
     }
 
     override fun push(): IDatabaseReference {
-        // Returns a reference to a new, unique key, but the key generation is
-        // typically handled by the database (e.g., UUID).
-        // This implementation is a placeholder.
-        return this
+        val newPath = "${_path.removeSuffix("/")}/${UUID.randomUUID()}"
+        return SupabaseDatabaseReference(supabase, newPath)
     }
 
-    override val key: String?
-        get() = path.substringAfterLast('/')
+    override fun getKey(): String? {
+        return _path.substringAfterLast('/')
+    }
 }
 
 class SupabaseDataSnapshot(private val data: Any?) : IDataSnapshot {
