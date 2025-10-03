@@ -9,7 +9,6 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
@@ -25,7 +24,6 @@ class SupabaseDatabaseService : IDatabaseService {
         supabaseKey = BuildConfig.SUPABASE_ANON_KEY
     ) {
         install(Postgrest)
-        install(Realtime)
         install(Storage)
     }
 
@@ -38,29 +36,27 @@ class SupabaseDatabaseService : IDatabaseService {
         listener.onCancelled(SupabaseDatabaseError("Not implemented", -1))
     }
 
-    override fun setValue(path: String, value: Any, listener: ICompletionListener<Any?>) {
+    override fun setValue(path: String, value: Any, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
-                // Assuming path is table name and value contains primary key.
                 supabase.from(path).upsert(value, onConflict = "id")
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(value, null)
+                    (listener as ICompletionListener<Any?>).onComplete(value, null)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(null, e)
+                    (listener as ICompletionListener<Any?>).onComplete(null, e)
                 }
             }
         }
     }
 
-    override fun updateChildren(path: String, children: MutableMap<String, Any>, listener: ICompletionListener<*>) {
+    override fun updateChildren(path: String, children: Map<String, Any>, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
-                // Assuming path is table/id
                 val table = path.substringBeforeLast("/")
                 val id = path.substringAfterLast("/")
-                supabase.from(table).update(children as Map<String, Any?>) {
+                supabase.from(table).update(children) {
                     filter {
                         eq("id", id)
                     }
@@ -76,18 +72,17 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun uploadFile(file: File, path: String, listener: ICompletionListener<Any?>) {
+    override fun uploadFile(file: File, path: String, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
                 val data = file.readBytes()
-                // Assuming a default bucket "synapse" and path is the remote path
                 val publicUrl = supabase.storage.from("synapse").upload(path, data, upsert = true)
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(publicUrl, null)
+                    (listener as ICompletionListener<Any?>).onComplete(publicUrl, null)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    listener.onComplete(null, e)
+                    (listener as ICompletionListener<Any?>).onComplete(null, e)
                 }
             }
         }
@@ -126,21 +121,21 @@ class SupabaseDatabaseService : IDatabaseService {
 
 class SupabaseDatabaseReference(
     private val supabase: SupabaseClient,
-    private var _path: String
+    private val path: String
 ) : IDatabaseReference {
 
     override fun child(s: String): IDatabaseReference {
-        val newPath = "${_path.removeSuffix("/")}/${s.removePrefix("/")}"
+        val newPath = "${path.removeSuffix("/")}/${s.removePrefix("/")}"
         return SupabaseDatabaseReference(supabase, newPath)
     }
 
     override fun push(): IDatabaseReference {
-        val newPath = "${_path.removeSuffix("/")}/${UUID.randomUUID()}"
+        val newPath = "${path.removeSuffix("/")}/${UUID.randomUUID()}"
         return SupabaseDatabaseReference(supabase, newPath)
     }
 
-    override fun getKey(): String? {
-        return _path.substringAfterLast('/')
+    override fun getKey(): String {
+        return path.substringAfterLast('/')
     }
 }
 
