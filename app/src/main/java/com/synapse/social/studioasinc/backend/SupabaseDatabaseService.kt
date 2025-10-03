@@ -13,7 +13,6 @@ import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
 import java.io.File
-import java.util.Map
 import java.util.UUID
 
 class SupabaseDatabaseService : IDatabaseService {
@@ -51,7 +50,7 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun updateChildren(path: String, children: Map<String, Any>, listener: ICompletionListener<*>) {
+    override fun updateChildren(path: String, children: MutableMap<String, Any>, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
                 val table = path.substringBeforeLast("/")
@@ -134,7 +133,7 @@ class SupabaseDatabaseReference(
         return SupabaseDatabaseReference(supabase, newPath)
     }
 
-    override fun getKey(): String {
+    override fun getKey(): String? {
         return path.substringAfterLast('/')
     }
 }
