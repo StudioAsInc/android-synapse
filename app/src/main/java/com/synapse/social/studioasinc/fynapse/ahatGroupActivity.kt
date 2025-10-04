@@ -4,17 +4,16 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.SynapseApp
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
 import java.util.HashMap
 
 class ahatGroupActivity : AppCompatActivity() {
 
     // Initialize services
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,20 +110,5 @@ class ahatGroupActivity : AppCompatActivity() {
     private fun getSelectedUsers(): List<String> {
         // Implement logic to return selected users
         return listOf()
-    }
-
-    /**
-     * Example of a method that was causing the type mismatch error
-     * Fixed by ensuring proper type casting and interface usage
-     */
-    private fun setupServices() {
-        // This line had issues at line 140:23 and 140:81
-        // Fixed by using proper interface types
-        val dbService: IDatabaseService = SupabaseDatabaseService()
-        val authService: IAuthenticationService = SupabaseAuthService()
-
-        // Use the services
-        val currentUser = authService.getCurrentUser()
-        val groupsRef = dbService.getReference("groups")
     }
 }

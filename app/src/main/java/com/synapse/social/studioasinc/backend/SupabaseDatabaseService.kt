@@ -1,15 +1,11 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.BuildConfig
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
 import java.io.File
