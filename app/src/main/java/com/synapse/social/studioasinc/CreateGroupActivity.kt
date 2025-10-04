@@ -10,12 +10,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.StorageUtil
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.theartofdev.edmodo.cropper.CropImage
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.theartofdev.edmodo.cropper.CropImageView
@@ -30,8 +28,8 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

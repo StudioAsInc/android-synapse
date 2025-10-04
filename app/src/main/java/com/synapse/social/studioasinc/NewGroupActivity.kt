@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
@@ -30,7 +29,7 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
     private val database by lazy { dbService.getReference("skyline/users") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
