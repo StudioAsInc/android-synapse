@@ -11,8 +11,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
@@ -25,9 +23,9 @@ import kotlin.math.abs
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
     private val blocklistRef by lazy { dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST) }
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
     private lateinit var userSettings: SharedPreferences
 
     companion object {

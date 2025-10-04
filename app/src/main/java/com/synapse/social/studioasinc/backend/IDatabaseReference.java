@@ -1,5 +1,7 @@
 package com.synapse.social.studioasinc.backend;
 
 public interface IDatabaseReference {
-    void child(String s);
+    IDatabaseReference child(String s);
+    IDatabaseReference push();
+    String getKey();
 }

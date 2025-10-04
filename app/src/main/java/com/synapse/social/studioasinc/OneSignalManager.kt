@@ -1,14 +1,13 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 object OneSignalManager {
 
     private const val TAG = "OneSignalManager"
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).databaseService }
     private val db = dbService.getReference("skyline/users")
 
     /**

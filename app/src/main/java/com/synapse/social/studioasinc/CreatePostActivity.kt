@@ -19,8 +19,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.MediaItem
@@ -60,8 +58,8 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressPercentage: TextView? = null
 
     // Services
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
     private val postsRef by lazy { dbService.getReference("skyline/posts") }
 
     // Media selection
