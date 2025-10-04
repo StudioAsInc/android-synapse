@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
@@ -26,7 +27,7 @@ object NotificationHelper {
 
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private const val ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
-    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).databaseService }
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
 
     /**
      * Sends a notification to a user.

@@ -15,16 +15,9 @@ import kotlinx.coroutines.*
 import java.io.File
 import java.util.UUID
 
-class SupabaseDatabaseService : IDatabaseService {
+class SupabaseDatabaseService(private val supabase: SupabaseClient) : IDatabaseService {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val supabase: SupabaseClient = createSupabaseClient(
-        supabaseUrl = BuildConfig.SUPABASE_URL,
-        supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-    ) {
-        install(Postgrest)
-        install(Storage)
-    }
 
     override fun getReference(path: String): IDatabaseReference {
         return SupabaseDatabaseReference(supabase, path)
@@ -50,7 +43,7 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
 
-    override fun updateChildren(path: String, children: MutableMap<String, Any>, listener: ICompletionListener<*>) {
+    override fun updateChildren(path: String, children: java.util.Map<String, Any>, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
                 val table = path.substringBeforeLast("/")

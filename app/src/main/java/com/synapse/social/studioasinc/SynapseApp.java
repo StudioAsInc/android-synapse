@@ -168,10 +168,12 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         }
     }
 
+    @NonNull
     public IAuthenticationService getAuthenticationService() {
         return authService;
     }
 
+    @NonNull
     public IDatabaseService getDatabaseService() {
         return dbService;
     }
