@@ -44,8 +44,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.synapse.social.studioasinc.backend.IAuthenticationService;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 
 import java.io.*;
 import java.text.*;

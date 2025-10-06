@@ -8,7 +8,7 @@ import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 object OneSignalManager {
 
     private const val TAG = "OneSignalManager"
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext() as SynapseApp).databaseService }
     private val db = dbService.getReference("skyline/users")
 
     /**

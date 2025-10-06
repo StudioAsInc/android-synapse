@@ -16,7 +16,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.SynapseApp;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;

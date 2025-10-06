@@ -10,7 +10,7 @@ import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
  */
 object PresenceManager {
 
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext() as SynapseApp).databaseService }
     private val usersRef = dbService.getReference("skyline/users")
     private val emptyListener = object : ICompletionListener<Unit> {
         override fun onComplete(result: Unit?, error: Exception?) {

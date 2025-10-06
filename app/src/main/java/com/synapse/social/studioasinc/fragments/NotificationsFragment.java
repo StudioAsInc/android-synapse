@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.SynapseApp;
 import com.synapse.social.studioasinc.adapter.NotificationAdapter;
-import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
 import com.synapse.social.studioasinc.model.Notification;
 import java.util.ArrayList;
 import java.util.Collections;
