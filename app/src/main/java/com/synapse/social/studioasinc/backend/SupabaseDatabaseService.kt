@@ -39,7 +39,7 @@ class SupabaseDatabaseService(private val supabase: SupabaseClient) : IDatabaseS
         }
     }
 
-    override fun updateChildren(path: String, children: java.util.Map<String, Any>, listener: ICompletionListener<*>) {
+    override fun updateChildren(path: String, children: MutableMap<String, Any>, listener: ICompletionListener<*>) {
         serviceScope.launch {
             try {
                 val table = path.substringBeforeLast("/")
