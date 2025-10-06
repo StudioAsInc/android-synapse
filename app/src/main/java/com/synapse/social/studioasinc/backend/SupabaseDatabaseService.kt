@@ -4,6 +4,7 @@ import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage

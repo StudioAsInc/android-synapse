@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.fynapse
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.synapse.social.studioasinc.SynapseApp
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
