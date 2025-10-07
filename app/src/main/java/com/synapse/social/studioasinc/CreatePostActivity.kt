@@ -58,9 +58,9 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressPercentage: TextView? = null
 
     // Services
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
-    private val postsRef by lazy { dbService.getReference("skyline/posts") }
+    private lateinit var dbService: IDatabaseService
+    private lateinit var authService: IAuthenticationService
+    private lateinit var postsRef: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
 
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -84,6 +84,10 @@ class CreatePostActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_post_multi)
+
+        dbService = (application as SynapseApp).getDatabaseService()
+        authService = (application as SynapseApp).getAuthenticationService()
+        postsRef = dbService.getReference("skyline/posts")
 
         initialize()
         initializeLogic()

@@ -27,11 +27,11 @@ object OneSignalManager {
 
         val ref = db.child(userUid).child("oneSignalPlayerId")
         dbService.setValue(ref, playerId, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     Log.i(TAG, "OneSignal Player ID saved to Database for user: $userUid")
                 } else {
-                    Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid", error)
+                    Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid, error: $error")
                 }
             }
         })

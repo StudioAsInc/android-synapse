@@ -1,0 +1,113 @@
+name: 'Jules'
+
+on:
+  issue_comment:
+    types:
+      - 'created'
+
+jobs:
+  dispatch:
+    if: |
+      github.event.sender.type == 'User' &&
+      startsWith(github.event.comment.body, '@jules') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Acknowledge request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Received your request. Working on it! 🤖'
+            })
+
+      - name: 'Jules API Request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // IMPORTANT: The Jules API endpoint used below is based on the official alpha documentation.
+            // Please verify that this is the correct endpoint for your use case.
+            const prompt = process.env.COMMENT_BODY.replace(/^@jules/, '').trim();
+            const issue_number = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // 1. Create a new session
+            const sessionResponse = await fetch('https://jules.googleapis.com/v1alpha/sessions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': '${{ secrets.JULES_API_KEY }}'
+              },
+              body: JSON.stringify({
+                prompt: prompt,
+                sourceContext: {
+                  source: `sources/github/${process.env.GITHUB_REPOSITORY}`,
+                  githubRepoContext: {
+                    startingBranch: 'main'
+                  }
+                }
+              })
+            });
+
+            if (!sessionResponse.ok) {
+              const errorText = await sessionResponse.text();
+              github.rest.issues.createComment({
+                issue_number,
+                owner,
+                repo,
+                body: `Error creating session: ${sessionResponse.status} ${errorText}`
+              });
+              return;
+            }
+
+            const sessionData = await sessionResponse.json();
+            const sessionName = sessionData.name;
+
+            // 2. Poll for activities
+            let agentResponse = null;
+            const startTime = Date.now();
+            const timeout = 300000; // 5 minutes
+
+            while (Date.now() - startTime < timeout) {
+              const activitiesResponse = await fetch(`https://jules.googleapis.com/v1alpha/${sessionName}/activities`, {
+                headers: {
+                  'X-Goog-Api-Key': '${{ secrets.JULES_API_KEY }}'
+                }
+              });
+              const activitiesData = await activitiesResponse.json();
+
+              if (activitiesData.activities && activitiesData.activities.length > 1) {
+                // Assuming the second activity is the agent's response
+                const agentActivity = activitiesData.activities[1];
+                if (agentActivity && agentActivity.message) {
+                  agentResponse = agentActivity.message.text;
+                  break;
+                }
+              }
+              await new Promise(resolve => setTimeout(resolve, 5000)); // wait 5 seconds
+            }
+
+            // 3. Post response back to issue
+            if (agentResponse) {
+              github.rest.issues.createComment({
+                issue_number,
+                owner,
+                repo,
+                body: agentResponse
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number,
+                owner,
+                repo,
+                body: 'Timed out waiting for a response from Jules.'
+              });
+            }
+        env:
+          COMMENT_BODY: '${{ github.event.comment.body }}'
+          GITHUB_REPOSITORY: '${{ github.repository }}'

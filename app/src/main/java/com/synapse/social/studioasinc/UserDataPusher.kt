@@ -62,7 +62,7 @@ class UserDataPusher(
         val main = dbService.getReference("skyline")
         val userRef = main.child("users").child(uid)
         dbService.updateChildren(userRef, createUserMap, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     val map = HashMap<String, Any>()
                     map["uid"] = uid
@@ -71,16 +71,16 @@ class UserDataPusher(
                     val pushusername = dbService.getReference("synapse/username")
                     val usernameRef = pushusername.child(username)
                     dbService.updateChildren(usernameRef, map, object : ICompletionListener<Unit> {
-                        override fun onComplete(result: Unit?, error: Exception?) {
+                        override fun onComplete(result: Unit?, error: String?) {
                             if (error == null) {
                                 onComplete(true, null)
                             } else {
-                                onComplete(false, error.message)
+                                onComplete(false, error)
                             }
                         }
                     })
                 } else {
-                    onComplete(false, error.message)
+                    onComplete(false, error)
                 }
             }
         })
