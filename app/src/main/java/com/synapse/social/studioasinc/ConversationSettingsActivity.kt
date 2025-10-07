@@ -23,9 +23,9 @@ import kotlin.math.abs
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
     private val blocklistRef by lazy { dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST) }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
     private lateinit var userSettings: SharedPreferences
 
     companion object {
@@ -172,7 +172,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
             authService.getCurrentUser()?.getUid()?.let { currentUserUid ->
                 val ref = blocklistRef.child(currentUserUid)
                 dbService.updateChildren(ref, blockData, object : ICompletionListener<Unit> {
-                    override fun onComplete(result: Unit?, error: Exception?) {
+                    override fun onComplete(result: Unit?, error: String?) {
                         if (error == null) {
                             Toast.makeText(this@ConversationSettingsActivity, "User blocked", Toast.LENGTH_SHORT).show()
                         } else {

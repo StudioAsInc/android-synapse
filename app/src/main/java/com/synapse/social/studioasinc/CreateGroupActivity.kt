@@ -28,8 +28,8 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,7 +131,7 @@ class CreateGroupActivity : AppCompatActivity() {
 
         val groupRef = dbService.getReference("groups").child(groupId)
         dbService.setValue(groupRef, group, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
@@ -139,7 +139,7 @@ class CreateGroupActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         })

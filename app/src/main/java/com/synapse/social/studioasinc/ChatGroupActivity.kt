@@ -80,8 +80,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private val _timer = java.util.Timer()
 
 
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
