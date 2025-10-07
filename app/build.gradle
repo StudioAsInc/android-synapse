@@ -119,7 +119,6 @@ android {
 }
 
 dependencies {
-    implementation project(path: ':backend')
     // Supabase
     implementation(platform("io.github.jan-tennert.supabase:bom:2.5.0"))
     implementation "io.github.jan-tennert.supabase:postgrest-kt"
