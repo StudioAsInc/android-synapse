@@ -257,7 +257,11 @@ public class Gemini {
             Log.d(TAG, "HTTP code=" + code + " rawResponse=" + rawResponse);
             
             if (code >= 200 && code < 300) {
-                return extractTextFromGeminiResponse(rawResponse);
+                try {
+                    return extractTextFromGeminiResponse(rawResponse);
+                } catch (JSONException e) {
+                    throw new Exception("Failed to parse AI response.", e);
+                }
             } else {
                 throw new Exception("HTTP " + code + " error: " + rawResponse);
             }
@@ -317,11 +321,13 @@ public class Gemini {
         return instruction.toString();
     }
     
-    private String extractTextFromGeminiResponse(String raw) {
-        if (raw == null || raw.isEmpty()) return "Empty response";
+    private String extractTextFromGeminiResponse(String raw) throws JSONException {
+        if (raw == null || raw.isEmpty()) {
+            throw new JSONException("Empty response from API");
+        }
         try {
             JSONObject root = new JSONObject(raw);
-            
+
             if (root.has("candidates")) {
                 JSONArray candidates = root.optJSONArray("candidates");
                 if (candidates != null && candidates.length() > 0) {
@@ -331,18 +337,20 @@ public class Gemini {
                         if (content.has("parts")) {
                             JSONArray parts = content.getJSONArray("parts");
                             if (parts.length() > 0) {
-                                return parts.getJSONObject(0).optString("text", "No text found");
+                                return parts.getJSONObject(0).optString("text", "No text found in response part.");
                             }
                         }
                     }
                 }
             }
-            
-            return raw.length() > 1000 ? raw.substring(0, 1000) + "..." : raw;
-            
+
+            // If we fall through, the structure is not as expected.
+            throw new JSONException("Could not extract text from the response.");
+
         } catch (JSONException e) {
             Log.w(TAG, "extractTextFromGeminiResponse JSON parse error: " + e.getMessage());
-            return raw;
+            // Re-throw the exception to be handled by the caller.
+            throw e;
         }
     }
     

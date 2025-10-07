@@ -48,22 +48,16 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButtonGroup;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
+import com.synapse.social.studioasinc.backend.interfaces.IUser;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -79,16 +73,17 @@ import java.util.TimerTask;
 import java.util.regex.*;
 import org.json.*;
 import androidx.core.widget.NestedScrollView;
-import com.google.firebase.database.Query;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import androidx.browser.customtabs.CustomTabsIntent;
 
 public class ProfileActivity extends AppCompatActivity {
-	
+
 	private Timer _timer = new Timer();
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
+
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 	private HashMap<String, Object> postLikeCountCache = new HashMap<>();
 	private String UserAvatarUri = "";
@@ -97,9 +92,9 @@ public class ProfileActivity extends AppCompatActivity {
 	private String object_clicked = "";
 	private String nickname = "";
 	private String AndroidDevelopersBlogURL = "";
-	
+
 	private ArrayList<HashMap<String, Object>> UserPostsList = new ArrayList<>();
-	
+
 	private LinearLayout ProfilePageBody;
 	private LinearLayout ProfilePageTopBar;
 	private LinearLayout ProfilePageMiddleLayout;
@@ -154,21 +149,8 @@ public class ProfileActivity extends AppCompatActivity {
 	private TextView ProfilePageNoInternetBodySubtitle;
 	private TextView ProfilePageNoInternetBodyRetry;
 	private ProgressBar ProfilePageLoadingBodyBar;
-	
+
 	private Intent intent = new Intent();
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
 	private Vibrator vbr;
 	private Calendar cc = Calendar.getInstance();
 
@@ -192,24 +174,21 @@ class c {
 	private RequestNetwork req;
 	private RequestNetwork.RequestListener _req_request_listener;
 	private Calendar JoinDateCC = Calendar.getInstance();
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
 	private TimerTask after;
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		initializeLogic();
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
-			PresenceManager.setActivity(com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Profile");
+		if (authService.getCurrentUser() != null) {
+			PresenceManager.setActivity(authService.getCurrentUser().getUid(), "In Profile");
 		}
 	}
 
@@ -217,7 +196,7 @@ class c {
 	protected void onStop() {
 		super.onStop();
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		ProfilePageBody = findViewById(R.id.ProfilePageBody);
 		ProfilePageTopBar = findViewById(R.id.ProfilePageTopBar);
@@ -273,17 +252,18 @@ class c {
 		ProfilePageNoInternetBodySubtitle = findViewById(R.id.ProfilePageNoInternetBodySubtitle);
 		ProfilePageNoInternetBodyRetry = findViewById(R.id.ProfilePageNoInternetBodyRetry);
 		ProfilePageLoadingBodyBar = findViewById(R.id.ProfilePageLoadingBodyBar);
-		auth = FirebaseAuth.getInstance();
+		authService = ((SynapseApp) getApplication()).getAuthenticationService();
+		dbService = ((SynapseApp) getApplication()).getDatabaseService();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		req = new RequestNetwork(this);
-		
+
 		ProfilePageTopBarBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		ProfilePageTopBarMenu.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -291,7 +271,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		ProfilePageTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
 			@Override
 			public void onTabSelected(TabLayout.Tab tab) {
@@ -305,27 +285,27 @@ class c {
 					ProfilePageTabUserPosts.setVisibility(View.VISIBLE);
 				}
 			}
-			
+
 			@Override
 			public void onTabUnselected(TabLayout.Tab tab) {
 				final int _position = tab.getPosition();
-				
+
 			}
-			
+
 			@Override
 			public void onTabReselected(TabLayout.Tab tab) {
 				final int _position = tab.getPosition();
-				
+
 			}
 		});
-		
+
 		ProfilePageSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
 			public void onRefresh() {
 				_loadRequest();
 			}
 		});
-		
+
 		ProfilePageTabUserInfoProfileImage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -334,16 +314,16 @@ class c {
 				}
 			}
 		});
-		
+
 		likeUserProfileButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				DatabaseReference checkProfileLike = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-				checkProfileLike.addListenerForSingleValueEvent(new ValueEventListener() {
+				if (authService.getCurrentUser() == null) return;
+				dbService.getReference("profile-likes").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 						if(dataSnapshot.exists()) {
-							FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
+							dbService.getReference("profile-likes").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).setValue(null, (result, error) -> {});
 							UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
 							likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
 							likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_1);
@@ -351,7 +331,7 @@ class c {
 							_ImageColor(likeUserProfileButtonIc, 0xFF000000);
 							likeUserProfileButtonLikeCount.setTextColor(0xFF616161);
 						} else {
-							FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
+							dbService.getReference("profile-likes").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).setValue(authService.getCurrentUser().getUid(), (result, error) -> {});
 							UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
 							likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
 							likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
@@ -362,14 +342,14 @@ class c {
 					}
 
 					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 					}
 				});
 				vbr.vibrate((long)(28));
 			}
 		});
-		
+
 		ProfilePageTabUserInfoFollowsDetails.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -378,7 +358,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		btnEditProfile.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -386,25 +366,25 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		btnFollow.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				DatabaseReference checkUserFollow = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-				checkUserFollow.addListenerForSingleValueEvent(new ValueEventListener() {
+				if (authService.getCurrentUser() == null) return;
+				dbService.getReference("followers").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 						if(dataSnapshot.exists()) {
-							FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
-							FirebaseDatabase.getInstance().getReference("skyline/following").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).removeValue();
+							dbService.getReference("followers").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).setValue(null, (result, error) -> {});
+							dbService.getReference("following").child(authService.getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).setValue(null, (result, error) -> {});
 							UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
 							ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
 							btnFollow.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
 							btnFollow.setText(getResources().getString(R.string.follow));
 							btnFollow.setTextColor(0xFFFFFFFF);
 						} else {
-							FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-							FirebaseDatabase.getInstance().getReference("skyline/following").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).setValue(getIntent().getStringExtra("uid"));
+							dbService.getReference("followers").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).setValue(authService.getCurrentUser().getUid(), (result, error) -> {});
+							dbService.getReference("following").child(authService.getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).setValue(getIntent().getStringExtra("uid"), (result, error) -> {});
 							UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
 							ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
 							btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
@@ -414,13 +394,13 @@ class c {
 					}
 
 					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 					}
 				});
 			}
 		});
-		
+
 		btnMessage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -431,7 +411,7 @@ class c {
 				startActivity(intent);
 			}
 		});
-		
+
 		user_uid_layout_text.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
@@ -439,53 +419,14 @@ class c {
 				return true;
 			}
 		});
-		
+
 		ProfilePageNoInternetBodyRetry.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				_loadRequest();
 			}
 		});
-		
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-		
+
 		_req_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -494,7 +435,7 @@ class c {
 				final HashMap<String, Object> _responseHeaders = _param3;
 				_getUserReference();
 			}
-			
+
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
@@ -504,142 +445,14 @@ class c {
 				ProfilePageLoadingBody.setVisibility(View.GONE);
 			}
 		};
-		
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
 	}
-	
+
 	private void initializeLogic() {
 		ProfilePageTabLayout.addTab(ProfilePageTabLayout.newTab().setText(getResources().getString(R.string.profile_tab)));
 		ProfilePageTabLayout.addTab(ProfilePageTabLayout.newTab().setText(getResources().getString(R.string.posts_tab)));
 		ProfilePageTabLayout.setTabTextColors(0xFF9E9E9E, 0xFF445E91);
-		ProfilePageTabLayout.setTabRippleColor(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_pressed}}, 
-		
+		ProfilePageTabLayout.setTabRippleColor(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_pressed}},
+
 		new int[] {0xFFEEEEEE}));
 		ProfilePageTabLayout.setSelectedTabIndicatorColor(0xFF445E91);
 		ProfilePageTabUserPostsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -647,7 +460,7 @@ class c {
 		ProfilePageTabUserInfoNickname.setTypeface(Typeface.DEFAULT, 1);
 		ProfilePageNoInternetBodyRetry.setBackgroundResource(R.drawable.shape_rounded_20dp);
 		String intentUid = getIntent().getStringExtra("uid");
-		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+		IUser currentUser = authService.getCurrentUser();
 		if (intentUid != null && currentUser != null && intentUid.equals(currentUser.getUid())) {
 			ProfilePageTabUserInfoSecondaryButtons.setVisibility(View.GONE);
 			btnEditProfile.setVisibility(View.VISIBLE);
@@ -657,12 +470,12 @@ class c {
 		}
 		_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
 	}
-	
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -671,40 +484,39 @@ class c {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _getUserReference() {
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(getIntent().getStringExtra("uid"));
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getUserById(getIntent().getStringExtra("uid"), new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					ProfilePageSwipeLayout.setVisibility(View.VISIBLE);
 					ProfilePageNoInternetBody.setVisibility(View.GONE);
 					ProfilePageLoadingBody.setVisibility(View.GONE);
-					user_uid_layout_text.setText(dataSnapshot.child("uid").getValue(String.class));
-					JoinDateCC.setTimeInMillis((long)(Double.parseDouble(dataSnapshot.child("join_date").getValue(String.class))));
-					if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
+					user_uid_layout_text.setText(dataSnapshot.getChild("uid").getValue(String.class));
+					JoinDateCC.setTimeInMillis((long)(Double.parseDouble(dataSnapshot.getChild("join_date").getValue(String.class))));
+					if (dataSnapshot.getChild("banned").getValue(String.class).equals("true")) {
 						UserAvatarUri = "null";
 						ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.banned_avatar);
 						ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.banned_cover_photo);
 					} else {
 						_getUserPostsReference();
 						_getUserCountReference();
-						UserAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
-						if (dataSnapshot.child("profile_cover_image").getValue(String.class).equals("null")) {
+						UserAvatarUri = dataSnapshot.getChild("avatar").getValue(String.class);
+						if (dataSnapshot.getChild("profile_cover_image").getValue(String.class).equals("null")) {
 							ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.user_null_cover_photo);
 						} else {
-							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("profile_cover_image").getValue(String.class))).into(ProfilePageTabUserInfoCoverImage);
+							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.getChild("profile_cover_image").getValue(String.class))).into(ProfilePageTabUserInfoCoverImage);
 						}
-						if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+						if (dataSnapshot.getChild("avatar").getValue(String.class).equals("null")) {
 							ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.avatar);
 						} else {
-							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(ProfilePageTabUserInfoProfileImage);
+							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.getChild("avatar").getValue(String.class))).into(ProfilePageTabUserInfoProfileImage);
 						}
 					}
 					// Check user status
-					if (dataSnapshot.child("status").getValue(String.class).equals("online")) {
+					if (dataSnapshot.getChild("status").getValue(String.class).equals("online")) {
 						ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.online));
 						ProfilePageTabUserInfoStatus.setTextColor(0xFF2196F3);
 					} else {
@@ -715,7 +527,7 @@ class c {
 						}
 						ProfilePageTabUserInfoStatus.setTextColor(0xFF757575);
 					}
-					ProfilePageTabUserInfoUsername.setText("@" + dataSnapshot.child("username").getValue(String.class));
+					ProfilePageTabUserInfoUsername.setText("@" + dataSnapshot.getChild("username").getValue(String.class));
 					if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
 						ProfilePageTabUserInfoNickname.setText("@" + dataSnapshot.child("username").getValue(String.class));
 					} else {
@@ -723,7 +535,7 @@ class c {
 						nickname = dataSnapshot.child("nickname").getValue(String.class);
 					}
 					if (dataSnapshot.child("biography").getValue(String.class).equals("null")) {
-						
+
 					} else {
 						ProfilePageTabUserInfoBioLayoutText.setText(dataSnapshot.child("biography").getValue(String.class));
 					}
@@ -779,27 +591,26 @@ if ( || ( || )) {
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
 		ProfilePageSwipeLayout.setRefreshing(false);
 	}
-	
-	
+
+
 	public void _getUserPostsReference() {
-		Query getUserPostsRef = FirebaseDatabase.getInstance().getReference("skyline/posts").orderByChild("uid").equalTo(getIntent().getStringExtra("uid"));
-		getUserPostsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+		IQuery getUserPostsRef = dbService.getReference("posts").orderBy("uid", IQuery.Order.ASCENDING).equalTo(getIntent().getStringExtra("uid"));
+		getUserPostsRef.getData(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					ProfilePageTabUserPostsRecyclerView.setVisibility(View.VISIBLE);
 					ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.GONE);
 					UserPostsList.clear();
 					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
+						for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> _map = (HashMap<String, Object>)_data.getValue();
 							UserPostsList.add(_map);
 						}
 					} catch (Exception _e) {
@@ -814,13 +625,13 @@ if ( || ( || )) {
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
 	}
-	
-	
+
+
 	public void _setCount(final TextView _txt, final double _number) {
 		if (_number < 10000) {
 			_txt.setText(String.valueOf((long) _number));
@@ -843,10 +654,10 @@ if ( || ( || )) {
 			}
 			_txt.setText(decimalFormat.format(formattedNumber) + numberFormat);
 		}
-		
+
 	}
-	
-	
+
+
 	public void _setTime(final double _currentTime, final TextView _txt) {
 		Calendar c1 = Calendar.getInstance();
 		Calendar c2 = Calendar.getInstance();
@@ -886,8 +697,8 @@ if ( || ( || )) {
 			}
 		}
 	}
-	
-	
+
+
 	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
 		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
 		int right = (int)(_r * dpRatio);
@@ -911,43 +722,41 @@ if ( || ( || )) {
 			lp.setMargins(left, top, right, bottom);
 			_view.setLayoutParams(lp);
 		}
-		
+
 	}
-	
-	
+
+
 	public void _getUserCountReference() {
-		Query getFollowersCount = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid"));
-		getFollowersCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		if (authService.getCurrentUser() == null) return;
+		dbService.getReference("followers").child(getIntent().getStringExtra("uid")).getData(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(count).concat(" ".concat(getResources().getString(R.string.followers))));
 				UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});
-		DatabaseReference getFollowingCount = FirebaseDatabase.getInstance().getReference("skyline/following").child(getIntent().getStringExtra("uid"));
-		getFollowingCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getReference("following").child(getIntent().getStringExtra("uid")).getData(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				ProfilePageTabUserInfoFollowingCount.setText(_getStyledNumber(count).concat(" ".concat(getResources().getString(R.string.following))));
 				UserInfoCacheMap.put("following_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});
-		Query checkFollowUser = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		checkFollowUser.addValueEventListener(new ValueEventListener() {
+		dbService.getReference("followers").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					btnFollow.setText(getResources().getString(R.string.unfollow));
 					btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
@@ -960,14 +769,13 @@ if ( || ( || )) {
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
-		Query checkProfileLike = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		checkProfileLike.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getReference("profile-likes").child(getIntent().getStringExtra("uid")).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
 					_viewGraphics(likeUserProfileButton, 0xFFF50057, 0xFFC51162, 300, 0, 0xFF9E9E9E);
@@ -982,27 +790,26 @@ if ( || ( || )) {
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
-		DatabaseReference getProfileLikesCount = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid"));
-		getProfileLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getReference("profile-likes").child(getIntent().getStringExtra("uid")).getData(new IDataListener() {
 			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				long count = dataSnapshot.getChildrenCount();
 				likeUserProfileButtonLikeCount.setText(_getStyledNumber(count));
 				UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
 			}
 
 			@Override
-			public void onCancelled(DatabaseError databaseError) {
+			public void onCancelled(IDatabaseError databaseError) {
 
 			}
 		});
 	}
-	
-	
+
+
 	public String _getStyledNumber(final double _number) {
 		if (_number < 10000) {
 			return String.valueOf((long) _number);
@@ -1025,18 +832,18 @@ if ( || ( || )) {
 			}
 			return decimalFormat.format(formattedNumber) + numberFormat;
 		}
-		
+
 	}
-	
-	
+
+
 	public void _loadRequest() {
 		ProfilePageSwipeLayout.setVisibility(View.GONE);
 		ProfilePageNoInternetBody.setVisibility(View.GONE);
 		ProfilePageLoadingBody.setVisibility(View.VISIBLE);
 		req.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _req_request_listener);
 	}
-	
-	
+
+
 	public double _convertXpToLevel(final double _xp_point) {
 		double convertedLevel = 0;
 		if ((_xp_point == 0) || (_xp_point < 1000)) {
@@ -1062,15 +869,15 @@ if ( || ( || )) {
 		}
 		return convertedLevel;
 	}
-	
-	
+
+
 	public void _ScrollingText(final TextView _view) {
 		_view.setSingleLine(true);
 		_view.setEllipsize(TextUtils.TruncateAt.MARQUEE);
 		_view.setSelected(true);
 	}
-	
-	
+
+
 	public void _ProfileImagePreview(final String _uid) {
 		{
 			final AlertDialog mProfileImageViewDialog = new AlertDialog.Builder(ProfileActivity.this).create();
@@ -1082,36 +889,35 @@ if ( || ( || )) {
 			final CardView avatarCard = mProfileImageViewDialogView.findViewById(R.id.avatarCard);
 			final ImageView avatar = mProfileImageViewDialogView.findViewById(R.id.avatar);
 			final TextView save_to_history = mProfileImageViewDialogView.findViewById(R.id.save_to_history);
-			
+
 			body.setVisibility(View.GONE);
 			_viewGraphics(save_to_history, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 			avatarCard.setBackgroundResource(R.drawable.shape_circular);
-			DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_uid);
-			getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+			dbService.getUserById(_uid, new IDataListener() {
 				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 					if(dataSnapshot.exists()) {
-						if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
+						if (dataSnapshot.getChild("banned").getValue(String.class).equals("true")) {
 							avatar.setImageResource(R.drawable.avatar);
 							save_to_history.setVisibility(View.GONE);
 						} else {
-							if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+							if (dataSnapshot.getChild("avatar").getValue(String.class).equals("null")) {
 								avatar.setImageResource(R.drawable.avatar);
 								save_to_history.setVisibility(View.GONE);
 							} else {
-								Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(avatar);
-								if (!dataSnapshot.child("uid").getValue(String.class).equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-									if (dataSnapshot.child("avatar_history_type").getValue(String.class).equals("url")) {
+								Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.getChild("avatar").getValue(String.class))).into(avatar);
+								if (authService.getCurrentUser() != null && !dataSnapshot.getChild("uid").getValue(String.class).equals(authService.getCurrentUser().getUid())) {
+									if (dataSnapshot.getChild("avatar_history_type").getValue(String.class).equals("url")) {
 										save_to_history.setOnClickListener(new View.OnClickListener() {
 											@Override
 											public void onClick(View _view) {
-												String ProfileHistoryKey = maindb.push().getKey();
+												String profileHistoryKey = dbService.getReference("profile-history").child(authService.getCurrentUser().getUid()).push().getKey();
 												mSendHistoryMap = new HashMap<>();
-												mSendHistoryMap.put("key", ProfileHistoryKey);
-												mSendHistoryMap.put("image_url", dataSnapshot.child("avatar").getValue(String.class));
+												mSendHistoryMap.put("key", profileHistoryKey);
+												mSendHistoryMap.put("image_url", dataSnapshot.getChild("avatar").getValue(String.class));
 												mSendHistoryMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
 												mSendHistoryMap.put("type", "url");
-												maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mSendHistoryMap);
+												dbService.getReference("profile-history").child(authService.getCurrentUser().getUid()).child(profileHistoryKey).setValue(mSendHistoryMap, (result, error) -> {});
 												SketchwareUtil.showMessage(getApplicationContext(), "Saved to History");
 												mProfileImageViewDialog.dismiss();
 											}
@@ -1132,7 +938,7 @@ if ( || ( || )) {
 				}
 
 				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
+				public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 				}
 			});
@@ -1141,8 +947,8 @@ if ( || ( || )) {
 			mProfileImageViewDialog.show();
 		}
 	}
-	
-	
+
+
 	public void _setUserLastSeen(final double _currentTime, final TextView _txt) {
 		Calendar c1 = Calendar.getInstance();
 		Calendar c2 = Calendar.getInstance();
@@ -1202,8 +1008,8 @@ if ( || ( || )) {
 			}
 		}
 	}
-	
-	
+
+
 	public void _textview_mh(final TextView _txt, final String _value) {
 		_txt.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
 		//_txt.setTextIsSelectable(true);
@@ -1278,26 +1084,23 @@ if ( || ( || )) {
 					int start = sp.getSpanStart(this);
 					int end = sp.getSpanEnd(this);
 					object_clicked = sp.subSequence(start,end).toString();
-					handle = object_clicked.replace("@", ""); 
-					DatabaseReference getReference = FirebaseDatabase.getInstance().getReference()
-					.child("synapse/username")
-					.child(handle);  // This points directly to "synapse/username/[handle]"
-					getReference.addListenerForSingleValueEvent(new ValueEventListener() {
+					handle = object_clicked.replace("@", "");
+					dbService.getReference("username").child(handle).getData(new IDataListener() {
 						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 							if(dataSnapshot.exists()) {
-								if (!dataSnapshot.child("uid").getValue(String.class).equals("null")) {
+								if (!dataSnapshot.getChild("uid").getValue(String.class).equals("null")) {
 									intent.setClass(getApplicationContext(), ProfileActivity.class);
-									intent.putExtra("uid", dataSnapshot.child("uid").getValue(String.class));
+									intent.putExtra("uid", dataSnapshot.getChild("uid").getValue(String.class));
 									startActivity(intent);
 								} else {
-									
+
 								}
 							} else {
 							}
 						}
 						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
+						public void onCancelled(@NonNull IDatabaseError databaseError) {
 							//	swipeLayout.setVisibility(View.GONE);
 							//noInternetBody.setVisibility(View.VISIBLE);
 							//	loadingBody.setVisibility(View.GONE);
@@ -1314,8 +1117,8 @@ if ( || ( || )) {
 			ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 		}
 	}
-	
-	
+
+
 	public void _ImgRound(final ImageView _imageview, final double _value) {
 		android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable ();
 		gd.setColor(android.R.color.transparent);
@@ -1323,8 +1126,8 @@ if ( || ( || )) {
 		_imageview.setClipToOutline(true);
 		_imageview.setBackground(gd);
 	}
-	
-	
+
+
 	public void _OpenWebView(final String _URL) {
 		AndroidDevelopersBlogURL = _URL;
 		CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
@@ -1332,15 +1135,15 @@ if ( || ( || )) {
 		CustomTabsIntent customtabsintent = builder.build();
 		customtabsintent.launchUrl(this, Uri.parse(AndroidDevelopersBlogURL));
 	}
-	
+
 	public class ProfilePageTabUserPostsRecyclerViewAdapter extends RecyclerView.Adapter<ProfilePageTabUserPostsRecyclerViewAdapter.ViewHolder> {
-		
+
 		ArrayList<HashMap<String, Object>> _data;
-		
+
 		public ProfilePageTabUserPostsRecyclerViewAdapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-		
+
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -1349,11 +1152,11 @@ if ( || ( || )) {
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
 		}
-		
+
 		@Override
 		public void onBindViewHolder(ViewHolder _holder, final int _position) {
 			View _view = _holder.itemView;
-			
+
 			final LinearLayout body = _view.findViewById(R.id.body);
 			final LinearLayout top = _view.findViewById(R.id.top);
 			final LinearLayout linear1 = _view.findViewById(R.id.linear1);
@@ -1389,7 +1192,7 @@ if ( || ( || )) {
 			final TextView tv_2 = _view.findViewById(R.id.tv_2);
 			final ImageView shareButtonIc = _view.findViewById(R.id.shareButtonIc);
 			final TextView shareButtonCount = _view.findViewById(R.id.shareButtonCount);
-			
+
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_view.setLayoutParams(_lp);
 			body.setVisibility(View.GONE);
@@ -1398,7 +1201,7 @@ if ( || ( || )) {
 					//		postMessageTextMiddle.setText(_data.get((int)_position).get("post_text").toString());
 					//postMessageTextMiddle.setText(_data.get((int)_position).get("post_text").toString());
 					_textview_mh(postMessageTextMiddle, _data.get((int)_position).get("post_text").toString());
-					
+
 					postMessageTextMiddle.setVisibility(View.VISIBLE);
 				} else {
 					postMessageTextMiddle.setVisibility(View.GONE);
@@ -1413,7 +1216,7 @@ if ( || ( || )) {
 				postImage.setVisibility(View.GONE);
 				postMessageTextMiddle.setVisibility(View.GONE);
 			}
-			
+
 			if (_data.get((int)_position).get("post_hide_like_count").toString().equals("true")) {
 				likeButtonCount.setVisibility(View.GONE);
 			} else {
@@ -1432,7 +1235,7 @@ if ( || ( || )) {
 			_setTime(Double.parseDouble(_data.get((int)_position).get("publish_date").toString()), postPublishDate);
 			if (UserInfoCacheMap.containsKey("uid-".concat(_data.get((int)_position).get("uid").toString()))) {
 				if (_data.get((int)_position).get("post_visibility").toString().equals("private")) {
-					if (_data.get((int)_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+					if (authService.getCurrentUser() != null && _data.get((int)_position).get("uid").toString().equals(authService.getCurrentUser().getUid())) {
 						postPrivateStateIcon.setVisibility(View.VISIBLE);
 						body.setVisibility(View.VISIBLE);
 					} else {
@@ -1491,22 +1294,21 @@ if ( || ( || )) {
 						}
 					}
 				}
-				
+
 			} else {
-				DatabaseReference getReference = FirebaseDatabase.getInstance().getReference().child("skyline/users").child(_data.get((int)_position).get("uid").toString());
-				getReference.addListenerForSingleValueEvent(new ValueEventListener() {
+				dbService.getUserById(_data.get((int)_position).get("uid").toString(), new IDataListener() {
 					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 						if(dataSnapshot.exists()) {
 							UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-							UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
-							UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
-							UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
-							UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
-							UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
-							UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
+							UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("banned").getValue(String.class));
+							UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("nickname").getValue(String.class));
+							UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("username").getValue(String.class));
+							UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("gender").getValue(String.class));
+							UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("verify").getValue(String.class));
+							UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("account_type").getValue(String.class));
 							if (_data.get((int)_position).get("post_visibility").toString().equals("private")) {
-								if (_data.get((int)_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+								if (authService.getCurrentUser() != null && _data.get((int)_position).get("uid").toString().equals(authService.getCurrentUser().getUid())) {
 									postPrivateStateIcon.setVisibility(View.VISIBLE);
 									body.setVisibility(View.VISIBLE);
 								} else {
@@ -1516,49 +1318,49 @@ if ( || ( || )) {
 								body.setVisibility(View.VISIBLE);
 								postPrivateStateIcon.setVisibility(View.GONE);
 							}
-							if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
+							if (dataSnapshot.getChild("banned").getValue(String.class).equals("true")) {
 								userInfoProfileImage.setImageResource(R.drawable.avatar);
 								UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), "null");
 							} else {
-								UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-								if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+								UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.getChild("avatar").getValue(String.class));
+								if (dataSnapshot.getChild("avatar").getValue(String.class).equals("null")) {
 									userInfoProfileImage.setImageResource(R.drawable.avatar);
 								} else {
-									Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(userInfoProfileImage);
+									Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.getChild("avatar").getValue(String.class))).into(userInfoProfileImage);
 								}
 							}
-							if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
-								userInfoUsername.setText("@" + dataSnapshot.child("username").getValue(String.class));
+							if (dataSnapshot.getChild("nickname").getValue(String.class).equals("null")) {
+								userInfoUsername.setText("@" + dataSnapshot.getChild("username").getValue(String.class));
 							} else {
-								userInfoUsername.setText(dataSnapshot.child("nickname").getValue(String.class));
+								userInfoUsername.setText(dataSnapshot.getChild("nickname").getValue(String.class));
 							}
-							if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
+							if (dataSnapshot.getChild("gender").getValue(String.class).equals("hidden")) {
 								userInfoGenderBadge.setVisibility(View.GONE);
 							} else {
-								if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
+								if (dataSnapshot.getChild("gender").getValue(String.class).equals("male")) {
 									userInfoGenderBadge.setImageResource(R.drawable.male_badge);
 									userInfoGenderBadge.setVisibility(View.VISIBLE);
 								} else {
-									if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
+									if (dataSnapshot.getChild("gender").getValue(String.class).equals("female")) {
 										userInfoGenderBadge.setImageResource(R.drawable.female_badge);
 										userInfoGenderBadge.setVisibility(View.VISIBLE);
 									}
 								}
 							}
-							if (dataSnapshot.child("account_type").getValue(String.class).equals("admin")) {
+							if (dataSnapshot.getChild("account_type").getValue(String.class).equals("admin")) {
 								userInfoUsernameVerifiedBadge.setImageResource(R.drawable.admin_badge);
 								userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
 							} else {
-								if (dataSnapshot.child("account_type").getValue(String.class).equals("moderator")) {
+								if (dataSnapshot.getChild("account_type").getValue(String.class).equals("moderator")) {
 									userInfoUsernameVerifiedBadge.setImageResource(R.drawable.moderator_badge);
 									userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
 								} else {
-									if (dataSnapshot.child("account_type").getValue(String.class).equals("support")) {
+									if (dataSnapshot.getChild("account_type").getValue(String.class).equals("support")) {
 										userInfoUsernameVerifiedBadge.setImageResource(R.drawable.support_badge);
 										userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
 									} else {
-										if (dataSnapshot.child("account_type").getValue(String.class).equals("user")) {
-											if (dataSnapshot.child("verify").getValue(String.class).equals("true")) {
+										if (dataSnapshot.getChild("account_type").getValue(String.class).equals("user")) {
+											if (dataSnapshot.getChild("verify").getValue(String.class).equals("true")) {
 												userInfoUsernameVerifiedBadge.setImageResource(R.drawable.verified_badge);
 												userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
 											} else {
@@ -1572,87 +1374,86 @@ if ( || ( || )) {
 						}
 					}
 					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 					}
 				});
-				
+
 			}
-			DatabaseReference getLikeCheck = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-			DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(_data.get((int)_position).get("key").toString());
-			DatabaseReference getLikesCount = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString());
-			DatabaseReference getFavoriteCheck = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString());
-
-			getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
-					} else {
-						likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
+			if (authService.getCurrentUser() != null) {
+				dbService.getReference("posts-likes").child(_data.get((int)_position).get("key").toString()).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
+					@Override
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
+						if(dataSnapshot.exists()) {
+							likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
+						} else {
+							likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
+						}
 					}
-				}
 
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
+					@Override
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
-				}
-			});
-			getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
+					}
+				});
+			}
+			dbService.getReference("posts-comments").child(_data.get((int)_position).get("key").toString()).getData(new IDataListener() {
 				@Override
-				public void onDataChange(DataSnapshot dataSnapshot) {
+				public void onDataChange(IDataSnapshot dataSnapshot) {
 					long count = dataSnapshot.getChildrenCount();
 					_setCount(commentsButtonCount, count);
 				}
 
 				@Override
-				public void onCancelled(DatabaseError databaseError) {
+				public void onCancelled(IDatabaseError databaseError) {
 
 				}
 			});
-			getLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
+			dbService.getReference("posts-likes").child(_data.get((int)_position).get("key").toString()).getData(new IDataListener() {
 				@Override
-				public void onDataChange(DataSnapshot dataSnapshot) {
+				public void onDataChange(IDataSnapshot dataSnapshot) {
 					long count = dataSnapshot.getChildrenCount();
 					_setCount(likeButtonCount, count);
 					postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(count)));
 				}
 
 				@Override
-				public void onCancelled(DatabaseError databaseError) {
+				public void onCancelled(IDatabaseError databaseError) {
 
 				}
 			});
-			getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
-					} else {
-						favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
+			if (authService.getCurrentUser() != null) {
+				dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString()).getData(new IDataListener() {
+					@Override
+					public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
+						if(dataSnapshot.exists()) {
+							favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
+						} else {
+							favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
+						}
 					}
-				}
 
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
+					@Override
+					public void onCancelled(@NonNull IDatabaseError databaseError) {
 
-				}
-			});
-			
+					}
+				});
+			}
+
 			likeButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getLikeCheck = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-					getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
+					if (authService.getCurrentUser() == null) return;
+					dbService.getReference("posts-likes").child(_data.get((int)_position).get("key").toString()).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 							if(dataSnapshot.exists()) {
-								getLikeCheck.removeValue();
+								dbService.getReference("posts-likes").child(_data.get((int)_position).get("key").toString()).child(authService.getCurrentUser().getUid()).setValue(null, (result, error) -> {});
 								postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()) - 1)));
 								_setCount(likeButtonCount, Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()));
 								likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
 							} else {
-								getLikeCheck.setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
+								dbService.getReference("posts-likes").child(_data.get((int)_position).get("key").toString()).child(authService.getCurrentUser().getUid()).setValue(authService.getCurrentUser().getUid(), (result, error) -> {});
 								com.synapse.social.studioasinc.util.NotificationUtils.sendPostLikeNotification(_data.get((int)_position).get("key").toString(), _data.get((int)_position).get("uid").toString());
 								postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()) + 1)));
 								_setCount(likeButtonCount, Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()));
@@ -1661,7 +1462,7 @@ if ( || ( || )) {
 						}
 
 						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
+						public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 						}
 					});
@@ -1691,21 +1492,21 @@ if ( || ( || )) {
 			favoritePostButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getFavoriteCheck = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString());
-					getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
+					if (authService.getCurrentUser() == null) return;
+					dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString()).getData(new IDataListener() {
 						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+						public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 							if(dataSnapshot.exists()) {
-								getFavoriteCheck.removeValue();
+								dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString()).setValue(null, (result, error) -> {});
 								favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
 							} else {
-								getFavoriteCheck.setValue(_data.get((int)_position).get("key").toString());
+								dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString()).setValue(_data.get((int)_position).get("key").toString(), (result, error) -> {});
 								favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
 							}
 						}
 
 						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
+						public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 						}
 					});
@@ -1733,12 +1534,12 @@ if ( || ( || )) {
 				}
 			});
 		}
-		
+
 		@Override
 		public int getItemCount() {
 			return _data.size();
 		}
-		
+
 		public class ViewHolder extends RecyclerView.ViewHolder {
 			public ViewHolder(View v) {
 				super(v);

@@ -1,15 +1,22 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
 /**
- * Manages user online presence in Firebase, writing to the correct database path.
+ * Manages user online presence, writing to the correct database path.
  * Handles online, offline (timestamp), and chat statuses.
  */
 object PresenceManager {
 
-    // Correct database reference to the 'users' node
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService() }
+    private val usersRef by lazy { dbService.getReference("skyline/users") }
+    private val emptyListener = object : ICompletionListener<Unit> {
+        override fun onComplete(result: Unit?, error: String?) {
+            // No-op
+        }
+    }
 
     /**
      * Returns the specific database reference for a user's status.
@@ -19,27 +26,36 @@ object PresenceManager {
 
     /**
      * Sets user status to "online".
-     * Registers onDisconnect to set a timestamp for last seen.
-     * @param uid The Firebase UID of the current user.
+     * @param uid The UID of the current user.
      */
     @JvmStatic
     fun goOnline(uid: String) {
         val statusRef = getUserStatusRef(uid)
-        val activityRef = usersRef.child(uid).child("activity")
-        statusRef.setValue("online")
-        // On disconnect, set the last seen time as a timestamp string
-        statusRef.onDisconnect().setValue(System.currentTimeMillis().toString())
-        activityRef.onDisconnect().removeValue()
+        dbService.setValue(statusRef, "online", emptyListener)
+        /*
+         * TODO: onDisconnect functionality needs to be re-implemented using Supabase Realtime and Presence.
+         *
+         * Firebase's `onDisconnect` is not directly available in Supabase. The recommended approach is:
+         * 1.  **Use Supabase Presence:** When a user comes online, they should join a specific Realtime channel
+         *     (e.g., a "presence" channel) and track their state.
+         * 2.  **Server-side Logic (Edge Function):** When the user's client disconnects abruptly, the Supabase
+         *     Realtime service will automatically detect this and broadcast a `LEAVE` event to the channel.
+         * 3.  **Create a Supabase Edge Function:** This function would subscribe to presence events on the server.
+         *     When it receives a `LEAVE` event for a user, it should execute logic to update that user's
+         *     status in the database to the current timestamp (e.g., `System.currentTimeMillis()`).
+         *
+         * This provides a robust way to handle user presence and last-seen status.
+         * See Supabase docs for Realtime and Edge Functions for implementation details.
+         */
     }
 
     /**
      * Explicitly sets the user's status to a timestamp (last seen).
-     * @param uid The Firebase UID of the current user.
+     * @param uid The UID of the current user.
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        // Set the last seen time as a timestamp string
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString())
+        dbService.setValue(getUserStatusRef(uid), System.currentTimeMillis().toString(), emptyListener)
     }
 
     /**

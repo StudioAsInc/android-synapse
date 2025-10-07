@@ -13,29 +13,25 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
-import com.synapse.social.studioasinc.RequestNetwork;
-import com.synapse.social.studioasinc.RequestNetworkController;
+import com.synapse.social.studioasinc.SynapseApp;
+import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 public class ReelsFragment extends Fragment {
 
-    private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IDatabaseService dbService;
     public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
     private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
     private SwipeRefreshLayout middleRelativeTopSwipe;
     private LinearLayout loadedBody;
     private RecyclerView videosRecyclerView;
-    private RequestNetwork request;
-    private RequestNetwork.RequestListener _request_request_listener;
 
     @Nullable
     @Override
@@ -54,44 +50,9 @@ public class ReelsFragment extends Fragment {
         middleRelativeTopSwipe = view.findViewById(R.id.middleRelativeTopSwipe);
         loadedBody = view.findViewById(R.id.loadedBody);
         videosRecyclerView = view.findViewById(R.id.videosRecyclerView);
-        request = new RequestNetwork(getActivity());
+        dbService = ((SynapseApp) requireActivity().getApplication()).getDbService();
 
         middleRelativeTopSwipe.setOnRefreshListener(() -> _getReference());
-
-        _request_request_listener = new RequestNetwork.RequestListener() {
-            @Override
-            public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
-                loadedBody.setVisibility(View.VISIBLE);
-                Query getLineVideosRef = FirebaseDatabase.getInstance().getReference("skyline/line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
-                getLineVideosRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot _dataSnapshot) {
-                        lineVideosListMap.clear();
-                        try {
-                            GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-                            for (DataSnapshot _data : _dataSnapshot.getChildren()) {
-                                HashMap<String, Object> _map = _data.getValue(_ind);
-                                lineVideosListMap.add(_map);
-                            }
-                            mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(getContext(), getParentFragmentManager(),  lineVideosListMap);
-                            videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError _databaseError) {}
-                });
-                middleRelativeTopSwipe.setRefreshing(false);
-            }
-
-            @Override
-            public void onErrorResponse(String _param1, String _param2) {
-                loadedBody.setVisibility(View.GONE);
-                middleRelativeTopSwipe.setRefreshing(false);
-            }
-        };
     }
 
     private void initializeLogic() {
@@ -103,6 +64,36 @@ public class ReelsFragment extends Fragment {
     }
 
     public void _getReference() {
-        request.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _request_request_listener);
+        middleRelativeTopSwipe.setRefreshing(true);
+        loadedBody.setVisibility(View.GONE);
+        dbService.getData("reels", new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                lineVideosListMap.clear();
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> map = (HashMap<String, Object>) snapshot.getValue();
+                        lineVideosListMap.add(map);
+                    }
+                    Collections.shuffle(lineVideosListMap);
+                }
+
+                if (mLineVideosRecyclerViewAdapter == null) {
+                    mLineVideosRecyclerViewAdapter = new LineVideosRecyclerViewAdapter(lineVideosListMap);
+                    videosRecyclerView.setAdapter(mLineVideosRecyclerViewAdapter);
+                } else {
+                    mLineVideosRecyclerViewAdapter.notifyDataSetChanged();
+                }
+
+                loadedBody.setVisibility(View.VISIBLE);
+                middleRelativeTopSwipe.setRefreshing(false);
+            }
+
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                middleRelativeTopSwipe.setRefreshing(false);
+                // Handle error, maybe show a toast
+            }
+        });
     }
 }

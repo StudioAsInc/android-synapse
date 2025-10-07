@@ -1,7 +1,11 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -10,7 +14,7 @@ import java.io.IOException
 
 /**
  * Enhanced notification system supporting both server-side and client-side OneSignal notifications.
- * 
+ *
  * Features:
  * - Toggle between server-side (Cloudflare Workers) and client-side (OneSignal REST API) notification sending
  * - Smart notification suppression when both users are actively chatting
@@ -20,10 +24,11 @@ import java.io.IOException
 object NotificationHelper {
 
     private const val TAG = "NotificationHelper"
-    
+
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private const val ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
-    
+    private val dbService: IDatabaseService = (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService()
+
     /**
      * Sends a notification to a user.
      *
@@ -46,18 +51,24 @@ object NotificationHelper {
             return
         }
 
-        val userDb = FirebaseDatabase.getInstance().getReference("skyline/users")
-        userDb.child(recipientUid).child("oneSignalPlayerId").get().addOnSuccessListener {
-            val recipientOneSignalPlayerId = it.getValue(String::class.java)
-            if (recipientOneSignalPlayerId.isNullOrBlank()) {
-                Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
-                return@addOnSuccessListener
-            }
+        val userDb = dbService.getReference("skyline/users").child(recipientUid)
+        dbService.getData(userDb, object : IDataListener {
+            @Suppress("UNCHECKED_CAST")
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (!dataSnapshot.exists()) {
+                    Log.w(TAG, "Recipient user not found. Cannot send notification.")
+                    return
+                }
 
-            val recipientStatusRef = FirebaseDatabase.getInstance().getReference("/skyline/users/$recipientUid/status")
+                val recipientData = dataSnapshot.getValue(Map::class.java) as Map<String, Any?>
+                val recipientOneSignalPlayerId = recipientData["oneSignalPlayerId"] as? String
 
-            recipientStatusRef.get().addOnSuccessListener { dataSnapshot ->
-                val recipientStatus = dataSnapshot.getValue(String::class.java)
+                if (recipientOneSignalPlayerId.isNullOrBlank()) {
+                    Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
+                    return
+                }
+
+                val recipientStatus = recipientData["status"] as? String
                 val suppressStatus = "chatting_with_$senderUid"
 
                 if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
@@ -65,14 +76,14 @@ object NotificationHelper {
                         if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
                             Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
                         }
-                        return@addOnSuccessListener
+                        return
                     }
 
                     if (recipientStatus == "online") {
                         if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
                             Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
                         }
-                        return@addOnSuccessListener
+                        return
                     }
                 }
 
@@ -87,54 +98,14 @@ object NotificationHelper {
                 } else {
                     sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
                 }
-                // Removed Firebase RDB chat notifications as requested
-            }.addOnFailureListener { e ->
-                Log.e(TAG, "Status check failed. Defaulting to send notification.", e)
-                if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                     sendClientSideNotification(
-                        recipientOneSignalPlayerId,
-                        message,
-                        senderUid,
-                        notificationType,
-                        data
-                    )
-                } else {
-                    sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                }
-                // Removed Firebase RDB chat notifications as requested
             }
-        }.addOnFailureListener {
-            Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", it)
-        }
+
+            override fun onCancelled(databaseError: IDatabaseError) {
+                Log.e(TAG, "Failed to get recipient's data. Cannot send notification.", Exception(databaseError.message))
+            }
+        })
     }
 
-    /**
-     * Enhanced notification sending with smart presence checking and dual system support.
-     *
-     * @param senderUid The UID of the message sender
-     * @param recipientUid The UID of the message recipient
-     * @param recipientOneSignalPlayerId The OneSignal Player ID of the recipient
-     * @param message The message content to send in the notification
-     * @param chatId Optional chat ID for deep linking (can be null)
-     * @deprecated Use sendNotification instead.
-     */
-    @JvmStatic
-    @Deprecated("Use sendNotification instead.")
-    fun sendMessageAndNotifyIfNeeded(
-        senderUid: String,
-        recipientUid: String,
-        recipientOneSignalPlayerId: String,
-        message: String,
-        chatId: String? = null
-    ) {
-        sendNotification(
-            recipientUid,
-            senderUid,
-            message,
-            "chat_message",
-            if (chatId != null) mapOf("chat_id" to chatId) else null
-        )
-    }
 
     /**
      * Sends notification via the existing Cloudflare Worker (server-side).
@@ -273,15 +244,6 @@ object NotificationHelper {
         })
     }
 
-    /**
-     * Legacy method for backward compatibility.
-     * @deprecated Use sendMessageAndNotifyIfNeeded with chatId parameter instead
-     */
-    @JvmStatic
-    @Deprecated("Use sendMessageAndNotifyIfNeeded with chatId parameter for better deep linking")
-    fun triggerPushNotification(recipientId: String, message: String) {
-        sendMessageAndNotifyIfNeeded("", "", recipientId, message)
-    }
 
     /**
      * Gets the current notification system being used.

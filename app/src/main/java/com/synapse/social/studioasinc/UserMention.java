@@ -10,13 +10,8 @@ import android.widget.PopupWindow;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.model.User;
 
 import java.util.ArrayList;
@@ -26,23 +21,19 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
     private final EditText editText;
     private final Context context;
-    private final DatabaseReference usersRef;
+    private final IDatabaseService dbService;
     private PopupWindow popupWindow;
     private SearchUserAdapter searchUserAdapter;
     private final List<User> userList = new ArrayList<>();
 
     private final View sendButton;
 
-    public UserMention(EditText editText, View sendButton) {
+    public UserMention(EditText editText, View sendButton, IDatabaseService dbService) {
         this.editText = editText;
         this.context = editText.getContext();
-        this.usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
+        this.dbService = dbService;
         this.sendButton = sendButton;
         setupPopupWindow();
-    }
-
-    public UserMention(EditText editText) {
-        this(editText, null);
     }
 
     private void setupPopupWindow() {
@@ -100,28 +91,30 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
     }
 
     private void searchUsers(String query) {
-        Query searchQuery = usersRef.orderByChild("username")
-                .startAt(query)
-                .endAt(query + "\uf8ff")
-                .limitToFirst(10);
-
-        searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+        dbService.searchUsers(query, new IDataListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataReceived(IDataSnapshot dataSnapshot) {
                 userList.clear();
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    User user = snapshot.getValue(User.class);
-                    if (user != null) {
-                        user.setUid(snapshot.getKey());
-                        userList.add(user);
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        User user = snapshot.getValue(User.class);
+                        if (user != null) {
+                            userList.add(user);
+                        }
                     }
                 }
                 searchUserAdapter.notifyDataSetChanged();
+
+                if (userList.isEmpty()) {
+                    hidePopup();
+                } else {
+                    showPopup();
+                }
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-                // Handle error
+            public void onCancelled(IDatabaseError databaseError) {
+                hidePopup();
             }
         });
     }

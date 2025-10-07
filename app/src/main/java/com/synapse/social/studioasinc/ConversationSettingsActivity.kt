@@ -6,21 +6,26 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
 import kotlin.math.abs
 
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val blocklistRef = firebaseDatabase.getReference(REF_SKYLINE).child(REF_BLOCKLIST)
-    private lateinit var auth: FirebaseAuth
+    private lateinit var dbService: IDatabaseService
+    private lateinit var blocklistRef: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
+    private lateinit var authService: IAuthenticationService
     private lateinit var userSettings: SharedPreferences
 
     companion object {
@@ -44,7 +49,10 @@ class ConversationSettingsActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityConversationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        auth = FirebaseAuth.getInstance()
+
+        authService = (application as SynapseApp).getAuthenticationService()
+        dbService = (application as SynapseApp).getDatabaseService()
+        blocklistRef = dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST)
 
         val userId = intent.getStringExtra(KEY_UID)
         if (userId == null) {
@@ -88,7 +96,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.button1.setOnClickListener {
-            // TODO: Implement action
+            Log.d("ConversationSettings", "Search button clicked - Not implemented")
         }
 
         binding.cardReadReceipt.setOnClickListener {
@@ -122,36 +130,41 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun getUserReference() {
         val userId = intent.getStringExtra(KEY_UID) ?: return
-        val getUserReference = firebaseDatabase.getReference(REF_SKYLINE).child(REF_USERS).child(userId)
+        val getUserReference = dbService.getReference(REF_SKYLINE).child(REF_USERS).child(userId)
 
-        getUserReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(getUserReference, object : IDataListener {
+            @Suppress("UNCHECKED_CAST")
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    val isBanned = dataSnapshot.child(KEY_BANNED).getValue(String::class.java) == "true"
-                    if (isBanned) {
-                        binding.profilePictureIV.setImageResource(R.drawable.banned_avatar)
-                    } else {
-                        val avatarUrl = dataSnapshot.child(KEY_AVATAR).getValue(String::class.java)
-                        if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
-                            binding.profilePictureIV.setImageResource(R.drawable.avatar)
+                    val userList = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    val userMap = userList?.firstOrNull()
+                    if (userMap != null) {
+                        val isBanned = userMap[KEY_BANNED] as? String == "true"
+                        if (isBanned) {
+                            binding.profilePictureIV.setImageResource(R.drawable.banned_avatar)
                         } else {
-                            Glide.with(applicationContext).load(Uri.parse(avatarUrl)).into(binding.profilePictureIV)
+                            val avatarUrl = userMap[KEY_AVATAR] as? String
+                            if (avatarUrl.isNullOrEmpty() || avatarUrl == "null") {
+                                binding.profilePictureIV.setImageResource(R.drawable.avatar)
+                            } else {
+                                Glide.with(applicationContext).load(Uri.parse(avatarUrl)).into(binding.profilePictureIV)
+                            }
                         }
-                    }
 
-                    val nickname = dataSnapshot.child(KEY_NICKNAME).getValue(String::class.java)
-                    val username = dataSnapshot.child(KEY_USERNAME).getValue(String::class.java)
+                        val nickname = userMap[KEY_NICKNAME] as? String
+                        val username = userMap[KEY_USERNAME] as? String
 
-                    val user2nickname: String = if (nickname.isNullOrEmpty() || nickname == "null") {
-                        if (username.isNullOrEmpty()) "" else "@$username"
-                    } else {
-                        nickname
+                        val user2nickname: String = if (nickname.isNullOrEmpty() || nickname == "null") {
+                            if (username.isNullOrEmpty()) "" else "@$username"
+                        } else {
+                            nickname
+                        }
+                        binding.username.text = user2nickname
                     }
-                    binding.username.text = user2nickname
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 Log.e("ConversationSettings", "Database error: ${databaseError.message}")
             }
         })
@@ -159,9 +172,18 @@ class ConversationSettingsActivity : AppCompatActivity() {
 
     private fun blockUser(uid: String?) {
         uid?.let {
-            val blockData = hashMapOf<String, Any>(it to it)
-            auth.currentUser?.uid?.let { currentUserUid ->
-                blocklistRef.child(currentUserUid).updateChildren(blockData)
+            val blockData = hashMapOf<String, Any>(it to true)
+            authService.getCurrentUser()?.getUid()?.let { currentUserUid ->
+                val ref = blocklistRef.child(currentUserUid)
+                dbService.updateChildren(ref, blockData, object : ICompletionListener<Unit> {
+                    override fun onComplete(result: Unit?, error: String?) {
+                        if (error == null) {
+                            Toast.makeText(this@ConversationSettingsActivity, "User blocked", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@ConversationSettingsActivity, "Failed to block user", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
             }
         }
     }

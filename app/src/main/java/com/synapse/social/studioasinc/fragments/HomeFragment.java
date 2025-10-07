@@ -42,27 +42,8 @@ import androidx.recyclerview.widget.*;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.bumptech.glide.*;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.android.material.*;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import androidx.browser.customtabs.CustomTabsIntent;
-import com.google.firebase.database.Query;
 import com.synapse.social.studioasinc.CreateLineVideoActivity;
 import com.synapse.social.studioasinc.CreatePostActivity;
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog;
@@ -70,7 +51,13 @@ import com.synapse.social.studioasinc.PostMoreBottomSheetDialog;
 import com.synapse.social.studioasinc.ProfileActivity;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.SynapseApp;
-
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
 import java.io.*;
 import java.text.*;
 import java.util.*;
@@ -81,11 +68,9 @@ import android.os.Looper;
 
 public class HomeFragment extends Fragment {
 
-    private static final int SHIMMER_ITEM_COUNT = 5;
-    private FirebaseDatabase _firebase;
-    private DatabaseReference udb;
-    private DatabaseReference postsRef;
-    private DatabaseReference storiesDbRef;
+	private static final int SHIMMER_ITEM_COUNT = 5;
+    private IAuthenticationService authService;
+    private IDatabaseService dbService;
 
     private HashMap<String, Object> createPostMap = new HashMap<>();
     private HashMap<String, Object> postLikeCountCache = new HashMap<>();
@@ -103,7 +88,6 @@ public class HomeFragment extends Fragment {
 
     private Intent intent = new Intent();
     private Vibrator vbr;
-    private FirebaseAuth auth;
     private Calendar cc = Calendar.getInstance();
 
     @Nullable
@@ -116,12 +100,8 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        _firebase = FirebaseDatabase.getInstance();
-        udb = _firebase.getReference("skyline/users");
-        postsRef = _firebase.getReference("skyline/posts");
-        storiesDbRef = _firebase.getReference("skyline/stories");
-        postsRef.keepSynced(true);
-        storiesDbRef.keepSynced(true);
+        authService = ((SynapseApp) requireActivity().getApplication()).getAuthService();
+        dbService = ((SynapseApp) requireActivity().getApplication()).getDbService();
 
         initialize(view);
         initializeLogic();
@@ -135,7 +115,6 @@ public class HomeFragment extends Fragment {
         shimmer_container = view.findViewById(R.id.shimmer_container);
 
         vbr = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
-        auth = FirebaseAuth.getInstance();
 
         swipeLayout.setOnRefreshListener(() -> {
             _loadPosts();
@@ -168,81 +147,71 @@ public class HomeFragment extends Fragment {
     }
 
     private void _loadStories(final RecyclerView storiesView, final ArrayList<HashMap<String, Object>> storiesList) {
-        storiesDbRef.orderByChild("publish_date")
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if (!isAdded()) {
-                            return;
-                        }
-                        storiesList.clear();
-                        HashMap<String, Object> myStoryPlaceholder = new HashMap<>();
-                        myStoryPlaceholder.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-                        storiesList.add(myStoryPlaceholder);
+        if (authService.getCurrentUser() == null) return;
+        dbService.getReference("stories").orderByChild("publish_date").getData(new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                if (getContext() == null || !isAdded()) return;
+                storiesList.clear();
+                HashMap<String, Object> myStoryPlaceholder = new HashMap<>();
+                myStoryPlaceholder.put("uid", authService.getCurrentUser().getUid());
+                storiesList.add(myStoryPlaceholder);
 
-                        if (dataSnapshot.exists()) {
-                            for (DataSnapshot storySnap : dataSnapshot.getChildren()) {
-                                GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-                                HashMap<String, Object> storyMap = storySnap.getValue(_ind);
-                                if (storyMap != null) {
-                                    if (!storyMap.containsKey("uid") || !storyMap.get("uid").equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-                                        storiesList.add(storyMap);
-                                    }
-                                }
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot storySnap : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> storyMap = storySnap.getValue(HashMap.class);
+                        if (storyMap != null) {
+                            if (authService.getCurrentUser() != null && (!storyMap.containsKey("uid") || !storyMap.get("uid").equals(authService.getCurrentUser().getUid()))) {
+                                storiesList.add(storyMap);
                             }
                         }
-                        if (storiesView != null && storiesView.getAdapter() != null) {
-                            storiesView.getAdapter().notifyDataSetChanged();
-                        } else if (storiesView != null) {
-                            storiesView.setAdapter(new StoriesViewAdapter(storiesList));
-                        }
                     }
+                }
+                if (storiesView != null && storiesView.getAdapter() != null) {
+                    storiesView.getAdapter().notifyDataSetChanged();
+                } else if (storiesView != null) {
+                    storiesView.setAdapter(new StoriesViewAdapter(storiesList));
+                }
+            }
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-                        if (!isAdded()) {
-                            return;
-                        }
-                        Toast.makeText(getContext(), "Error loading stories: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-                        if (storiesView != null && storiesView.getAdapter() != null) {
-                            storiesView.getAdapter().notifyDataSetChanged();
-                        } else if (storiesView != null) {
-                            storiesView.setAdapter(new StoriesViewAdapter(storiesList));
-                        }
-                    }
-                });
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                if (getContext() == null || !isAdded()) return;
+                Toast.makeText(getContext(), "Error loading stories: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                if (storiesView != null && storiesView.getAdapter() != null) {
+                    storiesView.getAdapter().notifyDataSetChanged();
+                } else if (storiesView != null) {
+                    storiesView.setAdapter(new StoriesViewAdapter(storiesList));
+                }
+            }
+        });
     }
 
     public void _loadPosts() {
         _showShimmer();
         swipeLayout.setRefreshing(true);
-        Query query = postsRef.orderByChild("publish_date");
+        IQuery query = dbService.getReference("posts").orderByChild("publish_date");
         String notFoundMessage = "There are no public posts available at the moment.";
         _fetchAndDisplayPosts(query, notFoundMessage);
     }
 
-    private void _fetchAndDisplayPosts(Query query, final String notFoundMessage) {
+    private void _fetchAndDisplayPosts(Object query, final String notFoundMessage) {
         if (query == null) {
             _finalizePostDisplay(notFoundMessage, false);
             return;
         }
 
-        query.addListenerForSingleValueEvent(new ValueEventListener() {
+        dbService.getData((IQuery) query, new IDataListener() {
             @Override
-            public void onDataChange(DataSnapshot _dataSnapshot) {
-                if (!isAdded()) {
-                    return;
-                }
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                if (getContext() == null || !isAdded()) return;
                 PostsList.clear();
-                if (_dataSnapshot.exists()) {
-                    try {
-                        GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-                        for (DataSnapshot _data : _dataSnapshot.getChildren()) {
-                            HashMap<String, Object> _map = _data.getValue(_ind);
-                            PostsList.add(_map);
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> map = snapshot.getValue(HashMap.class);
+                        if (map != null) {
+                            PostsList.add(map);
                         }
-                    } catch (Exception _e) {
-                        _e.printStackTrace();
                     }
                     _finalizePostDisplay(notFoundMessage, true);
                 } else {
@@ -251,11 +220,9 @@ public class HomeFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(DatabaseError _databaseError) {
-                if (!isAdded()) {
-                    return;
-                }
-                Toast.makeText(getContext(), "Failed to fetch latest posts, showing cached data. Error: " + _databaseError.getMessage(), Toast.LENGTH_LONG).show();
+            public void onCancelled(IDatabaseError databaseError) {
+                if (getContext() == null || !isAdded()) return;
+                Toast.makeText(getContext(), "Failed to fetch latest posts, showing cached data. Error: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
                 _finalizePostDisplay(notFoundMessage, false);
             }
         });
@@ -409,9 +376,6 @@ public class HomeFragment extends Fragment {
             final ImageView miniPostLayoutMoreButton;
             final TextView miniPostLayoutTextPostPublish;
 
-            ValueEventListener profileListener;
-            DatabaseReference profileRef;
-
             public ViewHolder(View view) {
                 super(view);
                 storiesView = view.findViewById(R.id.storiesView);
@@ -440,27 +404,34 @@ public class HomeFragment extends Fragment {
             _viewGraphics(holder.miniPostLayoutTextPostPublish, Color.TRANSPARENT, Color.TRANSPARENT, 300, 2, 0xFF616161);
             _loadStories(holder.storiesView, storiesList);
 
-            holder.profileRef = udb.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-	        holder.profileListener = new ValueEventListener() {
-	            @Override
-	            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-	                if(dataSnapshot.exists()) {
-	                    if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-	                        Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(holder.miniPostLayoutProfileImage);
-	                    } else {
-	                        holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	                    }
-	                } else {
-	                    holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	                }
-	            }
-	            @Override
-	            public void onCancelled(@NonNull DatabaseError databaseError) {
-	                Toast.makeText(getContext(), "Error fetching user profile: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-	                holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	            }
-	        };
-            holder.profileRef.addValueEventListener(holder.profileListener);
+            if (authService.getCurrentUser() != null) {
+                dbService.getReference("users").child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            HashMap<String, Object> user = dataSnapshot.getValue(HashMap.class);
+                            if (user != null) {
+                                String avatarUrl = (String) user.get("avatar");
+                                if (avatarUrl != null && !"null".equals(avatarUrl)) {
+                                    if(getContext() != null) {
+                                        Glide.with(getContext()).load(Uri.parse(avatarUrl)).into(holder.miniPostLayoutProfileImage);
+                                    }
+                                } else {
+                                    holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                                }
+                            }
+                        } else {
+                            holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(getContext(), "Error fetching user profile: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                        holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                    }
+                });
+            }
 
 	        holder.miniPostLayoutTextPostPublish.setVisibility(View.GONE);
 	        _ImageColor(holder.miniPostLayoutImagePost, 0xFF445E91);
@@ -502,46 +473,46 @@ public class HomeFragment extends Fragment {
             });
 
             holder.miniPostLayoutTextPostPublish.setOnClickListener(v -> {
-                if (holder.miniPostLayoutTextPostInput.getText().toString().trim().equals("")) {
+                if (holder.miniPostLayoutTextPostInput.getText().toString().trim().isEmpty()) {
                     Toast.makeText(getContext(), getResources().getString(R.string.please_enter_text), Toast.LENGTH_SHORT).show();
                 } else {
-                    if (!(holder.miniPostLayoutTextPostInput.getText().toString().length() > 1500)) {
-                        String uniqueKey = udb.push().getKey();
+                    if (holder.miniPostLayoutTextPostInput.getText().toString().length() <= 1500) {
+                        String uniqueKey = UUID.randomUUID().toString();
                         cc = Calendar.getInstance();
                         createPostMap = new HashMap<>();
                         createPostMap.put("key", uniqueKey);
-                        createPostMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+                        createPostMap.put("uid", authService.getCurrentUserId());
                         createPostMap.put("post_text", holder.miniPostLayoutTextPostInput.getText().toString().trim());
                         createPostMap.put("post_type", "TEXT");
-                        createPostMap.put("post_hide_views_count", "false");
+                        createPostMap.put("post_hide_views_count", false);
                         createPostMap.put("post_region", "none");
-                        createPostMap.put("post_hide_like_count", "false");
-                        createPostMap.put("post_hide_comments_count", "false");
+                        createPostMap.put("post_hide_like_count", false);
+                        createPostMap.put("post_hide_comments_count", false);
                         createPostMap.put("post_visibility", "public");
-                        createPostMap.put("post_disable_favorite", "false");
-                        createPostMap.put("post_disable_comments", "false");
-                        createPostMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-                        FirebaseDatabase.getInstance().getReference("skyline/posts").child(uniqueKey).updateChildren(createPostMap, (databaseError, databaseReference) -> {
-                            if (databaseError == null) {
-                                Toast.makeText(getContext(), getResources().getString(R.string.post_publish_success), Toast.LENGTH_SHORT).show();
-                                _loadPosts();
-                            } else {
-                                Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                        createPostMap.put("post_disable_favorite", false);
+                        createPostMap.put("post_disable_comments", false);
+                        createPostMap.put("publish_date", String.valueOf(cc.getTimeInMillis()));
+                        if (authService.getCurrentUser() != null) {
+                            dbService.setValue(dbService.getReference("posts").child(uniqueKey), createPostMap, (result, error) -> {
+                                if (error == null) {
+                                    Toast.makeText(getContext(), getResources().getString(R.string.post_publish_success), Toast.LENGTH_SHORT).show();
+                                    _loadPosts();
+                                } else {
+                                    Toast.makeText(getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
                         holder.miniPostLayoutTextPostInput.setText("");
                     }
                 }
-                vbr.vibrate((long)(48));
+                vbr.vibrate(48);
             });
         }
 
         @Override
         public void onViewRecycled(@NonNull ViewHolder holder) {
             super.onViewRecycled(holder);
-            if (holder.profileRef != null && holder.profileListener != null) {
-                holder.profileRef.removeEventListener(holder.profileListener);
-            }
+            // No-op for now, since we are not using persistent listeners in the same way as Firebase.
         }
 
         @Override
@@ -598,26 +569,32 @@ public class HomeFragment extends Fragment {
 
             if (_position == 0) {
                 storiesMyStoryTitle.setText(getResources().getString(R.string.add_story));
-                DatabaseReference getReference = _firebase.getReference().child("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-                getReference.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if(dataSnapshot.exists()) {
-                            if (dataSnapshot.child("avatar").getValue(String.class) != null && dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-                                storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
+                if (authService.getCurrentUser() != null) {
+                    dbService.getReference("users").child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
+                        @Override
+                        public void onDataChange(IDataSnapshot dataSnapshot) {
+                            if (dataSnapshot.exists()) {
+                                HashMap<String, Object> user = dataSnapshot.getValue(HashMap.class);
+                                String avatarUrl = (String) user.get("avatar");
+                                if (avatarUrl != null && !"null".equals(avatarUrl)) {
+                                    if(getContext() != null) {
+                                        Glide.with(getContext()).load(Uri.parse(avatarUrl)).into(storiesMyStoryProfileImage);
+                                    }
+                                } else {
+                                    storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
+                                }
                             } else {
-                                Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(storiesMyStoryProfileImage);
+                                storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
                             }
-                        } else {
+                        }
+
+                        @Override
+                        public void onCancelled(IDatabaseError databaseError) {
+                            Log.e("StoriesAdapter", "Failed to load user avatar for My Story: " + databaseError.getMessage());
                             storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
                         }
-                    }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-                        Log.e("StoriesAdapter", "Failed to load user avatar for My Story: " + databaseError.getMessage());
-                        storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
-                    }
-                });
+                    });
+                }
                 storiesMyStory.setVisibility(View.VISIBLE);
                 storiesSecondStory.setVisibility(View.GONE);
             } else {
@@ -628,22 +605,24 @@ public class HomeFragment extends Fragment {
                 if (UserInfoCacheMap.containsKey("uid-" + storyUid)) {
                     _displayUserInfoForStory(storyUid, storiesSecondStoryProfileImage, storiesSecondStoryTitle);
                 } else {
-                    udb.child(storyUid).addListenerForSingleValueEvent(new ValueEventListener() {
+                    dbService.getReference("users").child(storyUid).getData(new IDataListener() {
                         @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        public void onDataChange(IDataSnapshot dataSnapshot) {
                             if (dataSnapshot.exists()) {
+                                HashMap<String, Object> user = dataSnapshot.getValue(HashMap.class);
                                 UserInfoCacheMap.put("uid-" + storyUid, storyUid);
-                                UserInfoCacheMap.put("nickname-" + storyUid, dataSnapshot.child("nickname").getValue(String.class));
-                                UserInfoCacheMap.put("username-" + storyUid, dataSnapshot.child("username").getValue(String.class));
-                                UserInfoCacheMap.put("avatar-" + storyUid, dataSnapshot.child("avatar").getValue(String.class));
+                                UserInfoCacheMap.put("nickname-" + storyUid, user.get("nickname"));
+                                UserInfoCacheMap.put("username-" + storyUid, user.get("username"));
+                                UserInfoCacheMap.put("avatar-" + storyUid, user.get("avatar"));
                                 _displayUserInfoForStory(storyUid, storiesSecondStoryProfileImage, storiesSecondStoryTitle);
                             } else {
                                 storiesSecondStoryProfileImage.setImageResource(R.drawable.avatar);
                                 storiesSecondStoryTitle.setText("Unknown User");
                             }
                         }
+
                         @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                        public void onCancelled(IDatabaseError databaseError) {
                             Log.e("StoriesAdapter", "Failed to load user info for story: " + databaseError.getMessage());
                             storiesSecondStoryProfileImage.setImageResource(R.drawable.avatar);
                             storiesSecondStoryTitle.setText("Error User");
@@ -763,112 +742,104 @@ public class HomeFragment extends Fragment {
                 _updatePostViewVisibility(body, postPrivateStateIcon, postUid, _data.get(_position).get("post_visibility").toString());
                 _displayUserInfoFromCache(postUid, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge);
             } else {
-                ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-                Handler mMainHandler = new Handler(Looper.getMainLooper());
-                mExecutorService.execute(() -> {
-                    DatabaseReference userRef = _firebase.getReference().child("skyline/users").child(postUid);
-                    userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                            if(dataSnapshot.exists()) {
-                                UserInfoCacheMap.put("uid-".concat(postUid), postUid);
-                                UserInfoCacheMap.put("banned-".concat(postUid), dataSnapshot.child("banned").getValue(String.class));
-                                UserInfoCacheMap.put("nickname-".concat(postUid), dataSnapshot.child("nickname").getValue(String.class));
-                                UserInfoCacheMap.put("username-".concat(postUid), dataSnapshot.child("username").getValue(String.class));
-                                UserInfoCacheMap.put("avatar-".concat(postUid), dataSnapshot.child("avatar").getValue(String.class));
-                                UserInfoCacheMap.put("gender-".concat(postUid), dataSnapshot.child("gender").getValue(String.class));
-                                UserInfoCacheMap.put("verify-".concat(postUid), dataSnapshot.child("verify").getValue(String.class));
-                                UserInfoCacheMap.put("acc_type-".concat(postUid), dataSnapshot.child("account_type").getValue(String.class));
-                                mMainHandler.post(() -> {
-                                    _updatePostViewVisibility(body, postPrivateStateIcon, postUid, _data.get(_position).get("post_visibility").toString());
-                                    _displayUserInfoFromCache(postUid, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge);
-                                });
-                            } else {
-                                mMainHandler.post(() -> {
-                                    userInfoProfileImage.setImageResource(R.drawable.avatar);
-                                    userInfoUsername.setText("Unknown User");
-                                    userInfoGenderBadge.setVisibility(View.GONE);
-                                    userInfoUsernameVerifiedBadge.setVisibility(View.GONE);
-                                    body.setVisibility(View.GONE);
-                                });
-                            }
+                dbService.getReference("users").child(postUid).getData(new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            HashMap<String, Object> user = dataSnapshot.getValue(HashMap.class);
+                            UserInfoCacheMap.put("uid-".concat(postUid), postUid);
+                            UserInfoCacheMap.put("banned-".concat(postUid), user.get("banned"));
+                            UserInfoCacheMap.put("nickname-".concat(postUid), user.get("nickname"));
+                            UserInfoCacheMap.put("username-".concat(postUid), user.get("username"));
+                            UserInfoCacheMap.put("avatar-".concat(postUid), user.get("avatar"));
+                            UserInfoCacheMap.put("gender-".concat(postUid), user.get("gender"));
+                            UserInfoCacheMap.put("verify-".concat(postUid), user.get("verify"));
+                            UserInfoCacheMap.put("acc_type-".concat(postUid), user.get("account_type"));
+                            _updatePostViewVisibility(body, postPrivateStateIcon, postUid, _data.get(_position).get("post_visibility").toString());
+                            _displayUserInfoFromCache(postUid, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge);
+                        } else {
+                            userInfoProfileImage.setImageResource(R.drawable.avatar);
+                            userInfoUsername.setText("Unknown User");
+                            userInfoGenderBadge.setVisibility(View.GONE);
+                            userInfoUsernameVerifiedBadge.setVisibility(View.GONE);
+                            body.setVisibility(View.GONE);
                         }
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
-                            mMainHandler.post(() -> {
-                                userInfoProfileImage.setImageResource(R.drawable.avatar);
-                                userInfoUsername.setText("Error User");
-                                userInfoGenderBadge.setVisibility(View.GONE);
-                                userInfoUsernameVerifiedBadge.setVisibility(View.GONE);
-                                body.setVisibility(View.GONE);
-                            });
-                        }
-                    });
+                    }
+
+                    @Override
+                    public void onCancelled(IDataabaseError databaseError) {
+                        userInfoProfileImage.setImageResource(R.drawable.avatar);
+                        userInfoUsername.setText("Error User");
+                        userInfoGenderBadge.setVisibility(View.GONE);
+                        userInfoUsernameVerifiedBadge.setVisibility(View.GONE);
+                        body.setVisibility(View.GONE);
+                    }
                 });
             }
 
-            DatabaseReference getLikeCheck = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-            DatabaseReference getCommentsCount = _firebase.getReference("skyline/posts-comments").child(_data.get(_position).get("key").toString());
-            DatabaseReference getLikesCount = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString());
-            DatabaseReference getFavoriteCheck = _firebase.getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get(_position).get("key").toString());
-
-            getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if(dataSnapshot.exists()) {
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
-                    } else {
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
+            if (authService.getCurrentUser() != null) {
+                dbService.getReference("posts-likes").child(_data.get(_position).get("key").toString()).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
+                        } else {
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
+                        }
                     }
-                }
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {}
+                });
+            }
+            dbService.getReference("posts-comments").child(_data.get(_position).get("key").toString()).getData(new IDataListener() {
                 @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {}
-            });
-            getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(IDataSnapshot dataSnapshot) {
                     _setCount(commentsButtonCount, dataSnapshot.getChildrenCount());
                 }
                 @Override
-                public void onCancelled(DatabaseError databaseError) {}
+                public void onCancelled(IDatabaseError databaseError) {}
             });
-            getLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
+            dbService.getReference("posts-likes").child(_data.get(_position).get("key").toString()).getData(new IDataListener() {
                 @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(IDataSnapshot dataSnapshot) {
                     long count = dataSnapshot.getChildrenCount();
                     _setCount(likeButtonCount, count);
                     postLikeCountCache.put(_data.get(_position).get("key").toString(), String.valueOf(count));
                 }
                 @Override
-                public void onCancelled(DatabaseError databaseError) {}
+                public void onCancelled(IDatabaseError databaseError) {}
             });
-            getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if(dataSnapshot.exists()) {
-                        favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
-                    } else {
-                        favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
+            if (authService.getCurrentUser() != null) {
+                dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get(_position).get("key").toString()).getData(new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
+                        } else {
+                            favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
+                        }
                     }
-                }
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {}
-            });
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {}
+                });
+            }
 
             likeButton.setOnClickListener(_view1 -> {
-                DatabaseReference likeRef = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-                likeRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                if (authService.getCurrentUser() == null) return;
+                dbService.getReference("posts-likes").child(_data.get(_position).get("key").toString()).child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if(dataSnapshot.exists()) {
-                            likeRef.removeValue();
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            dbService.setValue(dbService.getReference("posts-likes").child(_data.get(_position).get("key").toString()).child(authService.getCurrentUser().getUid()), null, (result, error) -> {});
                             double currentLikes = Double.parseDouble(postLikeCountCache.get(_data.get(_position).get("key").toString()).toString());
                             postLikeCountCache.put(_data.get(_position).get("key").toString(), String.valueOf((long)(currentLikes - 1)));
                             _setCount(likeButtonCount, currentLikes - 1);
                             likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
                         } else {
-                            likeRef.setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-                            com.synapse.social.studioasinc.util.NotificationUtils.sendPostLikeNotification(_data.get(_position).get("key").toString(), _data.get(_position).get("uid").toString());
+                            HashMap<String, Object> likeMap = new HashMap<>();
+                            likeMap.put("uid", authService.getCurrentUser().getUid());
+                            dbService.setValue(dbService.getReference("posts-likes").child(_data.get(_position).get("key").toString()).child(authService.getCurrentUser().getUid()), likeMap, (result, error) -> {});
+                            //NotificationUtils.sendPostLikeNotification(_data.get(_position).get("key").toString(), _data.get(_position).get("uid").toString());
                             double currentLikes = Double.parseDouble(postLikeCountCache.get(_data.get(_position).get("key").toString()).toString());
                             postLikeCountCache.put(_data.get(_position).get("key").toString(), String.valueOf((long)(currentLikes + 1)));
                             _setCount(likeButtonCount, currentLikes + 1);
@@ -876,7 +847,7 @@ public class HomeFragment extends Fragment {
                         }
                     }
                     @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {}
+                    public void onCancelled(IDatabaseError databaseError) {}
                 });
                 vbr.vibrate((long)(24));
             });
@@ -895,20 +866,20 @@ public class HomeFragment extends Fragment {
                 startActivity(intent);
             });
             favoritePostButton.setOnClickListener(_view1 -> {
-                DatabaseReference favoriteRef = _firebase.getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get(_position).get("key").toString());
-                favoriteRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                if (authService.getCurrentUser() == null) return;
+                dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get(_position).get("key").toString()).getData(new IDataListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if(dataSnapshot.exists()) {
-                            favoriteRef.removeValue();
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            dbService.setValue(dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get(_position).get("key").toString()), null, (result, error) -> {});
                             favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
                         } else {
-                            favoriteRef.setValue(_data.get(_position).get("key").toString());
+                            dbService.setValue(dbService.getReference("favorite-posts").child(authService.getCurrentUser().getUid()).child(_data.get(_position).get("key").toString()), _data.get(_position).get("key").toString(), (result, error) -> {});
                             favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
                         }
                     }
                     @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {}
+                    public void onCancelled(IDatabaseError databaseError) {}
                 });
                 vbr.vibrate((long)(24));
             });
@@ -943,7 +914,7 @@ public class HomeFragment extends Fragment {
 
     private void _updatePostViewVisibility(LinearLayout body, ImageView postPrivateStateIcon, String postUid, String postVisibility) {
         if ("private".equals(postVisibility)) {
-            if (postUid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+            if (postUid.equals(authService.getCurrentUserId())) {
                 postPrivateStateIcon.setVisibility(View.VISIBLE);
                 body.setVisibility(View.VISIBLE);
             } else {

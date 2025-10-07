@@ -47,18 +47,12 @@ import androidx.gridlayout.*;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.synapse.social.studioasinc.FadeEditText;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.util.FileUtil;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -70,19 +64,15 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import androidx.appcompat.widget.SwitchCompat;
-import com.google.firebase.database.Query;
-import java.net.URL;
-import java.net.MalformedURLException;
-import com.synapse.social.studioasinc.ImageUploader;
 
 public class ProfileEditActivity extends AppCompatActivity {
-	
+
 	public final int REQ_CD_FP = 101;
 	public final int REQ_CD_FPCOVER = 102;
-	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	
+
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
+
 	private ProgressDialog SynapseLoadingDialog;
 	private HashMap<String, Object> ProfileEditSendMap = new HashMap<>();
 	private String UserLastProfileUri = "";
@@ -97,7 +87,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 	private String path = "";
 	private String IMG_BB_API_KEY = "";
 	private HashMap<String, Object> mAddProfilePhotoMap = new HashMap<>();
-	
+
 	private LinearLayout body;
 	private LinearLayout top;
 	private ScrollView mScroll;
@@ -148,43 +138,26 @@ public class ProfileEditActivity extends AppCompatActivity {
 	private TextView cover_image_history_stage_title;
 	private ImageView cover_image_history_stage_arrow;
 	private ProgressBar mLoadingBar;
-	
+
 	private Intent intent = new Intent();
 	private Vibrator vbr;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference pushusername = _firebase.getReference("synapse/username");
-	private ChildEventListener _pushusername_child_listener;
 	private Intent fp = new Intent(Intent.ACTION_GET_CONTENT);
 	private Intent fpcover = new Intent(Intent.ACTION_GET_CONTENT);
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
 	private Calendar cc = Calendar.getInstance();
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_edit);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
-		
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 1000);} else {
+			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 1000);
+		} else {
 			initializeLogic();
 		}
 	}
-	
+
 	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -192,7 +165,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 			initializeLogic();
 		}
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		body = findViewById(R.id.body);
 		top = findViewById(R.id.top);
@@ -245,70 +218,54 @@ public class ProfileEditActivity extends AppCompatActivity {
 		cover_image_history_stage_arrow = findViewById(R.id.cover_image_history_stage_arrow);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		auth = FirebaseAuth.getInstance();
+		authService = ((SynapseApp) getApplication()).getAuthService();
+		dbService = ((SynapseApp) getApplication()).getDbService();
 		fp.setType("image/*");
 		fp.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		fpcover.setType("image/*");
 		fpcover.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-		
+
 		mBack.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		mSave.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				if (!mUsernameInput.getText().toString().trim().equals("")) {
-					if (!(userNameErr || (nickNameErr || biographyErr))) {
-						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-						ProfileEditSendMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-						ProfileEditSendMap.put("avatar", UserLastProfileUri);
-						ProfileEditSendMap.put("profile_cover_image", UserLastCoverUri);
-						ProfileEditSendMap.put("username", mUsernameInput.getText().toString().trim());
-						if (mNicknameInput.getText().toString().trim().equals("")) {
-							ProfileEditSendMap.put("nickname", "null");
-						} else {
-							ProfileEditSendMap.put("nickname", mNicknameInput.getText().toString().trim());
-						}
-						if (mBiographyInput.getText().toString().trim().equals("")) {
-							ProfileEditSendMap.put("biography", "null");
-						} else {
-							ProfileEditSendMap.put("biography", mBiographyInput.getText().toString().trim());
-						}
-						if (gender_male_checkbox.isEnabled()) {
-							ProfileEditSendMap.put("gender", "male");
-						} else {
-							if (gender_female_checkbox.isEnabled()) {
-								ProfileEditSendMap.put("gender", "female");
+				if (!mUsernameInput.getText().toString().trim().isEmpty() && !userNameErr && !nickNameErr && !biographyErr) {
+					_LoadingDialog(true);
+					ProfileEditSendMap = new HashMap<>();
+					ProfileEditSendMap.put("username", mUsernameInput.getText().toString().trim());
+					ProfileEditSendMap.put("nickname", mNicknameInput.getText().toString().trim().isEmpty() ? "null" : mNicknameInput.getText().toString().trim());
+					ProfileEditSendMap.put("biography", mBiographyInput.getText().toString().trim().isEmpty() ? "null" : mBiographyInput.getText().toString().trim());
+					String genderValue = "hidden";
+					if (gender_male_checkbox.isEnabled()) {
+						genderValue = "male";
+					} else if (gender_female_checkbox.isEnabled()) {
+						genderValue = "female";
+					}
+					ProfileEditSendMap.put("gender", genderValue);
+
+					if (authService.getCurrentUser() != null) {
+						dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, error) -> {
+							_LoadingDialog(false);
+							if (error == null) {
+								SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
 							} else {
-								if (gender_gone_checkbox.isEnabled()) {
-									ProfileEditSendMap.put("gender", "hidden");
-								}
+								SketchwareUtil.showMessage(getApplicationContext(), "Error: " + error.getMessage());
 							}
-						}
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap);
-						FirebaseDatabase.getInstance().getReference("synapse/username")
-						.child(CurrentUsername)  // Use the CurrentUsername variable directly
-						.removeValue();
-						SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
-						map = new HashMap<>();
-						map.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-						map.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-						map.put("username", mUsernameInput.getText().toString());
-						pushusername.child(mUsernameInput.getText().toString()).updateChildren(map);
-						map.clear();
+						});
 					}
 				} else {
 					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
 				}
-				vbr.vibrate((long)(48));
+				vbr.vibrate(48);
 			}
 		});
-		
+
 		mUsernameInput.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -331,36 +288,40 @@ public class ProfileEditActivity extends AppCompatActivity {
 									userNameErr = true;
 								} else {
 									mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
-									
-									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
-									checkUsernameQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+									dbService.getReference("users").orderByChild("username").equalTo(_charSeq.trim()).getData(new IDataListener() {
 										@Override
-										public void onDataChange(DataSnapshot dataSnapshot) {
+										public void onDataChange(IDataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
-												for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
-													String uid = childSnapshot.child("uid").getValue(String.class);
-													if (uid != null && uid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-														mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-														userNameErr = false;
-													} else {
-														mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)1, 0xFFF44336, 0xFFFFFFFF));
-														((EditText) mUsernameInput).setError(getResources().getString(R.string.username_err_already_taken));
-														userNameErr = true;
+												boolean isTaken = false;
+												if (authService.getCurrentUser() != null) {
+													for (IDataSnapshot childSnapshot : dataSnapshot.getChildren()) {
+														String uid = childSnapshot.getValue(HashMap.class).get("uid").toString();
+														if (!uid.equals(authService.getCurrentUser().getUid())) {
+															isTaken = true;
+															break;
+														}
 													}
+												}
+
+												if (isTaken) {
+													mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)1, 0xFFF44336, 0xFFFFFFFF));
+													((EditText) mUsernameInput).setError(getResources().getString(R.string.username_err_already_taken));
+													userNameErr = true;
+												} else {
+													mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+													userNameErr = false;
 												}
 											} else {
 												mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 												userNameErr = false;
 											}
 										}
-										
+
 										@Override
-										public void onCancelled(DatabaseError databaseError) {
-											
+										public void onCancelled(IDatabaseError databaseError) {
+											// Handle error
 										}
 									});
-									
 								}
 							}
 						} else {
@@ -375,18 +336,18 @@ public class ProfileEditActivity extends AppCompatActivity {
 					}
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
 		mNicknameInput.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -400,18 +361,18 @@ public class ProfileEditActivity extends AppCompatActivity {
 					nickNameErr = false;
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
 		mBiographyInput.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -425,18 +386,18 @@ public class ProfileEditActivity extends AppCompatActivity {
 					biographyErr = false;
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
 		region.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -444,7 +405,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-		
+
 		profile_image_history_stage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -452,7 +413,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-		
+
 		cover_image_history_stage.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -460,7 +421,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				startActivity(intent);
 			}
 		});
-		
+
 		gender_male.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -473,7 +434,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				vbr.vibrate((long)(48));
 			}
 		});
-		
+
 		gender_female.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -486,7 +447,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				vbr.vibrate((long)(48));
 			}
 		});
-		
+
 		gender_gone.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -496,217 +457,11 @@ public class ProfileEditActivity extends AppCompatActivity {
 				gender_gone_checkbox.setEnabled(true);
 				gender_male_checkbox.setEnabled(false);
 				gender_female_checkbox.setEnabled(false);
-				vbr.vibrate((long)(48));
+				vbr.vibrate((long) (48));
 			}
 		});
-		
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-		
-		_pushusername_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		pushusername.addChildEventListener(_pushusername_child_listener);
-		
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
 	}
-	
+
 	private void initializeLogic() {
 		// UI related codings
 		_stateColor(0xFFFFFFFF, 0xFFF5F5F5);
@@ -741,11 +496,11 @@ public class ProfileEditActivity extends AppCompatActivity {
 			}
 		});
 	}
-	
+
 	@Override
 	protected void onActivityResult(int _requestCode, int _resultCode, Intent _data) {
 		super.onActivityResult(_requestCode, _resultCode, _data);
-		
+
 		switch (_requestCode) {
 			case REQ_CD_FP:
 			if (_resultCode == Activity.RESULT_OK) {
@@ -764,53 +519,31 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				stage1RelativeUpProfileImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
-					@Override
-					public void onUploadComplete(String imageUrl) {
-						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("avatar", imageUrl);
-						ProfileEditSendMap.put("avatar_history_type", "local");
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
-							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
-								}
-							}
-						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
-					}
-					
-					@Override
-					public void onUploadError(String errorMessage) {
-						
-						
-						
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
-						_LoadingDialog(false);
-					}
-				});
-				
+                if (authService.getCurrentUser() != null) {
+                    String supabasePath = "avatar/" + authService.getCurrentUser().getUid() + "/" + System.currentTimeMillis() + ".jpg";
+                    dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
+                        if (error != null) {
+                            _LoadingDialog(false);
+                            SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
+                            return;
+                        }
+
+                        ProfileEditSendMap = new HashMap<>();
+                        ProfileEditSendMap.put("avatar", imageUrl);
+                        dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, updateError) -> {
+                            _LoadingDialog(false);
+                            if (updateError != null) {
+                                SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                            }
+                        });
+                    });
+                }
 			}
 			else {
-				
+
 			}
 			break;
-			
+
 			case REQ_CD_FPCOVER:
 			if (_resultCode == Activity.RESULT_OK) {
 				ArrayList<String> _filePath = new ArrayList<>();
@@ -828,62 +561,41 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				profileCoverImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
-					@Override
-					public void onUploadComplete(String imageUrl) {
-						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("profile_cover_image", imageUrl);
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
-							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
-								}
-							}
-						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
-					}
-					
-					@Override
-					public void onUploadError(String errorMessage) {
-						
-						
-						
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
-						_LoadingDialog(false);
-					}
-				});
-				
+                if (authService.getCurrentUser() != null) {
+                    String supabasePath = "cover/" + authService.getCurrentUser().getUid() + "/" + System.currentTimeMillis() + ".jpg";
+                    dbService.uploadFile("synapse-bucket", supabasePath, path, (imageUrl, error) -> {
+                        if (error != null) {
+                            _LoadingDialog(false);
+                            SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
+                            return;
+                        }
+
+                        ProfileEditSendMap = new HashMap<>();
+                        ProfileEditSendMap.put("profile_cover_image", imageUrl);
+                        dbService.updateChildren(dbService.getReference("users").child(authService.getCurrentUser().getUid()), ProfileEditSendMap, (result, updateError) -> {
+                            _LoadingDialog(false);
+                            if (updateError != null) {
+                                SketchwareUtil.showMessage(getApplicationContext(), updateError.getMessage());
+                            }
+                        });
+                    });
+                }
 			}
 			else {
-				
+
 			}
 			break;
 			default:
 			break;
 		}
 	}
-	
+
 	@Override
 	public void onBackPressed() {
 		finish();
 	}
-	
-	
+
+
 	@Override
 	public void onResume() {
 		super.onResume();
@@ -894,85 +606,83 @@ public class ProfileEditActivity extends AppCompatActivity {
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-	
-	
+
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _getUserReference() {
 		mScroll.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+		if (authService.getCurrentUser() == null) return;
+		dbService.getReference("users").child(authService.getCurrentUser().getUid()).getData(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
 					mScroll.setVisibility(View.VISIBLE);
 					mLoadingBody.setVisibility(View.GONE);
-					UserLastProfileUri = dataSnapshot.child("avatar").getValue(String.class);
-					UserLastCoverUri = dataSnapshot.child("profile_cover_image").getValue(String.class);
-					if (dataSnapshot.child("profile_cover_image").getValue(String.class).equals("null")) {
+					HashMap<String, Object> user = dataSnapshot.getValue(HashMap.class);
+					UserLastProfileUri = (String) user.get("avatar");
+					UserLastCoverUri = (String) user.get("profile_cover_image");
+					if ("null".equals(UserLastCoverUri)) {
 						profileCoverImage.setImageResource(R.drawable.user_null_cover_photo);
 					} else {
-						Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("profile_cover_image").getValue(String.class))).into(profileCoverImage);
+						Glide.with(getApplicationContext()).load(Uri.parse(UserLastCoverUri)).into(profileCoverImage);
 					}
-					if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+					if ("null".equals(UserLastProfileUri)) {
 						stage1RelativeUpProfileImage.setImageResource(R.drawable.avatar);
 					} else {
-						Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(stage1RelativeUpProfileImage);
+						Glide.with(getApplicationContext()).load(Uri.parse(UserLastProfileUri)).into(stage1RelativeUpProfileImage);
 					}
-					mUsernameInput.setText(dataSnapshot.child("username").getValue(String.class));
-					CurrentUsername = dataSnapshot.child("username").getValue(String.class);
-					if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
+					mUsernameInput.setText((String) user.get("username"));
+					CurrentUsername = (String) user.get("username");
+					if ("null".equals(user.get("nickname"))) {
 						mNicknameInput.setText("");
 					} else {
-						mNicknameInput.setText(dataSnapshot.child("nickname").getValue(String.class));
+						mNicknameInput.setText((String) user.get("nickname"));
 					}
-					if (dataSnapshot.child("biography").getValue(String.class).equals("null")) {
+					if ("null".equals(user.get("biography"))) {
 						mBiographyInput.setText("");
 					} else {
-						mBiographyInput.setText(dataSnapshot.child("biography").getValue(String.class));
+						mBiographyInput.setText((String) user.get("biography"));
 					}
-					if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
+					String gender = (String) user.get("gender");
+					if ("hidden".equals(gender)) {
 						gender_male_checkbox.setImageResource(R.drawable.checkbox_not_checked);
 						gender_female_checkbox.setImageResource(R.drawable.checkbox_not_checked);
 						gender_gone_checkbox.setImageResource(R.drawable.checkbox_checked);
 						gender_gone_checkbox.setEnabled(true);
 						gender_male_checkbox.setEnabled(false);
 						gender_female_checkbox.setEnabled(false);
-					} else {
-						if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
-							gender_male_checkbox.setImageResource(R.drawable.checkbox_checked);
-							gender_female_checkbox.setImageResource(R.drawable.checkbox_not_checked);
-							gender_gone_checkbox.setImageResource(R.drawable.checkbox_not_checked);
-							gender_gone_checkbox.setEnabled(false);
-							gender_male_checkbox.setEnabled(true);
-							gender_female_checkbox.setEnabled(false);
-						} else {
-							if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
-								gender_male_checkbox.setImageResource(R.drawable.checkbox_not_checked);
-								gender_female_checkbox.setImageResource(R.drawable.checkbox_checked);
-								gender_gone_checkbox.setImageResource(R.drawable.checkbox_not_checked);
-								gender_gone_checkbox.setEnabled(false);
-								gender_male_checkbox.setEnabled(false);
-								gender_female_checkbox.setEnabled(true);
-							}
-						}
+					} else if ("male".equals(gender)) {
+						gender_male_checkbox.setImageResource(R.drawable.checkbox_checked);
+						gender_female_checkbox.setImageResource(R.drawable.checkbox_not_checked);
+						gender_gone_checkbox.setImageResource(R.drawable.checkbox_not_checked);
+						gender_gone_checkbox.setEnabled(false);
+						gender_male_checkbox.setEnabled(true);
+						gender_female_checkbox.setEnabled(false);
+					} else if ("female".equals(gender)) {
+						gender_male_checkbox.setImageResource(R.drawable.checkbox_not_checked);
+						gender_female_checkbox.setImageResource(R.drawable.checkbox_checked);
+						gender_gone_checkbox.setImageResource(R.drawable.checkbox_not_checked);
+						gender_gone_checkbox.setEnabled(false);
+						gender_male_checkbox.setEnabled(false);
+						gender_female_checkbox.setEnabled(true);
 					}
-				} else {
 				}
 			}
-			
+
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onCancelled(IDatabaseError databaseError) {
+				mLoadingBody.setVisibility(View.GONE);
+				SketchwareUtil.showMessage(getApplicationContext(), "Error: " + databaseError.getMessage());
 			}
 		});
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -981,8 +691,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _LoadingDialog(final boolean _visibility) {
 		if (_visibility) {
 			if (SynapseLoadingDialog== null){
@@ -1006,7 +716,7 @@ public class ProfileEditActivity extends AppCompatActivity {
 				SynapseLoadingDialog.dismiss();
 			}
 		}
-		
+
 	}
-	
-}
+
+}

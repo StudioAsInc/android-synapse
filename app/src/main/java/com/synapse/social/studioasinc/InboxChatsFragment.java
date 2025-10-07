@@ -34,22 +34,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.chip.*;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -61,7 +56,6 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.core.widget.NestedScrollView;
-import com.google.firebase.database.Query;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import android.os.Handler;
 import android.os.Looper;
@@ -80,7 +74,8 @@ import com.bumptech.glide.Glide;
 
 public class InboxChatsFragment extends Fragment {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 
@@ -99,20 +94,6 @@ public class InboxChatsFragment extends Fragment {
 	private Chip chip_community;
 	private Chip chip_ai;
 	private FloatingActionButton fab_new_group;
-
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
 	private Intent intent = new Intent();
 
 	@NonNull
@@ -120,12 +101,14 @@ public class InboxChatsFragment extends Fragment {
 	public View onCreateView(@NonNull LayoutInflater _inflater, @Nullable ViewGroup _container, @Nullable Bundle _savedInstanceState) {
 		View _view = _inflater.inflate(R.layout.fragment_inbox_chats, _container, false);
 		initialize(_savedInstanceState, _view);
-		FirebaseApp.initializeApp(getContext());
 		initializeLogic();
 		return _view;
 	}
 
 	private void initialize(Bundle _savedInstanceState, View _view) {
+		authService = new SupabaseAuthService();
+		dbService = new SupabaseDatabaseService();
+
 		linear2 = _view.findViewById(R.id.linear2);
 		hscroll1 = _view.findViewById(R.id.hscroll1);
 		inboxListRecyclerView = _view.findViewById(R.id.inboxListRecyclerView);
@@ -138,7 +121,6 @@ public class InboxChatsFragment extends Fragment {
 		chip_community = _view.findViewById(R.id.linear32);
 		chip_ai = _view.findViewById(R.id.linear33);
 		fab_new_group = _view.findViewById(R.id.fab_new_group);
-		auth = FirebaseAuth.getInstance();
 
 		linear9.setOnCheckedChangeListener(new ChipGroup.OnCheckedChangeListener() {
 			@Override
@@ -146,134 +128,6 @@ public class InboxChatsFragment extends Fragment {
 				filterChats(checkedId);
 			}
 		});
-
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -341,17 +195,16 @@ public class InboxChatsFragment extends Fragment {
 
 
 	public void _getInboxReference() {
-		Query getInboxRef = FirebaseDatabase.getInstance().getReference("inbox").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getInboxRef.addValueEventListener(new ValueEventListener() {
+		IQuery getInboxRef = dbService.getReference("inbox").child(authService.getCurrentUser().getUid());
+		getInboxRef.addValueEventListener(new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					inboxListRecyclerView.setVisibility(View.VISIBLE);
 					ChatInboxList.clear();
 					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
+						for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> _map = (HashMap<String, Object>) _data.getValue();
 							ChatInboxList.add(_map);
 						}
 					} catch (Exception _e) {
@@ -366,7 +219,7 @@ public class InboxChatsFragment extends Fragment {
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
+			public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 			}
 		});
@@ -496,7 +349,7 @@ public class InboxChatsFragment extends Fragment {
 				} else {
 					last_message.setText(_data.get((int)_position).get("last_message_text").toString());
 				}
-				if (_data.get((int)_position).get("last_message_uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+				if (_data.get((int)_position).get("last_message_uid").toString().equals(authService.getCurrentUser().getUid())) {
 					if (_data.get((int)_position).get("last_message_state").toString().equals("sended")) {
 						message_state.setImageResource(R.drawable.icon_done_round);
 					} else {
@@ -509,14 +362,14 @@ public class InboxChatsFragment extends Fragment {
 					{
 						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
 						Handler mMainHandler = new Handler(Looper.getMainLooper());
-						
+
 						mExecutorService.execute(new Runnable() {
 							@Override
 							public void run() {
-								Query getUnreadMessagesCount = FirebaseDatabase.getInstance().getReference("skyline/chats").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("uid").toString()).orderByChild("message_state").equalTo("sended");
-								getUnreadMessagesCount.addValueEventListener(new ValueEventListener() {
+								IQuery getUnreadMessagesCount = dbService.getReference("skyline/chats").child(authService.getCurrentUser().getUid()).child(_data.get((int)_position).get("uid").toString()).orderBy("message_state", IQuery.Order.ASCENDING).equalTo("sended");
+								getUnreadMessagesCount.addValueEventListener(new IDataListener() {
 									@Override
-									public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+									public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 										mMainHandler.post(new Runnable() {
 											@Override
 											public void run() {
@@ -534,10 +387,10 @@ public class InboxChatsFragment extends Fragment {
 											}
 										});
 									}
-									
+
 									@Override
-									public void onCancelled(@NonNull DatabaseError databaseError) {
-										
+									public void onCancelled(@NonNull IDatabaseError databaseError) {
+
 									}
 								});
 							}
@@ -558,10 +411,10 @@ public class InboxChatsFragment extends Fragment {
 						username.setText(UserInfoCacheMap.get("group-name-" + groupId).toString());
 						Glide.with(getContext()).load(Uri.parse(UserInfoCacheMap.get("group-icon-" + groupId).toString())).into(profileCardImage);
 					} else {
-						DatabaseReference groupRef = FirebaseDatabase.getInstance().getReference("groups").child(groupId);
-						groupRef.addListenerForSingleValueEvent(new ValueEventListener() {
+						IDatabaseReference groupRef = dbService.getReference("groups").child(groupId);
+						groupRef.addListenerForSingleValueEvent(new IDataListener() {
 							@Override
-							public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+							public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 								if (dataSnapshot.exists()) {
 									String name = dataSnapshot.child("name").getValue(String.class);
 									String icon = dataSnapshot.child("icon").getValue(String.class);
@@ -572,7 +425,7 @@ public class InboxChatsFragment extends Fragment {
 								}
 							}
 							@Override
-							public void onCancelled(@NonNull DatabaseError databaseError) {}
+							public void onCancelled(@NonNull IDatabaseError databaseError) {}
 						});
 					}
 					genderBadge.setVisibility(View.GONE);
@@ -673,10 +526,10 @@ public class InboxChatsFragment extends Fragment {
 							mExecutorService.execute(new Runnable() {
 								@Override
 								public void run() {
-									DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_data.get((int)_position).get("uid").toString());
-									getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+								IDatabaseReference getUserReference = dbService.getReference("skyline/users").child(_data.get((int)_position).get("uid").toString());
+								getUserReference.addListenerForSingleValueEvent(new IDataListener() {
 										@Override
-										public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+									public void onDataChange(@NonNull IDataSnapshot dataSnapshot) {
 											mMainHandler.post(new Runnable() {
 												@Override
 												public void run() {
@@ -760,7 +613,7 @@ public class InboxChatsFragment extends Fragment {
 										}
 
 										@Override
-										public void onCancelled(@NonNull DatabaseError databaseError) {
+										public void onCancelled(@NonNull IDatabaseError databaseError) {
 
 										}
 									});
@@ -781,7 +634,7 @@ public class InboxChatsFragment extends Fragment {
 					});
 				}
 			}catch(Exception e){
-				
+
 			}
 		}
 

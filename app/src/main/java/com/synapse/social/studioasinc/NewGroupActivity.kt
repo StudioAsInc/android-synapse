@@ -13,7 +13,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.User
 
 class NewGroupActivity : AppCompatActivity() {
@@ -26,11 +30,15 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private lateinit var dbService: IDatabaseService
+    private lateinit var database: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_new_group)
+
+        dbService = (application as SynapseApp).getDatabaseService()
+        database = dbService.getReference("skyline/users")
 
         usersRecyclerView = findViewById(R.id.users_recycler_view)
         searchView = findViewById(R.id.search_view)
@@ -80,27 +88,34 @@ class NewGroupActivity : AppCompatActivity() {
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun fetchUsers() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
+        dbService.getData(database, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 usersList.clear()
-                for (userSnapshot in snapshot.children) {
-                    val user = userSnapshot.getValue(User::class.java)
-                    if (user != null) {
+                if (dataSnapshot.exists()) {
+                    val userMaps = dataSnapshot.getValue(List::class.java) as? List<Map<String, Any>>
+                    userMaps?.forEach { userMap ->
+                        val user = User(
+                            userMap["uid"] as? String ?: "",
+                            userMap["username"] as? String ?: "",
+                            userMap["nickname"] as? String ?: "",
+                            userMap["avatar"] as? String ?: ""
+                        )
                         usersList.add(user)
                     }
                 }
                 usersAdapter.notifyDataSetChanged()
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@NewGroupActivity, "Failed to load users.", Toast.LENGTH_SHORT).show()
+            override fun onCancelled(databaseError: IDatabaseError) {
+                Toast.makeText(this@NewGroupActivity, "Failed to load users: ${databaseError.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        onBackPressed()
+        finish()
         return true
     }
 }
@@ -129,8 +144,8 @@ class UsersAdapter(
             users.toMutableList()
         } else {
             users.filter {
-                it.username.contains(query, ignoreCase = true) ||
-                it.nickname.contains(query, ignoreCase = true)
+                (it.username?.contains(query, ignoreCase = true) ?: false) ||
+                (it.nickname?.contains(query, ignoreCase = true) ?: false)
             }.toMutableList()
         }
         notifyDataSetChanged()
@@ -142,7 +157,7 @@ class UsersAdapter(
         private val userCheckbox: CheckBox = itemView.findViewById(R.id.user_checkbox)
 
         fun bind(user: User) {
-            userName.text = if (user.nickname.isNotEmpty()) user.nickname else user.username
+            userName.text = if (!user.nickname.isNullOrEmpty()) user.nickname else user.username
             Glide.with(itemView.context).load(user.avatar).placeholder(R.drawable.avatar).into(userAvatar)
 
             itemView.setOnClickListener {

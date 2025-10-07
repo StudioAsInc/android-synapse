@@ -2,14 +2,19 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
-    id 'com.google.firebase.crashlytics'
-    //id 'com.google.firebase.firebase-perf'
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.8.10"
 }
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
 }
 
 def getGitCommitHash = { ->
@@ -61,6 +66,9 @@ android {
         versionName = "1.0.0-alpha07"
         multiDexEnabled = true
 
+        buildConfigField "String", "SUPABASE_URL", localProperties.getProperty('supabase_url') != null ? "\"${localProperties.getProperty('supabase_url')}\"" : "\"\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", localProperties.getProperty('supabase_anon_key') != null ? "\"${localProperties.getProperty('supabase_anon_key')}\"" : "\"\""
+
         vectorDrawables.useSupportLibrary = true
 
         compileOptions {
@@ -111,17 +119,15 @@ android {
 }
 
 dependencies {
-    // Import the Firebase BoM (downgraded to avoid gRPC conflict)
-    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
-
-    // When using the BoM, don't specify versions in Firebase dependencies
-    // Re-adding -ktx suffixes as they are included in this BoM version
-    implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
-    implementation 'com.google.firebase:firebase-perf-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.5.0"))
+    implementation "io.github.jan-tennert.supabase:postgrest-kt"
+    implementation "io.github.jan-tennert.supabase:gotrue-kt"
+    implementation "io.github.jan-tennert.supabase:storage-kt"
+    implementation "io.github.jan-tennert.supabase:realtime-kt"
+    implementation "io.ktor:ktor-client-android:2.3.11"
+    implementation "io.ktor:ktor-client-core:2.3.11"
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'
@@ -199,15 +205,10 @@ dependencies {
     implementation 'io.noties.markwon:ext-latex:4.6.2'
     implementation 'io.noties.markwon:html:4.6.2'
 
-    // ExoPlayer for video playback
-    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+    // AndroidX Media3 (replaces ExoPlayer)
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
 
     // Testing
 }
 
-// Apply Google Services plugin only if credentials file exists
-def googleServicesFile = file('google-services.json')
-if (googleServicesFile.exists()) {
-    apply plugin: 'com.google.gms.google-services'
-}

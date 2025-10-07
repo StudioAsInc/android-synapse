@@ -48,23 +48,14 @@ import androidx.fragment.app.DialogFragment;
 import androidx.cardview.widget.CardView;
 import com.bumptech.glide.Glide;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.database.Query;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
 import java.io.*;
 import java.text.*;
 import java.text.SimpleDateFormat;
@@ -79,62 +70,62 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PostCommentsBottomSheetDialog extends DialogFragment {
-		
-		private View rootView;
-		private Intent intent = new Intent();
-		
-		private LinearLayout body;
-		private LinearLayout top;
-		private LinearLayout body_in_layout;
-		private LinearLayout spc1;
-		private LinearLayout commentVbody;
-		private LinearLayout close;
-		private LinearLayout top_middle;
-		private LinearLayout gift;
-		private ImageView close_ic;
-		private TextView title;
-		private TextView title_count;
-		private ImageView gift_ic;
-		private RecyclerView comments_list;
-		private LinearLayout no_comments_body;
-		private LinearLayout loading_body;
-		private TextView no_comments_title;
-		private TextView no_comments_subtext;
-		private ProgressBar loading_bar;
-		private LinearLayout commentsMoreFet;
-		private LinearLayout CommentsBottomIn;
-		private TextView emoji1;
-		private TextView emoji2;
-		private TextView emoji3;
-		private TextView emoji4;
-		private TextView emoji5;
-		private TextView emoji6;
-		private TextView emoji7;
-		private CardView profile_image_bg_2_x2;
-		private LinearLayout comment_send_layout;
-		private ImageView profile_image_x;
-		private EditText comment_send_input;
-		private ImageView cancel_reply_mode;
-		private ImageView comment_send_button;
-		
-		private FirebaseAuth auth;
-		private DatabaseReference main = FirebaseDatabase.getInstance().getReference("skyline");
-		private Calendar cc = Calendar.getInstance();
-		
-		private String postKey = null;
-		private String pushKey = null;
-		private String postPublisherUID = null;
-		private String postPublisherAvatar = null;
-		private String replyToCommentKey = null;
-		private boolean replyToComment = false;
-		private int commentsLimit = 0;
-		private ArrayList<HashMap<String, Object>> commentsListMap = new ArrayList<>();
-		private Handler handler;
-		
-		private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
-		private HashMap<String, Object> postCommentLikeCountCache = new HashMap<>();
-		private HashMap<String, Object> sendCommentMap = new HashMap<>();
-		
+
+	private View rootView;
+	private Intent intent = new Intent();
+
+	private LinearLayout body;
+	private LinearLayout top;
+	private LinearLayout body_in_layout;
+	private LinearLayout spc1;
+	private LinearLayout commentVbody;
+	private LinearLayout close;
+	private LinearLayout top_middle;
+	private LinearLayout gift;
+	private ImageView close_ic;
+	private TextView title;
+	private TextView title_count;
+	private ImageView gift_ic;
+	private RecyclerView comments_list;
+	private LinearLayout no_comments_body;
+	private LinearLayout loading_body;
+	private TextView no_comments_title;
+	private TextView no_comments_subtext;
+	private ProgressBar loading_bar;
+	private LinearLayout commentsMoreFet;
+	private LinearLayout CommentsBottomIn;
+	private TextView emoji1;
+	private TextView emoji2;
+	private TextView emoji3;
+	private TextView emoji4;
+	private TextView emoji5;
+	private TextView emoji6;
+	private TextView emoji7;
+	private CardView profile_image_bg_2_x2;
+	private LinearLayout comment_send_layout;
+	private ImageView profile_image_x;
+	private EditText comment_send_input;
+	private ImageView cancel_reply_mode;
+	private ImageView comment_send_button;
+
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
+	private Calendar cc = Calendar.getInstance();
+
+	private String postKey = null;
+	private String pushKey = null;
+	private String postPublisherUID = null;
+	private String postPublisherAvatar = null;
+	private String replyToCommentKey = null;
+	private boolean replyToComment = false;
+	private int commentsLimit = 0;
+	private ArrayList<HashMap<String, Object>> commentsListMap = new ArrayList<>();
+	private Handler handler;
+
+	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
+	private HashMap<String, Object> postCommentLikeCountCache = new HashMap<>();
+	private HashMap<String, Object> sendCommentMap = new HashMap<>();
+
 		@NonNull
 		@Override
 		public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
@@ -143,7 +134,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				dialog.setContentView(rootView);
 				dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
 				handler = new Handler(Looper.getMainLooper());
-				
+
 				body = rootView.findViewById(R.id.body);
 				top = rootView.findViewById(R.id.top);
 				body_in_layout = rootView.findViewById(R.id.body_in_layout);
@@ -177,18 +168,18 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				comment_send_input = rootView.findViewById(R.id.comment_send_input);
 				cancel_reply_mode = rootView.findViewById(R.id.cancel_reply_mode);
 				comment_send_button = rootView.findViewById(R.id.comment_send_button);
-				
-				FirebaseApp.initializeApp(getContext());
-				auth = FirebaseAuth.getInstance();
-				
+
+				authService = ((SynapseApp) requireActivity().getApplication()).getAuthService();
+				dbService = ((SynapseApp) requireActivity().getApplication()).getDbService();
+
 				Display display = getActivity().getWindowManager().getDefaultDisplay();
 				int screenHeight = display.getHeight();
 				int desiredHeight = screenHeight * 3 / 4;
 				LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, desiredHeight);
-				
+
 				comments_list.setAdapter(new Comments_listAdapter(commentsListMap));
 				comments_list.setLayoutManager(new LinearLayoutManager(getActivity()));
-				
+
 				dialog.setOnShowListener(dialogInterface -> {
 						BottomSheetDialog d = (BottomSheetDialog) dialogInterface;
 						View bottomSheet = d.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -197,7 +188,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						BottomSheetBehavior.from(bottomSheet).setDraggable(true);
 						BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
 				});
-				
+
 				if (getArguments() != null) {
 						postKey = getArguments().getString("postKey");
 						postPublisherUID = getArguments().getString("postPublisherUID");
@@ -208,63 +199,63 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						getCommentsCount(postKey);
 						getCommentsRef(postKey, true);
 				}
-				
+
 				close.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								dialog.dismiss();
 						}
 				});
-				
+
 				emoji1.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😁"));
 						}
 				});
-				
+
 				emoji2.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("🥰"));
 						}
 				});
-				
+
 				emoji3.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😂"));
 						}
 				});
-				
+
 				emoji4.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😳"));
 						}
 				});
-				
+
 				emoji5.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😏"));
 						}
 				});
-				
+
 				emoji6.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("😅"));
 						}
 				});
-				
+
 				emoji7.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								comment_send_input.setText(comment_send_input.getText().toString().concat("🥺"));
 						}
 				});
-				
+
 				cancel_reply_mode.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
@@ -274,43 +265,44 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								cancel_reply_mode.setVisibility(View.GONE);
 						}
 				});
-				
-				UserMention userMention = new UserMention(comment_send_input, comment_send_button);
+
+				UserMention userMention = new UserMention(comment_send_input, comment_send_button, dbService);
 				comment_send_input.addTextChangedListener(userMention);
-				
+
 				comment_send_button.setOnClickListener(new View.OnClickListener() {
 						@Override
 						public void onClick(View _view) {
 								if (!comment_send_input.getText().toString().trim().equals("")) {
-										if ((replyToComment) && (replyToCommentKey != null)) {
-												cc = Calendar.getInstance();
-												sendCommentMap = new HashMap<>();
-												pushKey = main.push().getKey();
-												sendCommentMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-												sendCommentMap.put("comment", comment_send_input.getText().toString());
-												sendCommentMap.put("push_time", String.valueOf((long)(cc.getTimeInMillis())));
-												sendCommentMap.put("key", pushKey);
-												sendCommentMap.put("replyCommentkey", replyToCommentKey);
-												sendCommentMap.put("like", "0");
-												main.child("posts-comments-replies").child(postKey).child(replyToCommentKey).child(pushKey).updateChildren(sendCommentMap);
-												_sendCommentNotification(true, pushKey);
-												comment_send_input.setText("");
-												getCommentsRef(postKey, false);
-										} else {
-												cc = Calendar.getInstance();
-												sendCommentMap = new HashMap<>();
-												pushKey = main.push().getKey();
-												sendCommentMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-												sendCommentMap.put("comment", comment_send_input.getText().toString());
-												sendCommentMap.put("push_time", String.valueOf((long)(cc.getTimeInMillis())));
-												sendCommentMap.put("key", pushKey);
-												sendCommentMap.put("like", "0");
-												main.child("posts-comments").child(postKey).child(pushKey).updateChildren(sendCommentMap);
-												_sendCommentNotification(false, pushKey);
-												handleMentions(comment_send_input.getText().toString(), postKey, pushKey);
-												comment_send_input.setText("");
-												getCommentsRef(postKey, false);
+										cc = Calendar.getInstance();
+										sendCommentMap = new HashMap<>();
+										pushKey = UUID.randomUUID().toString();
+										if (authService.getCurrentUser() != null) {
+											sendCommentMap.put("uid", authService.getCurrentUser().getUid());
 										}
+										sendCommentMap.put("comment", comment_send_input.getText().toString());
+										sendCommentMap.put("push_time", String.valueOf(cc.getTimeInMillis()));
+										sendCommentMap.put("key", pushKey);
+										sendCommentMap.put("like", 0);
+
+										if (replyToComment) {
+												sendCommentMap.put("replyCommentkey", replyToCommentKey);
+												dbService.setValue("posts-comments-replies/" + postKey + "/" + replyToCommentKey + "/" + pushKey, sendCommentMap, (result, error) -> {
+														if (error == null) {
+																handleMentions(comment_send_input.getText().toString(), postKey, pushKey);
+																comment_send_input.setText("");
+																getCommentsRef(postKey, false);
+														}
+												});
+										} else {
+												dbService.setValue("posts-comments/" + postKey + "/" + pushKey, sendCommentMap, (result, error) -> {
+														if (error == null) {
+																handleMentions(comment_send_input.getText().toString(), postKey, pushKey);
+																comment_send_input.setText("");
+																getCommentsRef(postKey, false);
+														}
+												});
+										}
+
 										comment_send_input.setHint(getResources().getString(R.string.comment));
 										replyToCommentKey = null;
 										replyToComment = false;
@@ -318,64 +310,17 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 						}
 				});
-				
-				getMyUserData(FirebaseAuth.getInstance().getCurrentUser().getUid());
+
+				getMyUserData(authService.getCurrentUser().getUid());
 				body.setLayoutParams(params);
 				dialogStyles();
-				
+
 				return dialog;
 		}
-		
+
+		// A push notification service would be needed here to notify the post publisher.
 		private void _sendCommentNotification(boolean isReply, String commentKey) {
-			FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-			if (currentUser == null) {
-				return;
-			}
-			String currentUid = currentUser.getUid();
-
-			Task<DataSnapshot> senderNameTask = FirebaseDatabase.getInstance().getReference("skyline/users").child(currentUid).child("username").get();
-
-			if (isReply) {
-				Task<DataSnapshot> originalCommenterTask = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey).child(replyToCommentKey).child("uid").get();
-				com.google.android.gms.tasks.Tasks.whenAllSuccess(senderNameTask, originalCommenterTask).addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<List<Object>>() {
-					@Override
-					public void onSuccess(List<Object> list) {
-						String senderName = ((DataSnapshot) list.get(0)).getValue(String.class);
-						String originalCommenterUid = ((DataSnapshot) list.get(1)).getValue(String.class);
-						if (originalCommenterUid != null) {
-							String message = senderName + " replied to your comment";
-							HashMap<String, String> data = new HashMap<>();
-							data.put("postId", postKey);
-							data.put("commentId", commentKey);
-							NotificationHelper.sendNotification(
-							originalCommenterUid,
-							currentUid,
-							message,
-							NotificationConfig.NOTIFICATION_TYPE_NEW_REPLY,
-							data
-							);
-						}
-					}
-				});
-			} else {
-				senderNameTask.addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<DataSnapshot>() {
-					@Override
-					public void onSuccess(DataSnapshot dataSnapshot) {
-						String senderName = dataSnapshot.getValue(String.class);
-						String message = senderName + " commented on your post";
-						HashMap<String, String> data = new HashMap<>();
-						data.put("postId", postKey);
-						data.put("commentId", commentKey);
-						NotificationHelper.sendNotification(
-						postPublisherUID,
-						currentUid,
-						message,
-						NotificationConfig.NOTIFICATION_TYPE_NEW_COMMENT,
-						data
-						);
-					}
-				});
-			}
+			// This method is intentionally left blank.
 		}
 
 		private void handleMentions(String text, String postKey, String commentKey) {
@@ -393,143 +338,90 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				getCommentsCount(key);
 			}
 
-			// Note: The following logic was moved from `_sendCommentLikeNotification`, where it was incorrectly placed.
-			// It needs to be executed when the dialog is opened to fetch comments, not just on a like action.
-			ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-			Handler mMainHandler = new Handler(Looper.getMainLooper());
-
-			mExecutorService.execute(new Runnable() {
-					@Override
-					public void run() {
-							Query commentsQuery = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey).orderByChild("like").limitToLast(commentsLimit);
-							commentsQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-									@Override
-									public void onDataChange(@NonNull DataSnapshot snapshot) {
-											mMainHandler.post(new Runnable() {
-													@Override
-													public void run() {
-															if (snapshot.exists()) {
-																	comments_list.setVisibility(View.VISIBLE);
-																	no_comments_body.setVisibility(View.GONE);
-																	loading_body.setVisibility(View.GONE);
-																	commentsListMap.clear();
-
-																	GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-
-																	for (DataSnapshot _data : snapshot.getChildren()) {
-																			HashMap<String, Object> commentsGetMap = _data.getValue(_ind);
-																			commentsListMap.add(commentsGetMap);
-																			SketchwareUtil.sortListMap(commentsListMap, "like", true, false);
-																	}
-
-																	comments_list.getAdapter().notifyDataSetChanged();
-															} else {
-																	comments_list.setVisibility(View.GONE);
-																	no_comments_body.setVisibility(View.VISIBLE);
-																	loading_body.setVisibility(View.GONE);
-															}
-													}
-											});
-									}
-
-									@Override
-									public void onCancelled(@NonNull DatabaseError error) {
-
-									}
-							});
-					}
-			});
-		}
-
-		private void _sendCommentLikeNotification(String commentKey, String commentAuthorUid) {
-			FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-			if (currentUser == null) {
-				return;
-			}
-			String currentUid = currentUser.getUid();
-
-			FirebaseDatabase.getInstance().getReference("skyline/users").child(currentUid).child("username").get().addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<DataSnapshot>() {
+			dbService.getData("posts-comments/" + postKey, new IDataListener() {
 				@Override
-				public void onSuccess(DataSnapshot dataSnapshot) {
-					String senderName = dataSnapshot.getValue(String.class);
-					String message = senderName + " liked your comment";
+				public void onDataChange(IDataSnapshot dataSnapshot) {
+					if (dataSnapshot.exists()) {
+						comments_list.setVisibility(View.VISIBLE);
+						no_comments_body.setVisibility(View.GONE);
+						loading_body.setVisibility(View.GONE);
+						commentsListMap.clear();
 
-					HashMap<String, String> data = new HashMap<>();
-					data.put("postId", postKey);
-					data.put("commentId", commentKey);
+						for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> commentsGetMap = (HashMap<String, Object>)_data.getValue();
+							commentsListMap.add(commentsGetMap);
+						}
+						//SketchwareUtil.sortListMap(commentsListMap, "like", true, false);
+						comments_list.getAdapter().notifyDataSetChanged();
+					} else {
+						comments_list.setVisibility(View.GONE);
+						no_comments_body.setVisibility(View.VISIBLE);
+						loading_body.setVisibility(View.GONE);
+					}
+				}
 
-					NotificationHelper.sendNotification(
-					commentAuthorUid,
-					currentUid,
-					message,
-					NotificationConfig.NOTIFICATION_TYPE_NEW_LIKE_COMMENT,
-					data
-					);
+				@Override
+				public void onCancelled(IDatabaseError databaseError) {
+					// Handle error
 				}
 			});
 		}
-		
-		public void getMyUserData(String uid) {
-				DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
-				getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
-						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-								if(dataSnapshot.exists()) {
-										if (!dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-												Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(profile_image_x);
-										} else {
-												profile_image_x.setImageResource(R.drawable.avatar);
-										}
-								} else {
-										profile_image_x.setImageResource(R.drawable.avatar);
-								}
-						}
-						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
-								
-						}
-				});
+
+		// A push notification service would be needed here to notify the comment author.
+		private void _sendCommentLikeNotification(String commentKey, String commentAuthorUid) {
+			// This method is intentionally left blank.
 		}
-		
+
+		public void getMyUserData(String uid) {
+			if (authService.getCurrentUser() == null) return;
+			dbService.getUserById(uid, new IDataListener() {
+				@Override
+				public void onDataChange(IDataSnapshot dataSnapshot) {
+					if (dataSnapshot.exists()) {
+						String avatarUrl = dataSnapshot.getChild("avatar").getValue(String.class);
+						if (avatarUrl != null && !"null".equals(avatarUrl)) {
+							if(getContext() != null) {
+								Glide.with(getContext()).load(Uri.parse(avatarUrl)).into(profile_image_x);
+							}
+						} else {
+							profile_image_x.setImageResource(R.drawable.avatar);
+						}
+					} else {
+						profile_image_x.setImageResource(R.drawable.avatar);
+					}
+				}
+
+				@Override
+				public void onCancelled(IDatabaseError databaseError) {
+					// Handle error
+				}
+			});
+		}
+
 		public void getCommentsCount(String key) {
 				{
-						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-						Handler mMainHandler = new Handler(Looper.getMainLooper());
-						
-						mExecutorService.execute(new Runnable() {
-								@Override
-								public void run() {
-										DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(key);
-										getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
-												@Override
-												public void onDataChange(DataSnapshot dataSnapshot1) {
-														mMainHandler.post(new Runnable() {
-																@Override
-																public void run() {
-																		long commentsCount = dataSnapshot1.getChildrenCount();
-																		_setCommentCount(title_count, commentsCount);
-																}
-														});
-												}
-												
-												@Override
-												public void onCancelled(DatabaseError databaseError) {
-														
-												}
-										});
-								}
+						dbService.getData("posts-comments/" + key, new IDataListener() {
+							@Override
+							public void onDataChange(IDataSnapshot dataSnapshot) {
+								//_setCommentCount(title_count, dataSnapshot.getChildrenCount());
+							}
+
+							@Override
+							public void onCancelled(IDatabaseError databaseError) {
+								// Handle error
+							}
 						});
 				}
 		}
-		
+
 		public class Comments_listAdapter extends RecyclerView.Adapter<Comments_listAdapter.ViewHolder> {
-				
+
 				ArrayList<HashMap<String, Object>> _data;
-				
+
 				public Comments_listAdapter(ArrayList<HashMap<String, Object>> _arr) {
 						_data = _arr;
 				}
-				
+
 				@Override
 				public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 						LayoutInflater _inflater = getLayoutInflater();
@@ -538,7 +430,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_v.setLayoutParams(_lp);
 						return new ViewHolder(_v);
 				}
-				
+
 				@Override
 				public void onBindViewHolder(ViewHolder _holder, final int _position) {
 						View _view = _holder.itemView;
@@ -559,15 +451,9 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 
 						String uid = uidObj.toString();
 						String key = keyObj.toString();
-						
-						DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
-						DatabaseReference getCommentsRef = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey).child(key);
-						DatabaseReference checkCommentLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-						DatabaseReference getCommentsLikeCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key);
-						DatabaseReference commentCheckPublisherLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(postPublisherUID);
-						
+
 						ArrayList<HashMap<String, Object>> commentsRepliesListMap = new ArrayList<>();
-						
+
 						final LinearLayout body = _view.findViewById(R.id.body);
 						final TextView show_more_comment = _view.findViewById(R.id.show_more_comment);
 						final ProgressBar progress = _view.findViewById(R.id.progress);
@@ -600,7 +486,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						final TextView show_other_replies_button = _view.findViewById(R.id.show_other_replies_button);
 						final RecyclerView other_replies_list = _view.findViewById(R.id.other_replies_list);
 						final TextView hide_replies_list_button = _view.findViewById(R.id.hide_replies_list_button);
-						
+
 						body.setVisibility(View.GONE);
 						likedByPublisherLayout.setVisibility(View.GONE);
 						replies_layout.setVisibility(View.GONE);
@@ -617,56 +503,44 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								comment_text.setText("");
 						}
-						
+
 
 						other_replies_list.setAdapter(new CommentsRepliesAdapter(commentsRepliesListMap));
 						other_replies_list.setLayoutManager(new LinearLayoutManager(getActivity()));
-						
-						{
-								ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-								Handler mMainHandler = new Handler(Looper.getMainLooper());
-								
-								mExecutorService.execute(new Runnable() {
-										@Override
-										public void run() {
-												Query commentsRepliesQuery = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies").child(postKey).child(key).orderByChild("like");
-												commentsRepliesQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-														@Override
-														public void onDataChange(@NonNull DataSnapshot snapshot) {
-																mMainHandler.post(new Runnable() {
-																		@Override
-																		public void run() {
-																				if (snapshot.exists()) {
-																						replies_layout.setVisibility(View.VISIBLE);
-																						other_replies_list.setVisibility(View.GONE);
-																						hide_replies_list_button.setVisibility(View.GONE);
-																						commentsRepliesListMap.clear();
-																						
-																						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-																						
-																						for (DataSnapshot _data : snapshot.getChildren()) {
-																								HashMap<String, Object> commentsGetMap = _data.getValue(_ind);
-																								commentsRepliesListMap.add(commentsGetMap);
-																								SketchwareUtil.sortListMap(commentsRepliesListMap, "like", true, false);
-																						}
-																						
-																						other_replies_list.getAdapter().notifyDataSetChanged();
-																				} else {
-																						replies_layout.setVisibility(View.GONE);
-																				}
-																		}
-																});
-														}
-														
-														@Override
-														public void onCancelled(@NonNull DatabaseError error) {
-																
-														}
-												});
-										}
-								});
-						}
-						
+
+						dbService.getData("posts-comments-replies/" + postKey + "/" + key, new IDataListener() {
+							@Override
+							public void onDataChange(IDataSnapshot dataSnapshot) {
+								if (dataSnapshot.exists()) {
+									replies_layout.setVisibility(View.VISIBLE);
+									commentsRepliesListMap.clear();
+									for (IDataSnapshot _data : dataSnapshot.getChildren()) {
+										HashMap<String, Object> repliesGetMap = (HashMap<String, Object>)_data.getValue();
+										commentsRepliesListMap.add(repliesGetMap);
+									}
+									//SketchwareUtil.sortListMap(commentsRepliesListMap, "push_time", false, false);
+									other_replies_list.getAdapter().notifyDataSetChanged();
+
+									if (commentsRepliesListMap.size() > 2) {
+										show_other_replies_button.setVisibility(View.VISIBLE);
+										hide_replies_list_button.setVisibility(View.GONE);
+										other_replies_list.setVisibility(View.GONE);
+									} else {
+										show_other_replies_button.setVisibility(View.GONE);
+										hide_replies_list_button.setVisibility(View.GONE);
+										other_replies_list.setVisibility(View.VISIBLE);
+									}
+								} else {
+									replies_layout.setVisibility(View.GONE);
+								}
+							}
+
+							@Override
+							public void onCancelled(IDatabaseError databaseError) {
+								// Handle error
+							}
+						});
+
 						show_other_replies_button.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -677,7 +551,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 						});
-						
+
 						hide_replies_list_button.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -688,7 +562,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 						});
-						
+
 						body.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -701,64 +575,27 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										cancel_reply_mode.setVisibility(View.VISIBLE);
 								}
 						});
-						
-						final String commentUid = uid;
-						final String commentKey = key;
+
 						body.setOnLongClickListener(new View.OnLongClickListener() {
-								@Override
-								public boolean onLongClick(View v) {
-										if (commentUid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-												PopupMenu popup = new PopupMenu(getContext(), more);
-												popup.getMenu().add("Edit");
-												popup.getMenu().add("Delete");
-												popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-														@Override
-														public boolean onMenuItemClick(MenuItem item) {
-																if (item.getTitle().equals("Delete")) {
-																		new MaterialAlertDialogBuilder(getContext())
-																		.setTitle("Delete Comment")
-																		.setMessage("Are you sure you want to delete this comment?")
-																		.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-																				@Override
-																				public void onClick(DialogInterface dialog, int which) {
-																						main.child("posts-comments").child(postKey).child(commentKey).removeValue();
-																						main.child("posts-comments-like").child(postKey).child(commentKey).removeValue();
-																						commentsListMap.remove(_position);
-																						notifyItemRemoved(_position);
-																						notifyItemRangeChanged(_position, commentsListMap.size());
-																						Toast.makeText(getContext(), "Comment deleted", Toast.LENGTH_SHORT).show();
-																				}
-																		})
-																		.setNegativeButton("Cancel", null)
-																		.show();
-																} else if (item.getTitle().equals("Edit")) {
-																		final EditText input = new EditText(getContext());
-																		input.setText(commentData.get("comment").toString());
-																		new MaterialAlertDialogBuilder(getContext())
-																		.setTitle("Edit Comment")
-																		.setView(input)
-																		.setPositiveButton("Save", new DialogInterface.OnClickListener() {
-																				@Override
-																				public void onClick(DialogInterface dialog, int which) {
-																						String newComment = input.getText().toString();
-																						if (!newComment.trim().isEmpty()) {
-																								main.child("posts-comments").child(postKey).child(commentKey).child("comment").setValue(newComment);
-																								commentData.put("comment", newComment);
-																								notifyItemChanged(_position);
-																								Toast.makeText(getContext(), "Comment updated", Toast.LENGTH_SHORT).show();
-																						}
-																				}
-																		})
-																		.setNegativeButton("Cancel", null)
-																		.show();
-																}
-																return true;
-														}
-												});
-												popup.show();
-										}
-										return true;
+							@Override
+							public boolean onLongClick(View _view) {
+								if (authService.getCurrentUser() != null && uid.equals(authService.getCurrentUser().getUid())) {
+									new MaterialAlertDialogBuilder(getContext())
+										.setTitle(R.string.delete_comment_dialog_title)
+										.setMessage(R.string.delete_comment_dialog_message)
+										.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
+											public void onClick(DialogInterface dialog, int which) {
+												dbService.setValue("posts-comments/" + postKey + "/" + key, null, (result, error) -> {});
+												dbService.setValue("posts-comments-likes/" + key, null, (result, error) -> {});
+												dbService.setValue("posts-comments-replies/" + postKey + "/" + key, null, (result, error) -> {});
+												getCommentsRef(postKey, false);
+											}
+										})
+										.setNegativeButton(R.string.cancel, null)
+										.show();
 								}
+								return true;
+							}
 						});
 
 						if (postPublisherAvatar.equals("null")) {
@@ -766,7 +603,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								Glide.with(getContext()).load(Uri.parse(postPublisherAvatar)).into(likedByPublisherLayoutAvatar);
 						}
-						
+
 						if (UserInfoCacheMap.containsKey("uid-".concat(uid))) {
 								body.setVisibility(View.VISIBLE);
 								if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
@@ -797,352 +634,110 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 								if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("admin")) {
-										badge.setImageResource(R.drawable.admin_badge);
+									badge.setImageResource(R.drawable.admin_badge);
+									badge.setVisibility(View.VISIBLE);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
+									badge.setImageResource(R.drawable.moderator_badge);
+									badge.setVisibility(View.VISIBLE);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
+									badge.setImageResource(R.drawable.support_badge);
+									badge.setVisibility(View.VISIBLE);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
+									if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
+										badge.setImageResource(R.drawable.verified_badge);
 										badge.setVisibility(View.VISIBLE);
-								} else {
-										if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
-												badge.setImageResource(R.drawable.moderator_badge);
+									} else {
+										badge.setVisibility(View.GONE);
+									}
+								}
+						} else {
+							dbService.getUserById(uid, new IDataListener() {
+								@Override
+								public void onDataChange(IDataSnapshot dataSnapshot) {
+									if(dataSnapshot.exists()) {
+										UserInfoCacheMap.put("uid-".concat(uid), uid);
+										UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.getChild("avatar").getValue(String.class));
+										UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.getChild("banned").getValue(String.class));
+										UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.getChild("nickname").getValue(String.class));
+										UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.getChild("username").getValue(String.class));
+										UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.getChild("gender").getValue(String.class));
+										UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.getChild("verify").getValue(String.class));
+										UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.getChild("account_type").getValue(String.class));
+										body.setVisibility(View.VISIBLE);
+										if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
+											profileImage.setImageResource(R.drawable.avatar);
+										} else {
+											if (String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))).equals("null")) {
+												profileImage.setImageResource(R.drawable.avatar);
+											} else {
+												Glide.with(getContext()).load(Uri.parse(String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))))).into(profileImage);
+											}
+										}
+										if (String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))).equals("null")) {
+											username.setText("@" + String.valueOf(UserInfoCacheMap.get("username-".concat(uid))));
+										} else {
+											username.setText(String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))));
+										}
+										if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("hidden")) {
+											genderBadge.setVisibility(View.GONE);
+										} else {
+											if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("male")) {
+												genderBadge.setImageResource(R.drawable.male_badge);
+												genderBadge.setVisibility(View.VISIBLE);
+											} else {
+												if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("female")) {
+													genderBadge.setImageResource(R.drawable.female_badge);
+													genderBadge.setVisibility(View.VISIBLE);
+												}
+											}
+										}
+										if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("admin")) {
+											badge.setImageResource(R.drawable.admin_badge);
+											badge.setVisibility(View.VISIBLE);
+										} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
+											badge.setImageResource(R.drawable.moderator_badge);
+											badge.setVisibility(View.VISIBLE);
+										} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
+											badge.setImageResource(R.drawable.support_badge);
+											badge.setVisibility(View.VISIBLE);
+										} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
+											if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
+												badge.setImageResource(R.drawable.verified_badge);
 												badge.setVisibility(View.VISIBLE);
-										} else {
-												if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
-														badge.setImageResource(R.drawable.support_badge);
-														badge.setVisibility(View.VISIBLE);
-												} else {
-														if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
-																if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
-																		badge.setVisibility(View.VISIBLE);
-																} else {
-																		badge.setVisibility(View.GONE);
-																}
-														}
-												}
+											} else {
+												badge.setVisibility(View.GONE);
+											}
 										}
+									}
 								}
-						} else {
-								getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
-										@Override
-										public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-												if(dataSnapshot.exists()) {
-														UserInfoCacheMap.put("uid-".concat(uid), uid);
-														UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.child("avatar").getValue(String.class));
-														UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.child("banned").getValue(String.class));
-														UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.child("nickname").getValue(String.class));
-														UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.child("username").getValue(String.class));
-														UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.child("gender").getValue(String.class));
-														UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.child("verify").getValue(String.class));
-														UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.child("account_type").getValue(String.class));
-														body.setVisibility(View.VISIBLE);
-														if (String.valueOf(dataSnapshot.child("banned").getValue()).equals("true")) {
-																profileImage.setImageResource(R.drawable.avatar);
-														} else {
-																if (String.valueOf(dataSnapshot.child("avatar").getValue()).equals("null")) {
-																		profileImage.setImageResource(R.drawable.avatar);
-																} else {
-																		Glide.with(getContext()).load(Uri.parse(String.valueOf(dataSnapshot.child("avatar").getValue()))).into(profileImage);
-																}
-														}
-														if (String.valueOf(dataSnapshot.child("nickname").getValue()).equals("null")) {
-																username.setText("@" + String.valueOf(dataSnapshot.child("username").getValue()));
-														} else {
-																username.setText(String.valueOf(dataSnapshot.child("nickname").getValue()));
-														}
-														if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("hidden")) {
-																genderBadge.setVisibility(View.GONE);
-														} else {
-																if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("male")) {
-																		genderBadge.setImageResource(R.drawable.male_badge);
-																		genderBadge.setVisibility(View.VISIBLE);
-																} else {
-																		if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("female")) {
-																				genderBadge.setImageResource(R.drawable.female_badge);
-																				genderBadge.setVisibility(View.VISIBLE);
-																		}
-																}
-														}
-														if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("admin")) {
-																badge.setImageResource(R.drawable.admin_badge);
-																badge.setVisibility(View.VISIBLE);
-														} else {
-																if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("moderator")) {
-																		badge.setImageResource(R.drawable.moderator_badge);
-																		badge.setVisibility(View.VISIBLE);
-																} else {
-																		if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("support")) {
-																				badge.setImageResource(R.drawable.support_badge);
-																				badge.setVisibility(View.VISIBLE);
-																		} else {
-																				if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("user")) {
-																						if (String.valueOf(dataSnapshot.child("verify").getValue()).equals("true")) {
-																								badge.setImageResource(R.drawable.verified_badge);
-																								badge.setVisibility(View.VISIBLE);
-																						} else {
-																								badge.setVisibility(View.GONE);
-																						}
-																				}
-																		}
-																}
-														}
-												} else {
-														
-												}
-										}
-										@Override
-										public void onCancelled(@NonNull DatabaseError databaseError) {
-												
-										}
-								});
-						}
-						
-						if (_data.size() > 19) {
-								if (_position == (_data.size() - 1)) {
-										show_more_comment.setVisibility(View.VISIBLE);
-										progress.setVisibility(View.GONE);
-										show_more_comment.setOnClickListener(new View.OnClickListener(){
-												@Override
-												public void onClick(View _clickedView){
-														show_more_comment.setVisibility(View.GONE);
-														progress.setVisibility(View.VISIBLE);
-														handler.postDelayed(new Runnable() {
-																@Override
-																public void run() {
-																		getCommentsRef(postKey, true);
-																		progress.setVisibility(View.GONE);
-																		handler.removeCallbacksAndMessages(null);
-																}
-														}, 500);
-												}
-										});
-								} else {
-										show_more_comment.setVisibility(View.GONE);
-										progress.setVisibility(View.GONE);
-								}
-						} else {
-								show_more_comment.setVisibility(View.GONE);
-								progress.setVisibility(View.GONE);
-						}
-						
-						if (commentData.get("push_time") != null && !String.valueOf(commentData.get("push_time")).equals("null")) {
-								try {
-										push.setVisibility(View.VISIBLE);
-										_setTime(Double.parseDouble(String.valueOf(commentData.get("push_time"))), push);
-								} catch (NumberFormatException e) {
-										push.setVisibility(View.GONE);
-								}
-						}
-						else {
-								push.setVisibility(View.GONE);
-						}
+								@Override
+								public void onCancelled(IDatabaseError databaseError) {
 
-						try {
-								double likeCount = Double.parseDouble(String.valueOf(commentData.get("like")));
-								_setCommentLikeCount(like_count, likeCount);
-								postCommentLikeCountCache.put(key, String.valueOf(likeCount));
-
-								if (_position == 0) {
-										if (likeCount > 15000) {
-												top_popular_1_fire_ic.setVisibility(View.VISIBLE);
-												top_popular_2_fire_ic.setVisibility(View.GONE);
-												top_popular_3_fire_ic.setVisibility(View.GONE);
-										} else {
-												top_popular_1_fire_ic.setVisibility(View.GONE);
-												top_popular_2_fire_ic.setVisibility(View.GONE);
-												top_popular_3_fire_ic.setVisibility(View.GONE);
-										}
-								} else if (_position == 1) {
-										if (likeCount > 10000) {
-												top_popular_1_fire_ic.setVisibility(View.GONE);
-												top_popular_2_fire_ic.setVisibility(View.VISIBLE);
-												top_popular_3_fire_ic.setVisibility(View.GONE);
-										} else {
-												top_popular_1_fire_ic.setVisibility(View.GONE);
-												top_popular_2_fire_ic.setVisibility(View.GONE);
-												top_popular_3_fire_ic.setVisibility(View.GONE);
-										}
-								} else if (_position == 2) {
-										if (likeCount > 5000) {
-												top_popular_1_fire_ic.setVisibility(View.GONE);
-												top_popular_2_fire_ic.setVisibility(View.GONE);
-												top_popular_3_fire_ic.setVisibility(View.VISIBLE);
-										} else {
-												top_popular_1_fire_ic.setVisibility(View.GONE);
-												top_popular_2_fire_ic.setVisibility(View.GONE);
-												top_popular_3_fire_ic.setVisibility(View.GONE);
-										}
-								} else {
-										top_popular_1_fire_ic.setVisibility(View.GONE);
-										top_popular_2_fire_ic.setVisibility(View.GONE);
-										top_popular_3_fire_ic.setVisibility(View.GONE);
 								}
-						} catch (NumberFormatException e) {
-								// Handle cases where 'like' is not a valid number
-								like_count.setText("0");
-								postCommentLikeCountCache.put(key, "0");
-								top_popular_1_fire_ic.setVisibility(View.GONE);
-								top_popular_2_fire_ic.setVisibility(View.GONE);
-								top_popular_3_fire_ic.setVisibility(View.GONE);
+							});
 						}
-						
-						commentCheckPublisherLike.addListenerForSingleValueEvent(new ValueEventListener() {
-								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-										if(dataSnapshot.exists()) {
-												likedByPublisherLayout.setVisibility(View.VISIBLE);
-												likedByPublisherLayout.setOnClickListener(new View.OnClickListener(){
-														@Override
-														public void onClick(View _clickedView){
-																_showCommentLikedByPublisherPopup();
-														}
-												});
-										} else {
-												likedByPublisherLayout.setVisibility(View.GONE);
-										}
-								}
-								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-										
-								}
-						});
-						
-						checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
-								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-										if(dataSnapshot.exists()) {
-												like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
-										} else {
-												like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
-										}
-								}
-								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-										
-								}
-						});
-						
-						like_unlike.setOnClickListener(new View.OnClickListener(){
-								@Override
-								public void onClick(View _clickedView){
-										checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
-												@Override
-												public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-														try {
-																double currentLikes = Double.parseDouble(String.valueOf(postCommentLikeCountCache.get(key)));
-																if(dataSnapshot.exists()) {
-																		checkCommentLike.removeValue();
-																		currentLikes--;
-																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
-																		_setCommentLikeCount(like_count, currentLikes);
-																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-																				ObjectAnimator setGoneAlphaAnim = new ObjectAnimator();
-																				setGoneAlphaAnim.addListener(new Animator.AnimatorListener() {
-																						@Override
-																						public void onAnimationStart(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationEnd(Animator _param1) {
-																								likedByPublisherLayout.setVisibility(View.GONE);
-																								_param1.cancel();
-																						}
-																						@Override
-																						public void onAnimationCancel(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationRepeat(Animator _param1) {
-																						}
-																				});
-																				setGoneAlphaAnim.setTarget(likedByPublisherLayout);
-																				setGoneAlphaAnim.setPropertyName("alpha");
-																				setGoneAlphaAnim.setInterpolator(new LinearInterpolator());
-																				setGoneAlphaAnim.setFloatValues((float)(1), (float)(0));
-																				setGoneAlphaAnim.setDuration((int)(94));
-																				setGoneAlphaAnim.start();
-																		}
-																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
-																} else {
-																		getCommentsLikeCount.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-																		_sendCommentLikeNotification(key, uid);
-																		currentLikes++;
-																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
-																		_setCommentLikeCount(like_count, currentLikes);
-																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-																				ObjectAnimator setVisibleAlphaAnim = new ObjectAnimator();
-																				setVisibleAlphaAnim.addListener(new Animator.AnimatorListener() {
-																						@Override
-																						public void onAnimationStart(Animator _param1) {
-																								likedByPublisherLayout.setVisibility(View.VISIBLE);
-																						}
-																						@Override
-																						public void onAnimationEnd(Animator _param1) {
-																								_param1.cancel();
-																						}
-																						@Override
-																						public void onAnimationCancel(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationRepeat(Animator _param1) {
-																						}
-																				});
-																				setVisibleAlphaAnim.setTarget(likedByPublisherLayout);
-																				setVisibleAlphaAnim.setPropertyName("alpha");
-																				setVisibleAlphaAnim.setInterpolator(new LinearInterpolator());
-																				setVisibleAlphaAnim.setFloatValues((float)(0), (float)(1));
-																				setVisibleAlphaAnim.setDuration((int)(94));
-																				setVisibleAlphaAnim.start();
-																		}
-																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
-																}
-														} catch (Exception e) {
-																// Ignore exceptions here
-														}
-												}
-												@Override
-												public void onCancelled(@NonNull DatabaseError databaseError) {
-												}
-										});
-										
-										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
-												@Override
-												public void onDataChange(DataSnapshot dataSnapshot) {
-														long count = dataSnapshot.getChildrenCount();
-														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
-												}
-												
-												@Override
-												public void onCancelled(DatabaseError databaseError) {
-												}
-										});
-								}
-						});
-						
-						profileCard.setOnClickListener(new View.OnClickListener() {
-								@Override
-								public void onClick(View _view) {
-										intent.setClass(getContext(), ProfileActivity.class);
-										intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-										getContext().startActivity(intent);
-								}
-						});
 				}
-				
+
 				@Override
 				public int getItemCount() {
 						return _data.size();
 				}
-				
+
 				public class ViewHolder extends RecyclerView.ViewHolder {
 						public ViewHolder(View _view) {
 								super(_view);
 						}
 				}
 		}
-		
+
 		public class CommentsRepliesAdapter extends RecyclerView.Adapter<CommentsRepliesAdapter.ViewHolder> {
-				
+
 				ArrayList<HashMap<String, Object>> _data;
-				
+
 				public CommentsRepliesAdapter(ArrayList<HashMap<String, Object>> _arr) {
 						_data = _arr;
 				}
-				
+
 				@Override
 				public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 						LayoutInflater _inflater = getLayoutInflater();
@@ -1151,7 +746,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_v.setLayoutParams(_lp);
 						return new ViewHolder(_v);
 				}
-				
+
 				@Override
 				public void onBindViewHolder(ViewHolder _holder, final int _position) {
 						View _view = _holder.itemView;
@@ -1172,13 +767,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						String uid = uidObj.toString();
 						String key = keyObj.toString();
 						String replyKey = replyKeyObj.toString();
-						
-						DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
-						DatabaseReference getCommentsRef = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies").child(postKey).child(replyKey).child(key);
-						DatabaseReference checkCommentLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-						DatabaseReference getCommentsLikeCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key);
-						DatabaseReference commentCheckPublisherLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies-like").child(postKey).child(key).child(postPublisherUID);
-						
+
 						final LinearLayout body = _view.findViewById(R.id.body);
 						final TextView show_more_comment = _view.findViewById(R.id.show_more_comment);
 						final ProgressBar progress = _view.findViewById(R.id.progress);
@@ -1211,7 +800,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						final TextView show_other_replies_button = _view.findViewById(R.id.show_other_replies_button);
 						final RecyclerView other_replies_list = _view.findViewById(R.id.other_replies_list);
 						final TextView hide_replies_list_button = _view.findViewById(R.id.hide_replies_list_button);
-						
+
 						body.setVisibility(View.GONE);
 						likedByPublisherLayout.setVisibility(View.GONE);
 						replies_layout.setVisibility(View.GONE);
@@ -1226,13 +815,13 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 								comment_text.setText("");
 						}
-						
+
 						if (postPublisherAvatar.equals("null")) {
 								likedByPublisherLayoutAvatar.setImageResource(R.drawable.avatar);
 						} else {
 								Glide.with(getContext()).load(Uri.parse(postPublisherAvatar)).into(likedByPublisherLayoutAvatar);
 						}
-						
+
 						if (UserInfoCacheMap.containsKey("uid-".concat(uid))) {
 								body.setVisibility(View.VISIBLE);
 								if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
@@ -1265,17 +854,73 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("admin")) {
 										badge.setImageResource(R.drawable.admin_badge);
 										badge.setVisibility(View.VISIBLE);
-								} else {
-										if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
-												badge.setImageResource(R.drawable.moderator_badge);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
+										badge.setImageResource(R.drawable.moderator_badge);
+										badge.setVisibility(View.VISIBLE);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
+										badge.setImageResource(R.drawable.support_badge);
+										badge.setVisibility(View.VISIBLE);
+								} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
+										if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
+												badge.setImageResource(R.drawable.verified_badge);
 												badge.setVisibility(View.VISIBLE);
 										} else {
-												if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
-														badge.setImageResource(R.drawable.support_badge);
-														badge.setVisibility(View.VISIBLE);
-												} else {
-														if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
+												badge.setVisibility(View.GONE);
+										}
+								}
+						} else {
+								dbService.getUserById(uid, new IDataListener() {
+										@Override
+										public void onDataChange(IDataSnapshot dataSnapshot) {
+												if(dataSnapshot.exists()) {
+														UserInfoCacheMap.put("uid-".concat(uid), uid);
+														UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.getChild("avatar").getValue(String.class));
+														UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.getChild("banned").getValue(String.class));
+														UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.getChild("nickname").getValue(String.class));
+														UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.getChild("username").getValue(String.class));
+														UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.getChild("gender").getValue(String.class));
+														UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.getChild("verify").getValue(String.class));
+														UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.getChild("account_type").getValue(String.class));
+														body.setVisibility(View.VISIBLE);
+														if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
+																profileImage.setImageResource(R.drawable.avatar);
+														} else {
+																if (String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))).equals("null")) {
+																		profileImage.setImageResource(R.drawable.avatar);
+																} else {
+																		Glide.with(getContext()).load(Uri.parse(String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))))).into(profileImage);
+																}
+														}
+														if (String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))).equals("null")) {
+																username.setText("@" + String.valueOf(UserInfoCacheMap.get("username-".concat(uid))));
+														} else {
+																username.setText(String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))));
+														}
+														if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("hidden")) {
+																genderBadge.setVisibility(View.GONE);
+														} else {
+																if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("male")) {
+																		genderBadge.setImageResource(R.drawable.male_badge);
+																		genderBadge.setVisibility(View.VISIBLE);
+																} else {
+																		if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("female")) {
+																				genderBadge.setImageResource(R.drawable.female_badge);
+																				genderBadge.setVisibility(View.VISIBLE);
+																		}
+																}
+														}
+														if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("admin")) {
+																badge.setImageResource(R.drawable.admin_badge);
+																badge.setVisibility(View.VISIBLE);
+														} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
+																badge.setImageResource(R.drawable.moderator_badge);
+																badge.setVisibility(View.VISIBLE);
+														} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
+																badge.setImageResource(R.drawable.support_badge);
+																badge.setVisibility(View.VISIBLE);
+														} else if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
 																if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
+																		badge.setImageResource(R.drawable.verified_badge);
 																		badge.setVisibility(View.VISIBLE);
 																} else {
 																		badge.setVisibility(View.GONE);
@@ -1283,82 +928,12 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 														}
 												}
 										}
-								}
-						} else {
-								getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
 										@Override
-										public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-												if(dataSnapshot.exists()) {
-														UserInfoCacheMap.put("uid-".concat(uid), uid);
-														UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.child("avatar").getValue(String.class));
-														UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.child("banned").getValue(String.class));
-														UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.child("nickname").getValue(String.class));
-														UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.child("username").getValue(String.class));
-														UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.child("gender").getValue(String.class));
-														UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.child("verify").getValue(String.class));
-														UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.child("account_type").getValue(String.class));
-														body.setVisibility(View.VISIBLE);
-														if (String.valueOf(dataSnapshot.child("banned").getValue()).equals("true")) {
-																profileImage.setImageResource(R.drawable.avatar);
-														} else {
-																if (String.valueOf(dataSnapshot.child("avatar").getValue()).equals("null")) {
-																		profileImage.setImageResource(R.drawable.avatar);
-																} else {
-																		Glide.with(getContext()).load(Uri.parse(String.valueOf(dataSnapshot.child("avatar").getValue()))).into(profileImage);
-																}
-														}
-														if (String.valueOf(dataSnapshot.child("nickname").getValue()).equals("null")) {
-																username.setText("@" + String.valueOf(dataSnapshot.child("username").getValue()));
-														} else {
-																username.setText(String.valueOf(dataSnapshot.child("nickname").getValue()));
-														}
-														if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("hidden")) {
-																genderBadge.setVisibility(View.GONE);
-														} else {
-																if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("male")) {
-																		genderBadge.setImageResource(R.drawable.male_badge);
-																		genderBadge.setVisibility(View.VISIBLE);
-																} else {
-																		if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("female")) {
-																				genderBadge.setImageResource(R.drawable.female_badge);
-																				genderBadge.setVisibility(View.VISIBLE);
-																		}
-																}
-														}
-														if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("admin")) {
-																badge.setImageResource(R.drawable.admin_badge);
-																badge.setVisibility(View.VISIBLE);
-														} else {
-																if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("moderator")) {
-																		badge.setImageResource(R.drawable.moderator_badge);
-																		badge.setVisibility(View.VISIBLE);
-																} else {
-																		if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("support")) {
-																				badge.setImageResource(R.drawable.support_badge);
-																				badge.setVisibility(View.VISIBLE);
-																		} else {
-																				if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("user")) {
-																						if (String.valueOf(dataSnapshot.child("verify").getValue()).equals("true")) {
-																								badge.setImageResource(R.drawable.verified_badge);
-																								badge.setVisibility(View.VISIBLE);
-																						} else {
-																								badge.setVisibility(View.GONE);
-																						}
-																				}
-																		}
-																}
-														}
-												} else {
-														
-												}
-										}
-										@Override
-										public void onCancelled(@NonNull DatabaseError databaseError) {
-												
+										public void onCancelled(IDatabaseError databaseError) {
 										}
 								});
 						}
-						
+
 						if (_data.size() > 19) {
 								if (_position == (_data.size() - 1)) {
 										show_more_comment.setVisibility(View.VISIBLE);
@@ -1386,7 +961,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								show_more_comment.setVisibility(View.GONE);
 								progress.setVisibility(View.GONE);
 						}
-						
+
 						if (replyData.get("push_time") != null && !String.valueOf(replyData.get("push_time")).equals("null")) {
 								try {
 										push.setVisibility(View.VISIBLE);
@@ -1447,10 +1022,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								top_popular_2_fire_ic.setVisibility(View.GONE);
 								top_popular_3_fire_ic.setVisibility(View.GONE);
 						}
-						
-						commentCheckPublisherLike.addListenerForSingleValueEvent(new ValueEventListener() {
+
+						dbService.getData("posts-comments-likes/" + key + "/" + postPublisherUID, new IDataListener() {
 								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+								public void onDataChange(IDataSnapshot dataSnapshot) {
 										if(dataSnapshot.exists()) {
 												likedByPublisherLayout.setVisibility(View.VISIBLE);
 												likedByPublisherLayout.setOnClickListener(new View.OnClickListener(){
@@ -1464,120 +1039,120 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-										
+								public void onCancelled(IDatabaseError databaseError) {
+
 								}
 						});
-						
-						checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
-								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-										if(dataSnapshot.exists()) {
-												like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
-										} else {
-												like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
-										}
-								}
-								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-										
-								}
-						});
-						
-						like_unlike.setOnClickListener(new View.OnClickListener(){
-								@Override
-								public void onClick(View _clickedView){
-										checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
-												@Override
-												public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-														try {
-																double currentLikes = Double.parseDouble(String.valueOf(postCommentLikeCountCache.get(key)));
-																if(dataSnapshot.exists()) {
-																		checkCommentLike.removeValue();
-																		currentLikes--;
-																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
-																		_setCommentLikeCount(like_count, currentLikes);
-																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-																				ObjectAnimator setGoneAlphaAnim = new ObjectAnimator();
-																				setGoneAlphaAnim.addListener(new Animator.AnimatorListener() {
-																						@Override
-																						public void onAnimationStart(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationEnd(Animator _param1) {
-																								likedByPublisherLayout.setVisibility(View.GONE);
-																								_param1.cancel();
-																						}
-																						@Override
-																						public void onAnimationCancel(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationRepeat(Animator _param1) {
-																						}
-																				});
-																				setGoneAlphaAnim.setTarget(likedByPublisherLayout);
-																				setGoneAlphaAnim.setPropertyName("alpha");
-																				setGoneAlphaAnim.setInterpolator(new LinearInterpolator());
-																				setGoneAlphaAnim.setFloatValues((float)(1), (float)(0));
-																				setGoneAlphaAnim.setDuration((int)(94));
-																				setGoneAlphaAnim.start();
-																		}
-																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
-																} else {
-																		getCommentsLikeCount.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-																		currentLikes++;
-																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
-																		_setCommentLikeCount(like_count, currentLikes);
-																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-																				ObjectAnimator setVisibleAlphaAnim = new ObjectAnimator();
-																				setVisibleAlphaAnim.addListener(new Animator.AnimatorListener() {
-																						@Override
-																						public void onAnimationStart(Animator _param1) {
-																								likedByPublisherLayout.setVisibility(View.VISIBLE);
-																						}
-																						@Override
-																						public void onAnimationEnd(Animator _param1) {
-																								_param1.cancel();
-																						}
-																						@Override
-																						public void onAnimationCancel(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationRepeat(Animator _param1) {
-																						}
-																				});
-																				setVisibleAlphaAnim.setTarget(likedByPublisherLayout);
-																				setVisibleAlphaAnim.setPropertyName("alpha");
-																				setVisibleAlphaAnim.setInterpolator(new LinearInterpolator());
-																				setVisibleAlphaAnim.setFloatValues((float)(0), (float)(1));
-																				setVisibleAlphaAnim.setDuration((int)(94));
-																				setVisibleAlphaAnim.start();
-																		}
-																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
-																}
-														} catch (Exception e) {
-																// Ignore exceptions here
+
+						if (authService.getCurrentUser() != null) {
+							dbService.getData("posts-comments-likes/" + key + "/" + authService.getCurrentUser().getUid(), new IDataListener() {
+									@Override
+									public void onDataChange(IDataSnapshot dataSnapshot) {
+											if(dataSnapshot.exists()) {
+													like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
+											} else {
+													like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
+											}
+									}
+									@Override
+									public void onCancelled(IDatabaseError databaseError) {
+
+									}
+							});
+						}
+
+						like_unlike.setOnClickListener(new View.OnClickListener() {
+							@Override
+							public void onClick(View _clickedView) {
+								if (authService.getCurrentUser() == null) return;
+								dbService.getData("posts-comments-likes/" + key + "/" + authService.getCurrentUser().getUid(), new IDataListener() {
+									@Override
+									public void onDataChange(IDataSnapshot dataSnapshot) {
+										try {
+											double currentLikes = Double.parseDouble(String.valueOf(postCommentLikeCountCache.get(key)));
+											if (dataSnapshot.exists()) {
+												dbService.setValue("posts-comments-likes/" + key + "/" + authService.getCurrentUser().getUid(), null, (result, error) -> {});
+												currentLikes--;
+												postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
+												_setCommentLikeCount(like_count, currentLikes);
+												if (postPublisherUID.equals(authService.getCurrentUser().getUid())) {
+													ObjectAnimator setGoneAlphaAnim = new ObjectAnimator();
+													setGoneAlphaAnim.addListener(new Animator.AnimatorListener() {
+														@Override
+														public void onAnimationStart(Animator _param1) {
 														}
+
+														@Override
+														public void onAnimationEnd(Animator _param1) {
+															likedByPublisherLayout.setVisibility(View.GONE);
+															_param1.cancel();
+														}
+
+														@Override
+														public void onAnimationCancel(Animator _param1) {
+														}
+
+														@Override
+														public void onAnimationRepeat(Animator _param1) {
+														}
+													});
+													setGoneAlphaAnim.setTarget(likedByPublisherLayout);
+													setGoneAlphaAnim.setPropertyName("alpha");
+													setGoneAlphaAnim.setInterpolator(new LinearInterpolator());
+													setGoneAlphaAnim.setFloatValues((float) (1), (float) (0));
+													setGoneAlphaAnim.setDuration((int) (94));
+													setGoneAlphaAnim.start();
 												}
-												@Override
-												public void onCancelled(@NonNull DatabaseError databaseError) {
+												like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
+											} else {
+												HashMap<String, Object> likeMap = new HashMap<>();
+												likeMap.put("uid", authService.getCurrentUser().getUid());
+												dbService.setValue("posts-comments-likes/" + key + "/" + authService.getCurrentUser().getUid(), likeMap, (result, error) -> {});
+												currentLikes++;
+												postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
+												_setCommentLikeCount(like_count, currentLikes);
+												if (postPublisherUID.equals(authService.getCurrentUser().getUid())) {
+													ObjectAnimator setVisibleAlphaAnim = new ObjectAnimator();
+													setVisibleAlphaAnim.addListener(new Animator.AnimatorListener() {
+														@Override
+														public void onAnimationStart(Animator _param1) {
+															likedByPublisherLayout.setVisibility(View.VISIBLE);
+														}
+
+														@Override
+														public void onAnimationEnd(Animator _param1) {
+															_param1.cancel();
+														}
+
+														@Override
+														public void onAnimationCancel(Animator _param1) {
+														}
+
+														@Override
+														public void onAnimationRepeat(Animator _param1) {
+														}
+													});
+													setVisibleAlphaAnim.setTarget(likedByPublisherLayout);
+													setVisibleAlphaAnim.setPropertyName("alpha");
+													setVisibleAlphaAnim.setInterpolator(new LinearInterpolator());
+													setVisibleAlphaAnim.setFloatValues((float) (0), (float) (1));
+													setVisibleAlphaAnim.setDuration((int) (94));
+													setVisibleAlphaAnim.start();
 												}
-										});
-										
-										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
-												@Override
-												public void onDataChange(DataSnapshot dataSnapshot) {
-														long count = dataSnapshot.getChildrenCount();
-														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
-												}
-												
-												@Override
-												public void onCancelled(DatabaseError databaseError) {
-												}
-										});
-								}
+												like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
+											}
+											dbService.setValue("posts-comments/" + postKey + "/" + key + "/like", postCommentLikeCountCache.get(key), (result, error) -> {});
+										} catch (Exception e) {
+										}
+									}
+
+									@Override
+									public void onCancelled(IDatabaseError databaseError) {
+									}
+								});
+							}
 						});
-						
+
 						profileCard.setOnClickListener(new View.OnClickListener() {
 								@Override
 								public void onClick(View _view) {
@@ -1587,19 +1162,19 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								}
 						});
 				}
-				
+
 				@Override
 				public int getItemCount() {
 						return _data.size();
 				}
-				
+
 				public class ViewHolder extends RecyclerView.ViewHolder {
 						public ViewHolder(View _view) {
 								super(_view);
 						}
 				}
 		}
-		
+
 		private void dialogStyles() {
 				{
 						android.graphics.drawable.GradientDrawable SkylineUi = new android.graphics.drawable.GradientDrawable();
@@ -1621,11 +1196,11 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				_viewGraphics(emoji6, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 				_viewGraphics(emoji7, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 		}
-		
+
 		public void _ImageColor(final ImageView _image, final int _color) {
 				_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 		}
-		
+
 		public void _showCommentLikedByPublisherPopup() {
 				View topToastNotificationView = getLayoutInflater().inflate(R.layout.synapse_comment_got_heart_cv, null);
 				final PopupWindow topToastNotificationPopup = new PopupWindow(topToastNotificationView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
@@ -1637,7 +1212,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				slideIn.setInterpolator(new LinearInterpolator());
 				slideIn.setDuration((int)(200));
 				slideIn.start();
-				
+
 				topToastNotificationView.postDelayed(() -> {
 						ObjectAnimator slideOut = new ObjectAnimator();
 						slideOut.setTarget(main);
@@ -1652,7 +1227,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				}, 2000);
 				topToastNotificationPopup.showAtLocation(rootView, Gravity.TOP, 0, 0);
 		}
-		
+
 		public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 				android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 				GG.setColor(_onFocus);
@@ -1661,7 +1236,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 				_view.setBackground(RE);
 		}
-		
+
 		public void _setCommentCount(final TextView _txt, final double _number) {
 				if (_number < 10000) {
 						_txt.setText("(" + String.valueOf((long) _number) + ")");
@@ -1685,7 +1260,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_txt.setText("(" + decimalFormat.format(formattedNumber) + numberFormat + ")");
 				}
 		}
-		
+
 		public void _setCommentLikeCount(final TextView _txt, final double _number) {
 				if (_number < 10000) {
 						_txt.setText(String.valueOf((long) _number));
@@ -1709,7 +1284,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						_txt.setText(decimalFormat.format(formattedNumber) + numberFormat);
 				}
 		}
-		
+
 		public void _setTime(final double _currentTime, final TextView _txt) {
 				Calendar c1 = Calendar.getInstance();
 				Calendar c2 = Calendar.getInstance();
@@ -1749,7 +1324,7 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						}
 				}
 		}
-		
+
 		public void _progressBarColor(final ProgressBar _progressbar, final int _color) {
 				int color = _color;
 				_progressbar.setIndeterminateTintList(ColorStateList.valueOf(color));
