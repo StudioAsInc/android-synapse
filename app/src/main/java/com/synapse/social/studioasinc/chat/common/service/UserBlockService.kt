@@ -19,7 +19,7 @@ class UserBlockService(
         val myUid = authService.getCurrentUser()?.getUid() ?: return
         val blockData = mapOf(uid to "true")
         dbService.updateChildren(dbService.getReference("skyline/blocklist").child(myUid), blockData, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 // No-op
             }
         })
@@ -28,14 +28,14 @@ class UserBlockService(
     fun unblockUser(uid: String) {
         val myUid = authService.getCurrentUser()?.getUid() ?: return
         dbService.setValue(dbService.getReference("skyline/blocklist").child(myUid).child(uid), null, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     val intent = activity.intent
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                     activity.finish()
                     activity.startActivity(intent)
                 } else {
-                    Log.e("UserBlockService", "Failed to unblock user", error)
+                    Log.e("UserBlockService", "Failed to unblock user: $error")
                 }
             }
         })

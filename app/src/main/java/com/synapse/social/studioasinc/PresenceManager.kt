@@ -13,7 +13,7 @@ object PresenceManager {
     private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService() }
     private val usersRef by lazy { dbService.getReference("skyline/users") }
     private val emptyListener = object : ICompletionListener<Unit> {
-        override fun onComplete(result: Unit?, error: Exception?) {
+        override fun onComplete(result: Unit?, error: String?) {
             // No-op
         }
     }

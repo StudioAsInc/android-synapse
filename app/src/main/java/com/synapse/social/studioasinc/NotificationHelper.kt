@@ -27,7 +27,7 @@ object NotificationHelper {
 
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private const val ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
-    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService() }
+    private val dbService: IDatabaseService = (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService()
 
     /**
      * Sends a notification to a user.

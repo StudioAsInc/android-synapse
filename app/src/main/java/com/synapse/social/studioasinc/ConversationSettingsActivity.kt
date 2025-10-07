@@ -23,9 +23,9 @@ import kotlin.math.abs
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
-    private val blocklistRef by lazy { dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST) }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
+    private lateinit var dbService: IDatabaseService
+    private lateinit var blocklistRef: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
+    private lateinit var authService: IAuthenticationService
     private lateinit var userSettings: SharedPreferences
 
     companion object {
@@ -49,6 +49,10 @@ class ConversationSettingsActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityConversationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        authService = (application as SynapseApp).getAuthenticationService()
+        dbService = (application as SynapseApp).getDatabaseService()
+        blocklistRef = dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST)
 
         val userId = intent.getStringExtra(KEY_UID)
         if (userId == null) {

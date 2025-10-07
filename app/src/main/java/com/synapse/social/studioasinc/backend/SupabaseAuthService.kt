@@ -42,7 +42,7 @@ class SupabaseAuthService : IAuthenticationService {
                 }
                 listener.onComplete(SupabaseAuthResult(true, getCurrentUser()), null)
             } catch (e: Exception) {
-                listener.onComplete(null, e)
+                listener.onComplete(null, e.message)
             }
         }
     }
@@ -56,7 +56,7 @@ class SupabaseAuthService : IAuthenticationService {
                 }
                 listener.onComplete(SupabaseAuthResult(true, getCurrentUser()), null)
             } catch (e: Exception) {
-                listener.onComplete(null, e)
+                listener.onComplete(null, e.message)
             }
         }
     }
