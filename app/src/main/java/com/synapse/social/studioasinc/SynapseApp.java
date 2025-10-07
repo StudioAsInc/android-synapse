@@ -47,8 +47,8 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         
         // Initialize Supabase client
         supabaseClient = createSupabaseClient(
-            "https://apqvyyphlrtmuyjnzmuq.supabase.co",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwcXZ5eXBobHJ0bXV5am56bXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MDUwODcsImV4cCI6MjA3NDI4MTA4N30.On7kjijj7bUg_xzr2HwCTYvLaV-f_1aDYqVTfKai7gc",
+            BuildConfig.SUPABASE_URL,
+            BuildConfig.SUPABASE_ANON_KEY,
             builder -> {
                 builder.install(GoTrue.class);
                 builder.install(Postgrest.class);
@@ -168,10 +168,12 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         }
     }
 
+    @NonNull
     public IAuthenticationService getAuthenticationService() {
         return authService;
     }
 
+    @NonNull
     public IDatabaseService getDatabaseService() {
         return dbService;
     }

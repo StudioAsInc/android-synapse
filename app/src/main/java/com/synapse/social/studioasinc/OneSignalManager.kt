@@ -8,8 +8,8 @@ import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 object OneSignalManager {
 
     private const val TAG = "OneSignalManager"
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val db = dbService.getReference("skyline/users")
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService() }
+    private val db by lazy { dbService.getReference("skyline/users") }
 
     /**
      * Saves or updates the user's OneSignal Player ID in the database.
@@ -27,11 +27,11 @@ object OneSignalManager {
 
         val ref = db.child(userUid).child("oneSignalPlayerId")
         dbService.setValue(ref, playerId, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     Log.i(TAG, "OneSignal Player ID saved to Database for user: $userUid")
                 } else {
-                    Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid", error)
+                    Log.e(TAG, "Failed to save OneSignal Player ID to Database for user: $userUid, error: $error")
                 }
             }
         })

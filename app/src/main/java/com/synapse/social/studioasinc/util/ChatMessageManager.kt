@@ -46,7 +46,7 @@ class ChatMessageManager(
         isGroup: Boolean
     ) {
         val emptyListener = object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 // Not implemented
             }
         }
@@ -71,7 +71,7 @@ class ChatMessageManager(
     fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
         val senderUid = authService.getCurrentUser()?.getUid() ?: return
         val emptyListener = object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 // Not implemented
             }
         }

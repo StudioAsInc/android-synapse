@@ -10,12 +10,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.StorageUtil
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.theartofdev.edmodo.cropper.CropImage
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.theartofdev.edmodo.cropper.CropImageView
@@ -30,12 +28,15 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private lateinit var dbService: IDatabaseService
+    private lateinit var authService: IAuthenticationService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_group)
+
+        dbService = (application as SynapseApp).getDatabaseService()
+        authService = (application as SynapseApp).getAuthenticationService()
 
         groupIcon = findViewById(R.id.group_icon)
         groupName = findViewById(R.id.group_name)
@@ -133,7 +134,7 @@ class CreateGroupActivity : AppCompatActivity() {
 
         val groupRef = dbService.getReference("groups").child(groupId)
         dbService.setValue(groupRef, group, object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 if (error == null) {
                     Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
@@ -141,7 +142,7 @@ class CreateGroupActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         })

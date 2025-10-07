@@ -126,7 +126,7 @@ class MessageInteractionHandler(
                 val chatID = ChatMessageManager(dbService, authService).getChatId(myUid, otherUid)
                 val msgRef = dbService.getReference(CHATS_REF).child(chatID).child(msgKey)
                 dbService.setValue(msgRef.child(MESSAGE_TEXT_KEY), newText, object : ICompletionListener<Unit> {
-                    override fun onComplete(result: Unit?, error: Exception?) {
+                    override fun onComplete(result: Unit?, error: String?) {
                         // Optionally handle completion
                     }
                 })

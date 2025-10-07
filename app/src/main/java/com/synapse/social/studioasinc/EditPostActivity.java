@@ -115,8 +115,8 @@ public class EditPostActivity extends AppCompatActivity {
 	}
 
 	private void initialize(Bundle _savedInstanceState) {
-		authService = new SupabaseAuthService();
-		dbService = new SupabaseDatabaseService();
+		authService = ((SynapseApp) getApplication()).getAuthenticationService();
+		dbService = ((SynapseApp) getApplication()).getDatabaseService();
 
 		main = findViewById(R.id.main);
 		top = findViewById(R.id.top);
@@ -364,13 +364,13 @@ public class EditPostActivity extends AppCompatActivity {
 
 		dbService.getReference("skyline/posts").child(postKey).updateChildren(PostUpdateMap, new ICompletionListener<Unit>() {
 			@Override
-			public void onComplete(Unit result, Exception error) {
+			public void onComplete(Unit result, String error) {
 				if (error == null) {
 					Toast.makeText(getApplicationContext(), "Post updated successfully", Toast.LENGTH_SHORT).show();
 					_LoadingDialog(false);
 					finish();
 				} else {
-					Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), error, Toast.LENGTH_SHORT).show();
 					_LoadingDialog(false);
 				}
 			}

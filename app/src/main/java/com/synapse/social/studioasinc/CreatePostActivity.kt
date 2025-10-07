@@ -19,8 +19,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import com.synapse.social.studioasinc.model.MediaItem
@@ -60,9 +58,9 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressPercentage: TextView? = null
 
     // Services
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val authService: IAuthenticationService = SupabaseAuthService()
-    private val postsRef by lazy { dbService.getReference("skyline/posts") }
+    private lateinit var dbService: IDatabaseService
+    private lateinit var authService: IAuthenticationService
+    private lateinit var postsRef: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
 
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -86,6 +84,10 @@ class CreatePostActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_post_multi)
+
+        dbService = (application as SynapseApp).getDatabaseService()
+        authService = (application as SynapseApp).getAuthenticationService()
+        postsRef = dbService.getReference("skyline/posts")
 
         initialize()
         initializeLogic()
@@ -135,7 +137,7 @@ class CreatePostActivity : AppCompatActivity() {
         addPhotoIcon.setOnClickListener { selectImages() }
         addVideoIcon.setOnClickListener { selectVideo() }
 
-        val userMention = UserMention(postDescriptionEditText)
+        val userMention = UserMention(postDescriptionEditText, publishButton, dbService!!)
         postDescriptionEditText.addTextChangedListener(userMention)
 
         // Initially hide media recycler if empty
@@ -327,7 +329,7 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun savePostToDatabase(post: Post) {
         dbService.setValue(postsRef.child(post.key), post.toHashMap(), object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 runOnUiThread {
                     showLoading(false)
                     if (error == null) {
@@ -335,7 +337,7 @@ class CreatePostActivity : AppCompatActivity() {
                         handleMentions(post.postText, post.key)
                         finish()
                     } else {
-                        Toast.makeText(this@CreatePostActivity, "Failed to create post: ${error.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CreatePostActivity, "Failed to create post: $error", Toast.LENGTH_LONG).show()
                     }
                 }
             }

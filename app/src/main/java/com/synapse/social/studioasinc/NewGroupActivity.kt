@@ -30,12 +30,15 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val database by lazy { dbService.getReference("skyline/users") }
+    private lateinit var dbService: IDatabaseService
+    private lateinit var database: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_new_group)
+
+        dbService = (application as SynapseApp).getDatabaseService()
+        database = dbService.getReference("skyline/users")
 
         usersRecyclerView = findViewById(R.id.users_recycler_view)
         searchView = findViewById(R.id.search_view)

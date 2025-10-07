@@ -355,7 +355,7 @@ class PostsAdapter(
         private fun toggleLike(post: Post) {
             val likeRef = dbService.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
             val emptyListener = object : ICompletionListener<Unit> {
-                override fun onComplete(result: Unit?, error: Exception?) { loadCounts(post.key) }
+                override fun onComplete(result: Unit?, error: String?) { loadCounts(post.key) }
             }
             dbService.getData(likeRef, object : IDataListener {
                 override fun onDataChange(dataSnapshot: IDataSnapshot) {
@@ -376,7 +376,7 @@ class PostsAdapter(
         private fun toggleFavorite(postKey: String) {
             val favoriteRef = dbService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
             val emptyListener = object : ICompletionListener<Unit> {
-                override fun onComplete(result: Unit?, error: Exception?) {}
+                override fun onComplete(result: Unit?, error: String?) {}
             }
             dbService.getData(favoriteRef, object : IDataListener {
                 override fun onDataChange(dataSnapshot: IDataSnapshot) {

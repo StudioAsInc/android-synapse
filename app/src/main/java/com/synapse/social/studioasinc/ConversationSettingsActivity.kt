@@ -11,8 +11,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.synapse.social.studioasinc.backend.SupabaseAuthService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
@@ -25,9 +23,9 @@ import kotlin.math.abs
 class ConversationSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityConversationSettingsBinding
-    private val dbService: IDatabaseService = SupabaseDatabaseService()
-    private val blocklistRef by lazy { dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST) }
-    private val authService: IAuthenticationService = SupabaseAuthService()
+    private lateinit var dbService: IDatabaseService
+    private lateinit var blocklistRef: com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference
+    private lateinit var authService: IAuthenticationService
     private lateinit var userSettings: SharedPreferences
 
     companion object {
@@ -51,6 +49,10 @@ class ConversationSettingsActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityConversationSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        authService = (application as SynapseApp).getAuthenticationService()
+        dbService = (application as SynapseApp).getDatabaseService()
+        blocklistRef = dbService.getReference(REF_SKYLINE).child(REF_BLOCKLIST)
 
         val userId = intent.getStringExtra(KEY_UID)
         if (userId == null) {
@@ -174,7 +176,7 @@ class ConversationSettingsActivity : AppCompatActivity() {
             authService.getCurrentUser()?.getUid()?.let { currentUserUid ->
                 val ref = blocklistRef.child(currentUserUid)
                 dbService.updateChildren(ref, blockData, object : ICompletionListener<Unit> {
-                    override fun onComplete(result: Unit?, error: Exception?) {
+                    override fun onComplete(result: Unit?, error: String?) {
                         if (error == null) {
                             Toast.makeText(this@ConversationSettingsActivity, "User blocked", Toast.LENGTH_SHORT).show()
                         } else {
