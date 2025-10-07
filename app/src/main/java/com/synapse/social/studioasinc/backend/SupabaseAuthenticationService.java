@@ -8,6 +8,7 @@ import com.synapse.social.studioasinc.backend.interfaces.IUser;
 import io.github.jan.supabase.SupabaseClient;
 import io.github.jan.supabase.gotrue.GoTrue;
 import io.github.jan.supabase.gotrue.SessionStatus;
+import io.github.jan.supabase.gotrue.providers.builtin.Email;
 import io.github.jan.supabase.gotrue.user.UserSession;
 import kotlin.Unit;
 import kotlinx.coroutines.BuildersKt;
@@ -31,7 +32,9 @@ public class SupabaseAuthenticationService implements IAuthenticationService {
         SessionStatus status = goTrue.getSessionStatus().getValue();
         if (status instanceof SessionStatus.Authenticated) {
             UserSession session = ((SessionStatus.Authenticated) status).getSession();
-            return new SupabaseUser(session.getUser().getId());
+            if (session != null && session.getUser() != null) {
+                return new SupabaseUser(session.getUser().getId(), session.getUser().getEmail());
+            }
         }
         return null;
     }
@@ -40,7 +43,7 @@ public class SupabaseAuthenticationService implements IAuthenticationService {
     public void signIn(String email, String pass, ICompletionListener<IAuthResult> listener) {
         GlobalScope.launch(Dispatchers.getMain(), (coroutineScope, continuation) -> {
             try {
-                goTrue.signInWith(io.github.jan.supabase.gotrue.providers.builtin.Email.class, (provider) -> {
+                goTrue.signInWith(Email.INSTANCE, (provider) -> {
                     provider.setEmail(email);
                     provider.setPassword(pass);
                 });
@@ -57,7 +60,7 @@ public class SupabaseAuthenticationService implements IAuthenticationService {
     public void signUp(String email, String pass, ICompletionListener<IAuthResult> listener) {
         GlobalScope.launch(Dispatchers.getMain(), (coroutineScope, continuation) -> {
             try {
-                goTrue.signUpWith(io.github.jan.supabase.gotrue.providers.builtin.Email.class, (provider) -> {
+                goTrue.signUpWith(Email.INSTANCE, (provider) -> {
                     provider.setEmail(email);
                     provider.setPassword(pass);
                 });
@@ -94,9 +97,9 @@ public class SupabaseAuthenticationService implements IAuthenticationService {
         private final String uid;
         private final String email;
 
-        public SupabaseUser(String uid) {
+        public SupabaseUser(String uid, String email) {
             this.uid = uid;
-            this.email = ""; // The email is not directly available here, but can be fetched if needed
+            this.email = email;
         }
 
         @Override

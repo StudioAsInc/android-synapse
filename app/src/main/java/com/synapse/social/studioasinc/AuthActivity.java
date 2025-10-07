@@ -292,10 +292,9 @@ public class AuthActivity extends AppCompatActivity {
         finish();
     }
 
-    private void handleRegistrationError(Exception exception) {
-        if (exception == null) return;
+    private void handleRegistrationError(String errorMessage) {
+        if (errorMessage == null) return;
 
-        String errorMessage = exception.getMessage();
         if ("The email address is already in use by another account.".equals(errorMessage)) {
             handleExistingAccount();
         }

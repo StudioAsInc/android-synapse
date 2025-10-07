@@ -24,7 +24,7 @@ class ChatKeyboardHandler(
 
     fun setup() {
         val emptyListener = object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 // Not implemented
             }
         }

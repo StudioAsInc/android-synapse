@@ -58,8 +58,8 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressPercentage: TextView? = null
 
     // Services
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
-    private val authService: IAuthenticationService by lazy { (application as SynapseApp).authenticationService }
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
+    private val authService: IAuthenticationService by lazy { (application as SynapseApp).getAuthenticationService() }
     private val postsRef by lazy { dbService.getReference("skyline/posts") }
 
     // Media selection
@@ -133,7 +133,7 @@ class CreatePostActivity : AppCompatActivity() {
         addPhotoIcon.setOnClickListener { selectImages() }
         addVideoIcon.setOnClickListener { selectVideo() }
 
-        val userMention = UserMention(postDescriptionEditText, publishButton, dbService)
+        val userMention = UserMention(postDescriptionEditText, publishButton, dbService!!)
         postDescriptionEditText.addTextChangedListener(userMention)
 
         // Initially hide media recycler if empty
@@ -325,7 +325,7 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun savePostToDatabase(post: Post) {
         dbService.setValue(postsRef.child(post.key), post.toHashMap(), object : ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
+            override fun onComplete(result: Unit?, error: String?) {
                 runOnUiThread {
                     showLoading(false)
                     if (error == null) {
@@ -333,7 +333,7 @@ class CreatePostActivity : AppCompatActivity() {
                         handleMentions(post.postText, post.key)
                         finish()
                     } else {
-                        Toast.makeText(this@CreatePostActivity, "Failed to create post: ${error.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CreatePostActivity, "Failed to create post: $error", Toast.LENGTH_LONG).show()
                     }
                 }
             }

@@ -8,8 +8,8 @@ import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 object OneSignalManager {
 
     private const val TAG = "OneSignalManager"
-    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext() as SynapseApp).databaseService }
-    private val db = dbService.getReference("skyline/users")
+    private val dbService: IDatabaseService by lazy { (SynapseApp.getContext().applicationContext as SynapseApp).getDatabaseService() }
+    private val db by lazy { dbService.getReference("skyline/users") }
 
     /**
      * Saves or updates the user's OneSignal Player ID in the database.

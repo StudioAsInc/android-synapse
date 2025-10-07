@@ -30,7 +30,7 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val dbService: IDatabaseService by lazy { (application as SynapseApp).databaseService }
+    private val dbService: IDatabaseService by lazy { (application as SynapseApp).getDatabaseService() }
     private val database by lazy { dbService.getReference("skyline/users") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
