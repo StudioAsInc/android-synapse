@@ -1,11 +1,9 @@
 package com.synapse.social.studioasinc;
 
-import com.synapse.social.studioasinc.CheckpermissionActivity;
 import android.animation.*;
 import android.app.*;
 import android.app.AlertDialog;
 import android.content.*;
-import android.content.DialogInterface;
 import android.content.res.*;
 import android.graphics.*;
 import android.graphics.drawable.*;
@@ -29,13 +27,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import com.bumptech.glide.*;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.color.MaterialColors;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.synapse.social.studioasinc.CenterCropLinearLayoutNoEffect;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -44,31 +36,32 @@ import java.text.*;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.*;
 import org.json.*;
-// Required imports
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
-
 import com.google.android.material.button.MaterialButton;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-
 import android.widget.Toast;
 import android.graphics.drawable.ColorDrawable;
-import com.google.gson.Gson; // Import Gson
-import com.google.gson.reflect.TypeToken; // Import TypeToken
-import android.content.pm.PackageManager; // Import PackageManager
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import android.content.pm.PackageManager;
+
+// Synapse Imports
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IUser;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseReference;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -82,37 +75,26 @@ public class MainActivity extends AppCompatActivity {
 	private ImageView app_logo;
 	private ImageView trademark_img;
 
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
+	private IAuthenticationService authService;
+    private IDatabaseService dbService;
+
 	private RequestNetwork network;
 	private RequestNetwork.RequestListener _network_request_listener;
-	private AlertDialog.Builder updateDialogBuilder; // Renamed to avoid confusion with Dialog object
+	private AlertDialog.Builder updateDialogBuilder;
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_main);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 		createNotificationChannels();
 		initializeLogic();
 	}
 
 	private void createNotificationChannels() {
-		// Create notification channels for Android O and above
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			NotificationManager notificationManager = getSystemService(NotificationManager.class);
 			
-			// Messages channel
 			NotificationChannel messagesChannel = new NotificationChannel(
 				"messages",
 				"Messages",
@@ -125,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
 			messagesChannel.setShowBadge(true);
 			messagesChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
 			
-			// General notifications channel
 			NotificationChannel generalChannel = new NotificationChannel(
 				"general",
 				"General",
@@ -135,7 +116,6 @@ public class MainActivity extends AppCompatActivity {
 			generalChannel.enableLights(false);
 			generalChannel.enableVibration(false);
 			
-			// Create the channels
 			notificationManager.createNotificationChannel(messagesChannel);
 			notificationManager.createNotificationChannel(generalChannel);
 		}
@@ -148,18 +128,20 @@ public class MainActivity extends AppCompatActivity {
 		bottom_layout = findViewById(R.id.bottom_layout);
 		app_logo = findViewById(R.id.app_logo);
 		trademark_img = findViewById(R.id.trademark_img);
-		auth = FirebaseAuth.getInstance();
+
+		authService = ((SynapseApp) getApplication()).getAuthenticationService();
+        dbService = ((SynapseApp) getApplication()).getDatabaseService();
+
 		network = new RequestNetwork(this);
-		updateDialogBuilder = new AlertDialog.Builder(this); // Use the renamed variable
+		updateDialogBuilder = new AlertDialog.Builder(this);
 
 		app_logo.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
-				if (FirebaseAuth.getInstance().getCurrentUser() != null && FirebaseAuth.getInstance().getCurrentUser().getEmail() != null && FirebaseAuth.getInstance().getCurrentUser().getEmail().equals("mashikahamed0@gmail.com")) {
-					finish(); // This seems to be the intended action for the long click
-				} else {
-					// Optionally, do something else or nothing
-				}
+				IUser currentUser = authService.getCurrentUser();
+                if (currentUser != null && currentUser.getEmail() != null && currentUser.getEmail().equals("mashikahamed0@gmail.com")) {
+                    finish();
+                }
 				return true;
 			}
 		});
@@ -180,99 +162,9 @@ public class MainActivity extends AppCompatActivity {
 
 			}
 		};
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
-		// 1. Set Fullscreen Immersive Mode
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
 			getWindow().setFlags(
 			WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -280,19 +172,16 @@ public class MainActivity extends AppCompatActivity {
 			);
 		}
 
-		// 2. Get current app version
-		final int currentVersionCode; // Made final to be accessible in anonymous inner class
+		final int currentVersionCode;
 		try {
 			currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
 		} catch (PackageManager.NameNotFoundException e) {
 			_showErrorDialog("Version check failed: " + e.getMessage());
 			e.printStackTrace();
-			// If version code cannot be obtained, proceed with normal flow after delay
 			proceedToAuthCheck();
-			return; // Exit method to prevent further execution in initializeLogic
+			return;
 		}
 
-		// 3. Check for updates (only if online)
 		if (isNetworkAvailable()) {
 			network.startRequestNetwork(
 			RequestNetworkController.GET,
@@ -320,7 +209,6 @@ public class MainActivity extends AppCompatActivity {
 						}
 
 						if (latestVersionCode > currentVersionCode) {
-							// New update available, show dialog
 							String title = updateMap.get("title").toString();
 							String versionName = updateMap.get("versionName").toString();
 							String changelog = updateMap.get("whatsNew").toString().replace("\\n", "\n");
@@ -334,87 +222,79 @@ public class MainActivity extends AppCompatActivity {
 									isCancelable = Boolean.parseBoolean((String) ic);
 								}
 							}
-
 							_showUpdateDialog(title, versionName, changelog, updateLink, isCancelable);
-							// IMPORTANT: DO NOT call proceedToAuthCheck() here.
-                            // It will be called by the dialog's 'Later' button if cancelable.
-                            // If not cancelable, the app will effectively pause until the user updates.
 						} else {
-							// Already on latest version, proceed to auth check after delay
-						//	SketchwareUtil.showMessage(getApplicationContext(), "You have the latest version.");
 							proceedToAuthCheck();
 						}
 					} catch (Exception e) {
 						_showErrorDialog("Update parsing error: " + e.getMessage());
 						e.printStackTrace();
-						// On parsing error, proceed to auth check after delay
 						proceedToAuthCheck();
 					}
 				}
 
 				@Override
 				public void onErrorResponse(String tag, String message) {
-					// Error fetching update, proceed to auth check after delay
 					proceedToAuthCheck();
 				}
 			}
 			);
 		} else {
-			// No internet, proceed to auth check after delay
 			proceedToAuthCheck();
 		}
 	}
 
-    // Helper method to encapsulate the delayed auth check logic
     private void proceedToAuthCheck() {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            FirebaseAuth auth = FirebaseAuth.getInstance();
-            if (auth.getCurrentUser() != null) {
-                // User logged in, check ban status
-                DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("skyline/users")
-                .child(auth.getCurrentUser().getUid());
+            IUser currentUser = authService.getCurrentUser();
+            if (currentUser != null) {
+                IDatabaseReference userRef = dbService.getReference("skyline/users").child(currentUser.getUid());
 
-                userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                dbService.getData(userRef, new IDataListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()) {
-                            String banned = snapshot.child("banned").getValue(String.class);
-                            if ("false".equals(banned)) {
-                                // Not banned, redirect to HomeActivity
-                                startActivity(new Intent(MainActivity.this, HomeActivity.class));
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            try {
+                                List<Map<String, Object>> userList = (List<Map<String, Object>>) dataSnapshot.getValue(List.class);
+                                if (userList != null && !userList.isEmpty()) {
+                                    Map<String, Object> userMap = userList.get(0);
+                                    String banned = (String) userMap.get("banned");
+                                    if ("false".equals(banned)) {
+                                        startActivity(new Intent(MainActivity.this, HomeActivity.class));
+                                        finish();
+                                    } else {
+                                        Toast.makeText(MainActivity.this, "You are banned & Signed Out.", Toast.LENGTH_LONG).show();
+                                        authService.signOut();
+                                        finish();
+                                    }
+                                } else {
+                                    startActivity(new Intent(MainActivity.this, CompleteProfileActivity.class));
+                                    finish();
+                                }
+                            } catch (Exception e) {
+                                startActivity(new Intent(MainActivity.this, CompleteProfileActivity.class));
                                 finish();
-                            } else {
-                                // Banned, show toast and sign out
-                                Toast.makeText(MainActivity.this, "You are banned & Signed Out.", Toast.LENGTH_LONG).show(); // Changed Toast message as per flowchart implies "Toast: Banned & Sign Out"
-                                auth.signOut();
-                                finish(); // Finish MainActivity after signing out (per flowchart)
                             }
                         } else {
-                            // User data not found (maybe first login, or incomplete profile)
-                            // This path leads to CompleteProfileActivity
                             startActivity(new Intent(MainActivity.this, CompleteProfileActivity.class));
                             finish();
                         }
                     }
 
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(MainActivity.this, "Database error: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                        // Handle database error, redirect to AuthActivity
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(MainActivity.this, "Database error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(MainActivity.this, AuthActivity.class));
                         finish();
                     }
                 });
             } else {
-                // User not logged in, redirect to AuthActivity
                 startActivity(new Intent(MainActivity.this, AuthActivity.class));
                 finish();
             }
-        }, 500); // 500ms delay
+        }, 500);
     }
 
-	// Helper method to check internet connectivity
 	private boolean isNetworkAvailable() {
 		ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 		if (cm == null) return false;
@@ -433,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
 		View dialogView = inflater.inflate(R.layout.dialog_update, null);
 
 		updateDialogBuilder.setView(dialogView);
-		updateDialogBuilder.setCancelable(_isCancelable); // Set cancelable property
+		updateDialogBuilder.setCancelable(_isCancelable);
 
 		TextView tvTitle = dialogView.findViewById(R.id.update_title);
 		TextView tvVersion = dialogView.findViewById(R.id.update_version);
@@ -452,8 +332,8 @@ public class MainActivity extends AppCompatActivity {
 			public void onClick(View _view) {
 				Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(_updateLink));
 				startActivity(intent);
-				dialog.dismiss(); // Dismiss dialog when update button is clicked
-				finish(); // Finish MainActivity, as user is likely leaving the app to update
+				dialog.dismiss();
+				finish();
 			}
 		});
 
@@ -461,8 +341,6 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View _view) {
 				dialog.dismiss();
-				// ONLY call proceedToAuthCheck if the dialog was cancelable and user chose "Later"
-                // If not cancelable, this button is hidden.
                 if (_isCancelable) {
                     proceedToAuthCheck();
                 }
@@ -471,11 +349,10 @@ public class MainActivity extends AppCompatActivity {
 
 		if (!_isCancelable) {
 			btnLater.setVisibility(View.GONE);
-            // If not cancelable, make sure user cannot dismiss the dialog by back press or tapping outside
             dialog.setCanceledOnTouchOutside(false);
 		} else {
-            btnLater.setVisibility(View.VISIBLE); // Ensure it's visible if cancelable
-            dialog.setCanceledOnTouchOutside(true); // Allow dismiss by touch if cancelable
+            btnLater.setVisibility(View.VISIBLE);
+            dialog.setCanceledOnTouchOutside(true);
         }
 
 		if (dialog.getWindow() != null) {
@@ -506,10 +383,7 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View _view) {
 				dialog.dismiss();
-                // If this error dialog implies that the app cannot proceed normally (e.g., version check failed critically)
-                // you might want to call proceedToAuthCheck() here, or even finish the app.
-                // For now, let's assume it's a minor error and the app should try to proceed.
-                proceedToAuthCheck(); // Assuming _showErrorDialog doesn't block the main flow.
+                proceedToAuthCheck();
 			}
 		});
 

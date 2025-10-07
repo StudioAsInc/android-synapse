@@ -16,13 +16,15 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.SynapseApp;
-import com.synapse.social.studioasinc.backend.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ReelsFragment extends Fragment {
 
@@ -50,7 +52,7 @@ public class ReelsFragment extends Fragment {
         middleRelativeTopSwipe = view.findViewById(R.id.middleRelativeTopSwipe);
         loadedBody = view.findViewById(R.id.loadedBody);
         videosRecyclerView = view.findViewById(R.id.videosRecyclerView);
-        dbService = ((SynapseApp) requireActivity().getApplication()).getDbService();
+        dbService = ((SynapseApp) requireActivity().getApplication()).getDatabaseService();
 
         middleRelativeTopSwipe.setOnRefreshListener(() -> _getReference());
     }
@@ -66,14 +68,14 @@ public class ReelsFragment extends Fragment {
     public void _getReference() {
         middleRelativeTopSwipe.setRefreshing(true);
         loadedBody.setVisibility(View.GONE);
-        dbService.getData("reels", new IDataListener() {
+        dbService.getData(dbService.getReference("reels"), new IDataListener() {
             @Override
             public void onDataChange(IDataSnapshot dataSnapshot) {
                 lineVideosListMap.clear();
                 if (dataSnapshot.exists()) {
-                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
-                        HashMap<String, Object> map = (HashMap<String, Object>) snapshot.getValue();
-                        lineVideosListMap.add(map);
+                    List<HashMap<String, Object>> list = (List<HashMap<String, Object>>) dataSnapshot.getValue(List.class);
+                    if (list != null) {
+                        lineVideosListMap.addAll(list);
                     }
                     Collections.shuffle(lineVideosListMap);
                 }
