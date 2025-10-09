@@ -15,28 +15,12 @@ import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
 import java.util.Calendar;
 
-// TODO: Migrate to Supabase
-// import com.google.android.gms.tasks.OnCompleteListener;
-// import com.google.android.gms.tasks.Task;
-// import com.google.firebase.FirebaseApp;
-// import com.google.firebase.auth.FirebaseAuth;
-// import com.google.firebase.database.DataSnapshot;
-// import com.google.firebase.database.DatabaseError;
-// import com.google.firebase.database.DatabaseReference;
-// import com.google.firebase.database.FirebaseDatabase;
-// import com.google.firebase.database.ValueEventListener;
-
 public class SynapseApp extends Application implements DefaultLifecycleObserver {
 
   private static Context mContext;
   private Thread.UncaughtExceptionHandler mExceptionHandler;
 
   // TODO: Migrate to Supabase
-  // public static FirebaseAuth mAuth;
-
-  // public static DatabaseReference getCheckUserReference;
-  // public static DatabaseReference setUserStatusRef;
-  // public static DatabaseReference setUserStatusReference;
 
   public static Calendar mCalendar;
 
@@ -52,20 +36,11 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
     this.mCalendar = Calendar.getInstance();
 
     // TODO: Migrate to Supabase
-    // Initialize Firebase with disk persistence
-    // FirebaseApp.initializeApp(this);
-    // FirebaseDatabase.getInstance().setPersistenceEnabled(true);
 
     // Create notification channels
     createNotificationChannels();
 
     // TODO: Migrate to Supabase
-    // this.mAuth = FirebaseAuth.getInstance();
-    // this.getCheckUserReference = FirebaseDatabase.getInstance().getReference("skyline/users");
-    // this.setUserStatusRef = FirebaseDatabase.getInstance().getReference(".info/connected");
-
-    // Keep users data synced for offline use
-    // getCheckUserReference.keepSynced(true);
 
     // Set up global exception handler
     Thread.setDefaultUncaughtExceptionHandler(
@@ -123,10 +98,6 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
                 if (state.getCurrent().getOptedIn()) {
                   String playerId = state.getCurrent().getId();
                   // TODO: Migrate to Supabase
-                  // if (mAuth.getCurrentUser() != null && playerId != null) {
-                  //     String userUid = mAuth.getCurrentUser().getUid();
-                  //     OneSignalManager.savePlayerIdToRealtimeDatabase(userUid, playerId);
-                  // }
                 }
               }
             });
@@ -135,17 +106,11 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
   @Override
   public void onStart(@NonNull LifecycleOwner owner) {
     // TODO: Migrate to Supabase
-    // if (mAuth.getCurrentUser() != null) {
-    //     PresenceManager.goOnline(mAuth.getCurrentUser().getUid());
-    // }
   }
 
   @Override
   public void onStop(@NonNull LifecycleOwner owner) {
     // TODO: Migrate to Supabase
-    // if (mAuth.getCurrentUser() != null) {
-    //     PresenceManager.goOffline(mAuth.getCurrentUser().getUid());
-    // }
   }
 
   private void createNotificationChannels() {
@@ -185,8 +150,4 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
    * @param ref DatabaseReference to enable offline sync for
    */
   // TODO: Migrate to Supabase
-  // public static void enableOfflineSync(DatabaseReference ref) {
-  //     FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-  //     ref.keepSynced(true);
-  // }
 }
