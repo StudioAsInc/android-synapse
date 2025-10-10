@@ -41,3 +41,4 @@ For more on this, please refer to https://docs.gradle.org/8.13/userguide/command
 BUILD FAILED in 3s
 16 actionable tasks: 1 executed, 15 up-to-date
 
+Publishing a build scan to scans.gradle.com requires accepting the Gradle Terms of Use defined at https://gradle.com/help/legal-terms-of-use. Do you accept these terms? [yes, no] 
