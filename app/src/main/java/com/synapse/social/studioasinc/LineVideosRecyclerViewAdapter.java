@@ -31,21 +31,6 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.database.Query;
-
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
@@ -53,11 +38,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.io.File;
 
+// Supabase: Replace Firebase database and authentication calls with DatabaseService and AuthenticationService interfaces.
 public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVideosRecyclerViewAdapter.ViewHolder> {
 
 	private FragmentManager postCommentsFragMng;
-	private FirebaseAuth auth;
-	private DatabaseReference main = FirebaseDatabase.getInstance().getReference("skyline");
 	private Vibrator vbr;
 	private Intent intent = new Intent();
 
@@ -74,8 +58,6 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 	public LineVideosRecyclerViewAdapter(Context context, FragmentManager fragment, ArrayList<HashMap<String, Object>> _arr) {
 		this.context = context;
 		this.postCommentsFragMng = fragment;
-		FirebaseApp.initializeApp(context);
-		this.auth = FirebaseAuth.getInstance();
 		this.vbr = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
 		_data = _arr;
 	}
@@ -111,11 +93,7 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 		String key = keyObj.toString();
 		String videoUri = videoUriObj.toString();
 
-		DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
-		DatabaseReference checkLike = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		DatabaseReference getLikesCount = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(key);
-		DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(key);
-		DatabaseReference getShareCount = FirebaseDatabase.getInstance().getReference("skyline/posts-share").child(key);
+		// Supabase: Get user details, likes, comments, and shares from Supabase
 
 		final RelativeLayout body = _view.findViewById(R.id.body);
 		final FrameLayout middle = _view.findViewById(R.id.middle);
@@ -172,166 +150,12 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 			postDescription.setVisibility(View.GONE);
 		}
 
-		if (UserInfoCacheMap.containsKey("uid-".concat(uid))) {
-			buttonsRelativeBottomUserInf.setVisibility(View.VISIBLE);
-			if (String.valueOf(UserInfoCacheMap.get("banned-".concat(uid))).equals("true")) {
-				profileCardImage.setImageResource(R.drawable.avatar);
-			} else {
-				if (String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))).equals("null")) {
-					profileCardImage.setImageResource(R.drawable.avatar);
-				} else {
-					Glide.with(context).load(Uri.parse(String.valueOf(UserInfoCacheMap.get("avatar-".concat(uid))))).into(profileCardImage);
-				}
-			}
-			if (String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))).equals("null")) {
-				buttonsRelativeBottomUserInfUsername.setText("@" + String.valueOf(UserInfoCacheMap.get("username-".concat(uid))));
-			} else {
-				buttonsRelativeBottomUserInfUsername.setText(String.valueOf(UserInfoCacheMap.get("nickname-".concat(uid))));
-			}
-			if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("hidden")) {
-				buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.GONE);
-			} else {
-				if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("male")) {
-					buttonsRelativeBottomUserInfGenderBadge.setImageResource(R.drawable.male_badge);
-					buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.VISIBLE);
-				} else {
-					if (String.valueOf(UserInfoCacheMap.get("gender-".concat(uid))).equals("female")) {
-						buttonsRelativeBottomUserInfGenderBadge.setImageResource(R.drawable.female_badge);
-						buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.VISIBLE);
-					}
-				}
-			}
-			if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("admin")) {
-				buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.admin_badge);
-				buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-			} else {
-				if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("moderator")) {
-					buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.moderator_badge);
-					buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-				} else {
-					if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("support")) {
-						buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.support_badge);
-						buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-					} else {
-						if (String.valueOf(UserInfoCacheMap.get("acc_type-".concat(uid))).equals("user")) {
-							if (String.valueOf(UserInfoCacheMap.get("verify-".concat(uid))).equals("true")) {
-								buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-							} else {
-								buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.GONE);
-							}
-						}
-					}
-				}
-			}
-		} else {
-			getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						buttonsRelativeBottomUserInf.setVisibility(View.VISIBLE);
-						UserInfoCacheMap.put("uid-".concat(uid), uid);
-						UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.child("banned").getValue(String.class));
-						UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.child("nickname").getValue(String.class));
-						UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.child("username").getValue(String.class));
-						UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.child("gender").getValue(String.class));
-						UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.child("verify").getValue(String.class));
-						UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.child("account_type").getValue(String.class));
-						if (String.valueOf(dataSnapshot.child("banned").getValue()).equals("true")) {
-							profileCardImage.setImageResource(R.drawable.avatar);
-							UserInfoCacheMap.put("avatar-".concat(uid), "null");
-						} else {
-							UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.child("avatar").getValue(String.class));
-							if (String.valueOf(dataSnapshot.child("avatar").getValue()).equals("null")) {
-								profileCardImage.setImageResource(R.drawable.avatar);
-							} else {
-								Glide.with(context).load(Uri.parse(String.valueOf(dataSnapshot.child("avatar").getValue()))).into(profileCardImage);
-							}
-						}
-						if (String.valueOf(dataSnapshot.child("nickname").getValue()).equals("null")) {
-							buttonsRelativeBottomUserInfUsername.setText("@" + String.valueOf(dataSnapshot.child("username").getValue()));
-						} else {
-							buttonsRelativeBottomUserInfUsername.setText(String.valueOf(dataSnapshot.child("nickname").getValue()));
-						}
-						if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("hidden")) {
-							buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.GONE);
-						} else {
-							if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("male")) {
-								buttonsRelativeBottomUserInfGenderBadge.setImageResource(R.drawable.male_badge);
-								buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.VISIBLE);
-							} else {
-								if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("female")) {
-									buttonsRelativeBottomUserInfGenderBadge.setImageResource(R.drawable.female_badge);
-									buttonsRelativeBottomUserInfGenderBadge.setVisibility(View.VISIBLE);
-								}
-							}
-						}
-						if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("admin")) {
-							buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.admin_badge);
-							buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-						} else {
-							if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("moderator")) {
-								buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.moderator_badge);
-								buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-							} else {
-								if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("support")) {
-									buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.support_badge);
-									buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-								} else {
-									if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("user")) {
-										if (String.valueOf(dataSnapshot.child("verify").getValue()).equals("true")) {
-											buttonsRelativeBottomUserInfVerifiedBadge.setImageResource(R.drawable.verified_badge);
-											buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.VISIBLE);
-										} else {
-											buttonsRelativeBottomUserInfVerifiedBadge.setVisibility(View.GONE);
-										}
-									}
-								}
-							}
-						}
-					} else {
-					}
-				}
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-
-				}
-			});
-		}
+		// TODO: Get user info from Supabase
 
 		likeButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				checkLike.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						try {
-							if(dataSnapshot.exists()) {
-								checkLike.removeValue();
-								likeButtonIc.setImageResource(R.drawable.line_video_player_icons_2);
-								_ImageColor(likeButtonIc, 0xFFFFFFFF);
-								double currentLikes = Double.parseDouble(String.valueOf(postLikeCountCache.get(key)));
-								currentLikes--;
-								postLikeCountCache.put(key, String.valueOf(currentLikes));
-								likeButtonCount.setText(String.valueOf((long)currentLikes));
-							} else {
-								checkLike.setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-								likeButtonIc.setImageResource(R.drawable.line_video_player_icons_1);
-								_ImageColor(likeButtonIc, 0xFFE91E63);
-								double currentLikes = Double.parseDouble(String.valueOf(postLikeCountCache.get(key)));
-								currentLikes++;
-								postLikeCountCache.put(key, String.valueOf(currentLikes));
-								likeButtonCount.setText(String.valueOf((long)currentLikes));
-							}
-						} catch (Exception e) {
-							// ignore
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-
-					}
-				});
+				// TODO: Implement like functionality with Supabase
 				vbr.vibrate((long)(24));
 			}
 		});
@@ -362,60 +186,7 @@ public class LineVideosRecyclerViewAdapter extends RecyclerView.Adapter<LineVide
 			}
 		});
 
-		checkLike.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					likeButtonIc.setImageResource(R.drawable.line_video_player_icons_1);
-					_ImageColor(likeButtonIc, 0xFFE91E63);
-				} else {
-					likeButtonIc.setImageResource(R.drawable.line_video_player_icons_2);
-					_ImageColor(likeButtonIc, 0xFFFFFFFF);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-		getLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				postLikeCountCache.put(key, String.valueOf((long)(count)));
-				likeButtonCount.setText(String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
-		});
-		getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				commentsButtonCount.setText(String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
-		});
-		getShareCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				shareButtonCount.setText(String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
-		});
+		// TODO: Get like, comment, and share counts from Supabase
 	}
 
 	@Override

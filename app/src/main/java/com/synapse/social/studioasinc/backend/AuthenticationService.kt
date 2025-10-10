@@ -1,66 +1,45 @@
 package com.synapse.social.studioasinc.backend
 
-import com.google.firebase.auth.FirebaseAuth
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IUser
 
+// TODO(supabase): Implement Supabase Authentication Service
+// This service should implement the IAuthenticationService interface and provide a concrete
+// implementation using the Supabase Kotlin client library.
+// See: https://supabase.com/docs/guides/auth/kotlin
+//
+// Key tasks:
+// 1.  Initialize the Supabase client.
+// 2.  Implement getCurrentUser to return the current Supabase user.
+// 3.  Implement signIn, signUp, signOut, and deleteUser using Supabase Auth.
+// 4.  Create Supabase-specific wrappers for IAuthResult and IUser to map the Supabase API to the existing interfaces.
+
 class AuthenticationService : IAuthenticationService {
 
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-
     override fun getCurrentUser(): IUser? {
-        return auth.currentUser?.let { firebaseUser ->
-            object : IUser {
-                override fun getUid(): String = firebaseUser.uid
-            }
-        }
+        // TODO(supabase): Implement this method to return the current Supabase user.
+        throw NotImplementedError("Supabase authentication service is not yet implemented.")
     }
 
     override fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        auth.signInWithEmailAndPassword(email, pass).addOnCompleteListener { task ->
-            val authResult = object : IAuthResult {
-                override fun isSuccessful(): Boolean = task.isSuccessful
-                override fun getUser(): IUser? {
-                    return task.result?.user?.let { fbUser ->
-                        object : IUser {
-                            override fun getUid(): String = fbUser.uid
-                        }
-                    }
-                }
-            }
-            listener.onComplete(authResult, task.exception)
-        }
+        // TODO(supabase): Implement this method to sign in a user with Supabase.
+        throw NotImplementedError("Supabase authentication service is not yet implemented.")
     }
 
     override fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        auth.createUserWithEmailAndPassword(email, pass).addOnCompleteListener { task ->
-            val authResult = object : IAuthResult {
-                override fun isSuccessful(): Boolean = task.isSuccessful
-                override fun getUser(): IUser? {
-                    return task.result?.user?.let { fbUser ->
-                        object : IUser {
-                            override fun getUid(): String = fbUser.uid
-                        }
-                    }
-                }
-            }
-            listener.onComplete(authResult, task.exception)
-        }
+        // TODO(supabase): Implement this method to sign up a user with Supabase.
+        throw NotImplementedError("Supabase authentication service is not yet implemented.")
     }
 
     override fun signOut() {
-        auth.signOut()
+        // TODO(supabase): Implement this method to sign out the current user from Supabase.
+        throw NotImplementedError("Supabase authentication service is not yet implemented.")
     }
 
     override fun deleteUser(listener: ICompletionListener<Unit>) {
-        auth.currentUser?.delete()?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                listener.onComplete(Unit, null)
-            } else {
-                listener.onComplete(null, task.exception)
-            }
-        }
+        // TODO(supabase): Implement this method to delete the current user from Supabase.
+        throw NotImplementedError("Supabase authentication service is not yet implemented.")
     }
 }

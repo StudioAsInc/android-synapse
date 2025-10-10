@@ -10,12 +10,9 @@ import android.widget.PopupWindow;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
+// TODO(supabase): Add Supabase imports for PostgREST and Realtime
+// import io.supabase.postgrest.PostgrestClient;
+// import io.supabase.realtime.RealtimeClient;
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter;
 import com.synapse.social.studioasinc.model.User;
 
@@ -26,17 +23,19 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
 
     private final EditText editText;
     private final Context context;
-    private final DatabaseReference usersRef;
+    private final SupabaseClient supabaseClient; // TODO(supabase): Initialize Supabase client
+    private final String USERS_TABLE = "users"; // Assuming 'users' is your table name
+
     private PopupWindow popupWindow;
     private SearchUserAdapter searchUserAdapter;
     private final List<User> userList = new ArrayList<>();
 
     private final View sendButton;
 
-    public UserMention(EditText editText, View sendButton) {
+    public UserMention(EditText editText, View sendButton, SupabaseClient supabaseClient) {
         this.editText = editText;
         this.context = editText.getContext();
-        this.usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
+        this.supabaseClient = supabaseClient; // Initialize Supabase client
         this.sendButton = sendButton;
         setupPopupWindow();
     }
@@ -100,30 +99,41 @@ public class UserMention implements TextWatcher, SearchUserAdapter.OnUserClickLi
     }
 
     private void searchUsers(String query) {
-        Query searchQuery = usersRef.orderByChild("username")
-                .startAt(query)
-                .endAt(query + "\uf8ff")
-                .limitToFirst(10);
-
-        searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                userList.clear();
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    User user = snapshot.getValue(User.class);
-                    if (user != null) {
-                        user.setUid(snapshot.getKey());
-                        userList.add(user);
+        // TODO(supabase): Implement with Supabase PostgREST
+        /*
+        supabaseClient.postgrest[USERS_TABLE]
+                .select("uid,username,nickname,avatar") // Adjust columns as needed
+                .ilike("username", "%" + query + "%") // Case-insensitive search
+                .limit(10)
+                .execute()
+                .thenAccept(response -> {
+                    userList.clear();
+                    if (response.getStatus() == 200) {
+                        try {
+                            JSONArray jsonArray = new JSONArray(response.getData());
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                                User user = new User();
+                                user.setUid(jsonObject.optString("uid"));
+                                user.setUsername(jsonObject.optString("username"));
+                                user.setNickname(jsonObject.optString("nickname"));
+                                user.setAvatar(jsonObject.optString("avatar"));
+                                userList.add(user);
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
                     }
-                }
-                searchUserAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                // Handle error
-            }
-        });
+                    searchUserAdapter.notifyDataSetChanged();
+                })
+                .exceptionally(e -> {
+                    e.printStackTrace();
+                    return null;
+                });
+        */
+        // Placeholder for now
+        userList.clear();
+        searchUserAdapter.notifyDataSetChanged();
     }
 
     private void showPopup() {

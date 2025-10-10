@@ -18,8 +18,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
@@ -28,6 +26,11 @@ import com.synapse.social.studioasinc.model.toHashMap
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import java.util.*
 
+// TODO: Migrate to Supabase
+// This activity is responsible for creating a new post.
+// The following needs to be done:
+// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
+// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 class CreatePostActivity : AppCompatActivity() {
 
     // UI Components
@@ -52,11 +55,6 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressDialog: androidx.appcompat.app.AlertDialog? = null
     private var progressBar: ProgressBar? = null
     private var progressPercentage: TextView? = null
-    
-    // Firebase
-    private val firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    private val postsRef = firebase.getReference("skyline/posts")
     
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -257,8 +255,9 @@ class CreatePostActivity : AppCompatActivity() {
             return
         }
         
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+        // TODO(supabase): Replace with Supabase Auth
+        val currentUserUid = "TODO" // Replace with actual Supabase user ID
+        if (currentUserUid == "TODO") {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
         }
@@ -266,10 +265,10 @@ class CreatePostActivity : AppCompatActivity() {
         showLoading(true)
         
         // Create post object
-        val postKey = postsRef.push().key ?: return
+        val postKey = UUID.randomUUID().toString()
         val post = Post(
             key = postKey,
-            uid = currentUser.uid,
+            uid = currentUserUid,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
@@ -320,21 +319,23 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun savePostToDatabase(post: Post) {
-        postsRef.child(post.key).setValue(post.toHashMap())
-            .addOnSuccessListener {
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                    handleMentions(post.postText, post.key)
-                    finish()
-                }
-            }
-            .addOnFailureListener { exception ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+        // TODO(supabase): Implement with Supabase
+        // val client = SupabaseClientManager.client
+        // client.postgrest["posts"].insert(post.toHashMap())
+        //     .then { 
+        //         runOnUiThread {
+        //             showLoading(false)
+        //             Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
+        //             handleMentions(post.postText, post.key)
+        //             finish()
+        //         }
+        //     }
+        //     .catch { exception ->
+        //         runOnUiThread {
+        //             showLoading(false)
+        //             Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
+        //         }
+        //     }
     }
 
     private fun handleMentions(text: String?, postKey: String) {

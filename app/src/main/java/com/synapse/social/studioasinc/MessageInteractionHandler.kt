@@ -19,8 +19,6 @@ import android.widget.PopupWindow
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 import com.synapse.social.studioasinc.ChatConstants.CHATS_REF
@@ -28,11 +26,14 @@ import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
 import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
 import com.synapse.social.studioasinc.ChatConstants.UID_KEY
 
+// TODO: Migrate to Supabase
+// This class is responsible for handling message interactions.
+// The following needs to be done:
+// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
+// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val listener: ChatInteractionListener,
-    private val auth: FirebaseAuth,
-    private val _firebase: FirebaseDatabase,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val chatMessagesListRecycler: RecyclerView,
     private val vbr: android.os.Vibrator,
@@ -55,9 +56,9 @@ class MessageInteractionHandler(
         }
 
         val messageData = chatMessagesList[position]
-        val currentUser = auth.currentUser
+        // TODO: Replace with Supabase Auth
         val senderUid = messageData[UID_KEY]?.toString()
-        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
+        val isMine = false //currentUser != null && senderUid != null && senderUid == currentUser.uid
         val messageText = messageData[MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
@@ -113,15 +114,7 @@ class MessageInteractionHandler(
             editText.setText(messageText)
             dialog.setPositiveButton("Save") { _, _ ->
                 val newText = editText.text.toString()
-                val cu = auth.currentUser
-                val myUid = cu?.uid
-                if (myUid == null) return@setPositiveButton
-                val otherUid = activity.intent.getStringExtra(UID_KEY)
-                val msgKey = messageData[KEY_KEY]?.toString()
-                if (otherUid == null || msgKey == null) return@setPositiveButton
-                val chatID = ChatMessageManager.getChatId(myUid, otherUid)
-                val msgRef = _firebase.getReference(CHATS_REF).child(chatID).child(msgKey)
-                msgRef.child(MESSAGE_TEXT_KEY).setValue(newText)
+                // TODO: Implement with Supabase
             }
             dialog.setNegativeButton("Cancel", null)
             val shownDialog = dialog.show()
@@ -200,7 +193,8 @@ class MessageInteractionHandler(
     }
 
     private fun getSenderNameForMessage(message: HashMap<String, Any>): String {
-        val isMyMessage = message[UID_KEY].toString() == auth.currentUser?.uid
+        // TODO: Replace with Supabase Auth
+        val isMyMessage = false // message[UID_KEY].toString() == auth.currentUser?.uid
         return if (isMyMessage) firstUserName else secondUserName
     }
 

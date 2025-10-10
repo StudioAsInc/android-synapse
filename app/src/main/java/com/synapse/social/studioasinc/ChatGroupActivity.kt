@@ -24,22 +24,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.auth.FirebaseAuth
 import androidx.activity.OnBackPressedCallback
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashMap
 
+
 class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
-    private var chatMessagesRef: DatabaseReference? = null
     private var oldestMessageKey: String? = null
     private var isLoading = false
     private val CHAT_PAGE_SIZE = 80
     private var chatAdapter: ChatAdapter? = null
-    private var _chat_child_listener: ChildEventListener? = null
     private val messageKeys: MutableSet<String> = HashSet()
     private val ChatMessagesList: ArrayList<HashMap<String, Any>> = ArrayList()
     private val repliedMessagesCache: HashMap<String, HashMap<String, Any>> = HashMap()
@@ -72,9 +69,6 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private var timer: java.util.TimerTask? = null
     private val _timer = java.util.Timer()
 
-
-    private val _firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,11 +131,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         ChatMessagesListRecycler.adapter = chatAdapter
 
         val groupId = intent.getStringExtra("uid")
-        chatMessagesRef = _firebase.getReference("group-chats").child(groupId!!)
 
-        _getGroupReference()
-        _getChatMessagesRef()
-        _attachChatListener()
 
         back.setOnClickListener { finish() }
 
@@ -211,184 +201,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         }
     }
 
-    private fun _getGroupReference() {
-        val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-                    
-                    // Fetch member usernames for displaying in chat bubbles
-                    fetchMemberUsernames(dataSnapshot)
-                    Glide.with(applicationContext)
-                        .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
-                        .into(topProfileLayoutProfileImage)
-                    topProfileLayoutStatus.text = "Group"
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
-    }
-
-    private fun _getChatMessagesRef() {
-        isLoading = true
-        val getChatsMessages = chatMessagesRef!!.limitToLast(CHAT_PAGE_SIZE)
-        getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    val initialMessages = ArrayList<HashMap<String, Any>>()
-                    for (_data in dataSnapshot.children) {
-                        val messageData =
-                            _data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                        if (messageData != null && messageData.containsKey("key")) {
-                            initialMessages.add(messageData)
-                            messageKeys.add(messageData["key"].toString())
-                        }
-                    }
-                    if (initialMessages.isNotEmpty()) {
-                        initialMessages.sortWith { msg1, msg2 ->
-                            val time1 = _getMessageTimestamp(msg1)
-                            val time2 = _getMessageTimestamp(msg2)
-                            time1.compareTo(time2)
-                        }
-                        oldestMessageKey = initialMessages[0]["key"].toString()
-                        ChatMessagesList.addAll(initialMessages)
-                        chatAdapter?.notifyDataSetChanged()
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-                isLoading = false
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                isLoading = false
-            }
-        })
-    }
-
-    private fun _attachChatListener() {
-        if (chatMessagesRef == null) return
-        _chat_child_listener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                val newMessage =
-                    dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                if (newMessage != null && newMessage.containsKey("key")) {
-                    val messageKey = newMessage["key"].toString()
-                    if (!messageKeys.contains(messageKey)) {
-                        messageKeys.add(messageKey)
-                        val insertPosition = _findCorrectInsertPosition(newMessage)
-                        ChatMessagesList.add(insertPosition, newMessage)
-                        chatAdapter?.notifyItemInserted(insertPosition)
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-            }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
-        }
-        chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
-    }
-    
-    private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
-        val membersSnapshot = groupSnapshot.child("members")
-        if (membersSnapshot.exists()) {
-            val memberUids = mutableListOf<String>()
-            for (memberSnapshot in membersSnapshot.children) {
-                memberSnapshot.key?.let { memberUids.add(it) }
-            }
-
-            auth.currentUser?.uid?.let {
-                if (!memberUids.contains(it)) {
-                    memberUids.add(it)
-                }
-            }
-
-            val totalMembers = memberUids.size
-            var membersProcessed = 0
-
-            for (memberUid in memberUids) {
-                _firebase.getReference("skyline/users").child(memberUid).child("username")
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(userSnapshot: DataSnapshot) {
-                            val username = userSnapshot.getValue(String::class.java)
-                            if (username != null) {
-                                memberNamesMap[memberUid] = username
-                                if (memberUid == auth.currentUser?.uid) {
-                                    FirstUserName = username
-                                    chatAdapter?.setFirstUserName(username)
-                                }
-                            }
-
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-                    })
-            }
-        }
-    }
-
-    private fun _send_btn() {
-        val messageText = message_et.text.toString().trim()
-        val senderUid = auth.currentUser!!.uid
-        val groupId = intent.getStringExtra("uid")
-
-        if (messageText.isNotEmpty()) {
-            val uniqueMessageKey = chatMessagesRef!!.push().key
-            val chatSendMap = HashMap<String, Any>()
-            chatSendMap["uid"] = senderUid
-            chatSendMap["message_text"] = messageText
-            chatSendMap["message_state"] = "sended"
-            chatSendMap["key"] = uniqueMessageKey!!
-            chatSendMap["push_date"] = ServerValue.TIMESTAMP
-
-            chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
-            message_et.setText("")
-            _updateInbox(messageText)
-        }
-    }
-
-    private fun _updateInbox(lastMessage: String) {
-        val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.child("members").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
-                            val cc = Calendar.getInstance()
-                            val chatInboxSend = HashMap<String, Any>()
-                            chatInboxSend["chatID"] = groupId
-                            chatInboxSend["uid"] = groupId
-                            chatInboxSend["last_message_uid"] = auth.currentUser!!.uid
-                            chatInboxSend["last_message_text"] = lastMessage
-                            chatInboxSend["last_message_state"] = "sended"
-                            chatInboxSend["push_date"] = cc.timeInMillis.toString()
-                            chatInboxSend["chat_type"] = "group"
-                            _firebase.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
-                        }
-                    }
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
+    .
     }
 
     private fun _findCorrectInsertPosition(newMessage: HashMap<String, Any>): Int {
@@ -517,28 +330,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
     private fun _sendVoiceMessage(audioUrl: String, duration: Long) {
-        val senderUid = auth.currentUser!!.uid
-        val groupId = intent.getStringExtra("uid")
-        val uniqueMessageKey = chatMessagesRef!!.push().key
-
-        val chatSendMap = HashMap<String, Any>()
-        chatSendMap["uid"] = senderUid
-        chatSendMap["type"] = "VOICE_MESSAGE"
-        chatSendMap["audio_url"] = audioUrl
-        chatSendMap["audio_duration"] = duration
-        chatSendMap["message_state"] = "sended"
-        if (ReplyMessageID != null && ReplyMessageID != "null") {
-            chatSendMap["replied_message_id"] = ReplyMessageID!!
-        }
-        chatSendMap["key"] = uniqueMessageKey!!
-        chatSendMap["push_date"] = ServerValue.TIMESTAMP
-
-        chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
-
-        _updateInbox("Voice Message")
-
-        ReplyMessageID = "null"
-        mMessageReplyLayout.visibility = View.GONE
+        // TODO: Implement with Supabase
     }
 
     private fun _startUploadForItem(position: Int) {

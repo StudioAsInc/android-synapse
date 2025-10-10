@@ -1,15 +1,15 @@
 package com.synapse.social.studioasinc.util
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+// import com.google.firebase.auth.FirebaseAuth
+// import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import java.util.Calendar
 import java.util.HashMap
 
 object ChatMessageManager {
 
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    // private val firebaseDatabase = Supabase.client
+    // private val auth = Supabase.auth
 
     private const val SKYLINE_REF = "skyline"
     private const val CHATS_REF = "chats"
@@ -35,88 +35,27 @@ object ChatMessageManager {
         }
     }
 
-    fun sendMessageToDb(
-        messageMap: HashMap<String, Any>,
-        senderUid: String,
-        recipientUid: String,
-        uniqueMessageKey: String,
-        isGroup: Boolean
-    ) {
-        if (isGroup) {
-            firebaseDatabase.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey)
-                .setValue(messageMap)
-        } else {
-            val chatId = getChatId(senderUid, recipientUid)
-            val fanOutObject = hashMapOf<String, Any?>(
-                "/$CHATS_REF/$chatId/$uniqueMessageKey" to messageMap,
-                "/$USER_CHATS_REF/$senderUid/$chatId" to true,
-                "/$USER_CHATS_REF/$recipientUid/$chatId" to true
-            )
-            firebaseDatabase.reference.updateChildren(fanOutObject)
-        }
-    }
+    // Supabase: fun sendMessageToDb(
+    // Supabase:     messageMap: HashMap<String, Any>,
+    // Supabase:     senderUid: String,
+    // Supabase:     recipientUid: String,
+    // Supabase:     uniqueMessageKey: String,
+    // Supabase:     isGroup: Boolean
+    // Supabase: ) {
+    // Supabase:     // Supabase: Implement with Supabase
+    // Supabase: }
 
-    fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = auth.currentUser?.uid ?: return
+    // Supabase: fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
+    // Supabase:     // Supabase: Implement with Supabase
+    // Supabase: }
 
-        if (isGroup) {
-            val groupRef = firebaseDatabase.getReference(SKYLINE_REF).child("groups").child(recipientUid)
-            groupRef.child("members").get().addOnSuccessListener { dataSnapshot ->
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
-                            val inboxUpdate = createInboxUpdate(
-                                chatId = recipientUid,
-                                conversationPartnerUid = recipientUid,
-                                lastMessage = lastMessage,
-                                isGroup = true
-                            )
-                            firebaseDatabase.getReference(INBOX_REF).child(memberUid).child(recipientUid)
-                                .setValue(inboxUpdate)
-                        }
-                    }
-                }
-            }
-        } else {
-            // Update inbox for the current user
-            val senderInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = recipientUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(senderUid).child(recipientUid)
-                .setValue(senderInboxUpdate)
-
-            // Update inbox for the other user
-            val recipientInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = senderUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(recipientUid).child(senderUid)
-                .setValue(recipientInboxUpdate)
-        }
-    }
-
-    private fun createInboxUpdate(
-        chatId: String,
-        conversationPartnerUid: String,
-        lastMessage: String,
-        isGroup: Boolean
-    ): HashMap<String, Any> {
-        val senderUid = auth.currentUser?.uid ?: ""
-        return hashMapOf(
-            CHAT_ID_KEY to chatId,
-            UID_KEY to conversationPartnerUid,
-            LAST_MESSAGE_UID_KEY to senderUid,
-            LAST_MESSAGE_TEXT_KEY to lastMessage,
-            LAST_MESSAGE_STATE_KEY to "sended",
-            PUSH_DATE_KEY to System.currentTimeMillis().toString(),
-            "chat_type" to if (isGroup) "group" else "single",
-            "isGroup" to isGroup.toString()
-        )
-    }
+    // Supabase: private fun createInboxUpdate(
+    // Supabase:     chatId: String,
+    // Supabase:     conversationPartnerUid: String,
+    // Supabase:     lastMessage: String,
+    // Supabase:     isGroup: Boolean
+    // Supabase: ): HashMap<String, Any> {
+    // Supabase:     // Supabase: Implement with Supabase
+    // Supabase:     return hashMapOf()
+    // Supabase: }
 }

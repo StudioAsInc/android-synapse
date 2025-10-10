@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc.util
 import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
+
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.PresenceManager
 import com.synapse.social.studioasinc.SketchwareUtil
@@ -11,15 +11,18 @@ import java.io.File
 
 class ItemUploadHandler(
     private val context: Context,
-    private val auth: FirebaseAuth,
+    // TODO(supabase): Replace with Supabase Auth
+    // private val auth: FirebaseAuth,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val rv_attacmentList: RecyclerView,
     private val onUploadSuccess: (String) -> Unit
 ) {
 
     fun startUpload(position: Int) {
-        if (auth.currentUser != null) {
-            PresenceManager.setActivity(auth.currentUser!!.uid, "Sending an attachment")
+        // TODO(supabase): Replace with Supabase Auth
+        val currentUserId = "TODO" // Replace with actual Supabase user ID
+        if (currentUserId != "TODO") {
+            PresenceManager.setActivity(currentUserId, "Sending an attachment")
         }
 
         if (position < 0 || position >= attactmentmap.size) {

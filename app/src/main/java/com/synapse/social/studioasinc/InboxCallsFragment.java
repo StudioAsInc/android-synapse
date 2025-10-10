@@ -43,7 +43,7 @@ public class InboxCallsFragment extends Fragment {
 	public View onCreateView(@NonNull LayoutInflater _inflater, @Nullable ViewGroup _container, @Nullable Bundle _savedInstanceState) {
 		View _view = _inflater.inflate(R.layout.fragment_inbox_calls, _container, false);
 		initialize(_savedInstanceState, _view);
-		FirebaseApp.initializeApp(getContext());
+		
 		initializeLogic();
 		return _view;
 	}

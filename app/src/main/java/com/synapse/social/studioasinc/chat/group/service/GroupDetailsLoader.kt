@@ -6,11 +6,8 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+// import io.github.janbarari.supabase.SupabaseClient
+// import io.github.janbarari.supabase.PostgrestClient
 
 class GroupDetailsLoader(
     private val context: Context,
@@ -22,27 +19,27 @@ class GroupDetailsLoader(
     private val topProfileLayoutStatus: TextView
 ) {
 
-    private val firebaseDatabase: FirebaseDatabase = FirebaseDatabase.getInstance()
+    // private val supabaseClient: SupabaseClient = SupabaseClient.getInstance()
 
     fun loadGroupDetails() {
-        val groupRef: DatabaseReference = firebaseDatabase.getReference("groups").child(groupId)
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-                    val iconUrl = dataSnapshot.child("icon").getValue(String::class.java)
-                    if (iconUrl != null) {
-                        Glide.with(context).load(Uri.parse(iconUrl)).into(topProfileLayoutProfileImage)
-                    }
-                    topProfileLayoutGenderBadge.visibility = View.GONE
-                    topProfileLayoutVerifiedBadge.visibility = View.GONE
-                    topProfileLayoutStatus.text = "Group"
+        // Supabase: Implement group details loading using Supabase client
+        /*
+        supabaseClient.from("groups").select().eq("id", groupId).single().execute {
+            onSuccess {
+                val groupData = it.data as Map<String, Any>
+                topProfileLayoutUsername.text = groupData["name"] as String
+                val iconUrl = groupData["icon"] as String?
+                if (iconUrl != null) {
+                    Glide.with(context).load(Uri.parse(iconUrl)).into(topProfileLayoutProfileImage)
                 }
+                topProfileLayoutGenderBadge.visibility = View.GONE
+                topProfileLayoutVerifiedBadge.visibility = View.GONE
+                topProfileLayoutStatus.text = "Group"
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
+            onFailure {
                 // Handle error
             }
-        })
+        }
+        */
     }
 }

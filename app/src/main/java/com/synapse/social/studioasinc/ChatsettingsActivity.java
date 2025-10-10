@@ -1,5 +1,9 @@
 package com.synapse.social.studioasinc;
 
+// TODO(supabase): Add Supabase imports for PostgREST and Auth
+// import io.supabase.postgrest.PostgrestClient;
+// import io.supabase.gotrue.GoTrueClient;
+
 import android.animation.*;
 import android.app.*;
 import android.app.Activity;
@@ -47,17 +51,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+
 import com.synapse.social.studioasinc.CenterCropLinearLayoutNoEffect;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -69,11 +63,13 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.slider.Slider;
+import com.google.android.material.slider.Slider;
+
 
 public class ChatsettingsActivity extends AppCompatActivity {
 	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private SupabaseClient supabaseClient; // TODO(supabase): Initialize Supabase client
+    private GoTrueClient auth; // TODO(supabase): Initialize Supabase Auth client
 	
 	private String UserAvatarUri = "";
 	private double theme = 0;
@@ -190,20 +186,7 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	private TextView textview55;
 	private TextView textview56;
 	
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private Intent intent = new Intent();
-	private DatabaseReference mainDb = _firebase.getReference("/");
-	private ChildEventListener _mainDb_child_listener;
+
 	private AlertDialog.Builder d;
 	private Vibrator v;
 	private AlertDialog.Builder zorry;
@@ -214,7 +197,7 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_chatsettings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+
 		initializeLogic();
 	}
 	
@@ -329,7 +312,8 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		imageview29 = findViewById(R.id.imageview29);
 		textview55 = findViewById(R.id.textview55);
 		textview56 = findViewById(R.id.textview56);
-		auth = FirebaseAuth.getInstance();
+		// TODO(supabase): Initialize Supabase Auth client
+        // auth = SupabaseClientManager.client.auth;
 		d = new AlertDialog.Builder(this);
 		v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		zorry = new AlertDialog.Builder(this);
@@ -344,133 +328,6 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		
 		
 		
-		_mainDb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		mainDb.addChildEventListener(_mainDb_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
 	}
 	
 	private void initializeLogic() {
@@ -584,7 +441,7 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		account_stage.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)35, 0xFFFFFFFF));
 		account_stack_2.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)35, 0xFFFFFFFF));
 		account_stack_3.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)35, 0xFFFFFFFF));
-		_getUserReference();
+
 		mRepliedMessageLayoutLeftBar.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)360, (int)0, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary)));
 		mProfileImage.setImageResource(R.drawable.ashik_dp);
 		_ImgRound(mProfileImage, 300);
@@ -612,52 +469,7 @@ public class ChatsettingsActivity extends AppCompatActivity {
 	}
 	
 	
-	public void _getUserReference() {
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
-						
-					} else {
-						if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-							
-						} else {
-							
-						}
-					}
-					if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
-						
-					} else {
-						
-					}
-					if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
-						
-					} else {
-						if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
-							
-						} else {
-							if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
-								
-							}
-						}
-					}
-					if (dataSnapshot.child("user_region").getValue(String.class) != null) {
-						
-					} else {
-						
-					}
-				} else {
-				}
-			}
-			
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
-			}
-		});
-	}
+
 	
 	
 	public void _ImgRound(final ImageView _imageview, final double _value) {
@@ -698,4 +510,4 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		_view.setBackground(s);
 	}
 	
-}
+}

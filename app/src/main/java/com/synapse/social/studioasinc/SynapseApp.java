@@ -9,15 +9,6 @@ import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.onesignal.OneSignal;
 import com.onesignal.debug.LogLevel;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
@@ -27,16 +18,16 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.lifecycle.LifecycleOwner;
 
+// TODO(supabase): Initialize the Supabase client here.
+// The Supabase client should be a singleton and accessible throughout the app.
+// See: https://supabase.com/docs/reference/kotlin/initializing
+
 public class SynapseApp extends Application implements DefaultLifecycleObserver {
     
     private static Context mContext;
     private Thread.UncaughtExceptionHandler mExceptionHandler;
     
-    public static FirebaseAuth mAuth;
-    
-    public static DatabaseReference getCheckUserReference;
-    public static DatabaseReference setUserStatusRef;
-    public static DatabaseReference setUserStatusReference;
+    // TODO(supabase): Replace these with Supabase services.
     
     public static Calendar mCalendar;
     
@@ -51,19 +42,15 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         this.mExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
         this.mCalendar = Calendar.getInstance();
         
-        // Initialize Firebase with disk persistence
-        FirebaseApp.initializeApp(this);
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+        // TODO(supabase): Initialize the Supabase client here.
         
         // Create notification channels
         createNotificationChannels();
         
-        this.mAuth = FirebaseAuth.getInstance();
-        this.getCheckUserReference = FirebaseDatabase.getInstance().getReference("skyline/users");
-        this.setUserStatusRef = FirebaseDatabase.getInstance().getReference(".info/connected");
+        // TODO(supabase): Replace with Supabase Auth and Database services.
         
-        // Keep users data synced for offline use
-        getCheckUserReference.keepSynced(true);
+        // TODO(supabase): Implement offline support with Supabase if needed.
+        // See: https://supabase.com/docs/guides/realtime/presence#offline-support
         
         // Set up global exception handler
         Thread.setDefaultUncaughtExceptionHandler(
@@ -106,34 +93,20 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Set up notification click handler for in-app navigation
         OneSignal.getNotifications().addClickListener(new NotificationClickHandler());
 
-        // Add a subscription observer to get the Player ID and save it to Firestore
+        // Add a subscription observer to get the Player ID and save it to the database
         OneSignal.getUser().getPushSubscription().addObserver(new IPushSubscriptionObserver() {
             @Override
             public void onPushSubscriptionChange(@NonNull PushSubscriptionChangedState state) {
                 if (state.getCurrent().getOptedIn()) {
                     String playerId = state.getCurrent().getId();
-                    if (mAuth.getCurrentUser() != null && playerId != null) {
-                        String userUid = mAuth.getCurrentUser().getUid();
-                        OneSignalManager.savePlayerIdToRealtimeDatabase(userUid, playerId);
-                    }
+                    // TODO(supabase): Save the OneSignal player ID to the Supabase user profile.
                 }
             }
         });
     }
 
-    @Override
-    public void onStart(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOnline(mAuth.getCurrentUser().getUid());
-        }
-    }
-
-    @Override
-    public void onStop(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOffline(mAuth.getCurrentUser().getUid());
-        }
-    }
+    // TODO(supabase): Implement user presence with Supabase Realtime.
+    // See: https://supabase.com/docs/guides/realtime/presence
     
     private void createNotificationChannels() {
         // Create notification channels for Android O and above
@@ -170,12 +143,5 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         }
     }
     
-    /**
-     * Enable offline persistence for any database reference
-     * @param ref DatabaseReference to enable offline sync for
-     */
-    public static void enableOfflineSync(DatabaseReference ref) {
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-        ref.keepSynced(true);
-    }
+    // TODO(supabase): Implement offline support with Supabase if needed.
 }

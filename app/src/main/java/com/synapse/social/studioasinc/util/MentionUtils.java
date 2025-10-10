@@ -8,12 +8,9 @@ import android.text.style.ClickableSpan;
 import android.view.View;
 import android.widget.TextView;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
+// TODO(supabase): Add Supabase imports for PostgREST and Realtime
+// import io.supabase.postgrest.PostgrestClient;
+// import io.supabase.realtime.RealtimeClient;
 import com.synapse.social.studioasinc.ProfileActivity;
 import com.synapse.social.studioasinc.R;
 
@@ -23,7 +20,7 @@ import java.util.ArrayList;
 
 public class MentionUtils {
 
-    public static void handleMentions(Context context, TextView textView, String text) {
+    public static void handleMentions(Context context, TextView textView, String text, SupabaseClient supabaseClient) {
         SpannableString spannableString = new SpannableString(text);
         Pattern pattern = Pattern.compile("@(\\w+)");
         Matcher matcher = pattern.matcher(text);
@@ -37,28 +34,38 @@ public class MentionUtils {
                 ClickableSpan clickableSpan = new ClickableSpan() {
                     @Override
                     public void onClick(View widget) {
-                        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
-                        Query query = usersRef.orderByChild("username").equalTo(username);
-                        query.addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                if (dataSnapshot.exists()) {
-                                    for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
-                                        String uid = userSnapshot.getKey();
-                                        if (uid != null) {
-                                            Intent intent = new Intent(context, ProfileActivity.class);
-                                            intent.putExtra("uid", uid);
-                                            context.startActivity(intent);
+                        // TODO(supabase): Implement with Supabase PostgREST
+                        /*
+                        supabaseClient.postgrest["users"]
+                                .select("uid")
+                                .eq("username", username)
+                                .single()
+                                .thenAccept(response -> {
+                                    if (response.getStatus() == 200) {
+                                        try {
+                                            JSONObject jsonObject = new JSONObject(response.getData());
+                                            String uid = jsonObject.optString("uid");
+                                            if (uid != null) {
+                                                Intent intent = new Intent(context, ProfileActivity.class);
+                                                intent.putExtra("uid", uid);
+                                                context.startActivity(intent);
+                                            }
+                                        } catch (JSONException e) {
+                                            // Handle error
                                         }
+                                    } else {
+                                        // Handle error
                                     }
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                                // Handle error
-                            }
-                        });
+                                })
+                                .exceptionally(e -> {
+                                    // Handle error
+                                    return null;
+                                });
+                        */
+                        // Placeholder for now
+                        Intent intent = new Intent(context, ProfileActivity.class);
+                        intent.putExtra("uid", "TODO_SUPABASE_UID");
+                        context.startActivity(intent);
                     }
 
                     @Override
@@ -75,7 +82,7 @@ public class MentionUtils {
         textView.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
     }
 
-    public static void sendMentionNotifications(String text, String postKey, String commentKey, String contentType) {
+    public static void sendMentionNotifications(String text, String postKey, String commentKey, String contentType, SupabaseClient supabaseClient) {
         if (text == null) return;
 
         Pattern pattern = Pattern.compile("@(\\w+)");
@@ -93,27 +100,38 @@ public class MentionUtils {
             return;
         }
 
-        // This is not ideal, but Firebase Realtime Database doesn't support "in" queries.
-        // For a large user base, this should be handled by a backend service.
-        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("skyline/users");
-        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
-                    String username = userSnapshot.child("username").getValue(String.class);
-                    if (username != null && mentionedUsernames.contains(username)) {
-                        String uid = userSnapshot.getKey();
-                        if (uid != null) {
-                            NotificationUtils.sendMentionNotification(uid, postKey, commentKey, contentType);
+        // TODO(supabase): Implement with Supabase PostgREST
+        /*
+        supabaseClient.postgrest["users"]
+                .select("uid,username")
+                .in("username", mentionedUsernames.toArray(new String[0]))
+                .thenAccept(response -> {
+                    if (response.getStatus() == 200) {
+                        try {
+                            JSONArray jsonArray = new JSONArray(response.getData());
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject userObject = jsonArray.getJSONObject(i);
+                                String uid = userObject.optString("uid");
+                                String username = userObject.optString("username");
+                                if (uid != null && mentionedUsernames.contains(username)) {
+                                    NotificationUtils.sendMentionNotification(uid, postKey, commentKey, contentType);
+                                }
+                            }
+                        } catch (JSONException e) {
+                            // Handle error
                         }
+                    } else {
+                        // Handle error
                     }
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                // Handle error
-            }
-        });
+                })
+                .exceptionally(e -> {
+                    // Handle error
+                    return null;
+                });
+        */
+        // Placeholder for now
+        for (String username : mentionedUsernames) {
+            NotificationUtils.sendMentionNotification("TODO_SUPABASE_UID_FOR_" + username, postKey, commentKey, contentType);
+        }
     }
 }

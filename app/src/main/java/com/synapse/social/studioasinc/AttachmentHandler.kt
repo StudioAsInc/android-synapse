@@ -6,7 +6,8 @@ import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
+// TODO(supabase): Migrate to Supabase Auth.
+// import com.google.firebase.auth.FirebaseAuth
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
@@ -17,7 +18,8 @@ class AttachmentHandler(
     private var attactmentmap: ArrayList<HashMap<String, Any>>,
     private val close_attachments_btn: View,
     private val galleryBtn: View,
-    private val auth: FirebaseAuth
+        // TODO(supabase): Migrate to Supabase Auth.
+    // private val auth: FirebaseAuth
 ) {
 
     fun setup() {
@@ -35,12 +37,14 @@ class AttachmentHandler(
 
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
             val chatId = ChatMessageManager.getChatId(
-                auth.currentUser!!.uid,
+                        // TODO(supabase): Get current user ID from Supabase Auth
+                "TODO(supabase): current user uid",
                 activity.intent.getStringExtra("uid")
             )
             drafts.edit().remove(chatId + "_attachments").apply()
-            if (auth.currentUser != null) {
-                PresenceManager.setActivity(auth.currentUser!!.uid, "Idle")
+                        if (/* TODO(supabase): Check if user is logged in */ true) {
+                // TODO(supabase): Get current user ID from Supabase Auth
+                PresenceManager.setActivity("TODO(supabase): current user uid", "Idle")
             }
         }
 

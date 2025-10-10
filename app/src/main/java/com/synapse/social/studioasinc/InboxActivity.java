@@ -68,7 +68,7 @@ public class InboxActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_inbox);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		
 		initializeLogic();
 	}
 

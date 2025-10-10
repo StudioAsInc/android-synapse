@@ -65,7 +65,7 @@ public class DisappearingMessageSettingsActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_disappearing_message_settings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		
 		initializeLogic();
 	}
 	

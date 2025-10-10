@@ -1,7 +1,7 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.google.firebase.database.FirebaseDatabase
+// import com.google.firebase.database.FirebaseDatabase
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -46,18 +46,16 @@ object NotificationHelper {
             return
         }
 
-        val userDb = FirebaseDatabase.getInstance().getReference("skyline/users")
-        userDb.child(recipientUid).child("oneSignalPlayerId").get().addOnSuccessListener {
-            val recipientOneSignalPlayerId = it.getValue(String::class.java)
+        // Supabase: val userDb = Supabase.client.from("users")
+        // Supabase: val recipientOneSignalPlayerId = userDb.select("oneSignalPlayerId").eq("uid", recipientUid).single().execute().data?.get("oneSignalPlayerId") as? String
             if (recipientOneSignalPlayerId.isNullOrBlank()) {
                 Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
                 return@addOnSuccessListener
             }
 
-            val recipientStatusRef = FirebaseDatabase.getInstance().getReference("/skyline/users/$recipientUid/status")
+            // Supabase: val recipientStatusRef = Supabase.client.from("users").select("status").eq("uid", recipientUid).single()
 
-            recipientStatusRef.get().addOnSuccessListener { dataSnapshot ->
-                val recipientStatus = dataSnapshot.getValue(String::class.java)
+            // Supabase: recipientStatusRef.execute().data?.get("status") as? String
                 val suppressStatus = "chatting_with_$senderUid"
 
                 if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
@@ -88,7 +86,7 @@ object NotificationHelper {
                     sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
                 }
                 // Removed Firebase RDB chat notifications as requested
-            }.addOnFailureListener { e ->
+            // Supabase: }.addOnFailureListener { e ->
                 Log.e(TAG, "Status check failed. Defaulting to send notification.", e)
                 if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
                      sendClientSideNotification(
@@ -103,7 +101,7 @@ object NotificationHelper {
                 }
                 // Removed Firebase RDB chat notifications as requested
             }
-        }.addOnFailureListener {
+        // Supabase: }.addOnFailureListener {
             Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", it)
         }
     }

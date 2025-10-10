@@ -6,8 +6,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
 
 class ChatUIUpdater(
     private val activity: ChatActivity,
@@ -20,8 +18,7 @@ class ChatUIUpdater(
     private val topProfileLayoutVerifiedBadge: ImageView,
     private val mMessageReplyLayout: LinearLayout,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
-    private val mMessageReplyLayoutBodyRightMessage: TextView,
-    private val auth: FirebaseAuth
+    private val mMessageReplyLayoutBodyRightMessage: TextView
 ) {
 
     fun updateNoChatVisibility(isEmpty: Boolean) {
@@ -34,13 +31,13 @@ class ChatUIUpdater(
         }
     }
 
-    fun updateUserProfile(dataSnapshot: DataSnapshot) {
-        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-        val username = dataSnapshot.child("username").getValue(String::class.java)
-        val status = dataSnapshot.child("status").getValue(String::class.java)
-        val gender = dataSnapshot.child("gender").getValue(String::class.java)
-        val verified = dataSnapshot.child("verified").getValue(Boolean::class.java)
-        val avatarUrl = dataSnapshot.child("avatar_url").getValue(String::class.java)
+    fun updateUserProfile(userProfile: HashMap<String, Any>) {
+        val nickname = userProfile["nickname"] as? String
+        val username = userProfile["username"] as? String
+        val status = userProfile["status"] as? String
+        val gender = userProfile["gender"] as? String
+        val verified = userProfile["verified"] as? Boolean
+        val avatarUrl = userProfile["avatar_url"] as? String
 
         if (nickname != null && nickname != "null") {
             topProfileLayoutUsername.text = nickname
@@ -69,7 +66,9 @@ class ChatUIUpdater(
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        val isMyMessage = auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
+        // TODO: Replace with Supabase Auth
+        val myUid = "TODO" // auth.currentUser!!.uid
+        val isMyMessage = myUid == messageData[ChatConstants.UID_KEY].toString()
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName
         mMessageReplyLayoutBodyRightMessage.text = messageData[ChatConstants.MESSAGE_TEXT_KEY].toString()
         mMessageReplyLayout.visibility = View.VISIBLE

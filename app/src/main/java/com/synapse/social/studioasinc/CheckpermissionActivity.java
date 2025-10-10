@@ -28,7 +28,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
+
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -56,7 +56,8 @@ import android.os.Build;
 import androidx.core.content.ContextCompat;
 import java.util.Timer;
 import java.util.TimerTask;
-import com.synapse.social.studioasinc.permissionreq.AskPermission;
+import com.synapse.social.studioasinc.permissionreq.AskPermission;
+
 
 public class CheckpermissionActivity extends AppCompatActivity {
 	
@@ -72,7 +73,15 @@ public class CheckpermissionActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_checkpermission);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// TODO(supabase): Initialize Supabase client with your project URL and anon key.
+// val supabase = createSupabaseClient(
+//    supabaseUrl = "YOUR_SUPABASE_URL",
+//    supabaseKey = "YOUR_SUPABASE_ANON_KEY"
+// ) {
+//    install(GoTrue)
+//    install(Postgrest)
+//    install(Realtime)
+// }
 		initializeLogic();
 	}
 	
@@ -91,5 +100,6 @@ public class CheckpermissionActivity extends AppCompatActivity {
 	public void onBackPressed() {
 		
 	}
-	
-}
+	
+
+}

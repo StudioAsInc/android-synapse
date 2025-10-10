@@ -1,18 +1,18 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+// import io.github.janbarari.supabase.SupabaseClient
 
 object UserActivity {
 
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
+    // private val supabase = SupabaseClient.getInstance()
 
-    @JvmStatic
-    fun setActivity(uid: String, activity: String) {
-        usersRef.child(uid).child("activity").setValue(activity)
-    }
+    // @JvmStatic
+    // fun setActivity(uid: String, activity: String) {
+    //     supabase.from("users").update(mapOf("activity" to activity)).eq("uid", uid).execute()
+    // }
 
-    @JvmStatic
-    fun clearActivity(uid: String) {
-        usersRef.child(uid).child("activity").removeValue()
-    }
+    // @JvmStatic
+    // fun clearActivity(uid: String) {
+    //     supabase.from("users").update(mapOf("activity" to null)).eq("uid", uid).execute()
+    // }
 }

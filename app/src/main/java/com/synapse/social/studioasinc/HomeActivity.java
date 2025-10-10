@@ -18,21 +18,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.adapter.ViewPagerAdapter;
 
+// TODO: Migrate to Supabase
+// This activity is the main screen of the app.
+// The following needs to be done:
+// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
+// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 public class HomeActivity extends AppCompatActivity {
 
     private static final int REELS_TAB_POSITION = 1;
-    private FirebaseAuth auth;
-    private FirebaseDatabase _firebase;
-    private DatabaseReference udb;
     private ImageView settings_button;
     private ImageView nav_search_ic;
     private ImageView nav_inbox_ic;
@@ -46,7 +41,8 @@ public class HomeActivity extends AppCompatActivity {
     protected void onCreate(Bundle _savedInstanceState) {
         super.onCreate(_savedInstanceState);
         setContentView(R.layout.activity_home);
-        FirebaseApp.initializeApp(this);
+        // TODO: Initialize Supabase client in SynapseApp.java instead of here.
+        // FirebaseApp.initializeApp(this);
         initialize();
         initializeLogic();
     }
@@ -54,9 +50,10 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            PresenceManager.setActivity(FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Home");
-        }
+        // TODO: Implement presence with Supabase Realtime
+        // if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+        //     PresenceManager.setActivity(FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Home");
+        // }
     }
 
     @Override
@@ -65,10 +62,6 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void initialize() {
-        auth = FirebaseAuth.getInstance();
-        _firebase = FirebaseDatabase.getInstance();
-        udb = _firebase.getReference("skyline/users");
-
         tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
         settings_button = findViewById(R.id.settings_button);
@@ -135,7 +128,8 @@ public class HomeActivity extends AppCompatActivity {
 
         nav_profile_ic.setOnClickListener(_view -> {
             Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
-            intent.putExtra("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+            // TODO: Replace with Supabase Auth
+            // intent.putExtra("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
             startActivity(intent);
         });
 
@@ -144,25 +138,7 @@ public class HomeActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        DatabaseReference getReference = udb.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-        getReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if(dataSnapshot.exists()) {
-                    if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-                        Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(nav_profile_ic);
-                    } else {
-                        nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
-                    }
-                } else {
-                    nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
-                }
-            }
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
-            }
-        });
+        // TODO: Get user profile from Supabase
     }
 
     @Override

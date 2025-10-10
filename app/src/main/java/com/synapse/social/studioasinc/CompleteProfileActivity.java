@@ -48,22 +48,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 
 import com.synapse.social.studioasinc.FadeEditText;
 import com.theartofdev.edmodo.cropper.*;
@@ -78,19 +62,16 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
 import com.synapse.social.studioasinc.ImageUploader;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
 import com.synapse.social.studioasinc.util.ViewUtilsKt;
 
+
 public class CompleteProfileActivity extends AppCompatActivity {
 
 	public final int REQ_CD_SELECTAVATAR = 101;
-
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-
 
 	private boolean userNameErr = false;
 	private String avatarUri = "";
@@ -130,34 +111,17 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private com.google.android.material.button.MaterialButton complete_button;
 
 	private Vibrator vbr;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private Intent intent = new Intent();
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
 
 	private Calendar getJoinTime = Calendar.getInstance();
 	private Intent SelectAvatar = new Intent(Intent.ACTION_GET_CONTENT);
-	private DatabaseReference fdb = _firebase.getReference("notify");
-	private ChildEventListener _fdb_child_listener;
-	private DatabaseReference pushusername = _firebase.getReference("synapse/username");
-	private ChildEventListener _pushusername_child_listener;
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_complete_profile);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -206,7 +170,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		skip_button = findViewById(R.id.skip_button);
 		complete_button = findViewById(R.id.complete_button);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		auth = FirebaseAuth.getInstance();
 		SelectAvatar.setType("image/*");
 		SelectAvatar.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 
@@ -249,27 +212,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 									userNameErr = true;
 								} else {
 									username_input.setActivated(false);
-									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
 
-									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
-									checkUsernameQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-										@Override
-										public void onDataChange(DataSnapshot dataSnapshot) {
-											if (dataSnapshot.exists()) {
-												username_input.setActivated(true);
-												((EditText)username_input).setError(getResources().getString(R.string.username_err_already_taken));
-												userNameErr = true;
-											} else {
-												username_input.setActivated(false);
-												userNameErr = false;
-											}
-										}
-
-										@Override
-										public void onCancelled(DatabaseError databaseError) {
-
-										}
-									});
 								}
 							}
 						} else {
@@ -342,12 +285,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			}
 		});
 
-
-
-
-
-
-
 		skip_button.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -366,248 +303,10 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					complete_button.setEnabled(false);
 					complete_button.setText("Loading...");
 					username_input.setEnabled(false);
-					UserDataPusher pusher = new UserDataPusher();
-					pusher.pushData(
-						username_input.getText().toString().trim(),
-						nickname_input.getText().toString().trim(),
-						biography_input.getText().toString().trim(),
-						thedpurl,
-						getIntent().getStringExtra("googleLoginAvatarUri"),
-						FirebaseAuth.getInstance().getCurrentUser().getEmail(),
-						FirebaseAuth.getInstance().getCurrentUser().getUid(),
-						(success, errorMessage) -> {
-							if (success) {
-								intent.setClass(getApplicationContext(), HomeActivity.class);
-								startActivity(intent);
-								finish();
-							} else {
-								username_input.setEnabled(true);
-								complete_button.setEnabled(true);
-								try {
-									complete_button.setText(R.string.continue_button);
-								} catch (Exception e) {
-									complete_button.setText("Continue");
-								}
-								if (errorMessage.equals("Permission denied")) {
-									SketchwareUtil.showMessage(getApplicationContext(), "Email is not verified");
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), errorMessage);
-								}
-							}
-							return null;
-						}
-					);
+
 				}
 			}
 		});
-
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-
-
-
-		_fdb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		fdb.addChildEventListener(_fdb_child_listener);
-
-		_pushusername_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		pushusername.addChildEventListener(_pushusername_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				if (_success) {
-					intent.setClass(getApplicationContext(), MainActivity.class);
-					startActivity(intent);
-					finish();
-				} else {
-					SketchwareUtil.showMessage(getApplicationContext(), _errorMessage);
-					invalidateOptionsMenu();
-				}
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -704,7 +403,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			dialog_yes_button.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					FirebaseAuth.getInstance().signOut();
+
 					finish();
 				}
 			});
@@ -718,16 +417,6 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			NewCustomDialog.show();
 		}
 	}
-
-
-
-
-
-
-
-
-
-
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -761,7 +450,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					@Override
 					public void onClick(View _view) {
 						item.setEnabled(false);
-						FirebaseAuth.getInstance().getCurrentUser().delete().addOnCompleteListener(auth_deleteUserListener);
+
 						NewCustomDialog.dismiss();
 					}
 				});

@@ -5,8 +5,6 @@ import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.ChatUIUpdater
 import java.util.ArrayList
@@ -14,20 +12,22 @@ import java.util.HashMap
 
 class DatabaseHelper(
     private val context: Context,
-    private val firebaseDatabase: FirebaseDatabase,
+    // TODO(supabase): Replace with Supabase client
+    /* private val firebaseDatabase: FirebaseDatabase, */
     private val chatAdapter: ChatAdapter?,
     private var firstUserName: String,
     private val chatUIUpdater: ChatUIUpdater,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val messageKeys: MutableSet<String>,
     private var oldestMessageKey: String?,
-    private val chatMessagesRef: DatabaseReference,
+    // TODO(supabase): Replace with Supabase Realtime channel or PostgREST query
+    /* private val chatMessagesRef: DatabaseReference, */
     private val recyclerView: RecyclerView,
     private val repliedMessagesCache: HashMap<String, HashMap<String, Any>>,
     private val onMessagesLoaded: () -> Unit
 ) {
 
-    private var chatChildListener: ChildEventListener? = null
+    /* private var chatChildListener: Any? = null // TODO(supabase): Replace with Supabase Realtime listener */
     private var isLoading = false
 
     companion object {
@@ -35,86 +35,83 @@ class DatabaseHelper(
     }
 
     fun getUserReference() {
-        val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val getFirstUserNameRef = firebaseDatabase.getReference("skyline/users").child(currentUserUid)
+        // TODO(supabase): Replace with Supabase Auth
+        val currentUserUid = "TODO" // Replace with actual Supabase user ID
+        if (currentUserUid == "TODO") return
 
-        getFirstUserNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                try {
-                    if (dataSnapshot.exists()) {
-                        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-                        val username = dataSnapshot.child("username").getValue(String::class.java)
+        // TODO(supabase): Implement with Supabase PostgREST
+        val getFirstUserNameRef = SupabaseClientManager.client.postgrest["users"]
+            .select("nickname,username")
+            .eq("uid", currentUserUid)
+            .single()
+            .then { response ->
+                val data = response.data as? Map<String, Any>
+                if (data != null) {
+                    val nickname = data["nickname"] as? String
+                    val username = data["username"] as? String
 
-                        firstUserName = when {
-                            nickname != null && nickname != "null" -> nickname
-                            username != null && username != "null" -> "@$username"
-                            else -> "Unknown User"
-                        }
-                    } else {
-                        firstUserName = "Unknown User"
+                    firstUserName = when {
+                        nickname != null && nickname != "null" -> nickname
+                        username != null && username != "null" -> "@$username"
+                        else -> "Unknown User"
                     }
-                    chatAdapter?.setFirstUserName(firstUserName)
-                } catch (e: Exception) {
+                } else {
                     firstUserName = "Unknown User"
-                    Log.e(TAG, "Error processing user data", e)
                 }
+                chatAdapter?.setFirstUserName(firstUserName)
                 getChatMessagesRef()
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
+            .catch { exception ->
                 firstUserName = "Unknown User"
-                Log.e(TAG, "Failed to get user reference", databaseError.toException())
+                Log.e(TAG, "Failed to get user reference", exception)
                 getChatMessagesRef()
             }
-        })
+        // getChatMessagesRef() // Temporarily call to avoid breaking flow
     }
 
     fun getChatMessagesRef() {
-        val getChatsMessagesQuery = chatMessagesRef.limitToLast(80)
+        // TODO(supabase): Implement with Supabase PostgREST
+        SupabaseClientManager.client.postgrest["chat_messages"]
+            .select("*")
+            .order("timestamp", Order.DESC)
+            .limit(80)
+            .then { response ->
+                val data = response.data as? List<Map<String, Any>>
+                if (data != null && data.isNotEmpty()) {
+                    chatUIUpdater.updateNoChatVisibility(false)
+                    chatMessagesList.clear()
+                    messageKeys.clear()
+                    val initialMessages = ArrayList<HashMap<String, Any>>()
 
-        getChatsMessagesQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                try {
-                    if (dataSnapshot.exists()) {
-                        chatUIUpdater.updateNoChatVisibility(false)
-                        chatMessagesList.clear()
-                        messageKeys.clear()
-                        val initialMessages = ArrayList<HashMap<String, Any>>()
-
-                        for (data in dataSnapshot.children) {
-                            try {
-                                val messageData = data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                                if (messageData != null && messageData["key"] != null) {
-                                    initialMessages.add(messageData)
-                                    messageKeys.add(messageData["key"].toString())
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error processing initial message data", e)
+                    for (messageData in data) {
+                        try {
+                            val messageMap = messageData as HashMap<String, Any>
+                            if (messageMap["key"] != null) {
+                                initialMessages.add(messageMap)
+                                messageKeys.add(messageMap["key"].toString())
                             }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error processing initial message data", e)
                         }
-
-                        if (initialMessages.isNotEmpty()) {
-                            initialMessages.sortBy { getMessageTimestamp(it) }
-                            oldestMessageKey = initialMessages.firstOrNull()?.get("key")?.toString()
-                            chatMessagesList.addAll(initialMessages)
-                            chatAdapter?.notifyDataSetChanged()
-                            fetchRepliedMessages(initialMessages)
-                            onMessagesLoaded.invoke()
-                        }
-                    } else {
-                        chatUIUpdater.updateNoChatVisibility(true)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing initial chat messages", e)
+
+                    if (initialMessages.isNotEmpty()) {
+                        initialMessages.sortBy { getMessageTimestamp(it) }
+                        oldestMessageKey = initialMessages.firstOrNull()?.get("key")?.toString()
+                        chatMessagesList.addAll(initialMessages)
+                        chatAdapter?.notifyDataSetChanged()
+                        fetchRepliedMessages(initialMessages)
+                        onMessagesLoaded.invoke()
+                    }
+                } else {
                     chatUIUpdater.updateNoChatVisibility(true)
                 }
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e(TAG, "Initial message load failed", databaseError.toException())
+            .catch { exception ->
+                Log.e(TAG, "Initial message load failed", exception)
                 chatUIUpdater.updateNoChatVisibility(true)
             }
-        })
+        // chatUIUpdater.updateNoChatVisibility(true) // Temporarily set to true
     }
 
     fun getOldChatMessagesRef() {
@@ -124,64 +121,61 @@ class DatabaseHelper(
         isLoading = true
         chatUIUpdater.showLoadMoreIndicator()
 
-        val getChatsMessagesQuery = chatMessagesRef
-            .orderByKey()
-            .endBefore(oldestMessageKey)
-            .limitToLast(80)
-
-        getChatsMessagesQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        // TODO(supabase): Implement with Supabase PostgREST
+        SupabaseClientManager.client.postgrest["chat_messages"]
+            .select("*")
+            .order("timestamp", Order.DESC)
+            .lt("key", oldestMessageKey)
+            .limit(80)
+            .then { response ->
                 chatUIUpdater.hideLoadMoreIndicator()
-                try {
-                    if (dataSnapshot.exists()) {
-                        val newMessages = ArrayList<HashMap<String, Any>>()
-                        for (data in dataSnapshot.children) {
-                            try {
-                                val messageData = data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                                if (messageData != null && messageData["key"] != null) {
-                                    if (!messageKeys.contains(messageData["key"].toString())) {
-                                        newMessages.add(messageData)
-                                        messageKeys.add(messageData["key"].toString())
-                                    }
+                val data = response.data as? List<Map<String, Any>>
+                if (data != null && data.isNotEmpty()) {
+                    val newMessages = ArrayList<HashMap<String, Any>>()
+                    for (messageData in data) {
+                        try {
+                            val messageMap = messageData as HashMap<String, Any>
+                            if (messageMap["key"] != null) {
+                                if (!messageKeys.contains(messageMap["key"].toString())) {
+                                    newMessages.add(messageMap)
+                                    messageKeys.add(messageMap["key"].toString())
                                 }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error processing old message data", e)
                             }
-                        }
-
-                        if (newMessages.isNotEmpty()) {
-                            newMessages.sortBy { getMessageTimestamp(it) }
-                            oldestMessageKey = newMessages.firstOrNull()?.get("key")?.toString()
-
-                            val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                            val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
-                            val firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition)
-                            val topOffset = firstVisibleView?.top ?: 0
-
-                            chatMessagesList.addAll(0, newMessages)
-                            chatAdapter?.notifyItemRangeInserted(0, newMessages.size)
-
-                            if (firstVisibleView != null) {
-                                layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size, topOffset)
-                            }
-                            fetchRepliedMessages(newMessages)
-                        } else {
-                            oldestMessageKey = null
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error processing old message data", e)
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing old messages", e)
-                } finally {
-                    isLoading = false
+
+                    if (newMessages.isNotEmpty()) {
+                        newMessages.sortBy { getMessageTimestamp(it) }
+                        oldestMessageKey = newMessages.firstOrNull()?.get("key")?.toString()
+
+                        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+                        val firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition)
+                        val topOffset = firstVisibleView?.top ?: 0
+
+                        chatMessagesList.addAll(0, newMessages)
+                        chatAdapter?.notifyItemRangeInserted(0, newMessages.size)
+
+                        if (firstVisibleView != null) {
+                            layoutManager.scrollToPositionWithOffset(firstVisiblePosition + newMessages.size, topOffset)
+                        }
+                        fetchRepliedMessages(newMessages)
+                    } else {
+                        oldestMessageKey = null
+                    }
+                } else {
+                    oldestMessageKey = null
                 }
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
+            .catch { exception ->
                 isLoading = false
                 chatUIUpdater.hideLoadMoreIndicator()
-                Log.e(TAG, "Error loading old messages", databaseError.toException())
+                Log.e(TAG, "Error loading old messages", exception)
             }
-        })
+        // isLoading = false // Temporarily set to false
+        // chatUIUpdater.hideLoadMoreIndicator() // Temporarily hide
     }
 
     fun fetchRepliedMessages(messages: ArrayList<HashMap<String, Any>>) {
@@ -202,22 +196,22 @@ class DatabaseHelper(
         for (messageKey in repliedIdsToFetch) {
             repliedMessagesCache[messageKey] = HashMap()
 
-            chatMessagesRef.child(messageKey).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val repliedMessage = snapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                        if (repliedMessage != null) {
-                            repliedMessagesCache[messageKey] = repliedMessage
-                            updateMessageInRecyclerView(messageKey)
-                        }
+            // TODO(supabase): Implement with Supabase PostgREST
+            SupabaseClientManager.client.postgrest["chat_messages"]
+                .select("*")
+                .eq("key", messageKey)
+                .single()
+                .then { response ->
+                    val repliedMessage = response.data as? HashMap<String, Any>
+                    if (repliedMessage != null) {
+                        repliedMessagesCache[messageKey] = repliedMessage
+                        updateMessageInRecyclerView(messageKey)
                     }
                 }
-
-                override fun onCancelled(error: DatabaseError) {
+                .catch { exception ->
                     repliedMessagesCache.remove(messageKey)
-                    Log.e(TAG, "Failed to fetch replied message", error.toException())
+                    Log.e(TAG, "Failed to fetch replied message", exception)
                 }
-            })
         }
     }
 
@@ -242,89 +236,85 @@ class DatabaseHelper(
             detachChatListener()
         }
 
-        chatChildListener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                handleChildAdded(dataSnapshot)
+        // TODO(supabase): Implement with Supabase Realtime
+        chatChildListener = SupabaseClientManager.client.realtime
+            .channel("chat_messages")
+            .on(Event.INSERT) { payload ->
+                val newMessage = payload.newRecord as? HashMap<String, Any>
+                if (newMessage != null) {
+                    handleChildAdded(newMessage)
+                }
             }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                handleChildChanged(snapshot)
+            .on(Event.UPDATE) { payload ->
+                val updatedMessage = payload.newRecord as? HashMap<String, Any>
+                if (updatedMessage != null) {
+                    handleChildChanged(updatedMessage)
+                }
             }
-
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                handleChildRemoved(snapshot)
+            .on(Event.DELETE) { payload ->
+                val removedMessage = payload.oldRecord as? HashMap<String, Any>
+                if (removedMessage != null) {
+                    handleChildRemoved(removedMessage)
+                }
             }
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Chat listener cancelled", error.toException())
-            }
-        }
-        chatMessagesRef.addChildEventListener(chatChildListener!!)
+            .subscribe()
     }
 
     fun detachChatListener() {
         if (chatChildListener != null) {
-            chatMessagesRef.removeEventListener(chatChildListener!!)
+            // TODO(supabase): Implement with Supabase Realtime unsubscribe
+            (chatChildListener as RealtimeChannel).unsubscribe()
             chatChildListener = null
         }
     }
 
-    private fun handleChildAdded(dataSnapshot: DataSnapshot) {
-        if (dataSnapshot.exists()) {
-            val newMessage = dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-            if (newMessage != null && newMessage["key"] != null) {
-                val messageKey = newMessage["key"].toString()
-                if (!messageKeys.contains(messageKey)) {
-                    messageKeys.add(messageKey)
-                    val insertPosition = findCorrectInsertPosition(newMessage)
-                    chatMessagesList.add(insertPosition, newMessage)
-                    chatAdapter?.notifyItemInserted(insertPosition)
-                    if (insertPosition > 0) chatAdapter?.notifyItemChanged(insertPosition - 1)
-                    if (insertPosition < chatMessagesList.size - 1) chatAdapter?.notifyItemChanged(insertPosition + 1)
-                    if (insertPosition == chatMessagesList.size - 1) {
-                        recyclerView.post { recyclerView.smoothScrollToPosition(chatMessagesList.size - 1) }
-                    }
-                    if (newMessage.containsKey("replied_message_id")) {
-                        val singleMessageList = ArrayList<HashMap<String, Any>>()
-                        singleMessageList.add(newMessage)
-                        fetchRepliedMessages(singleMessageList)
-                    }
+    private fun handleChildAdded(newMessage: HashMap<String, Any>) {
+        if (newMessage["key"] != null) {
+            val messageKey = newMessage["key"].toString()
+            if (!messageKeys.contains(messageKey)) {
+                messageKeys.add(messageKey)
+                val insertPosition = findCorrectInsertPosition(newMessage)
+                chatMessagesList.add(insertPosition, newMessage)
+                chatAdapter?.notifyItemInserted(insertPosition)
+                if (insertPosition > 0) chatAdapter?.notifyItemChanged(insertPosition - 1)
+                if (insertPosition < chatMessagesList.size - 1) chatAdapter?.notifyItemChanged(insertPosition + 1)
+                if (insertPosition == chatMessagesList.size - 1) {
+                    recyclerView.post { recyclerView.smoothScrollToPosition(chatMessagesList.size - 1) }
+                }
+                if (newMessage.containsKey("replied_message_id")) {
+                    val singleMessageList = ArrayList<HashMap<String, Any>>()
+                    singleMessageList.add(newMessage)
+                    fetchRepliedMessages(singleMessageList)
                 }
             }
         }
     }
 
-    private fun handleChildChanged(snapshot: DataSnapshot) {
-        if (snapshot.exists()) {
-            val updatedMessage = snapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-            if (updatedMessage != null && updatedMessage["key"] != null) {
-                val key = updatedMessage["key"].toString()
-                for (i in chatMessagesList.indices) {
-                    if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == key) {
-                        chatMessagesList[i] = updatedMessage
-                        chatAdapter?.notifyItemChanged(i)
-                        break
-                    }
+    private fun handleChildChanged(updatedMessage: HashMap<String, Any>) {
+        if (updatedMessage["key"] != null) {
+            val key = updatedMessage["key"].toString()
+            for (i in chatMessagesList.indices) {
+                if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == key) {
+                    chatMessagesList[i] = updatedMessage
+                    chatAdapter?.notifyItemChanged(i)
+                    break
                 }
             }
         }
     }
 
-    private fun handleChildRemoved(snapshot: DataSnapshot) {
-        if (snapshot.exists()) {
-            val removedKey = snapshot.key
-            if (removedKey != null) {
-                for (i in chatMessagesList.indices) {
-                    if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == removedKey) {
-                        chatMessagesList.removeAt(i)
-                        messageKeys.remove(removedKey)
-                        chatAdapter?.notifyItemRemoved(i)
-                        if (chatMessagesList.isNotEmpty() && i < chatMessagesList.size) {
-                            chatAdapter?.notifyItemChanged(Math.min(i, chatMessagesList.size - 1))
-                        }
-                        break
+    private fun handleChildRemoved(removedMessage: HashMap<String, Any>) {
+        if (removedMessage["key"] != null) {
+            val removedKey = removedMessage["key"].toString()
+            for (i in chatMessagesList.indices) {
+                if (chatMessagesList[i]["key"] != null && chatMessagesList[i]["key"].toString() == removedKey) {
+                    chatMessagesList.removeAt(i)
+                    messageKeys.remove(removedKey)
+                    chatAdapter?.notifyItemRemoved(i)
+                    if (chatMessagesList.isNotEmpty() && i < chatMessagesList.size) {
+                        chatAdapter?.notifyItemChanged(Math.min(i, chatMessagesList.size - 1))
                     }
+                    break
                 }
             }
         }

@@ -25,7 +25,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.FirebaseApp;
+
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
@@ -152,7 +152,7 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        FirebaseApp.initializeApp(this);
+        // TODO(supabase): The Supabase client should be initialized in SynapseApp.java.
         authService = new AuthenticationService();
         dbService = new DatabaseService();
     }
@@ -325,7 +325,7 @@ public class AuthActivity extends AppCompatActivity {
 
     private void fetchUsername(String uid) {
         // Update OneSignal Player ID on sign-in
-        updateOneSignalPlayerId(uid);
+
 
         String path = "skyline/users/" + uid + "/username";
         dbService.getData(dbService.getReference(path), new IDataListener() {
@@ -381,21 +381,7 @@ public class AuthActivity extends AppCompatActivity {
         finishAffinity();
     }
 
-    /**
-     * Updates the OneSignal Player ID for the current user in Firebase Realtime Database.
-     * This method gets the current OneSignal Player ID and saves it to the user's profile.
-     *
-     * @param uid The Firebase UID of the user
-     */
-    private void updateOneSignalPlayerId(String uid) {
-        // Get current OneSignal Player ID if available
-        if (OneSignal.getUser().getPushSubscription().getOptedIn()) {
-            String playerId = OneSignal.getUser().getPushSubscription().getId();
-            if (playerId != null && !playerId.isEmpty()) {
-                OneSignalManager.savePlayerIdToRealtimeDatabase(uid, playerId);
-            }
-        }
-    }
+
 
     @Override
     protected void onDestroy() {

@@ -53,9 +53,9 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButtonGroup;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener;
-import com.google.firebase.FirebaseApp;
+/* import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
+/* import com.google.firebase.auth.FirebaseAuth; */
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -63,7 +63,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.database.ValueEventListener; */
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -87,7 +87,7 @@ import androidx.browser.customtabs.CustomTabsIntent;
 public class ProfileActivity extends AppCompatActivity {
 
 	private Timer _timer = new Timer();
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	// Supabase: private SupabaseClient supabase;
 
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 	private HashMap<String, Object> postLikeCountCache = new HashMap<>();
@@ -156,8 +156,8 @@ public class ProfileActivity extends AppCompatActivity {
 	private ProgressBar ProfilePageLoadingBodyBar;
 
 	private Intent intent = new Intent();
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
+		private GoTrueClient auth;
+	/* private OnCompleteListener<AuthResult> _auth_create_user_listener;
 	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
 	private OnCompleteListener<Void> _auth_reset_password_listener;
 	private OnCompleteListener<Void> auth_updateEmailListener;
@@ -166,9 +166,9 @@ public class ProfileActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_deleteUserListener;
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
+	private OnCompleteListener<AuthResult> auth_googleSignInListener; */
+		private PostgrestClient main;
+	/* private ChildEventListener _main_child_listener; */
 	private Vibrator vbr;
 	private Calendar cc = Calendar.getInstance();
 
@@ -192,7 +192,8 @@ class c {
 	private RequestNetwork req;
 	private RequestNetwork.RequestListener _req_request_listener;
 	private Calendar JoinDateCC = Calendar.getInstance();
-	private DatabaseReference maindb = _firebase.getReference("/");
+	/* private DatabaseReference maindb = _firebase.getReference("/"); */
+	private PostgrestClient maindb;
 	private ChildEventListener _maindb_child_listener;
 	private TimerTask after;
 
@@ -201,16 +202,16 @@ class c {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Supabase: Supabase.initialize(this, "YOUR_SUPABASE_URL", "YOUR_SUPABASE_KEY");
 		initializeLogic();
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
-			PresenceManager.setActivity(com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Profile");
-		}
+		// Supabase: if (auth.getCurrentUser() != null) {
+		// Supabase: 	PresenceManager.setActivity(auth.getCurrentUser().getId(), "In Profile");
+		// Supabase: }
 	}
 
 	@Override
@@ -273,7 +274,7 @@ class c {
 		ProfilePageNoInternetBodySubtitle = findViewById(R.id.ProfilePageNoInternetBodySubtitle);
 		ProfilePageNoInternetBodyRetry = findViewById(R.id.ProfilePageNoInternetBodyRetry);
 		ProfilePageLoadingBodyBar = findViewById(R.id.ProfilePageLoadingBodyBar);
-		auth = FirebaseAuth.getInstance();
+				auth = Supabase.getGoTrueClient();
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		req = new RequestNetwork(this);
 
@@ -338,34 +339,33 @@ class c {
 		likeUserProfileButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				DatabaseReference checkProfileLike = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-				checkProfileLike.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if(dataSnapshot.exists()) {
-							FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
-							UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
-							likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
-							likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_1);
-							_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
-							_ImageColor(likeUserProfileButtonIc, 0xFF000000);
-							likeUserProfileButtonLikeCount.setTextColor(0xFF616161);
-						} else {
-							FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-							UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
-							likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
-							likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
-							_viewGraphics(likeUserProfileButton, 0xFFF50057, 0xFFC51162, 300, 0, 0xFF9E9E9E);
-							_ImageColor(likeUserProfileButtonIc, 0xFFFFFFFF);
-							likeUserProfileButtonLikeCount.setTextColor(0xFFFFFFFF);
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-
-					}
-				});
+				// Supabase: PostgrestClient checkProfileLike = supabase.from("profile-likes").select("*").eq("profile_id", getIntent().getStringExtra("uid")).eq("user_id", auth.getCurrentUser().getId());
+				// Supabase: checkProfileLike.execute().then((response) -> {
+				// Supabase: 	if (response.getData().size() > 0) {
+				// Supabase: 		// Supabase: Remove like
+				// Supabase: 		supabase.from("profile-likes").delete().eq("profile_id", getIntent().getStringExtra("uid")).eq("user_id", auth.getCurrentUser().getId()).execute();
+				// Supabase: 		UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
+				// Supabase: 		likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
+				// Supabase: 		likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_1);
+				// Supabase: 		_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
+				// Supabase: 		_ImageColor(likeUserProfileButtonIc, 0xFF000000);
+				// Supabase: 		likeUserProfileButtonLikeCount.setTextColor(0xFF616161);
+				// Supabase: 	} else {
+				// Supabase: 		// Supabase: Add like
+				// Supabase: 		HashMap<String, Object> likeData = new HashMap<>();
+				// Supabase: 		likeData.put("profile_id", getIntent().getStringExtra("uid"));
+				// Supabase: 		likeData.put("user_id", auth.getCurrentUser().getId());
+				// Supabase: 		supabase.from("profile-likes").insert(likeData).execute();
+				// Supabase: 		UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
+				// Supabase: 		likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
+				// Supabase: 		likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
+				// Supabase: 		_viewGraphics(likeUserProfileButton, 0xFFF50057, 0xFFC51162, 300, 0, 0xFF9E9E9E);
+				// Supabase: 		_ImageColor(likeUserProfileButtonIc, 0xFFFFFFFF);
+				// Supabase: 		likeUserProfileButtonLikeCount.setTextColor(0xFFFFFFFF);
+				// Supabase: 	}
+				// Supabase: }).catch((error) -> {
+				// Supabase: 	Log.e("Supabase", "Error handling profile like: " + error.getMessage());
+				// Supabase: });
 				vbr.vibrate((long)(28));
 			}
 		});
@@ -390,34 +390,36 @@ class c {
 		btnFollow.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				DatabaseReference checkUserFollow = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-				checkUserFollow.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if(dataSnapshot.exists()) {
-							FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).removeValue();
-							FirebaseDatabase.getInstance().getReference("skyline/following").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).removeValue();
-							UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
-							ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
-							btnFollow.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-							btnFollow.setText(getResources().getString(R.string.follow));
-							btnFollow.setTextColor(0xFFFFFFFF);
-						} else {
-							FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-							FirebaseDatabase.getInstance().getReference("skyline/following").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(getIntent().getStringExtra("uid")).setValue(getIntent().getStringExtra("uid"));
-							UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
-							ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
-							btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
-							btnFollow.setText(getResources().getString(R.string.unfollow));
-							btnFollow.setTextColor(0xFF000000);
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-
-					}
-				});
+				// Supabase: PostgrestClient checkUserFollow = supabase.from("followers").select("*").eq("followed_id", getIntent().getStringExtra("uid")).eq("follower_id", auth.getCurrentUser().getId());
+				// Supabase: checkUserFollow.execute().then((response) -> {
+				// Supabase: 	if (response.getData().size() > 0) {
+				// Supabase: 		// Supabase: Unfollow user
+				// Supabase: 		supabase.from("followers").delete().eq("followed_id", getIntent().getStringExtra("uid")).eq("follower_id", auth.getCurrentUser().getId()).execute();
+				// Supabase: 		supabase.from("following").delete().eq("follower_id", auth.getCurrentUser().getId()).eq("followed_id", getIntent().getStringExtra("uid")).execute();
+				// Supabase: 		UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
+				// Supabase: 		ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
+				// Supabase: 		btnFollow.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+				// Supabase: 		btnFollow.setText(getResources().getString(R.string.follow));
+				// Supabase: 		btnFollow.setTextColor(0xFFFFFFFF);
+				// Supabase: 	} else {
+				// Supabase: 		// Supabase: Follow user
+				// Supabase: 		HashMap<String, Object> followerData = new HashMap<>();
+				// Supabase: 		followerData.put("followed_id", getIntent().getStringExtra("uid"));
+				// Supabase: 		followerData.put("follower_id", auth.getCurrentUser().getId());
+				// Supabase: 		supabase.from("followers").insert(followerData).execute();
+				// Supabase: 		HashMap<String, Object> followingData = new HashMap<>();
+				// Supabase: 		followingData.put("follower_id", auth.getCurrentUser().getId());
+				// Supabase: 		followingData.put("followed_id", getIntent().getStringExtra("uid"));
+				// Supabase: 		supabase.from("following").insert(followingData).execute();
+				// Supabase: 		UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
+				// Supabase: 		ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
+				// Supabase: 		btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
+				// Supabase: 		btnFollow.setText(getResources().getString(R.string.unfollow));
+				// Supabase: 		btnFollow.setTextColor(0xFF000000);
+				// Supabase: 	}
+				// Supabase: }).catch((error) -> {
+				// Supabase: 	Log.e("Supabase", "Error handling follow: " + error.getMessage());
+				// Supabase: });
 			}
 		});
 
@@ -674,7 +676,7 @@ class c {
 
 
 	public void _getUserReference() {
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(getIntent().getStringExtra("uid"));
+		DatabaseReference getUserReference = supabase.from("users").select().eq("uid", getIntent().getStringExtra("uid"));
 		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -788,7 +790,7 @@ if ( || ( || )) {
 
 
 	public void _getUserPostsReference() {
-		Query getUserPostsRef = FirebaseDatabase.getInstance().getReference("skyline/posts").orderByChild("uid").equalTo(getIntent().getStringExtra("uid"));
+		Query getUserPostsRef = supabase.from("posts").select().order("uid", PostgrestClient.Order.ASCENDING).eq("uid", getIntent().getStringExtra("uid"));
 		getUserPostsRef.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -916,7 +918,7 @@ if ( || ( || )) {
 
 
 	public void _getUserCountReference() {
-		Query getFollowersCount = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid"));
+		Query getFollowersCount = supabase.from("followers").select().eq("uid", getIntent().getStringExtra("uid"));
 		getFollowersCount.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(DataSnapshot dataSnapshot) {
@@ -930,7 +932,7 @@ if ( || ( || )) {
 
 			}
 		});
-		DatabaseReference getFollowingCount = FirebaseDatabase.getInstance().getReference("skyline/following").child(getIntent().getStringExtra("uid"));
+		DatabaseReference getFollowingCount = supabase.from("following").select().eq("uid", getIntent().getStringExtra("uid"));
 		getFollowingCount.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(DataSnapshot dataSnapshot) {
@@ -944,7 +946,7 @@ if ( || ( || )) {
 
 			}
 		});
-		Query checkFollowUser = FirebaseDatabase.getInstance().getReference("skyline/followers").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+		Query checkFollowUser = supabase.from("followers").select().eq("uid", getIntent().getStringExtra("uid")).eq("follower_id", auth.getUser().getId());
 		checkFollowUser.addValueEventListener(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -964,7 +966,7 @@ if ( || ( || )) {
 
 			}
 		});
-		Query checkProfileLike = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid")).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+		Query checkProfileLike = supabase.from("profile-likes").select().eq("uid", getIntent().getStringExtra("uid")).eq("liker_id", auth.getUser().getId());
 		checkProfileLike.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -986,7 +988,7 @@ if ( || ( || )) {
 
 			}
 		});
-		DatabaseReference getProfileLikesCount = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(getIntent().getStringExtra("uid"));
+		DatabaseReference getProfileLikesCount = supabase.from("profile-likes").select().eq("uid", getIntent().getStringExtra("uid"));
 		getProfileLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
 			public void onDataChange(DataSnapshot dataSnapshot) {
@@ -1086,7 +1088,7 @@ if ( || ( || )) {
 			body.setVisibility(View.GONE);
 			_viewGraphics(save_to_history, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 			avatarCard.setBackgroundResource(R.drawable.shape_circular);
-			DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(_uid);
+			DatabaseReference getUserReference = supabase.from("users").select().eq("uid", _uid);
 			getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
 				@Override
 				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1279,9 +1281,7 @@ if ( || ( || )) {
 					int end = sp.getSpanEnd(this);
 					object_clicked = sp.subSequence(start,end).toString();
 					handle = object_clicked.replace("@", "");
-					DatabaseReference getReference = FirebaseDatabase.getInstance().getReference()
-					.child("synapse/username")
-					.child(handle);  // This points directly to "synapse/username/[handle]"
+					DatabaseReference getReference = supabase.from("username").select().eq("handle", handle);
 					getReference.addListenerForSingleValueEvent(new ValueEventListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1493,7 +1493,7 @@ if ( || ( || )) {
 				}
 
 			} else {
-				DatabaseReference getReference = FirebaseDatabase.getInstance().getReference().child("skyline/users").child(_data.get((int)_position).get("uid").toString());
+				DatabaseReference getReference = supabase.from("users").select().eq("uid", _data.get((int)_position).get("uid").toString());
 				getReference.addListenerForSingleValueEvent(new ValueEventListener() {
 					@Override
 					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1578,10 +1578,10 @@ if ( || ( || )) {
 				});
 
 			}
-			DatabaseReference getLikeCheck = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-			DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(_data.get((int)_position).get("key").toString());
-			DatabaseReference getLikesCount = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString());
-			DatabaseReference getFavoriteCheck = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString());
+			DatabaseReference getLikeCheck = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId());
+			DatabaseReference getCommentsCount = supabase.from("posts-comments").select().eq("key", _data.get((int)_position).get("key").toString());
+			DatabaseReference getLikesCount = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString());
+			DatabaseReference getFavoriteCheck = supabase.from("favorite-posts").select().eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString());
 
 			getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
 				@Override
@@ -1642,7 +1642,7 @@ if ( || ( || )) {
 			likeButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getLikeCheck = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(_data.get((int)_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+					DatabaseReference getLikeCheck = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId());
 					getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1691,7 +1691,7 @@ if ( || ( || )) {
 			favoritePostButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getFavoriteCheck = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get((int)_position).get("key").toString());
+					DatabaseReference getFavoriteCheck = supabase.from("favorite-posts").select().eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString());
 					getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
 						@Override
 						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {

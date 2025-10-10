@@ -1,9 +1,7 @@
 package com.synapse.social.studioasinc.util;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+// TODO(supabase): Add Supabase imports for PostgREST
+// import io.supabase.postgrest.PostgrestClient;
 
 public class UserUtils {
     
@@ -12,39 +10,43 @@ public class UserUtils {
         void onError(String error);
     }
     
-    public static void getUserDisplayName(String userId, final Callback<String> callback) {
+    public static void getUserDisplayName(String userId, final Callback<String> callback, SupabaseClient supabaseClient) {
         if (userId == null || userId.isEmpty()) {
             callback.onError("Invalid user ID");
             return;
         }
-        
-        FirebaseDatabase.getInstance()
-                .getReference("skyline/users")
-                .child(userId)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            String nickname = dataSnapshot.child("nickname").getValue(String.class);
-                            String username = dataSnapshot.child("username").getValue(String.class);
-                            
-                            // Return nickname if available, otherwise username
-                            String displayName = (nickname != null && !nickname.isEmpty()) ? nickname : username;
-                            
-                            if (displayName != null) {
-                                callback.onSuccess(displayName);
-                            } else {
-                                callback.onError("User not found");
+
+        // TODO(supabase): Implement with Supabase PostgREST
+        /*
+        supabaseClient.postgrest["users"]
+                .select("nickname,username")
+                .eq("uid", userId)
+                .single()
+                .thenAccept(response -> {
+                    if (response.getStatus() == 200) {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response.getData());
+                            String nickname = jsonObject.optString("nickname");
+                            String username = jsonObject.optString("username");
+
+                            String displayName = "Unknown User";
+                            if (nickname != null && !nickname.equals("null")) {
+                                displayName = nickname;
+                            } else if (username != null && !username.equals("null")) {
+                                displayName = "@" + username;
                             }
-                        } else {
-                            callback.onError("User not found");
+                            callback.onSuccess(displayName);
+                        } catch (JSONException e) {
+                            callback.onError("Error parsing user data: " + e.getMessage());
                         }
+                    } else {
+                        callback.onError("User not found or error fetching data: " + response.getStatus());
                     }
-                    
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        callback.onError(databaseError.getMessage());
-                    }
+                })
+                .exceptionally(e -> {
+                    callback.onError("Supabase query failed: " + e.getMessage());
+                    return null;
                 });
-    }
+        */
+        callback.onSuccess("TODO_SUPABASE_DISPLAY_NAME"); // Placeholder
 }

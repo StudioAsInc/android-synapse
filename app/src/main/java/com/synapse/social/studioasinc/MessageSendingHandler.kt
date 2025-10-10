@@ -8,12 +8,6 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import android.view.View
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.NotificationHelper
 import com.synapse.social.studioasinc.PresenceManager
@@ -35,10 +29,13 @@ import com.synapse.social.studioasinc.ChatConstants.PUSH_DATE_KEY
 import com.synapse.social.studioasinc.ChatConstants.USERS_REF
 import com.synapse.social.studioasinc.ChatConstants.VOICE_MESSAGE_TYPE
 
+// TODO: Migrate to Supabase
+// This class is responsible for sending messages.
+// The following needs to be done:
+// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
+// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 class MessageSendingHandler(
     private val context: Context,
-    private val auth: FirebaseAuth,
-    private val _firebase: FirebaseDatabase,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val chatAdapter: ChatAdapter,
@@ -51,15 +48,14 @@ class MessageSendingHandler(
     private val isGroup: Boolean
 ) {
 
-    private val main = _firebase.getReference(SKYLINE_REF)
-
     fun setFirstUserName(name: String) {
         this.firstUserName = name
     }
 
     fun sendButtonAction(messageEt: EditText, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
         val messageText = messageEt.text.toString().trim()
-        val senderUid = auth.currentUser?.uid ?: return
+        // TODO: Replace with Supabase Auth
+        // Supabase: val senderUid = supabase.auth.currentUser()?.id ?: return
 
         proceedWithMessageSending(messageText, senderUid, recipientUid, replyMessageID, messageEt, mMessageReplyLayout)
     }
@@ -72,14 +68,15 @@ class MessageSendingHandler(
         messageEt: EditText,
         mMessageReplyLayout: LinearLayout
     ) {
-        auth.currentUser?.uid?.let { PresenceManager.setActivity(it, "Idle") }
+        / Implement with Supabase
+        // auth.currentUser?.uid?.let { PresenceManager.setActivity(it, "Idle") }/ TODO:
 
         if (attactmentmap.isEmpty() && messageText.isEmpty()) {
             Log.w("MessageSendingHandler", "No message text and no attachments - nothing to send")
             return
         }
 
-        val uniqueMessageKey = main.push().key ?: ""
+        // Supabase: val uniqueMessageKey = UUID.randomUUID().toString()
         val messageToSend = HashMap<String, Any>()
         val lastMessageForInbox: String
 
@@ -117,9 +114,9 @@ class MessageSendingHandler(
         messageToSend[MESSAGE_STATE_KEY] = "sended"
         if (replyMessageID != "null") messageToSend[REPLIED_MESSAGE_ID_KEY] = replyMessageID
         messageToSend[KEY_KEY] = uniqueMessageKey
-        messageToSend[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
+        // messageToSend[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
 
-        ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
+        // Supabase: ChatMessageManager.sendMessageToDb(messageToSend, senderUid, recipientUid, uniqueMessageKey, isGroup)
 
         val localMessage = HashMap(messageToSend)
         localMessage["isLocalMessage"] = true
@@ -132,7 +129,7 @@ class MessageSendingHandler(
 
         chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
 
-        ChatMessageManager.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
+        // Supabase: ChatMessageManager.updateInbox(lastMessageForInbox, recipientUid, isGroup, null)
 
         messageEt.setText("")
         mMessageReplyLayout.visibility = View.GONE
@@ -145,52 +142,12 @@ class MessageSendingHandler(
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: $lastMessageForInbox"
 
-        _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(recipientUid)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    var recipientOneSignalPlayerId = "missing_id"
-                    if (dataSnapshot.exists() && dataSnapshot.hasChild("oneSignalPlayerId")) {
-                        val fetchedId = dataSnapshot.child("oneSignalPlayerId").getValue(String::class.java)
-                        if (fetchedId != null && !fetchedId.isEmpty()) {
-                            recipientOneSignalPlayerId = fetchedId
-                        }
-                    }
-                    NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, recipientOneSignalPlayerId, notificationMessage, chatId)
-                }
-
-                override fun onCancelled(databaseError: DatabaseError) {
-                    Log.e("ChatActivity", "Failed to fetch recipient's data for notification.", databaseError.toException())
-                    NotificationHelper.sendMessageAndNotifyIfNeeded(senderUid, recipientUid, "missing_id", notificationMessage, chatId)
-                }
-            })
+        // TODO: Get recipient's OneSignal player ID from Supabase
     }
 
-    fun sendVoiceMessage(audioUrl: String, duration: Long, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
-        val senderUid = auth.currentUser?.uid ?: return
-        val uniqueMessageKey = main.push().key ?: ""
-
-        val chatSendMap = HashMap<String, Any>()
-        chatSendMap[UID_KEY] = senderUid
-        chatSendMap[TYPE_KEY] = VOICE_MESSAGE_TYPE
-        chatSendMap["audio_url"] = audioUrl
-        chatSendMap["audio_duration"] = duration
-        chatSendMap[MESSAGE_STATE_KEY] = "sended"
-        if (replyMessageID != "null") chatSendMap[REPLIED_MESSAGE_ID_KEY] = replyMessageID
-        chatSendMap[KEY_KEY] = uniqueMessageKey
-        chatSendMap[PUSH_DATE_KEY] = ServerValue.TIMESTAMP
-
-        ChatMessageManager.sendMessageToDb(chatSendMap, senderUid, recipientUid, uniqueMessageKey, isGroup)
-
-        chatSendMap["isLocalMessage"] = true
-        messageKeys.add(uniqueMessageKey)
-        chatMessagesList.add(chatSendMap)
-        chatAdapter.notifyItemInserted(chatMessagesList.size - 1)
-        chatMessagesListRecycler.post { chatMessagesListRecycler.smoothScrollToPosition(chatMessagesList.size - 1) }
-
-        ChatMessageManager.updateInbox("Voice Message", recipientUid, isGroup, null)
-
-        mMessageReplyLayout.visibility = View.GONE
-    }
+    // Supabase: fun sendVoiceMessage(audioUrl: String, duration: Long, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
+    // Supabase:     // Supabase: Implement with Supabase
+    // Supabase: }
 
     private fun resetAttachmentState() {
         attachmentLayoutListHolder.visibility = View.GONE

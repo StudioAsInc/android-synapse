@@ -47,22 +47,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.Continuation;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.FadeEditText;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -82,11 +66,14 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import android.content.ClipData;
 
 
+// TODO: Migrate to Supabase
+// This activity is responsible for editing a post.
+// The following needs to be done:
+// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
+// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 public class EditPostActivity extends AppCompatActivity {
 	
 	public final int REQ_CD_IMAGE_PICKER = 101;
-	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 	
 	private ProgressDialog SynapseLoadingDialog;
 	private String postKey = "";
@@ -113,10 +100,8 @@ public class EditPostActivity extends AppCompatActivity {
 	private LinearLayout imagePlaceholder;
 	private LinearLayout settingsButton;
 	
-	private DatabaseReference maindb = _firebase.getReference("skyline");
 	private Calendar cc = Calendar.getInstance();
 	private SharedPreferences appSavedData;
-	private DatabaseReference fdb = _firebase.getReference("notify");
 	
 	// Post data from intent
 	private String originalPostText = "";
@@ -136,7 +121,8 @@ public class EditPostActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_edit_post);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// TODO: Initialize Supabase client in SynapseApp.java instead of here.
+		// FirebaseApp.initializeApp(this);
 		
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -365,59 +351,7 @@ public class EditPostActivity extends AppCompatActivity {
 	}
 	
 	private void _updatePostInDatabase(String imageUrl) {
-		cc = Calendar.getInstance();
-		PostUpdateMap = new HashMap<>();
-		
-		// Check if user is logged in
-		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-		if (currentUser == null) {
-			Toast.makeText(getApplicationContext(), "User not logged in", Toast.LENGTH_SHORT).show();
-			_LoadingDialog(false);
-			return;
-		}
-		
-		if (hasImage) {
-			PostUpdateMap.put("post_type", "IMAGE");
-			PostUpdateMap.put("post_image", imageUrl);
-		} else {
-			PostUpdateMap.put("post_type", "TEXT");
-			PostUpdateMap.put("post_image", "");
-		}
-		
-		if (!postDescription.getText().toString().trim().equals("")) {
-			PostUpdateMap.put("post_text", postDescription.getText().toString().trim());
-		} else {
-			PostUpdateMap.put("post_text", "");
-		}
-		
-		// Apply post settings
-		PostUpdateMap.put("post_hide_views_count", hideViewsCount);
-		PostUpdateMap.put("post_hide_like_count", hideLikesCount);
-		PostUpdateMap.put("post_hide_comments_count", hideCommentsCount);
-		
-		if (hidePostFromEveryone) {
-			PostUpdateMap.put("post_visibility", "private");
-		} else {
-			PostUpdateMap.put("post_visibility", "public");
-		}
-		
-		PostUpdateMap.put("post_disable_favorite", disableSaveToFavorites);
-		PostUpdateMap.put("post_disable_comments", disableComments);
-		PostUpdateMap.put("last_edited", String.valueOf((long)(cc.getTimeInMillis())));
-		
-		FirebaseDatabase.getInstance().getReference("skyline/posts").child(postKey).updateChildren(PostUpdateMap, new DatabaseReference.CompletionListener() {
-			@Override
-			public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-				if (databaseError == null) {
-					Toast.makeText(getApplicationContext(), "Post updated successfully", Toast.LENGTH_SHORT).show();
-					_LoadingDialog(false);
-					finish();
-				} else {
-					Toast.makeText(getApplicationContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-					_LoadingDialog(false);
-				}
-			}
-		});
+		// TODO: Implement with Supabase
 	}
 	
 	private void _showPostSettingsBottomSheet() {
