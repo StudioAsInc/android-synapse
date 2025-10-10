@@ -18,7 +18,6 @@ import android.text.*;
 import android.text.style.*;
 import android.util.*;
 import android.view.*;
-import android.view.View;
 import android.view.View.*;
 import android.view.animation.*;
 import android.webkit.*;
@@ -46,21 +45,15 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
+import io.supabase.postgrest.PostgrestCallback;
+import io.supabase.postgrest.PostgrestResponse;
+import io.supabase.postgrest.PostgrestError;
+import java.util.Map;
+import java.util.List;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -77,10 +70,16 @@ import org.json.*;
 import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
+import io.github.janmoehr.headlessforge.headlessforge.SupabaseClient;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestCallback;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestResponse;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestError;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestFilterBuilder;
 
 public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private SupabaseClient supabase;
+	private FirebaseAuth auth;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -106,9 +105,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private ProgressBar mLoadingBar;
 
 	private Calendar cc = Calendar.getInstance();
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
 	private OnCompleteListener<AuthResult> _auth_create_user_listener;
 	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
 	private OnCompleteListener<Void> _auth_reset_password_listener;
@@ -126,7 +122,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_cover_photo_history);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		supabase = new SupabaseClient("YOUR_SUPABASE_URL", "YOUR_SUPABASE_KEY");
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -159,7 +155,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutTitle = findViewById(R.id.isDataNotExistsLayoutTitle);
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
 
 		back.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -181,45 +176,6 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 				_addProfilePhotoUrlDialog();
 			}
 		});
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
 
 
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
@@ -380,54 +336,48 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayout.setVisibility(View.GONE);
 		mSwipeLayout.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addValueEventListener(new ValueEventListener() {
+		maindb.from("users").select("avatar").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).single().execute(new PostgrestCallback<Map<String, Object>>() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
+			public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+				if (response.getData() != null) {
+					CurrentAvatarUri = response.getData().get("avatar").toString();
 				} else {
+					CurrentAvatarUri = "";
 				}
 			}
-			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch user avatar: " + error.getMessage());
+				CurrentAvatarUri = "";
 			}
 		});
-		Query getProfileHistoryRef = FirebaseDatabase.getInstance().getReference("skyline/cover-image-history").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getProfileHistoryRef.addListenerForSingleValueEvent(new ValueEventListener() {
+		maindb.from("cover-image-history").select("*").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).order("timestamp", PostgrestQuery.Order.DESCENDING).limit(100).execute(new PostgrestCallback<List<Map<String, Object>>>() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					isDataExistsLayout.setVisibility(View.VISIBLE);
-					isDataNotExistsLayout.setVisibility(View.GONE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
-					mLoadingBody.setVisibility(View.GONE);
+			public void onSuccess(@NonNull PostgrestResponse<List<Map<String, Object>>> response) {
+				if (response.getData() != null) {
 					ProfileHistoryList.clear();
-					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
-							ProfileHistoryList.add(_map);
-						}
-					} catch (Exception _e) {
-						_e.printStackTrace();
+					for (Map<String, Object> item : response.getData()) {
+						ProfileHistoryList.add(new HashMap<>(item));
 					}
-					
-					SketchwareUtil.sortListMap(ProfileHistoryList, "upload_date", false, false);
 					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
-				} else {
-					isDataExistsLayout.setVisibility(View.GONE);
-					isDataNotExistsLayout.setVisibility(View.VISIBLE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
+					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
 					mLoadingBody.setVisibility(View.GONE);
+					if (ProfileHistoryList.size() > 0) {
+						isDataExistsLayout.setVisibility(View.VISIBLE);
+						mSwipeLayout.setVisibility(View.VISIBLE);
+					} else {
+						isDataNotExistsLayout.setVisibility(View.VISIBLE);
+					}
+				} else {
+					mLoadingBody.setVisibility(View.GONE);
+					isDataNotExistsLayout.setVisibility(View.VISIBLE);
 				}
 			}
-			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch profile history: " + error.getMessage());
+				mLoadingBody.setVisibility(View.GONE);
+				isDataNotExistsLayout.setVisibility(View.VISIBLE);
 			}
 		});
 		mSwipeLayout.setRefreshing(false);

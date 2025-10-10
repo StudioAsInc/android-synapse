@@ -314,33 +314,7 @@ public class SearchActivity extends AppCompatActivity {
 				final HashMap<String, Object> _responseHeaders = _param3;
 				DatabaseReference searchRef = FirebaseDatabase.getInstance().getReference("skyline/users");
 				Query searchQuery = searchRef.orderByChild("username").startAt(topLayoutBarMiddleSearchInput.getText().toString()).endAt(topLayoutBarMiddleSearchInput.getText().toString() + "\uf8ff").limitToLast(50);
-				searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot snapshot) {
-						if (snapshot.exists()) {
-							SearchUserLayoutRecyclerView.setVisibility(View.VISIBLE);
-							SearchUserLayoutNoUserFound.setVisibility(View.GONE);
 
-							searchedUsersList.clear();
-
-							for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-								HashMap<String, Object> searchMap = new HashMap<String, Object>((Map<String, Object>) dataSnapshot.getValue());
-								searchedUsersList.add(searchMap);
-							}
-
-							SearchUserLayoutRecyclerView.getAdapter().notifyDataSetChanged();
-
-						} else {
-							SearchUserLayoutRecyclerView.setVisibility(View.GONE);
-							SearchUserLayoutNoUserFound.setVisibility(View.VISIBLE);
-						}
-					}
-
-					@Override
-					public void onCancelled(@NonNull DatabaseError error) {
-
-					}
-				});
 
 			}
 
@@ -627,30 +601,8 @@ public class SearchActivity extends AppCompatActivity {
 			searchQuery = searchRef.orderByChild("username").startAt(searchText).endAt(searchText + "\uf8ff").limitToLast(50);
 		}
 
-		searchQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot snapshot) {
-				if (snapshot.exists()) {
-					SearchUserLayoutRecyclerView.setVisibility(View.VISIBLE);
-					SearchUserLayoutNoUserFound.setVisibility(View.GONE);
-					searchedUsersList.clear();
 
-					for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-						HashMap<String, Object> searchMap = new HashMap<String, Object>((Map<String, Object>) dataSnapshot.getValue());
-						searchedUsersList.add(searchMap);
-					}
-					SearchUserLayoutRecyclerView.getAdapter().notifyDataSetChanged();
-				} else {
-					SearchUserLayoutRecyclerView.setVisibility(View.GONE);
-					SearchUserLayoutNoUserFound.setVisibility(View.VISIBLE);
-				}
-			}
 
-			@Override
-			public void onCancelled(@NonNull DatabaseError error) {
-				// Handle error
-			}
-		});
 	}
 
 

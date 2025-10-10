@@ -48,6 +48,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
+import io.supabase.postgrest.PostgrestCallback;
+import io.supabase.postgrest.PostgrestResponse;
+import io.supabase.postgrest.PostgrestError;
+import java.util.Map;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -393,54 +397,48 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayout.setVisibility(View.GONE);
 		mSwipeLayout.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addValueEventListener(new ValueEventListener() {
+		maindb.from("users").select("avatar").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).single().execute(new PostgrestCallback<Map<String, Object>>() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
+			public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+				if (response.getData() != null) {
+					CurrentAvatarUri = response.getData().get("avatar").toString();
 				} else {
+					CurrentAvatarUri = "";
 				}
 			}
-			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch user avatar: " + error.getMessage());
+				CurrentAvatarUri = "";
 			}
 		});
-		Query getProfileHistoryRef = FirebaseDatabase.getInstance().getReference("skyline/profile-history").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getProfileHistoryRef.addListenerForSingleValueEvent(new ValueEventListener() {
+		maindb.from("profile-history").select("*").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).order("timestamp", PostgrestQuery.Order.DESCENDING).limit(100).execute(new PostgrestCallback<List<Map<String, Object>>>() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					isDataExistsLayout.setVisibility(View.VISIBLE);
-					isDataNotExistsLayout.setVisibility(View.GONE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
-					mLoadingBody.setVisibility(View.GONE);
+			public void onSuccess(@NonNull PostgrestResponse<List<Map<String, Object>>> response) {
+				if (response.getData() != null) {
 					ProfileHistoryList.clear();
-					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
-							ProfileHistoryList.add(_map);
-						}
-					} catch (Exception _e) {
-						_e.printStackTrace();
+					for (Map<String, Object> item : response.getData()) {
+						ProfileHistoryList.add(new HashMap<>(item));
 					}
-					
-					SketchwareUtil.sortListMap(ProfileHistoryList, "upload_date", false, false);
 					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
-				} else {
-					isDataExistsLayout.setVisibility(View.GONE);
-					isDataNotExistsLayout.setVisibility(View.VISIBLE);
-					mSwipeLayout.setVisibility(View.VISIBLE);
+					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
 					mLoadingBody.setVisibility(View.GONE);
+					if (ProfileHistoryList.size() > 0) {
+						isDataExistsLayout.setVisibility(View.VISIBLE);
+						mSwipeLayout.setVisibility(View.VISIBLE);
+					} else {
+						isDataNotExistsLayout.setVisibility(View.VISIBLE);
+					}
+				} else {
+					mLoadingBody.setVisibility(View.GONE);
+					isDataNotExistsLayout.setVisibility(View.VISIBLE);
 				}
 			}
-			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch profile history: " + error.getMessage());
+				mLoadingBody.setVisibility(View.GONE);
+				isDataNotExistsLayout.setVisibility(View.VISIBLE);
 			}
 		});
 		mSwipeLayout.setRefreshing(false);

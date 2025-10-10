@@ -18,9 +18,12 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.lifecycle.LifecycleOwner;
 
-// TODO(supabase): Initialize the Supabase client here.
-// The Supabase client should be a singleton and accessible throughout the app.
-// See: https://supabase.com/docs/reference/kotlin/initializing
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.GoTrue
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.storage.Storage
 
 public class SynapseApp extends Application implements DefaultLifecycleObserver {
     
@@ -28,6 +31,7 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
     private Thread.UncaughtExceptionHandler mExceptionHandler;
     
     // TODO(supabase): Replace these with Supabase services.
+    public static SupabaseClient supabaseClient;
     
     public static Calendar mCalendar;
     
@@ -43,6 +47,15 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         this.mCalendar = Calendar.getInstance();
         
         // TODO(supabase): Initialize the Supabase client here.
+        supabaseClient = createSupabaseClient(
+            BuildConfig.SUPABASE_URL,
+            BuildConfig.SUPABASE_ANON_KEY
+        ) {
+            install(GoTrue)
+            install(Postgrest)
+            install(Realtime)
+            install(Storage)
+        }
         
         // Create notification channels
         createNotificationChannels();

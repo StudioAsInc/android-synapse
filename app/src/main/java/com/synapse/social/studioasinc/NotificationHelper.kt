@@ -42,69 +42,51 @@ object NotificationHelper {
         data: Map<String, String>? = null
     ) {
         if (recipientUid == senderUid) {
-            // Don't send notification to self
+            // Don\'t send notification to self
             return
         }
 
         // Supabase: val userDb = Supabase.client.from("users")
         // Supabase: val recipientOneSignalPlayerId = userDb.select("oneSignalPlayerId").eq("uid", recipientUid).single().execute().data?.get("oneSignalPlayerId") as? String
-            if (recipientOneSignalPlayerId.isNullOrBlank()) {
-                Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
-                return@addOnSuccessListener
-            }
+            // The following code block was commented out or removed during Firebase to Supabase migration.
+            // if (recipientOneSignalPlayerId.isNullOrBlank()) {
+            //     Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
+            //     return@addOnSuccessListener
+            // }
 
             // Supabase: val recipientStatusRef = Supabase.client.from("users").select("status").eq("uid", recipientUid).single()
 
             // Supabase: recipientStatusRef.execute().data?.get("status") as? String
-                val suppressStatus = "chatting_with_$senderUid"
+            // val suppressStatus = "chatting_with_$senderUid"
 
-                if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
-                    if (suppressStatus == recipientStatus) {
-                        if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                            Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
-                        }
-                        return@addOnSuccessListener
-                    }
+            // if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
+            //     if (suppressStatus == recipientStatus) {
+            //         if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
+            //             Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
+            //         }
+            //         return@addOnSuccessListener
+            //     }
 
-                    if (recipientStatus == "online") {
-                        if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                            Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
-                        }
-                        return@addOnSuccessListener
-                    }
-                }
+            //     if (recipientStatus == "online") {
+            //         if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
+            //             Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
+            //         }
+            //         return@addOnSuccessListener
+            //     }
+            // }
 
-                if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                    sendClientSideNotification(
-                        recipientOneSignalPlayerId,
-                        message,
-                        senderUid,
-                        notificationType,
-                        data
-                    )
-                } else {
-                    sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                }
-                // Removed Firebase RDB chat notifications as requested
-            // Supabase: }.addOnFailureListener { e ->
-                Log.e(TAG, "Status check failed. Defaulting to send notification.", e)
-                if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                     sendClientSideNotification(
-                        recipientOneSignalPlayerId,
-                        message,
-                        senderUid,
-                        notificationType,
-                        data
-                    )
-                } else {
-                    sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                }
-                // Removed Firebase RDB chat notifications as requested
-            }
-        // Supabase: }.addOnFailureListener {
-            Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", it)
-        }
-    }
+            // if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
+            //     sendClientSideNotification(
+            //         recipientOneSignalPlayerId,
+            //         message,
+            //         senderUid,
+            //         notificationType,
+            //         data
+            //     )
+            // } else {
+            //     sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
+            // }
+
 
     /**
      * Enhanced notification sending with smart presence checking and dual system support.
@@ -202,14 +184,14 @@ object NotificationHelper {
     ) {
         val client = OkHttpClient()
         val jsonBody = JSONObject()
-        
+
         try {
             jsonBody.put("app_id", NotificationConfig.ONESIGNAL_APP_ID)
             jsonBody.put("include_subscription_ids", arrayOf(recipientPlayerId))
             jsonBody.put("contents", JSONObject().put("en", message))
             jsonBody.put("headings", JSONObject().put("en", NotificationConfig.getTitleForNotificationType(notificationType)))
             jsonBody.put("subtitle", JSONObject().put("en", NotificationConfig.NOTIFICATION_SUBTITLE))
-            
+
             if (NotificationConfig.ENABLE_DEEP_LINKING) {
                 val dataJson = JSONObject()
                 if (senderUid != null) {
@@ -219,20 +201,20 @@ object NotificationHelper {
                 data?.forEach { (key, value) ->
                     dataJson.put(key, value)
                 }
-                
+
                 // Add deep link URL based on notification type
                 val deepLinkUrl = generateDeepLinkUrl(notificationType, senderUid, data)
                 if (deepLinkUrl.isNotEmpty()) {
                     jsonBody.put("url", deepLinkUrl)
                     dataJson.put("deep_link", deepLinkUrl)
                 }
-                
+
                 jsonBody.put("data", dataJson)
             }
-            
+
             jsonBody.put("priority", NotificationConfig.NOTIFICATION_PRIORITY)
             jsonBody.put("android_channel_id", NotificationConfig.NOTIFICATION_CHANNEL_ID)
-            
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create JSON for client-side notification", e)
             return
@@ -302,14 +284,14 @@ object NotificationHelper {
     /**
      * Generates a deep link URL based on notification type and data.
      * @param notificationType The type of notification
-     * @param senderUid The sender's UID (optional)
+     * @param senderUid The sender\'s UID (optional)
      * @param data Additional notification data (optional)
      * @return Deep link URL string
      */
     @JvmStatic
     private fun generateDeepLinkUrl(
-        notificationType: String, 
-        senderUid: String?, 
+        notificationType: String,
+        senderUid: String?,
         data: Map<String, String>?
     ): String {
         return when (notificationType) {
@@ -350,6 +332,4 @@ object NotificationHelper {
             else -> "synapse://home"
         }
     }
-
-    // Removed saveNotificationToDatabase function as Firebase RDB chat notifications are no longer needed
 }

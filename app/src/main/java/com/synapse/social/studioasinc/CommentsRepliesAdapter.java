@@ -1,5 +1,25 @@
 package com.synapse.social.studioasinc;
 
+import io.github.jan.supabase.SupabaseClient;
+import io.github.jan.supabase.postgrest.PostgrestClient;
+import io.github.jan.supabase.postgrest.query.PostgrestFilterBuilder;
+import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder;
+import io.github.jan.supabase.postgrest.query.PostgrestResult;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import kotlin.coroutines.CoroutineContext;
+import kotlin.coroutines.EmptyCoroutineContext;
+import kotlin.jvm.functions.Function1;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.CoroutineScope;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.GlobalScope;
+import kotlinx.coroutines.future.FutureKt;
+import org.jetbrains.annotations.NotNull;
+import com.synapse.social.studioasinc.Supabase;
+import io.github.janmalch.denver.json.JsonObject;
+import java.util.concurrent.CompletableFuture;
+
 import android.animation.*;
 import android.animation.ObjectAnimator;
 import android.view.animation.*;
@@ -118,7 +138,8 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 		private ImageView comment_send_button;
 
 		private FirebaseAuth auth;
-		private PostgrestClient main = Supabase.INSTANCE.getClient().from("skyline");
+		private SupabaseClient supabaseClient;
+		private PostgrestClient main;
 		private Calendar cc = Calendar.getInstance();
 
 		private String postKey = null;
@@ -178,8 +199,9 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 				cancel_reply_mode = rootView.findViewById(R.id.cancel_reply_mode);
 				comment_send_button = rootView.findViewById(R.id.comment_send_button);
 
-				FirebaseApp.initializeApp(getContext());
 				auth = FirebaseAuth.getInstance();
+				supabaseClient = Supabase.client;
+				main = supabaseClient.from("skyline");
 
 				Display display = getActivity().getWindowManager().getDefaultDisplay();
 				int screenHeight = display.getHeight();
@@ -331,69 +353,84 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 			if (currentUser == null) {
 				return;
 			}
+			String currentUid = currentUser.getUid();
+
+			// Fetch sender name from Supabase
+			CompletableFuture<String> senderNameFuture = new CompletableFuture<>();
+			supabaseClient.from("skyline")
+			    .select("username")
+			    .eq("id", currentUid)
+			    .execute(new PostgrestCallback<JsonObject>() {
+			        @Override
+			        public void onSuccess(PostgrestResponse<JsonObject> response) {
+			            senderNameFuture.complete(response.getData().getString("username"));
+			        }
+
+			        @Override
+			        public void onFailure(Exception e) {
+			            senderNameFuture.completeExceptionally(e);
+			        }
+			    });
+
 			if (isReply) {
-				Supabase.INSTANCE.getClient().from("users").select("username").eq("uid", currentUid).execute(new PostgrestCallback<User>() {
-					@Override
-					public void onSuccess(User senderUser) {
-						String senderName = senderUser.getUsername();
-						Supabase.INSTANCE.getClient().from("posts-comments").select("uid").eq("key", replyToCommentKey).execute(new PostgrestCallback<Comment>() {
-							@Override
-							public void onSuccess(Comment originalComment) {
-								String originalCommenterUid = originalComment.getUid();
-								if (originalCommenterUid != null) {
-									String message = senderName + " replied to your comment";
-									HashMap<String, String> data = new HashMap<>();
-									data.put("postId", postKey);
-									data.put("commentId", commentKey);
-									NotificationHelper.sendNotification(
-											originalCommenterUid,
-											currentUid,
-											message,
-											NotificationConfig.NOTIFICATION_TYPE_NEW_REPLY,
-											data
-									);
-								}
-							}
+			    // Fetch original commenter UID from Supabase
+			    CompletableFuture<String> originalCommenterFuture = new CompletableFuture<>();
+			    supabaseClient.from("posts-comments")
+			        .select("uid")
+			        .eq("postKey", postKey)
+			        .eq("replyToCommentKey", replyToCommentKey)
+			        .execute(new PostgrestCallback<JsonObject>() {
+			            @Override
+			            public void onSuccess(PostgrestResponse<JsonObject> response) {
+			                originalCommenterFuture.complete(response.getData().getString("uid"));
+			            }
 
-							@Override
-							public void onFailure(Throwable error) {
-								Log.e("Supabase", "Error fetching original commenter UID: " + error.getMessage());
-							}
-						});
-					}
+			            @Override
+			            public void onFailure(Exception e) {
+			                originalCommenterFuture.completeExceptionally(e);
+			            }
+			        });
 
-					@Override
-					public void onFailure(Throwable error) {
-						Log.e("Supabase", "Error fetching sender username: " + error.getMessage());
+			    // Combine both futures
+			    CompletableFuture.allOf(senderNameFuture, originalCommenterFuture)
+			        .thenRun(() -> {
+			            try {
+			                String senderName = senderNameFuture.get();
+			                String originalCommenterUid = originalCommenterFuture.get();
+			                if (originalCommenterUid != null) {
+							String message = senderName + " replied to your comment";
+							HashMap<String, String> data = new HashMap<>();
+							data.put("postId", postKey);
+							data.put("commentId", commentKey);
+							NotificationHelper.sendNotification(
+							originalCommenterUid,
+							currentUid,
+							message,
+							NotificationConfig.NOTIFICATION_TYPE_NEW_REPLY,
+							data
+							);
+						}
 					}
 				});
 			} else {
-				Supabase.INSTANCE.getClient().from("users").select("username").eq("uid", currentUid).execute(new PostgrestCallback<User>() {
+				senderNameTask.addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<DataSnapshot>() {
 					@Override
-					public void onSuccess(User senderUser) {
-						String senderName = senderUser.getUsername();
+					public void onSuccess(DataSnapshot dataSnapshot) {
+						String senderName = dataSnapshot.getValue(String.class);
 						String message = senderName + " commented on your post";
 						HashMap<String, String> data = new HashMap<>();
 						data.put("postId", postKey);
 						data.put("commentId", commentKey);
 						NotificationHelper.sendNotification(
-								postPublisherUID,
-								currentUid,
-								message,
-								NotificationConfig.NOTIFICATION_TYPE_NEW_COMMENT,
-								data
+						postPublisherUID,
+						currentUid,
+						message,
+						NotificationConfig.NOTIFICATION_TYPE_NEW_COMMENT,
+						data
 						);
-					}
-
-					@Override
-					public void onFailure(Throwable error) {
-						Log.e("Supabase", "Error fetching sender username: " + error.getMessage());
 					}
 				});
 			}
-
-
-
 		}
 
 		private void handleMentions(String text, String postKey, String commentKey) {
@@ -419,49 +456,48 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 			mExecutorService.execute(new Runnable() {
 					@Override
 					public void run() {
-							Supabase.INSTANCE.getClient().from("posts-comments").select("*").eq("postKey", postKey).order("like", PostgrestRpc.Order.DESCENDING).limit(commentsLimit).execute(new PostgrestCallback<List<Comment>>() {
+							supabaseClient.from("posts-comments")
+								.select("*")
+								.eq("postKey", postKey)
+								.order("like", PostgrestQuery.Order.DESCENDING)
+								.limit(commentsLimit)
+								.execute(new PostgrestCallback<List<Map<String, Object>>>() {
 									@Override
-									public void onSuccess(List<Comment> comments) {
+									public void onSuccess(PostgrestResponse<List<Map<String, Object>>> response) {
 										mMainHandler.post(new Runnable() {
-													@Override
-													public void run() {
-														if (!comments.isEmpty()) {
-															comments_list.setVisibility(View.VISIBLE);
-															no_comments_body.setVisibility(View.GONE);
-															loading_body.setVisibility(View.GONE);
-															commentsListMap.clear();
-															for (Comment comment : comments) {
-																HashMap<String, Object> commentsGetMap = new HashMap<>();
-																commentsGetMap.put("uid", comment.getUid());
-																commentsGetMap.put("comment", comment.getComment());
-																commentsGetMap.put("timestamp", comment.getTimestamp());
-																commentsGetMap.put("like", comment.getLike());
-																commentsGetMap.put("key", comment.getKey());
-																commentsListMap.add(commentsGetMap);
-															}
-															commentsAdapter.notifyDataSetChanged();
-														} else {
-															comments_list.setVisibility(View.GONE);
-															no_comments_body.setVisibility(View.VISIBLE);
-															loading_body.setVisibility(View.GONE);
-														}
+											@Override
+											public void run() {
+												if (response.getData() != null && !response.getData().isEmpty()) {
+													comments_list.setVisibility(View.VISIBLE);
+													no_comments_body.setVisibility(View.GONE);
+													loading_body.setVisibility(View.GONE);
+													commentsListMap.clear();
+													for (Map<String, Object> comment : response.getData()) {
+														commentsListMap.add(new HashMap<>(comment));
 													}
-											});
+													comments_list.getAdapter().notifyDataSetChanged();
+												} else {
+													comments_list.setVisibility(View.GONE);
+													no_comments_body.setVisibility(View.VISIBLE);
+													loading_body.setVisibility(View.GONE);
+												}
+											}
+										});
 									}
 
 									@Override
-									public void onFailure(Throwable error) {
-										Log.e("Supabase", "Error fetching comments: " + error.getMessage());
+									public void onFailure(Exception e) {
 										mMainHandler.post(new Runnable() {
-													@Override
-													public void run() {
-															comments_list.setVisibility(View.GONE);
-															no_comments_body.setVisibility(View.VISIBLE);
-															loading_body.setVisibility(View.GONE);
-														}
-											});
+											@Override
+											public void run() {
+												Toast.makeText(getContext(), "Failed to load comments: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+												comments_list.setVisibility(View.GONE);
+												no_comments_body.setVisibility(View.VISIBLE);
+												loading_body.setVisibility(View.GONE);
+											}
+										});
 									}
-							});
+								});
 					}
 			});
 		}
@@ -500,31 +536,23 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 					public void onFailure(Exception e) {
 						// Handle failure
 					}
-				});
+				});							data
+						);
+					}
+
+					@Override
+					public void onFailure(Exception e) {
+						// Handle failure
+					}
+				});					data
+					);
+				}
+			});
 		}
 
 		public void getMyUserData(String uid) {
-			supabaseClient.from("skyline/users")
-				.select("avatar")
-				.eq("uid", uid)
-				.single()
-				.execute(new PostgrestCallback<Map<String, Object>>() {
-					@Override
-					public void onSuccess(PostgrestResponse<Map<String, Object>> response) {
-						String avatarUrl = (String) response.getData().get("avatar");
-						if (avatarUrl != null && !avatarUrl.equals("null")) {
-							Glide.with(getContext()).load(Uri.parse(avatarUrl)).into(profile_image_x);
-						} else {
-							profile_image_x.setImageResource(R.drawable.avatar);
-						}
-					}
+				DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
 
-					@Override
-					public void onFailure(Throwable error) {
-						Log.e("Supabase", "Error fetching user data: " + error.getMessage());
-						profile_image_x.setImageResource(R.drawable.avatar);
-					}
-				});
 		}
 
 		public void getCommentsCount(String key) {
@@ -535,24 +563,10 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						mExecutorService.execute(new Runnable() {
 								@Override
 								public void run() {
-										supabaseClient.from("posts-comments").select("count").eq("postKey", key).execute(new PostgrestCallback<Long>() {
-											@Override
-											public void onSuccess(Long count) {
-												mMainHandler.post(new Runnable() {
-														@Override
-														public void run() {
-															_setCommentCount(title_count, count);
-														}
-												});
-											}
+										DatabaseReference getCommentsCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(key);
 
-											@Override
-											public void onFailure(Throwable error) {
-												Log.e("Supabase", "Error fetching comments count: " + error.getMessage());
-											}
-										});
 								}
-							});
+						});
 				}
 		}
 
@@ -594,68 +608,11 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						String uid = uidObj.toString();
 						String key = keyObj.toString();
 
-						supabaseClient.from("users").select("username, profile_image").eq("uid", uid).single().execute(new PostgrestCallback<Map<String, Object>>() {
-							@Override
-							public void onSuccess(Map<String, Object> data) {
-								String username = (String) data.get("username");
-								String profileImage = (String) data.get("profile_image");
-								_holder.username.setText(username);
-								Glide.with(getApplicationContext()).load(profileImage).into(_holder.profileImage);
-							}
-
-							@Override
-							public void onFailure(Throwable error) {
-								Log.e("Supabase", "Error fetching user data for comment: " + error.getMessage());
-								_holder.profileImage.setImageResource(R.drawable.avatar);
-							}
-						});
-						supabaseClient.from("posts-comments").select("comment, timestamp").eq("postKey", postKey).eq("key", key).single().execute(new PostgrestCallback<Map<String, Object>>() {
-							@Override
-							public void onSuccess(Map<String, Object> data) {
-								String comment = (String) data.get("comment");
-								Long timestamp = (Long) data.get("timestamp");
-								_holder.comment.setText(comment);
-								_holder.comment_unix.setText(TimeAgo.using(timestamp));
-							}
-
-							@Override
-							public void onFailure(Throwable error) {
-								Log.e("Supabase", "Error fetching comment details: " + error.getMessage());
-							}
-						});
-						supabaseClient.from("posts-comments-like").select("*").eq("postKey", postKey).eq("commentKey", key).eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).single().execute(new PostgrestCallback<Map<String, Object>>() {
-							@Override
-							public void onSuccess(Map<String, Object> data) {
-								_holder.like.setImageResource(R.drawable.like_fill);
-							}
-
-							@Override
-							public void onFailure(Throwable error) {
-								_holder.like.setImageResource(R.drawable.like);
-							}
-						});
-						supabaseClient.from("posts-comments-like").select("count").eq("postKey", postKey).eq("commentKey", key).execute(new PostgrestCallback<Long>() {
-							@Override
-							public void onSuccess(Long count) {
-								_holder.like_count.setText(String.valueOf(count));
-							}
-
-							@Override
-							public void onFailure(Throwable error) {
-								Log.e("Supabase", "Error fetching comment like count: " + error.getMessage());
-							}
-						});
-						supabaseClient.from("posts-comments-like").select("*").eq("postKey", postKey).eq("commentKey", key).eq("uid", postPublisherUID).single().execute(new PostgrestCallback<Map<String, Object>>() {
-							@Override
-							public void onSuccess(Map<String, Object> data) {
-								_holder.like.setImageResource(R.drawable.like_fill);
-							}
-
-							@Override
-							public void onFailure(Throwable error) {
-								// Do nothing if not liked by publisher
-							}
-						});
+						DatabaseReference getUserDetails = FirebaseDatabase.getInstance().getReference("skyline/users").child(uid);
+						DatabaseReference getCommentsRef = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey).child(key);
+						DatabaseReference checkCommentLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+						DatabaseReference getCommentsLikeCount = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key);
+						DatabaseReference commentCheckPublisherLike = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-like").child(postKey).child(key).child(postPublisherUID);
 
 						ArrayList<HashMap<String, Object>> commentsRepliesListMap = new ArrayList<>();
 
@@ -720,22 +677,8 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								mExecutorService.execute(new Runnable() {
 										@Override
 										public void run() {
-												supabaseClient.from("posts-comments-replies").select("*").eq("postKey", postKey).eq("commentKey", key).order("timestamp", Postgrest.Order.ASCENDING).execute(new PostgrestCallback<List<Map<String, Object>>>() {
-							@Override
-							public void onSuccess(List<Map<String, Object>> data) {
-								commentsRepliesListMap.clear();
-								for (Map<String, Object> reply : data) {
-									commentsRepliesListMap.add((HashMap<String, Object>) reply);
-								}
-								_holder.replies_list.setAdapter(new CommentsRepliesAdapter(commentsRepliesListMap));
-								_holder.replies_list.setLayoutManager(new LinearLayoutManager(getContext()));
-							}
+												Query commentsRepliesQuery = FirebaseDatabase.getInstance().getReference("skyline/posts-comments-replies").child(postKey).child(key).orderByChild("like");
 
-							@Override
-							public void onFailure(Throwable error) {
-								Log.e("Supabase", "Error fetching comment replies: " + error.getMessage());
-							}
-						});
 
 										}
 								});
@@ -895,24 +838,6 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 						} else {
 
 
-																				badge.setVisibility(View.VISIBLE);
-																		} else {
-																				if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("user")) {
-																						if (String.valueOf(dataSnapshot.child("verify").getValue()).equals("true")) {
-																								badge.setImageResource(R.drawable.verified_badge);
-																								badge.setVisibility(View.VISIBLE);
-																						} else {
-																								badge.setVisibility(View.GONE);
-																						}
-																				}
-																		}
-																}
-														}
-												} else {
-
-												}
-										}
-
 						}
 
 						if (_data.size() > 19) {
@@ -1008,49 +933,12 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 
 
 
+
+
 						like_unlike.setOnClickListener(new View.OnClickListener(){
 								@Override
 								public void onClick(View _clickedView){
 
-												@Override
-												public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-														try {
-																double currentLikes = Double.parseDouble(String.valueOf(postCommentLikeCountCache.get(key)));
-																if(dataSnapshot.exists()) {
-																		checkCommentLike.removeValue();
-																		currentLikes--;
-																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
-																		_setCommentLikeCount(like_count, currentLikes);
-																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-																				ObjectAnimator setGoneAlphaAnim = new ObjectAnimator();
-																				setGoneAlphaAnim.addListener(new Animator.AnimatorListener() {
-																						@Override
-																						public void onAnimationStart(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationEnd(Animator _param1) {
-																								likedByPublisherLayout.setVisibility(View.GONE);
-																								_param1.cancel();
-																						}
-																						@Override
-																						public void onAnimationCancel(Animator _param1) {
-																						}
-																						@Override
-																						public void onAnimationRepeat(Animator _param1) {
-																						}
-																				});
-																				setGoneAlphaAnim.setTarget(likedByPublisherLayout);
-																				setGoneAlphaAnim.setPropertyName("alpha");
-																				setGoneAlphaAnim.setInterpolator(new LinearInterpolator());
-																				setGoneAlphaAnim.setFloatValues((float)(1), (float)(0));
-																				setGoneAlphaAnim.setDuration((int)(94));
-																				setGoneAlphaAnim.start();
-																		}
-																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
-																} else {
-																		getCommentsLikeCount.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-																		_sendCommentLikeNotification(key, uid);
-																		currentLikes++;
 																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
 																		_setCommentLikeCount(like_count, currentLikes);
 																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
@@ -1089,7 +977,17 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 												}
 										});
 
+										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
+												@Override
+												public void onDataChange(DataSnapshot dataSnapshot) {
+														long count = dataSnapshot.getChildrenCount();
+														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
+												}
 
+												@Override
+												public void onCancelled(DatabaseError databaseError) {
+												}
+										});
 								}
 						});
 
@@ -1265,7 +1163,78 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 										}
 								}
 						} else {
+								getUserDetails.addListenerForSingleValueEvent(new ValueEventListener() {
+										@Override
+										public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+												if(dataSnapshot.exists()) {
+														UserInfoCacheMap.put("uid-".concat(uid), uid);
+														UserInfoCacheMap.put("avatar-".concat(uid), dataSnapshot.child("avatar").getValue(String.class));
+														UserInfoCacheMap.put("banned-".concat(uid), dataSnapshot.child("banned").getValue(String.class));
+														UserInfoCacheMap.put("nickname-".concat(uid), dataSnapshot.child("nickname").getValue(String.class));
+														UserInfoCacheMap.put("username-".concat(uid), dataSnapshot.child("username").getValue(String.class));
+														UserInfoCacheMap.put("gender-".concat(uid), dataSnapshot.child("gender").getValue(String.class));
+														UserInfoCacheMap.put("verify-".concat(uid), dataSnapshot.child("verify").getValue(String.class));
+														UserInfoCacheMap.put("acc_type-".concat(uid), dataSnapshot.child("account_type").getValue(String.class));
+														body.setVisibility(View.VISIBLE);
+														if (String.valueOf(dataSnapshot.child("banned").getValue()).equals("true")) {
+																profileImage.setImageResource(R.drawable.avatar);
+														} else {
+																if (String.valueOf(dataSnapshot.child("avatar").getValue()).equals("null")) {
+																		profileImage.setImageResource(R.drawable.avatar);
+																} else {
+																		Glide.with(getContext()).load(Uri.parse(String.valueOf(dataSnapshot.child("avatar").getValue()))).into(profileImage);
+																}
+														}
+														if (String.valueOf(dataSnapshot.child("nickname").getValue()).equals("null")) {
+																username.setText("@" + String.valueOf(dataSnapshot.child("username").getValue()));
+														} else {
+																username.setText(String.valueOf(dataSnapshot.child("nickname").getValue()));
+														}
+														if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("hidden")) {
+																genderBadge.setVisibility(View.GONE);
+														} else {
+																if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("male")) {
+																		genderBadge.setImageResource(R.drawable.male_badge);
+																		genderBadge.setVisibility(View.VISIBLE);
+																} else {
+																		if (String.valueOf(dataSnapshot.child("gender").getValue()).equals("female")) {
+																				genderBadge.setImageResource(R.drawable.female_badge);
+																				genderBadge.setVisibility(View.VISIBLE);
+																		}
+																}
+														}
+														if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("admin")) {
+																badge.setImageResource(R.drawable.admin_badge);
+																badge.setVisibility(View.VISIBLE);
+														} else {
+																if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("moderator")) {
+																		badge.setImageResource(R.drawable.moderator_badge);
+																		badge.setVisibility(View.VISIBLE);
+																} else {
+																		if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("support")) {
+																				badge.setImageResource(R.drawable.support_badge);
+																				badge.setVisibility(View.VISIBLE);
+																		} else {
+																				if (String.valueOf(dataSnapshot.child("account_type").getValue()).equals("user")) {
+																						if (String.valueOf(dataSnapshot.child("verify").getValue()).equals("true")) {
+																								badge.setImageResource(R.drawable.verified_badge);
+																								badge.setVisibility(View.VISIBLE);
+																						} else {
+																								badge.setVisibility(View.GONE);
+																						}
+																				}
+																		}
+																}
+														}
+												} else {
 
+												}
+										}
+										@Override
+										public void onCancelled(@NonNull DatabaseError databaseError) {
+
+										}
+								});
 						}
 
 						if (_data.size() > 19) {
@@ -1357,16 +1326,133 @@ public class PostCommentsBottomSheetDialog extends DialogFragment {
 								top_popular_3_fire_ic.setVisibility(View.GONE);
 						}
 
+						commentCheckPublisherLike.addListenerForSingleValueEvent(new ValueEventListener() {
+								@Override
+								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+										if(dataSnapshot.exists()) {
+												likedByPublisherLayout.setVisibility(View.VISIBLE);
+												likedByPublisherLayout.setOnClickListener(new View.OnClickListener(){
+														@Override
+														public void onClick(View _clickedView){
+																_showCommentLikedByPublisherPopup();
+														}
+												});
+										} else {
+												likedByPublisherLayout.setVisibility(View.GONE);
+										}
+								}
+								@Override
+								public void onCancelled(@NonNull DatabaseError databaseError) {
 
+								}
+						});
 
+						checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
+								@Override
+								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+										if(dataSnapshot.exists()) {
+												like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
+										} else {
+												like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
+										}
+								}
+								@Override
+								public void onCancelled(@NonNull DatabaseError databaseError) {
 
+								}
+						});
 
 						like_unlike.setOnClickListener(new View.OnClickListener(){
 								@Override
 								public void onClick(View _clickedView){
+										checkCommentLike.addListenerForSingleValueEvent(new ValueEventListener() {
+												@Override
+												public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+														try {
+																double currentLikes = Double.parseDouble(String.valueOf(postCommentLikeCountCache.get(key)));
+																if(dataSnapshot.exists()) {
+																		checkCommentLike.removeValue();
+																		currentLikes--;
+																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
+																		_setCommentLikeCount(like_count, currentLikes);
+																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+																				ObjectAnimator setGoneAlphaAnim = new ObjectAnimator();
+																				setGoneAlphaAnim.addListener(new Animator.AnimatorListener() {
+																						@Override
+																						public void onAnimationStart(Animator _param1) {
+																						}
+																						@Override
+																						public void onAnimationEnd(Animator _param1) {
+																								likedByPublisherLayout.setVisibility(View.GONE);
+																								_param1.cancel();
+																						}
+																						@Override
+																						public void onAnimationCancel(Animator _param1) {
+																						}
+																						@Override
+																						public void onAnimationRepeat(Animator _param1) {
+																						}
+																				});
+																				setGoneAlphaAnim.setTarget(likedByPublisherLayout);
+																				setGoneAlphaAnim.setPropertyName("alpha");
+																				setGoneAlphaAnim.setInterpolator(new LinearInterpolator());
+																				setGoneAlphaAnim.setFloatValues((float)(1), (float)(0));
+																				setGoneAlphaAnim.setDuration((int)(94));
+																				setGoneAlphaAnim.start();
+																		}
+																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_1);
+																} else {
+																		getCommentsLikeCount.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
+																		currentLikes++;
+																		postCommentLikeCountCache.put(key, String.valueOf(currentLikes));
+																		_setCommentLikeCount(like_count, currentLikes);
+																		if (postPublisherUID.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+																				ObjectAnimator setVisibleAlphaAnim = new ObjectAnimator();
+																				setVisibleAlphaAnim.addListener(new Animator.AnimatorListener() {
+																						@Override
+																						public void onAnimationStart(Animator _param1) {
+																								likedByPublisherLayout.setVisibility(View.VISIBLE);
+																						}
+																						@Override
+																						public void onAnimationEnd(Animator _param1) {
+																								_param1.cancel();
+																						}
+																						@Override
+																						public void onAnimationCancel(Animator _param1) {
+																						}
+																						@Override
+																						public void onAnimationRepeat(Animator _param1) {
+																						}
+																				});
+																				setVisibleAlphaAnim.setTarget(likedByPublisherLayout);
+																				setVisibleAlphaAnim.setPropertyName("alpha");
+																				setVisibleAlphaAnim.setInterpolator(new LinearInterpolator());
+																				setVisibleAlphaAnim.setFloatValues((float)(0), (float)(1));
+																				setVisibleAlphaAnim.setDuration((int)(94));
+																				setVisibleAlphaAnim.start();
+																		}
+																		like_unlike_ic.setImageResource(R.drawable.post_icons_1_2);
+																}
+														} catch (Exception e) {
+																// Ignore exceptions here
+														}
+												}
+												@Override
+												public void onCancelled(@NonNull DatabaseError databaseError) {
+												}
+										});
 
+										getCommentsLikeCount.addListenerForSingleValueEvent(new ValueEventListener() {
+												@Override
+												public void onDataChange(DataSnapshot dataSnapshot) {
+														long count = dataSnapshot.getChildrenCount();
+														getCommentsRef.child("like").setValue(String.valueOf(postCommentLikeCountCache.get(key)));
+												}
 
-
+												@Override
+												public void onCancelled(DatabaseError databaseError) {
+												}
+										});
 								}
 						});
 

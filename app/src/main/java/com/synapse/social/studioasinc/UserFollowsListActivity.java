@@ -550,89 +550,7 @@ private PostgrestClient maindb;
 							// TODO(supabase): Replace with Supabase Postgrest query
 							// postgrest.from("skyline/users").select().eq("id", _data.get((int)_position).get("uid").toString()).single().execute();
 							// TODO(supabase): Implement Supabase data fetching for user info
-								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-									if(dataSnapshot.exists()) {
-										UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-										UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
-										UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
-										UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
-										UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
-										UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-										UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
-										UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
-										UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
-										
-										mMainHandler.post(new Runnable() {
-											@Override
-											public void run() {
-												if (UserInfoCacheMap.get("banned-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
-													profileAvatar.setImageResource(R.drawable.banned_avatar);
-												} else {
-													if (UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
-														profileAvatar.setImageResource(R.drawable.avatar);
-													} else {
-														Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString())).into(profileAvatar);
-													}
-												}
-												if (UserInfoCacheMap.get("status-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("online")) {
-													userStatusCircleBG.setVisibility(View.VISIBLE);
-												} else {
-													userStatusCircleBG.setVisibility(View.GONE);
-												}
-												if (UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
-													username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												} else {
-													username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												}
-												name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("hidden")) {
-													genderBadge.setVisibility(View.GONE);
-												} else {
-													if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("male")) {
-														genderBadge.setImageResource(R.drawable.male_badge);
-														genderBadge.setVisibility(View.VISIBLE);
-													} else {
-														if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("female")) {
-															genderBadge.setImageResource(R.drawable.female_badge);
-															genderBadge.setVisibility(View.VISIBLE);
-														}
-													}
-												}
-												if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("admin")) {
-													badge.setImageResource(R.drawable.admin_badge);
-													badge.setVisibility(View.VISIBLE);
-												} else {
-													if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("moderator")) {
-														badge.setImageResource(R.drawable.moderator_badge);
-														badge.setVisibility(View.VISIBLE);
-													} else {
-														if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("support")) {
-															badge.setImageResource(R.drawable.support_badge);
-															badge.setVisibility(View.VISIBLE);
-														} else {
-															if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("user")) {
-																if (UserInfoCacheMap.get("verify-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
-																	badge.setVisibility(View.VISIBLE);
-																} else {
-																	badge.setVisibility(View.GONE);
-																}
-															}
-														}
-													}
-												}
-												body.setVisibility(View.VISIBLE);
-											}
-										});
-									} else {
-										
-									}
-								}
-								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-									
-								}
-							});
+
 						}
 					});
 				}
@@ -765,73 +683,89 @@ private PostgrestClient maindb;
 					mExecutorService.execute(new Runnable() {
 						@Override
 						public void run() {
-							maindb.from("users").select("*").eq("uid", _data.get((int)_position).get("uid").toString()).single().execute(new PostgrestCallback<Map<String, Object>>() {
+							DatabaseReference getReference = FirebaseDatabase.getInstance().getReference().child("skyline/users").child(_data.get((int)_position).get("uid").toString());
+
 								@Override
-								public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
-									if (response.getData() != null) {
-										Map<String, Object> userData = response.getData();
+								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+									if(dataSnapshot.exists()) {
 										UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-										UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), userData.get("banned").toString());
-										UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), userData.get("nickname").toString());
-										UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), userData.get("username").toString());
-										UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), userData.get("status").toString());
-										UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), userData.get("avatar").toString());
-										UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), userData.get("gender").toString());
-										UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), userData.get("verify").toString());
-										UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), userData.get("account_type").toString());
+										UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
+										UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
+										UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
+										UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
+										UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
+										UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
+										UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
+										UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
 										
 										mMainHandler.post(new Runnable() {
 											@Override
 											public void run() {
-												if (UserInfoCacheMap.get("banned-".concat(_data.get((int)_position).get("uid").toString())).equals("true")) {
+												if (UserInfoCacheMap.get("banned-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
 													profileAvatar.setImageResource(R.drawable.banned_avatar);
 												} else {
-													if (UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).equals("null")) {
+													if (UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
 														profileAvatar.setImageResource(R.drawable.avatar);
 													} else {
 														Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString())).into(profileAvatar);
 													}
 												}
-												if (UserInfoCacheMap.get("status-".concat(_data.get((int)_position).get("uid").toString())).equals("online")) {
+												if (UserInfoCacheMap.get("status-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("online")) {
 													userStatusCircleBG.setVisibility(View.VISIBLE);
 												} else {
 													userStatusCircleBG.setVisibility(View.GONE);
 												}
-												if (UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).equals("null")) {
-													username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())));
+												if (UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
+													username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
 												} else {
-													username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())));
+													username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString());
 												}
-												name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())));
-												if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).equals("hidden")) {
+												name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
+												if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("hidden")) {
 													genderBadge.setVisibility(View.GONE);
-												} else if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).equals("male")) {
-													genderBadge.setImageResource(R.drawable.male_badge);
-													genderBadge.setVisibility(View.VISIBLE);
-												} else if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).equals("female")) {
-													genderBadge.setImageResource(R.drawable.female_badge);
-													genderBadge.setVisibility(View.VISIBLE);
+												} else {
+													if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("male")) {
+														genderBadge.setImageResource(R.drawable.male_badge);
+														genderBadge.setVisibility(View.VISIBLE);
+													} else {
+														if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("female")) {
+															genderBadge.setImageResource(R.drawable.female_badge);
+															genderBadge.setVisibility(View.VISIBLE);
+														}
+													}
 												}
-												if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).equals("admin")) {
+												if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("admin")) {
 													badge.setImageResource(R.drawable.admin_badge);
 													badge.setVisibility(View.VISIBLE);
-												} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).equals("moderator")) {
-													badge.setImageResource(R.drawable.moderator_badge);
-													badge.setVisibility(View.VISIBLE);
-												} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).equals("support")) {
-													badge.setImageResource(R.drawable.support_badge);
-													badge.setVisibility(View.VISIBLE);
-												} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).equals("user")) {
-													badge.setVisibility(UserInfoCacheMap.get("verify-".concat(_data.get((int)_position).get("uid").toString())).equals("true") ? View.VISIBLE : View.GONE);
+												} else {
+													if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("moderator")) {
+														badge.setImageResource(R.drawable.moderator_badge);
+														badge.setVisibility(View.VISIBLE);
+													} else {
+														if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("support")) {
+															badge.setImageResource(R.drawable.support_badge);
+															badge.setVisibility(View.VISIBLE);
+														} else {
+															if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("user")) {
+																if (UserInfoCacheMap.get("verify-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
+																	badge.setVisibility(View.VISIBLE);
+																} else {
+																	badge.setVisibility(View.GONE);
+																}
+															}
+														}
+													}
 												}
 												body.setVisibility(View.VISIBLE);
 											}
 										});
+									} else {
+										
 									}
 								}
 								@Override
-								public void onFailure(@NonNull PostgrestError error) {
-									Log.e("SupabaseError", "Failed to fetch user data: " + error.getMessage());
+								public void onCancelled(@NonNull DatabaseError databaseError) {
+									
 								}
 							});
 						}

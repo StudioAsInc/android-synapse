@@ -311,48 +311,6 @@ public class PostMoreBottomSheetDialog extends DialogFragment {
 	
 	private void openEditPostActivity() {
 		// Get post settings from database
-		FirebaseDatabase.getInstance().getReference("skyline/posts").child(postKey).addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					HashMap<String, Object> postData = (HashMap<String, Object>) dataSnapshot.getValue();
-					
-					Intent editIntent = new Intent(getActivity(), EditPostActivity.class);
-					editIntent.putExtra("postKey", postKey);
-					editIntent.putExtra("postText", postText);
-					editIntent.putExtra("postImage", postImg);
-					editIntent.putExtra("postType", postType);
-					
-					// Add post settings
-					if (postData.containsKey("post_hide_views_count")) {
-						editIntent.putExtra("hideViewsCount", Boolean.parseBoolean(postData.get("post_hide_views_count").toString()));
-					}
-					if (postData.containsKey("post_hide_like_count")) {
-						editIntent.putExtra("hideLikesCount", Boolean.parseBoolean(postData.get("post_hide_like_count").toString()));
-					}
-					if (postData.containsKey("post_hide_comments_count")) {
-						editIntent.putExtra("hideCommentsCount", Boolean.parseBoolean(postData.get("post_hide_comments_count").toString()));
-					}
-					if (postData.containsKey("post_visibility")) {
-						editIntent.putExtra("hidePostFromEveryone", "private".equals(postData.get("post_visibility").toString()));
-					}
-					if (postData.containsKey("post_disable_favorite")) {
-						editIntent.putExtra("disableSaveToFavorites", Boolean.parseBoolean(postData.get("post_disable_favorite").toString()));
-					}
-					if (postData.containsKey("post_disable_comments")) {
-						editIntent.putExtra("disableComments", Boolean.parseBoolean(postData.get("post_disable_comments").toString()));
-					}
-					
-					dialog.dismiss();
-					startActivity(editIntent);
-				}
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-				SketchwareUtil.showMessage(getActivity(), "Failed to load post data");
-			}
-		});
 	}
     
     public void _ImageColor(final ImageView _image, final int _color) {

@@ -28,6 +28,8 @@ import com.synapse.social.studioasinc.model.toPost
 import com.synapse.social.studioasinc.styling.MarkdownRenderer
 import com.synapse.social.studioasinc.util.TimeUtils
 import com.synapse.social.studioasinc.util.CountUtils
+import com.synapse.social.studioasinc.backend.DatabaseService
+import com.synapse.social.studioasinc.backend.AuthenticationService
 
 class PostsAdapter(
     private val context: Context,
@@ -36,8 +38,9 @@ class PostsAdapter(
     private val onMediaClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<PostsAdapter.PostViewHolder>() {
 
-    private val firebase = FirebaseDatabase.getInstance()
-    private val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val databaseService = DatabaseService()
+    private val authenticationService = AuthenticationService()
+    private val currentUserUid = authenticationService.getCurrentUser()?.uid ?: ""
     private val mediaPagerAdapters = mutableMapOf<Int, MediaPagerAdapter>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -311,117 +314,130 @@ class PostsAdapter(
         }
 
         private fun loadUserInfo(uid: String) {
-            firebase.getReference("skyline/users").child(uid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        if (snapshot.exists()) {
-                            // Cache user info
-                            userInfoCache["uid-$uid"] = uid
-                            userInfoCache["banned-$uid"] = snapshot.child("banned").getValue(String::class.java) ?: "false"
-                            userInfoCache["nickname-$uid"] = snapshot.child("nickname").getValue(String::class.java) ?: ""
-                            userInfoCache["username-$uid"] = snapshot.child("username").getValue(String::class.java) ?: ""
-                            userInfoCache["avatar-$uid"] = snapshot.child("avatar").getValue(String::class.java) ?: ""
-                            userInfoCache["gender-$uid"] = snapshot.child("gender").getValue(String::class.java) ?: "hidden"
-                            userInfoCache["verify-$uid"] = snapshot.child("verify").getValue(String::class.java) ?: "false"
-                            userInfoCache["acc_type-$uid"] = snapshot.child("account_type").getValue(String::class.java) ?: "user"
-                            
-                            displayUserInfoFromCache(uid)
-                        }
+            databaseService.getReference("skyline/users").child(uid).getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    val userMap = snapshot.value as? HashMap<String, Any>
+                    userMap?.let {
+                        userInfoCache["avatar-$uid"] = it["avatar"] as? String ?: ""
+                        userInfoCache["nickname-$uid"] = it["nickname"] as? String ?: ""
+                        userInfoCache["username-$uid"] = it["username"] as? String ?: ""
+                        userInfoCache["gender-$uid"] = it["gender"] as? String ?: ""
+                        userInfoCache["acc_type-$uid"] = it["acc_type"] as? String ?: ""
+                        userInfoCache["verify-$uid"] = it["verify"] as? String ?: ""
+                        userInfoCache["banned-$uid"] = it["banned"] as? String ?: ""
+                        displayUserInfoFromCache(uid)
                     }
+                }
 
-                    override fun onCancelled(error: DatabaseError) {
-                        userInfoProfileImage.setImageResource(R.drawable.avatar)
-                        userInfoUsername.text = "Error User"
-                    }
-                })
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
+            })
         }
 
         private fun loadLikeStatus(postKey: String) {
-            firebase.getReference("skyline/posts-likes").child(postKey).child(currentUserUid)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        likeButtonIc.setImageResource(
-                            if (snapshot.exists()) R.drawable.post_icons_1_2 
-                            else R.drawable.post_icons_1_1
-                        )
+            databaseService.getReference("skyline/posts-likes").child(postKey).child(currentUserUid).getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    if (snapshot.exists()) {
+                        likeButtonIc.setImageResource(R.drawable.like_fill_ic)
+                    } else {
+                        likeButtonIc.setImageResource(R.drawable.like_ic)
                     }
+                }
 
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
+            })
         }
 
         private fun loadCounts(postKey: String) {
             // Load like count
-            firebase.getReference("skyline/posts-likes").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(likeButtonCount, snapshot.childrenCount.toDouble())
-                    }
+            databaseService.getReference("skyline/posts-likes").child(postKey).getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    val likeCount = snapshot.childrenCount
+                    likeButtonCount.text = CountUtils.formatCount(likeCount)
+                }
 
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
+            })
 
             // Load comment count
-            firebase.getReference("skyline/posts-comments").child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        CountUtils.setCount(commentsButtonCount, snapshot.childrenCount.toDouble())
-                    }
+            databaseService.getReference("skyline/posts-comments").child(postKey).getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    val commentCount = snapshot.childrenCount
+                    commentsButtonCount.text = CountUtils.formatCount(commentCount)
+                }
 
-                    override fun onCancelled(error: DatabaseError) {}
-                })
-        }
-
-        private fun loadFavoriteStatus(postKey: String) {
-            firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        favoritePostButton.setImageResource(
-                            if (snapshot.exists()) R.drawable.delete_favorite_post_ic
-                            else R.drawable.add_favorite_post_ic
-                        )
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
+            })
         }
 
         private fun toggleLike(post: Post) {
-            val likeRef = firebase.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
-            likeRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
+            val likeRef = databaseService.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
+            likeRef.getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
-                        likeRef.removeValue()
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
+                        // Unlike post
+                        likeRef.setValue(null, object : IDatabaseReference.CompletionListener {
+                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
+                                if (error == null) {
+                                    likeButtonIc.setImageResource(R.drawable.like_ic)
+                                    loadCounts(post.key)
+                                }
+                            }
+                        })
                     } else {
-                        likeRef.setValue(currentUserUid)
-                        likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
-                        // Send notification
-                        com.synapse.social.studioasinc.util.NotificationUtils
-                            .sendPostLikeNotification(post.key, post.uid)
+                        // Like post
+                        likeRef.setValue(true, object : IDatabaseReference.CompletionListener {
+                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
+                                if (error == null) {
+                                    likeButtonIc.setImageResource(R.drawable.like_fill_ic)
+                                    loadCounts(post.key)
+                                }
+                            }
+                        })
                     }
-                    // Reload count
-                    loadCounts(post.key)
                 }
 
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
             })
         }
 
         private fun toggleFavorite(postKey: String) {
-            val favoriteRef = firebase.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-            favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
+            val favoriteRef = databaseService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
+            favoriteRef.getData(object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
-                        favoriteRef.removeValue()
-                        favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic)
+                        // Unfavorite post
+                        favoriteRef.setValue(null, object : IDatabaseReference.CompletionListener {
+                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
+                                if (error == null) {
+                                    favoritePostButton.setImageResource(R.drawable.favorite_ic)
+                                }
+                            }
+                        })
                     } else {
-                        favoriteRef.setValue(postKey)
-                        favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic)
+                        // Favorite post
+                        favoriteRef.setValue(true, object : IDatabaseReference.CompletionListener {
+                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
+                                if (error == null) {
+                                    favoritePostButton.setImageResource(R.drawable.favorite_fill_ic)
+                                }
+                            }
+                        })
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onError(error: IDatabaseError) {
+                    // Handle error
+                }
             })
         }
 

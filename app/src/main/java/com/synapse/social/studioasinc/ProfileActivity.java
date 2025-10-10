@@ -48,22 +48,16 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButtonGroup;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener;
-/* import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-/* import com.google.firebase.auth.FirebaseAuth; */
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener; */
+
+import io.github.jan.supabase.SupabaseClient;
+import io.github.jan.supabase.gotrue.GoTrue;
+import io.github.jan.supabase.gotrue.user.UserSession;
+import io.github.jan.supabase.postgrest.Postgrest;
+import io.github.jan.supabase.postgrest.query.PostgrestResult;
+
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -77,17 +71,27 @@ import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.*;
-import org.json.*;
+import org.json.JSONObject;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestCallback;
+import io.github.janmoehr.headlessforge.headlessforge.PostgrestResponse;
 import androidx.core.widget.NestedScrollView;
-import com.google.firebase.database.Query;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import androidx.browser.customtabs.CustomTabsIntent;
 
+import kotlinx.coroutines.CoroutineScope;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.launch;
+import kotlinx.coroutines.withContext;
+
+import com.synapse.social.studioasinc.model.User;
+import com.synapse.social.studioasinc.model.Post;
+import com.synapse.social.studioasinc.adapter.PostsAdapter;
+
 public class ProfileActivity extends AppCompatActivity {
 
 	private Timer _timer = new Timer();
-	// Supabase: private SupabaseClient supabase;
+	private SupabaseClient supabase;
 
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 	private HashMap<String, Object> postLikeCountCache = new HashMap<>();
@@ -156,22 +160,10 @@ public class ProfileActivity extends AppCompatActivity {
 	private ProgressBar ProfilePageLoadingBodyBar;
 
 	private Intent intent = new Intent();
-		private GoTrueClient auth;
-	/* private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener; */
-		private PostgrestClient main;
-	/* private ChildEventListener _main_child_listener; */
+	private GoTrue auth;
+	private Postgrest postgrest;
 	private Vibrator vbr;
 	private Calendar cc = Calendar.getInstance();
-
 class c {
 	Context co;
 	public <T extends Activity> c(T a) {
@@ -191,10 +183,7 @@ class c {
 }
 	private RequestNetwork req;
 	private RequestNetwork.RequestListener _req_request_listener;
-	private Calendar JoinDateCC = Calendar.getInstance();
-	/* private DatabaseReference maindb = _firebase.getReference("/"); */
-	private PostgrestClient maindb;
-	private ChildEventListener _maindb_child_listener;
+	private Calendar JoinDateCC = Calendar.getInstance();;
 	private TimerTask after;
 
 	@Override
@@ -202,16 +191,19 @@ class c {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile);
 		initialize(_savedInstanceState);
-		// Supabase: Supabase.initialize(this, "YOUR_SUPABASE_URL", "YOUR_SUPABASE_KEY");
 		initializeLogic();
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		// Supabase: if (auth.getCurrentUser() != null) {
-		// Supabase: 	PresenceManager.setActivity(auth.getCurrentUser().getId(), "In Profile");
-		// Supabase: }
+		CoroutineScope scope = CoroutineScope.get(Dispatchers.getMain());
+		scope.launch(it -> {
+			UserSession session = auth.getSessionManager().loadSession();
+			if (session != null) {
+				PresenceManager.setActivity(session.getUser().getId(), "In Profile");
+			}
+		});
 	}
 
 	@Override
@@ -274,7 +266,9 @@ class c {
 		ProfilePageNoInternetBodySubtitle = findViewById(R.id.ProfilePageNoInternetBodySubtitle);
 		ProfilePageNoInternetBodyRetry = findViewById(R.id.ProfilePageNoInternetBodyRetry);
 		ProfilePageLoadingBodyBar = findViewById(R.id.ProfilePageLoadingBodyBar);
-				auth = Supabase.getGoTrueClient();
+		supabase = SynapseApp.supabaseClient;
+		auth = supabase.get(GoTrue.class);
+		postgrest = supabase.get(Postgrest.class);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		req = new RequestNetwork(this);
 
@@ -338,36 +332,7 @@ class c {
 
 		likeUserProfileButton.setOnClickListener(new View.OnClickListener() {
 			@Override
-			public void onClick(View _view) {
-				// Supabase: PostgrestClient checkProfileLike = supabase.from("profile-likes").select("*").eq("profile_id", getIntent().getStringExtra("uid")).eq("user_id", auth.getCurrentUser().getId());
-				// Supabase: checkProfileLike.execute().then((response) -> {
-				// Supabase: 	if (response.getData().size() > 0) {
-				// Supabase: 		// Supabase: Remove like
-				// Supabase: 		supabase.from("profile-likes").delete().eq("profile_id", getIntent().getStringExtra("uid")).eq("user_id", auth.getCurrentUser().getId()).execute();
-				// Supabase: 		UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
-				// Supabase: 		likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
-				// Supabase: 		likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_1);
-				// Supabase: 		_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
-				// Supabase: 		_ImageColor(likeUserProfileButtonIc, 0xFF000000);
-				// Supabase: 		likeUserProfileButtonLikeCount.setTextColor(0xFF616161);
-				// Supabase: 	} else {
-				// Supabase: 		// Supabase: Add like
-				// Supabase: 		HashMap<String, Object> likeData = new HashMap<>();
-				// Supabase: 		likeData.put("profile_id", getIntent().getStringExtra("uid"));
-				// Supabase: 		likeData.put("user_id", auth.getCurrentUser().getId());
-				// Supabase: 		supabase.from("profile-likes").insert(likeData).execute();
-				// Supabase: 		UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
-				// Supabase: 		likeUserProfileButtonLikeCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("profile_like_count".concat(getIntent().getStringExtra("uid"))).toString())));
-				// Supabase: 		likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
-				// Supabase: 		_viewGraphics(likeUserProfileButton, 0xFFF50057, 0xFFC51162, 300, 0, 0xFF9E9E9E);
-				// Supabase: 		_ImageColor(likeUserProfileButtonIc, 0xFFFFFFFF);
-				// Supabase: 		likeUserProfileButtonLikeCount.setTextColor(0xFFFFFFFF);
-				// Supabase: 	}
-				// Supabase: }).catch((error) -> {
-				// Supabase: 	Log.e("Supabase", "Error handling profile like: " + error.getMessage());
-				// Supabase: });
-				vbr.vibrate((long)(28));
-			}
+			public void onClick(View _view) { /* TODO: Implement with Supabase */ }
 		});
 
 		ProfilePageTabUserInfoFollowsDetails.setOnClickListener(new View.OnClickListener() {
@@ -389,38 +354,7 @@ class c {
 
 		btnFollow.setOnClickListener(new View.OnClickListener() {
 			@Override
-			public void onClick(View _view) {
-				// Supabase: PostgrestClient checkUserFollow = supabase.from("followers").select("*").eq("followed_id", getIntent().getStringExtra("uid")).eq("follower_id", auth.getCurrentUser().getId());
-				// Supabase: checkUserFollow.execute().then((response) -> {
-				// Supabase: 	if (response.getData().size() > 0) {
-				// Supabase: 		// Supabase: Unfollow user
-				// Supabase: 		supabase.from("followers").delete().eq("followed_id", getIntent().getStringExtra("uid")).eq("follower_id", auth.getCurrentUser().getId()).execute();
-				// Supabase: 		supabase.from("following").delete().eq("follower_id", auth.getCurrentUser().getId()).eq("followed_id", getIntent().getStringExtra("uid")).execute();
-				// Supabase: 		UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) - 1)));
-				// Supabase: 		ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
-				// Supabase: 		btnFollow.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-				// Supabase: 		btnFollow.setText(getResources().getString(R.string.follow));
-				// Supabase: 		btnFollow.setTextColor(0xFFFFFFFF);
-				// Supabase: 	} else {
-				// Supabase: 		// Supabase: Follow user
-				// Supabase: 		HashMap<String, Object> followerData = new HashMap<>();
-				// Supabase: 		followerData.put("followed_id", getIntent().getStringExtra("uid"));
-				// Supabase: 		followerData.put("follower_id", auth.getCurrentUser().getId());
-				// Supabase: 		supabase.from("followers").insert(followerData).execute();
-				// Supabase: 		HashMap<String, Object> followingData = new HashMap<>();
-				// Supabase: 		followingData.put("follower_id", auth.getCurrentUser().getId());
-				// Supabase: 		followingData.put("followed_id", getIntent().getStringExtra("uid"));
-				// Supabase: 		supabase.from("following").insert(followingData).execute();
-				// Supabase: 		UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString()) + 1)));
-				// Supabase: 		ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(Double.parseDouble(UserInfoCacheMap.get("followers_count".concat(getIntent().getStringExtra("uid"))).toString())).concat(" ".concat(getResources().getString(R.string.followers))));
-				// Supabase: 		btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
-				// Supabase: 		btnFollow.setText(getResources().getString(R.string.unfollow));
-				// Supabase: 		btnFollow.setTextColor(0xFF000000);
-				// Supabase: 	}
-				// Supabase: }).catch((error) -> {
-				// Supabase: 	Log.e("Supabase", "Error handling follow: " + error.getMessage());
-				// Supabase: });
-			}
+			public void onClick(View _view) { /* TODO: Implement with Supabase */ }
 		});
 
 		btnMessage.setOnClickListener(new View.OnClickListener() {
@@ -449,45 +383,6 @@ class c {
 			}
 		});
 
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-
 		_req_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -506,134 +401,7 @@ class c {
 				ProfilePageLoadingBody.setVisibility(View.GONE);
 			}
 		};
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -676,113 +444,90 @@ class c {
 
 
 	public void _getUserReference() {
-		DatabaseReference getUserReference = supabase.from("users").select().eq("uid", getIntent().getStringExtra("uid"));
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+		supabase.from("users").select("*").eq("uid", getIntent().getStringExtra("uid")).single().execute(new PostgrestCallback() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					ProfilePageSwipeLayout.setVisibility(View.VISIBLE);
-					ProfilePageNoInternetBody.setVisibility(View.GONE);
+			public void onSuccess(PostgrestResponse response) {
+				try {
+					if (response.getData() != null) {
+						ProfilePageSwipeLayout.setVisibility(View.VISIBLE);
+						ProfilePageNoInternetBody.setVisibility(View.GONE);
+						ProfilePageLoadingBody.setVisibility(View.GONE);
+
+						JSONObject userData = new JSONObject(response.getData().toString());
+
+						user_uid_layout_text.setText(userData.getString("uid"));
+						JoinDateCC.setTimeInMillis((long)(Double.parseDouble(userData.getString("join_date"))));
+
+						if (userData.getString("banned").equals("true")) {
+							UserAvatarUri = "null";
+							ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.banned_avatar);
+							ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.banned_cover_photo);
+						} else {
+							_getUserPostsReference();
+							_getUserCountReference();
+							UserAvatarUri = userData.getString("avatar");
+							if (userData.getString("profile_cover_image").equals("null")) {
+								ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.user_null_cover_photo);
+							} else {
+								Glide.with(getApplicationContext()).load(Uri.parse(userData.getString("profile_cover_image"))).into(ProfilePageTabUserInfoCoverImage);
+							}
+							if (userData.getString("avatar").equals("null")) {
+								ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.avatar);
+							} else {
+								Glide.with(getApplicationContext()).load(Uri.parse(userData.getString("avatar"))).into(ProfilePageTabUserInfoProfileImage);
+							}
+						}
+
+						// Check user status
+						if (userData.getString("status").equals("online")) {
+							ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.online));
+							ProfilePageTabUserInfoStatus.setTextColor(0xFF2196F3);
+						} else {
+							if (userData.getString("status").equals("offline")) {
+								ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.offline));
+							} else {
+								_setUserLastSeen(Double.parseDouble(userData.getString("status")), ProfilePageTabUserInfoStatus);
+							}
+							ProfilePageTabUserInfoStatus.setTextColor(0xFF757575);
+						}
+						ProfilePageTabUserInfoUsername.setText("@" + userData.getString("username"));
+						if (userData.getString("nickname").equals("null")) {
+							ProfilePageTabUserInfoNickname.setText("@" + userData.getString("username"));
+						} else {
+							ProfilePageTabUserInfoNickname.setText(userData.getString("nickname"));
+							nickname = userData.getString("nickname");
+						}
+						if (userData.getString("biography").equals("null")) {
+
+						} else {
+							ProfilePageTabUserInfoBioLayoutText.setText(userData.getString("biography"));
+						}
+						join_date_layout_text.setText(new SimpleDateFormat("dd MMMM yyyy").format(JoinDateCC.getTime()));
+					} else {
+						// Handle case where no data is returned
+						ProfilePageSwipeLayout.setVisibility(View.GONE);
+						ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
+						ProfilePageLoadingBody.setVisibility(View.GONE);
+					}
+				} catch (JSONException e) {
+					e.printStackTrace();
+					// Handle JSON parsing error
+					ProfilePageSwipeLayout.setVisibility(View.GONE);
+					ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
 					ProfilePageLoadingBody.setVisibility(View.GONE);
-					user_uid_layout_text.setText(dataSnapshot.child("uid").getValue(String.class));
-					JoinDateCC.setTimeInMillis((long)(Double.parseDouble(dataSnapshot.child("join_date").getValue(String.class))));
-					if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
-						UserAvatarUri = "null";
-						ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.banned_avatar);
-						ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.banned_cover_photo);
-					} else {
-						_getUserPostsReference();
-						_getUserCountReference();
-						UserAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
-						if (dataSnapshot.child("profile_cover_image").getValue(String.class).equals("null")) {
-							ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.user_null_cover_photo);
-						} else {
-							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("profile_cover_image").getValue(String.class))).into(ProfilePageTabUserInfoCoverImage);
-						}
-						if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-							ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.avatar);
-						} else {
-							Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(ProfilePageTabUserInfoProfileImage);
-						}
-					}
-					// Check user status
-					if (dataSnapshot.child("status").getValue(String.class).equals("online")) {
-						ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.online));
-						ProfilePageTabUserInfoStatus.setTextColor(0xFF2196F3);
-					} else {
-						if (dataSnapshot.child("status").getValue(String.class).equals("offline")) {
-							ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.offline));
-						} else {
-							_setUserLastSeen(Double.parseDouble(dataSnapshot.child("status").getValue(String.class)), ProfilePageTabUserInfoStatus);
-						}
-						ProfilePageTabUserInfoStatus.setTextColor(0xFF757575);
-					}
-					ProfilePageTabUserInfoUsername.setText("@" + dataSnapshot.child("username").getValue(String.class));
-					if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
-						ProfilePageTabUserInfoNickname.setText("@" + dataSnapshot.child("username").getValue(String.class));
-					} else {
-						ProfilePageTabUserInfoNickname.setText(dataSnapshot.child("nickname").getValue(String.class));
-						nickname = dataSnapshot.child("nickname").getValue(String.class);
-					}
-					if (dataSnapshot.child("biography").getValue(String.class).equals("null")) {
-
-					} else {
-						ProfilePageTabUserInfoBioLayoutText.setText(dataSnapshot.child("biography").getValue(String.class));
-					}
-					/*
-if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
-
-} else {
-if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
-
-} else {
-if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
-
-}
-}
-}
-if (dataSnapshot.child("user_region").getValue(String.class) != null) {
-
-} else {
-
-}
-if (dataSnapshot.child("account_type").getValue(String.class).equals("admin")) {
-
-} else {
-if (dataSnapshot.child("account_type").getValue(String.class).equals("moderator")) {
-
-} else {
-if (dataSnapshot.child("account_type").getValue(String.class).equals("support")) {
-
-} else {
-
-}
-}
-}
-if (dataSnapshot.child("account_premium").getValue(String.class).equals("true")) {
-
-} else {
-
-}
-if (dataSnapshot.child("verify").getValue(String.class).equals("true")) {
-
-} else {
-
-}
-join_date_layout_text.setText(new SimpleDateFormat("dd MMMM yyyy").format(JoinDateCC.getTime()));
-if ( || ( || )) {
-
-} else {
-
-}
-*/
-				} else {
 				}
 			}
 
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
+			public void onError(PostgrestError error) {
+				error.printStackTrace();
+				// Handle Supabase query error
+				ProfilePageSwipeLayout.setVisibility(View.GONE);
+				ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
+				ProfilePageLoadingBody.setVisibility(View.GONE);
+			}
+		});
+	}
 			}
 		});
 		ProfilePageSwipeLayout.setRefreshing(false);
@@ -918,90 +663,17 @@ if ( || ( || )) {
 
 
 	public void _getUserCountReference() {
-		Query getFollowersCount = supabase.from("followers").select().eq("uid", getIntent().getStringExtra("uid"));
-		getFollowersCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(count).concat(" ".concat(getResources().getString(R.string.followers))));
-				UserInfoCacheMap.put("followers_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
+		// TODO: Implement with Supabase Postgrest queries
+		// This will involve multiple async calls for followers, following, and likes.
+		// Example for followers:
+		/*
+		scope.launch(it -> {
+			CountResult result = postgrest.from("followers").select(Count.EXACT).eq("followed_id", getIntent().getStringExtra("uid")).count();
+			withContext(Dispatchers.getMain(), it2 -> {
+				ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(result.getCount()).concat(" ").concat(getResources().getString(R.string.followers)));
+			});
 		});
-		DatabaseReference getFollowingCount = supabase.from("following").select().eq("uid", getIntent().getStringExtra("uid"));
-		getFollowingCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				ProfilePageTabUserInfoFollowingCount.setText(_getStyledNumber(count).concat(" ".concat(getResources().getString(R.string.following))));
-				UserInfoCacheMap.put("following_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
-		});
-		Query checkFollowUser = supabase.from("followers").select().eq("uid", getIntent().getStringExtra("uid")).eq("follower_id", auth.getUser().getId());
-		checkFollowUser.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					btnFollow.setText(getResources().getString(R.string.unfollow));
-					btnFollow.setBackgroundColor(getResources().getColor(R.color.bars_colors));
-					btnFollow.setTextColor(0xFF000000);
-				} else {
-					btnFollow.setText(getResources().getString(R.string.follow));
-					btnFollow.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-					btnFollow.setTextColor(0xFFFFFFFF);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-		Query checkProfileLike = supabase.from("profile-likes").select().eq("uid", getIntent().getStringExtra("uid")).eq("liker_id", auth.getUser().getId());
-		checkProfileLike.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_2);
-					_viewGraphics(likeUserProfileButton, 0xFFF50057, 0xFFC51162, 300, 0, 0xFF9E9E9E);
-					_ImageColor(likeUserProfileButtonIc, 0xFFFFFFFF);
-					likeUserProfileButtonLikeCount.setTextColor(0xFFFFFFFF);
-				} else {
-					likeUserProfileButtonIc.setImageResource(R.drawable.post_icons_1_1);
-					_viewGraphics(likeUserProfileButton, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, 0xFF9E9E9E);
-					_ImageColor(likeUserProfileButtonIc, 0xFF000000);
-					likeUserProfileButtonLikeCount.setTextColor(0xFF616161);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-		DatabaseReference getProfileLikesCount = supabase.from("profile-likes").select().eq("uid", getIntent().getStringExtra("uid"));
-		getProfileLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				long count = dataSnapshot.getChildrenCount();
-				likeUserProfileButtonLikeCount.setText(_getStyledNumber(count));
-				UserInfoCacheMap.put("profile_like_count".concat(getIntent().getStringExtra("uid")), String.valueOf((long)(count)));
-			}
-
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-
-			}
-		});
+		*/
 	}
 
 
@@ -1088,54 +760,31 @@ if ( || ( || )) {
 			body.setVisibility(View.GONE);
 			_viewGraphics(save_to_history, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 			avatarCard.setBackgroundResource(R.drawable.shape_circular);
-			DatabaseReference getUserReference = supabase.from("users").select().eq("uid", _uid);
-			getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+			supabase.from("users").select("*").eq("uid", _uid).single().execute(new PostgrestCallback() {
 				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
-							avatar.setImageResource(R.drawable.avatar);
-							save_to_history.setVisibility(View.GONE);
-						} else {
-							if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+				public void onSuccess(PostgrestResponse response) {
+					try {
+						if (response.getData() != null) {
+							JSONObject userData = new JSONObject(response.getData().toString());
+							String avatarUri = userData.getString("avatar");
+							if (avatarUri.equals("null")) {
 								avatar.setImageResource(R.drawable.avatar);
-								save_to_history.setVisibility(View.GONE);
 							} else {
-								Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(avatar);
-								if (!dataSnapshot.child("uid").getValue(String.class).equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-									if (dataSnapshot.child("avatar_history_type").getValue(String.class).equals("url")) {
-										save_to_history.setOnClickListener(new View.OnClickListener() {
-											@Override
-											public void onClick(View _view) {
-												String ProfileHistoryKey = maindb.push().getKey();
-												mSendHistoryMap = new HashMap<>();
-												mSendHistoryMap.put("key", ProfileHistoryKey);
-												mSendHistoryMap.put("image_url", dataSnapshot.child("avatar").getValue(String.class));
-												mSendHistoryMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-												mSendHistoryMap.put("type", "url");
-												maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mSendHistoryMap);
-												SketchwareUtil.showMessage(getApplicationContext(), "Saved to History");
-												mProfileImageViewDialog.dismiss();
-											}
-										});
-										save_to_history.setVisibility(View.VISIBLE);
-									} else {
-										save_to_history.setVisibility(View.GONE);
-									}
-								} else {
-									save_to_history.setVisibility(View.GONE);
-								}
+								Glide.with(getApplicationContext()).load(Uri.parse(avatarUri)).into(avatar);
 							}
+						} else {
+							// Handle case where no data is returned
 						}
-						body.setVisibility(View.VISIBLE);
-					} else {
-						mProfileImageViewDialog.dismiss();
+					} catch (JSONException e) {
+						e.printStackTrace();
+						// Handle JSON parsing error
 					}
 				}
 
 				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-
+				public void onError(PostgrestError error) {
+					error.printStackTrace();
+					// Handle Supabase query error
 				}
 			});
 
@@ -1280,29 +929,7 @@ if ( || ( || )) {
 					int start = sp.getSpanStart(this);
 					int end = sp.getSpanEnd(this);
 					object_clicked = sp.subSequence(start,end).toString();
-					handle = object_clicked.replace("@", "");
-					DatabaseReference getReference = supabase.from("username").select().eq("handle", handle);
-					getReference.addListenerForSingleValueEvent(new ValueEventListener() {
-						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-							if(dataSnapshot.exists()) {
-								if (!dataSnapshot.child("uid").getValue(String.class).equals("null")) {
-									intent.setClass(getApplicationContext(), ProfileActivity.class);
-									intent.putExtra("uid", dataSnapshot.child("uid").getValue(String.class));
-									startActivity(intent);
-								} else {
-
-								}
-							} else {
-							}
-						}
-						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
-							//	swipeLayout.setVisibility(View.GONE);
-							//noInternetBody.setVisibility(View.VISIBLE);
-							//	loadingBody.setVisibility(View.GONE);
-						}
-					});
+					// TODO: Implement mention click handling with Supabase
 				}
 			}
 
@@ -1493,11 +1120,11 @@ if ( || ( || )) {
 				}
 
 			} else {
-				DatabaseReference getReference = supabase.from("users").select().eq("uid", _data.get((int)_position).get("uid").toString());
-				getReference.addListenerForSingleValueEvent(new ValueEventListener() {
-					@Override
-					public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-						if(dataSnapshot.exists()) {
+				// This entire block should be replaced by a proper RecyclerView Adapter
+				// that receives a list of Post objects, not HashMaps.
+				// The user info should be fetched once and cached, or joined in the initial query.
+				// For now, this is a placeholder for a required major refactor.
+				/*
 							UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
 							UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
 							UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
@@ -1506,163 +1133,36 @@ if ( || ( || )) {
 							UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
 							UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
 							if (_data.get((int)_position).get("post_visibility").toString().equals("private")) {
-								if (_data.get((int)_position).get("uid").toString().equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
-									postPrivateStateIcon.setVisibility(View.VISIBLE);
-									body.setVisibility(View.VISIBLE);
-								} else {
-									body.setVisibility(View.GONE);
-								}
+								// ...
 							} else {
-								body.setVisibility(View.VISIBLE);
-								postPrivateStateIcon.setVisibility(View.GONE);
+								// ...
 							}
-							if (dataSnapshot.child("banned").getValue(String.class).equals("true")) {
-								userInfoProfileImage.setImageResource(R.drawable.avatar);
-								UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), "null");
-							} else {
-								UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-								if (dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-									userInfoProfileImage.setImageResource(R.drawable.avatar);
-								} else {
-									Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(userInfoProfileImage);
-								}
-							}
-							if (dataSnapshot.child("nickname").getValue(String.class).equals("null")) {
-								userInfoUsername.setText("@" + dataSnapshot.child("username").getValue(String.class));
-							} else {
-								userInfoUsername.setText(dataSnapshot.child("nickname").getValue(String.class));
-							}
-							if (dataSnapshot.child("gender").getValue(String.class).equals("hidden")) {
-								userInfoGenderBadge.setVisibility(View.GONE);
-							} else {
-								if (dataSnapshot.child("gender").getValue(String.class).equals("male")) {
-									userInfoGenderBadge.setImageResource(R.drawable.male_badge);
-									userInfoGenderBadge.setVisibility(View.VISIBLE);
-								} else {
-									if (dataSnapshot.child("gender").getValue(String.class).equals("female")) {
-										userInfoGenderBadge.setImageResource(R.drawable.female_badge);
-										userInfoGenderBadge.setVisibility(View.VISIBLE);
-									}
-								}
-							}
-							if (dataSnapshot.child("account_type").getValue(String.class).equals("admin")) {
-								userInfoUsernameVerifiedBadge.setImageResource(R.drawable.admin_badge);
-								userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
-							} else {
-								if (dataSnapshot.child("account_type").getValue(String.class).equals("moderator")) {
-									userInfoUsernameVerifiedBadge.setImageResource(R.drawable.moderator_badge);
-									userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
-								} else {
-									if (dataSnapshot.child("account_type").getValue(String.class).equals("support")) {
-										userInfoUsernameVerifiedBadge.setImageResource(R.drawable.support_badge);
-										userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
-									} else {
-										if (dataSnapshot.child("account_type").getValue(String.class).equals("user")) {
-											if (dataSnapshot.child("verify").getValue(String.class).equals("true")) {
-												userInfoUsernameVerifiedBadge.setImageResource(R.drawable.verified_badge);
-												userInfoUsernameVerifiedBadge.setVisibility(View.VISIBLE);
-											} else {
-												userInfoUsernameVerifiedBadge.setVisibility(View.GONE);
-											}
-										}
-									}
-								}
-							}
-						} else {
-						}
-					}
-					@Override
-					public void onCancelled(@NonNull DatabaseError databaseError) {
-
-					}
-				});
-
+				*/
 			}
-			DatabaseReference getLikeCheck = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId());
-			DatabaseReference getCommentsCount = supabase.from("posts-comments").select().eq("key", _data.get((int)_position).get("key").toString());
-			DatabaseReference getLikesCount = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString());
-			DatabaseReference getFavoriteCheck = supabase.from("favorite-posts").select().eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString());
-
-			getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
-					} else {
-						likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
-					}
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-
-				}
-			});
-			getCommentsCount.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(DataSnapshot dataSnapshot) {
-					long count = dataSnapshot.getChildrenCount();
-					_setCount(commentsButtonCount, count);
-				}
-
-				@Override
-				public void onCancelled(DatabaseError databaseError) {
-
-				}
-			});
-			getLikesCount.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(DataSnapshot dataSnapshot) {
-					long count = dataSnapshot.getChildrenCount();
-					_setCount(likeButtonCount, count);
-					postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(count)));
-				}
-
-				@Override
-				public void onCancelled(DatabaseError databaseError) {
-
-				}
-			});
-			getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
-				@Override
-				public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-					if(dataSnapshot.exists()) {
-						favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
-					} else {
-						favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
-					}
-				}
-
-				@Override
-				public void onCancelled(@NonNull DatabaseError databaseError) {
-
-				}
-			});
+			// TODO: Migrate to Supabase
 
 			likeButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getLikeCheck = supabase.from("posts-likes").select().eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId());
-					getLikeCheck.addListenerForSingleValueEvent(new ValueEventListener() {
+					supabase.from("posts-likes").select("*").eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId()).single().execute(new PostgrestCallback() {
 						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-							if(dataSnapshot.exists()) {
-								getLikeCheck.removeValue();
-								postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()) - 1)));
-								_setCount(likeButtonCount, Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()));
-								likeButtonIc.setImageResource(R.drawable.post_icons_1_1);
-							} else {
-								getLikeCheck.setValue(FirebaseAuth.getInstance().getCurrentUser().getUid());
-								com.synapse.social.studioasinc.util.NotificationUtils.sendPostLikeNotification(_data.get((int)_position).get("key").toString(), _data.get((int)_position).get("uid").toString());
-								postLikeCountCache.put(_data.get((int)_position).get("key").toString(), String.valueOf((long)(Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()) + 1)));
-								_setCount(likeButtonCount, Double.parseDouble(postLikeCountCache.get(_data.get((int)_position).get("key").toString()).toString()));
-								likeButtonIc.setImageResource(R.drawable.post_icons_1_2);
+						public void onSuccess(PostgrestResponse response) {
+							try {
+								if (response.getData() != null) {
+									// Data exists, user has liked the post
+									likeButtonIc.setImageResource(R.drawable.like_fill_icon);
+								} else {
+									// No data, user has not liked the post
+									likeButtonIc.setImageResource(R.drawable.like_icon);
+								}
+							} catch (Exception e) {
+								e.printStackTrace();
 							}
 						}
 
 						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
-
+						public void onError(PostgrestError error) {
+							error.printStackTrace();
 						}
 					});
 					vbr.vibrate((long)(24));
@@ -1691,22 +1191,23 @@ if ( || ( || )) {
 			favoritePostButton.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
-					DatabaseReference getFavoriteCheck = supabase.from("favorite-posts").select().eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString());
-					getFavoriteCheck.addListenerForSingleValueEvent(new ValueEventListener() {
+					supabase.from("favorite-posts").select("*").eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString()).single().execute(new PostgrestCallback() {
 						@Override
-						public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-							if(dataSnapshot.exists()) {
-								getFavoriteCheck.removeValue();
-								favoritePostButton.setImageResource(R.drawable.add_favorite_post_ic);
-							} else {
-								getFavoriteCheck.setValue(_data.get((int)_position).get("key").toString());
-								favoritePostButton.setImageResource(R.drawable.delete_favorite_post_ic);
+						public void onSuccess(PostgrestResponse response) {
+							try {
+								if (response.getData() != null) {
+									favoritePostButtonIc.setImageResource(R.drawable.bookmark_fill_icon);
+								} else {
+									favoritePostButtonIc.setImageResource(R.drawable.bookmark_icon);
+								}
+							} catch (Exception e) {
+								e.printStackTrace();
 							}
 						}
 
 						@Override
-						public void onCancelled(@NonNull DatabaseError databaseError) {
-
+						public void onError(PostgrestError error) {
+							error.printStackTrace();
 						}
 					});
 					vbr.vibrate((long)(24));

@@ -201,9 +201,6 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         }
     }
 
-    .
-    }
-
     private fun _findCorrectInsertPosition(newMessage: HashMap<String, Any>): Int {
         if (ChatMessagesList.isEmpty()) {
             return 0

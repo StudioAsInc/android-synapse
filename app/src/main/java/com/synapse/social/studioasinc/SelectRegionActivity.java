@@ -67,10 +67,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
+import io.github.jan.supabase.SupabaseClient;
+import io.github.jan.supabase.postgrest.PostgrestClient;
+import io.github.jan.supabase.postgrest.PostgrestQuery;
+import io.github.jan.supabase.postgrest.rpc.PostgrestRpc;
+import io.github.jan.supabase.postgrest.result.PostgrestResult;
+import io.github.jan.supabase.postgrest.Postgrest;
+import io.github.jan.supabase.postgrest.PostgrestCallback;
+import io.github.jan.supabase.postgrest.PostgrestResponse;
+import io.github.jan.supabase.postgrest.PostgrestError;
+import java.util.Map;
+import java.util.List;
+import com.synapse.social.studioasinc.Supabase;
 
 public class SelectRegionActivity extends AppCompatActivity {
 	
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private SupabaseClient supabaseClient;
 	
 	private String CurrentRegionCode = "";
 	
@@ -97,8 +109,8 @@ public class SelectRegionActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
 	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
+	private PostgrestClient main = supabaseClient.from("skyline");
+	
 	private RequestNetwork getRegionsRef;
 	private RequestNetwork.RequestListener _getRegionsRef_request_listener;
 	private Vibrator vbr;
@@ -123,6 +135,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 		spc = findViewById(R.id.spc);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
 		auth = FirebaseAuth.getInstance();
+        supabaseClient = Supabase.client;
 		getRegionsRef = new RequestNetwork(this);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		appSavedData = getSharedPreferences("data", Activity.MODE_PRIVATE);
@@ -134,44 +147,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 			}
 		});
 		
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
+
 		
 		_getRegionsRef_request_listener = new RequestNetwork.RequestListener() {
 			@Override
@@ -387,24 +363,30 @@ public class SelectRegionActivity extends AppCompatActivity {
 	
 	
 	public void _getCurrentRegionRef() {
-		DatabaseReference checkRegion = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("user_region");
-		checkRegion.addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					CurrentRegionCode = dataSnapshot.getValue(String.class);
-					appSavedData.edit().putString("user_region_data", dataSnapshot.getValue(String.class)).commit();
-				} else {
-					CurrentRegionCode = "none";
-					appSavedData.edit().putString("user_region_data", "none").commit();
-				}
-				mRegionList.getAdapter().notifyDataSetChanged();
-			}
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
-			}
-		});
+        supabaseClient.from("skyline").select("user_region").eq("id", FirebaseAuth.getInstance().getCurrentUser().getUid()).execute(new PostgrestCallback<Map<String, Object>>() {
+            @Override
+            public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+                if (response.getError() == null && response.getData() != null && !response.getData().isEmpty()) {
+                    Map<String, Object> data = response.getData().get(0);
+                    if (data.containsKey("user_region")) {
+                        CurrentRegionCode = (String) data.get("user_region");
+                        appSavedData.edit().putString("user_region_data", CurrentRegionCode).commit();
+                    } else {
+                        CurrentRegionCode = "none";
+                        appSavedData.edit().putString("user_region_data", "none").commit();
+                    }
+                } else {
+                    CurrentRegionCode = "none";
+                    appSavedData.edit().putString("user_region_data", "none").commit();
+                }
+                mRegionList.getAdapter().notifyDataSetChanged();
+            }
+
+            @Override
+            public void onFailure(@NonNull PostgrestError error) {
+                // Handle error, e.g., log it or show a toast
+            }
+        });
 	}
 	
 	public class MRegionListAdapter extends RecyclerView.Adapter<MRegionListAdapter.ViewHolder> {
@@ -453,7 +435,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 				@Override
 				public void onClick(View _view) {
 					if (!CurrentRegionCode.equals(_data.get((int)_position).get("code").toString())) {
-						FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("user_region").setValue(_data.get((int)_position).get("code").toString());
+						supabaseClient.from("skyline").update(new HashMap<String, Object>() {{ put("user_region", _data.get((int)_position).get("code").toString()); }}).eq("id", FirebaseAuth.getInstance().getCurrentUser().getUid()).execute();
 					}
 					vbr.vibrate((long)(28));
 				}
@@ -471,4 +453,4 @@ public class SelectRegionActivity extends AppCompatActivity {
 			}
 		}
 	}
-}
+}
