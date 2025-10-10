@@ -68,8 +68,8 @@ class MessageSendingHandler(
         messageEt: EditText,
         mMessageReplyLayout: LinearLayout
     ) {
-        / Implement with Supabase
-        // auth.currentUser?.uid?.let { PresenceManager.setActivity(it, "Idle") }/ TODO:
+        // Implement with Supabase
+        // auth.currentUser?.uid?.let { PresenceManager.setActivity(it, "Idle") } // TODO:
 
         if (attactmentmap.isEmpty() && messageText.isEmpty()) {
             Log.w("MessageSendingHandler", "No message text and no attachments - nothing to send")

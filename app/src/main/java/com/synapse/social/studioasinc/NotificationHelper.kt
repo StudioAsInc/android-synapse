@@ -86,7 +86,7 @@ object NotificationHelper {
             // } else {
             //     sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
             // }
-
+    }
 
     /**
      * Enhanced notification sending with smart presence checking and dual system support.
