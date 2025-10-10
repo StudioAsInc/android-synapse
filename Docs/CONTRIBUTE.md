@@ -20,6 +20,11 @@ By contributing, you agree that your submissions become the property of **Studio
 
 ---
 
+## Code Structure
+✅ **File Size**: A single class/layout file cannot contain more than 1000 lines of code. It is highly recommended to separate classes into multiple parts and keep theirs documentation up-to-date in Docs folder of root dir. We recommend to keep a file size near 500 lines.
+
+---
+
 ## Submission Process  
 1. Open a **Pull Request** with:  
    - Description of changes  
