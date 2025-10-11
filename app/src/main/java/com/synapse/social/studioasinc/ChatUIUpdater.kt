@@ -66,7 +66,9 @@ class ChatUIUpdater(
     }
 
     fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        // TODO: Replace with Supabase Auth
+        // TODO: Replace with Supabase Auth to get the current user's ID.
+        // 1. Get the current user's ID from `Supabase.client.auth.currentUser.id`.
+        // 2. Use this ID to determine if the replied message was sent by the current user.
         val myUid = "TODO" // auth.currentUser!!.uid
         val isMyMessage = myUid == messageData[ChatConstants.UID_KEY].toString()
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName

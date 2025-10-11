@@ -132,6 +132,12 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
         val groupId = intent.getStringExtra("uid")
 
+        // TODO: Fetch group details and members from Supabase.
+        // 1. Query the `groups` table to get the group's metadata (name, avatar, etc.).
+        // 2. Query the `group_members` table to get a list of member IDs.
+        // 3. Fetch the profiles of the members from the `users` table.
+        // 4. Populate the UI with the group's information and cache member details.
+
 
         back.setOnClickListener { finish() }
 
@@ -141,6 +147,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             }
         })
 
+        // TODO: Implement sending and receiving group messages with Supabase.
+        // 1. When the send button is clicked, insert the message into the `group_messages` table.
+        // 2. The message should include the group ID, sender ID, message text, and any attachments.
+        // 3. Use Supabase Realtime to listen for new messages in the group channel.
+        // 4. When a new message is received, add it to the chat list and update the UI.
         btn_sendMessage.setOnClickListener { _send_btn() }
 
         galleryBtn.setOnClickListener {
@@ -328,9 +339,16 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private fun _sendVoiceMessage(audioUrl: String, duration: Long) {
         // TODO: Implement with Supabase
+        // 1. Upload the audio file to Supabase Storage.
+        // 2. Once uploaded, send a message with the audio URL and duration.
+        // 3. Use Supabase Realtime to broadcast the voice message to the group.
     }
 
     private fun _startUploadForItem(position: Int) {
+        // TODO: Replace this with Supabase Storage for file uploads.
+        // 1. When a file is selected, upload it to a Supabase Storage bucket.
+        // 2. Update the UI to show the upload progress.
+        // 3. Once the upload is complete, send a message with the file's URL.
         if (position < 0 || position >= attactmentmap.size) {
             return
         }

@@ -173,7 +173,9 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private void bindCommonMessageProperties(BaseMessageViewHolder holder, int position) {
         HashMap<String, Object> data = _data.get(position);
-// TODO(supabase): Replace with Supabase Auth to get the current user's ID. //FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+        // TODO: Replace FirebaseAuth with Supabase Auth to get the current user's ID.
+        // 1. Get the current user's ID from `Supabase.client.auth.currentUser.id`.
+        // 2. Use this ID to determine if the message was sent by the current user.
         String myUid = appSettings.getString("user_id", "");
         String msgUid = data != null && data.get("uid") != null ? String.valueOf(data.get("uid")) : "";
         boolean isMyMessage = msgUid.equals(myUid);
@@ -433,8 +435,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             String otherUserUid = listener.getRecipientUid();
 
             String messageKey = String.valueOf(data.get("key"));
-            // TODO(supabase): Implement message state update with Supabase.
-            // This should be done via a call to the `DatabaseService` interface.
+            // TODO: Implement message state update with Supabase.
+            // 1. This should be done via a call to the `DatabaseService` interface.
+            // 2. The `updateMessageState` method should use Supabase to update the message status.
+            // 3. Ensure that the inbox message state is also updated.
             // DatabaseService.updateMessageState(otherUserUid, myUid, messageKey, "seen");
             // DatabaseService.updateMessageState(myUid, otherUserUid, messageKey, "seen");
             // DatabaseService.updateInboxMessageState(otherUserUid, myUid, "seen");
