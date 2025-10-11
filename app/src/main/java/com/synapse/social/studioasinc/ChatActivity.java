@@ -470,7 +470,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         voiceMessageHandler = new VoiceMessageHandler(this, this);
         voiceMessageHandler.setupVoiceButton(btn_voice_message);
 
-        chatScrollListener = new ChatScrollListener(this, new LinearLayoutManager(this));
+        LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
+        chatScrollListener = new ChatScrollListener(this, layoutManager);
         ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
 
         attachmentHandler = new AttachmentHandler(
