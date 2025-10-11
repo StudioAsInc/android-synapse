@@ -49,17 +49,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-// import com.google.firebase.auth.FirebaseAuth;
-// import com.google.firebase.auth.FirebaseUser;
-// import com.google.firebase.database.ChildEventListener;
-// import com.google.firebase.database.DataSnapshot;
-// import com.google.firebase.database.DatabaseError;
-// import com.google.firebase.database.DatabaseReference;
-// import com.google.firebase.database.FirebaseDatabase;
-// import com.google.firebase.database.Query;
-// import com.google.firebase.database.ValueEventListener;
-// import com.google.firebase.storage.FirebaseStorage;
-// import com.google.firebase.storage.StorageReference;
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.chat.common.ui.ChatNavigator;
 import com.synapse.social.studioasinc.chat.common.ui.SwipeToReplyHandler;
@@ -81,11 +70,16 @@ import java.util.TimerTask;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import com.synapse.social.studioasinc.MessageInteractionHandler;
+import com.synapse.social.studioasinc.util.MessageSendingHandler;
+import com.synapse.social.studioasinc.VoiceMessageHandler;
+
 
 import static com.synapse.social.studioasinc.ChatConstants.*;
 
+public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, VoiceMessageHandler.VoiceMessageListener, ChatMessageManager.MessageActionListener {
 
-
+	private Vibrator vbr;
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
 	
@@ -112,22 +106,6 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
 	private boolean isLoading = false;
-
-	// TODO(supabase): Replace with Supabase client
-	// private FirebaseDatabase fdb = FirebaseDatabase.getInstance();
-	// private FirebaseStorage fst = FirebaseStorage.getInstance();
-	// private FirebaseAuth auth;
-	// private FirebaseUser user;
-
-	// TODO(supabase): Replace with Supabase database references/queries
-	// private DatabaseReference ChatMessagesRef;
-	// private DatabaseReference UserRef;
-	// private ChildEventListener ChatMessagesListener;
-	// private DatabaseReference TypingRef;
-	// private ChildEventListener TypingListener;
-	// private StorageReference ChatMediaRef;
-	// private ValueEventListener UserRefListener;
-	
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
@@ -199,6 +177,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
     private GroupDetailsLoader groupDetailsLoader;
     private UserBlockService userBlockService;
     private ItemUploadHandler itemUploadHandler;
+    private MessageInteractionHandler messageInteractionHandler;
+    private MessageSendingHandler messageSendingHandler;
+    private AuthenticationService authenticationService;
+    private DatabaseService databaseService;
 
 
 	@Override
@@ -326,6 +308,9 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 	}
 
 	private void initializeLogic() {
+		authenticationService = new AuthenticationService(SynapseApp.supabaseClient);
+		databaseService = new DatabaseService(SynapseApp.supabaseClient);
+
 		is_group = getIntent().getBooleanExtra("isGroup", false);
 		SharedPreferences themePrefs = getSharedPreferences("theme", MODE_PRIVATE);
 		String backgroundUrl = themePrefs.getString("chat_background_url", null);
@@ -357,13 +342,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
 
         // TODO: Replace MessageSendingHandler with a Supabase-specific implementation.
-        // 1. Create a `SupabaseMessageSendingHandler` that sends messages via Supabase.
-        // 2. This handler should manage message state, attachments, and replies.
-        // 3. Update all calls to `messageSendingHandler` to use the new `SupabaseMessageSendingHandler`.
         messageSendingHandler = new MessageSendingHandler(
                 this,
-                null, // TODO(supabase): Pass auth service
-                null, //TODO: pass database service
+                authenticationService,
+                databaseService,
                 ChatMessagesList,
                 attactmentmap,
                 chatAdapter,
@@ -389,17 +371,12 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		.responseTextView(message_et)
 		.build();
 
-                null, // TODO(supabase): Pass auth service
-
         // TODO: Replace MessageInteractionHandler with a Supabase-specific implementation.
-        // 1. Create a `SupabaseMessageInteractionHandler` for handling message-related UI interactions.
-        // 2. This handler should manage message selection, context menus, and other UI feedback.
-        // 3. Update all calls to `messageInteractionHandler` to use the new `SupabaseMessageInteractionHandler`.
         messageInteractionHandler = new MessageInteractionHandler(
                 this,
                 this,
-                null, // TODO(supabase): Pass auth service
-                null, // TODO(supabase): Pass database service
+                authenticationService,
+                databaseService,
                 ChatMessagesList,
                 ChatMessagesListRecycler,
                 vbr,
@@ -430,17 +407,14 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
                 mMessageReplyLayout,
                 mMessageReplyLayoutBodyRightUsername,
                 mMessageReplyLayoutBodyRightMessage,
-                null // TODO(supabase): Pass auth service
+                authenticationService
         );
 
 		chatHelper = new ChatHelper(this);
 		// TODO: Replace DatabaseHelper with a Supabase-specific implementation.
-		// 1. Create a `SupabaseDatabaseHelper` that interacts with Supabase's real-time database.
-		// 2. This new helper should handle fetching messages, users, and chat metadata.
-		// 3. Update all calls to `databaseHelper` to use the new `SupabaseDatabaseHelper`.
 		databaseHelper = new DatabaseHelper(
 				this,
-				null, //TODO: pass database service
+				databaseService,
 				chatAdapter,
 				FirstUserName,
 				chatUIUpdater,
@@ -489,14 +463,15 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
                 btn_sendMessage,
                 message_input_outlined_round,
                 message_input_overall_container,
-                null // TODO(supabase): Pass auth service
+                authenticationService
         );
         chatKeyboardHandler.setup();
 
         voiceMessageHandler = new VoiceMessageHandler(this, this);
         voiceMessageHandler.setupVoiceButton(btn_voice_message);
 
-        chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
+        LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
+        chatScrollListener = new ChatScrollListener(this, layoutManager);
         ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
 
         attachmentHandler = new AttachmentHandler(
@@ -505,7 +480,7 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
                 rv_attacmentList,
                 attactmentmap,
                 close_attachments_btn,
-                null // TODO(supabase): Pass auth service
+                authenticationService
         );
         attachmentHandler.setup();
 
@@ -515,7 +490,7 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
         // 3. Update all calls to `itemUploadHandler` to use the new `SupabaseItemUploadHandler`.
         itemUploadHandler = new ItemUploadHandler(
                 this,
-                null, // TODO(supabase): Pass auth service
+                authenticationService,
                 (ArrayList) attactmentmap,
                 rv_attacmentList,
                 (url) -> {
@@ -616,8 +591,6 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
 
-
-    private MessageInteractionHandler messageInteractionHandler;
 	@Override
 	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
 		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
@@ -670,12 +643,6 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		}
 
 	}
-
-
-	{
-
-	}
-
 
 	public void _getUserReference() {
 		// TODO: Replace this with a direct call to the Supabase database.
@@ -857,8 +824,6 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		_view.setEllipsize(TextUtils.TruncateAt.MARQUEE);
 		_view.setSelected(true);
 	}
-
-    private MessageSendingHandler messageSendingHandler;
 
 
 	public void _TransitionManager(final View _view, final double _duration) {
