@@ -6,19 +6,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.R
 import java.util.HashMap
+
+import com.synapse.social.studioasinc.backend.AuthenticationService
+import com.synapse.social.studioasinc.backend.DatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 
 class ChatMessagesListRecyclerAdapter(
     private val context: Context,
     private val data: ArrayList<HashMap<String, Any>>,
     private val isGroup: Boolean,
-    private val firebase: FirebaseDatabase
+    private val dbService: IDatabaseService,
+    private val authService: IAuthenticationService
 ) : RecyclerView.Adapter<ChatMessagesListRecyclerAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -35,12 +39,11 @@ class ChatMessagesListRecyclerAdapter(
         // 1. Get the current user's ID from `Supabase.client.auth.currentUser.id`.
         // 2. Query the `users` table in Supabase to get the sender's profile.
         // 3. Use the retrieved data to display the sender's name.
-        if (isGroup && data[position]["uid"].toString() != FirebaseAuth.getInstance().currentUser?.uid) {
+        if (isGroup && data[position]["uid"].toString() != authService.getCurrentUser()?.uid) {
             senderName.visibility = View.VISIBLE
             val senderUid = data[position]["uid"].toString()
-            val userRef = firebase.getReference("skyline/users").child(senderUid)
-            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
+            dbService.getData(dbService.getReference("users/$senderUid"), object : IDataListener {
+                override fun onDataChange(dataSnapshot: IDataSnapshot) {
                     if (dataSnapshot.exists()) {
                         val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
                         val username = dataSnapshot.child("username").getValue(String::class.java)
@@ -54,7 +57,7 @@ class ChatMessagesListRecyclerAdapter(
                     }
                 }
 
-                override fun onCancelled(databaseError: DatabaseError) {
+                override fun onCancelled(databaseError: IDatabaseError) {
                     senderName.text = "Unknown User"
                 }
             })

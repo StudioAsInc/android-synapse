@@ -56,17 +56,6 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -80,7 +69,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
 import androidx.core.view.WindowCompat;
@@ -91,10 +79,15 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.card.*;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.core.content.ContextCompat;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 
 public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -119,19 +112,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 	private TextView isDataNotExistsLayoutSubTitle;
 	private ProgressBar mLoadingBar;
 
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private AlertDialog.Builder Dialogs;
@@ -141,7 +121,8 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_photo_history);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -174,7 +155,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutTitle = findViewById(R.id.isDataNotExistsLayoutTitle);
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
 		Dialogs = new AlertDialog.Builder(this);
 
 		back.setOnClickListener(new View.OnClickListener() {
@@ -197,47 +177,311 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 				_addProfilePhotoUrlDialog();
 			}
 		});
+	}
 
-		_maindb_child_listener = new ChildEventListener() {
+	private void initializeLogic() {
+		_stateColor(0xFFFFFFFF, 0xFFFFFFFF);
+		_viewGraphics(back, 0xFFFFFFFF, 0xFFE0E0E0, 300, 0, Color.TRANSPARENT);
+		top.setElevation((float)4);
+		GridLayoutManager profileImagesHistoryListGrid = new GridLayoutManager(this, 3);
+		ProfilePhotosHistoryList.setLayoutManager(profileImagesHistoryListGrid);
+		ProfilePhotosHistoryList.setAdapter(new ProfilePhotosHistoryListAdapter(ProfileHistoryList));
+		_getReference();
+	}
+
+	@Override
+	public void onBackPressed() {
+		finish();
+	}
+
+	public void _ImageColor(final ImageView _image, final int _color) {
+		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
+	}
+
+
+	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
+		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
+		GG.setColor(_onFocus);
+		GG.setCornerRadius((float)_radius);
+		GG.setStroke((int) _stroke, _strokeColor);
+		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
+		_view.setBackground(RE);
+	}
+
+
+	public void _stateColor(final int _statusColor, final int _navigationColor) {
+		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+		getWindow().setStatusBarColor(_statusColor);
+		getWindow().setNavigationBarColor(_navigationColor);
+	}
+
+
+	public void _LoadingDialog(final boolean _visibility) {
+		if (_visibility) {
+			if (SynapseLoadingDialog== null){
+				SynapseLoadingDialog = new ProgressDialog(this);
+				SynapseLoadingDialog.setCancelable(false);
+				SynapseLoadingDialog.setCanceledOnTouchOutside(false);
+
+				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+				SynapseLoadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+
+			}
+			SynapseLoadingDialog.show();
+			SynapseLoadingDialog.setContentView(R.layout.loading_synapse);
+
+			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
+
+
+			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
+		} else {
+			if (SynapseLoadingDialog != null){
+				SynapseLoadingDialog.dismiss();
+			}
+		}
+
+	}
+
+
+	public void _getReference() {
+		isDataExistsLayout.setVisibility(View.GONE);
+		isDataNotExistsLayout.setVisibility(View.GONE);
+		mSwipeLayout.setVisibility(View.GONE);
+		mLoadingBody.setVisibility(View.VISIBLE);
+		dbService.getData(dbService.getReference("users/" + authService.getCurrentUser().getUid()), new IDataListener() {
 			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
+					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
+				} else {
+					CurrentAvatarUri = "";
+				}
 			}
 
 			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
+			public void onCancelled(IDatabaseError databaseError) {
+				Log.e("SupabaseError", "Failed to fetch user avatar: " + databaseError.getMessage());
+				CurrentAvatarUri = "";
+			}
+		});
 
+		dbService.getData(dbService.getReference("profile-history/" + authService.getCurrentUser().getUid()).orderByChild("upload_date").limitToLast(100), new IDataListener() {
+			@Override
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				ProfileHistoryList.clear();
+				if (dataSnapshot.exists()) {
+					for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+						HashMap<String, Object> map = new HashMap<>();
+						map.put("key", snapshot.getKey());
+						if (snapshot.getValue() instanceof HashMap) {
+							map.putAll((HashMap<String, Object>) snapshot.getValue());
+						}
+						ProfileHistoryList.add(map);
+					}
+					Collections.sort(ProfileHistoryList, (o1, o2) -> {
+						long date1 = Long.parseLong(o1.get("upload_date").toString());
+						long date2 = Long.parseLong(o2.get("upload_date").toString());
+						return Long.compare(date2, date1);
+					});
+				}
+
+				if (ProfileHistoryList.isEmpty()) {
+					isDataNotExistsLayout.setVisibility(View.VISIBLE);
+				} else {
+					isDataExistsLayout.setVisibility(View.VISIBLE);
+					mSwipeLayout.setVisibility(View.VISIBLE);
+				}
+				if(ProfilePhotosHistoryList.getAdapter() != null){
+					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
+				}
+				mLoadingBody.setVisibility(View.GONE);
 			}
 
 			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
+			public void onCancelled(IDatabaseError databaseError) {
+				Log.e("SupabaseError", "Failed to fetch profile history: " + databaseError.getMessage());
+				mLoadingBody.setVisibility(View.GONE);
+				isDataNotExistsLayout.setVisibility(View.VISIBLE);
 			}
+		});
+		mSwipeLayout.setRefreshing(false);
+	}
 
+
+	public void _deleteProfileImage(final String _key, final String _type, final String _uri) {
+		{
+			final AlertDialog NewCustomDialog = new AlertDialog.Builder(ProfilePhotoHistoryActivity.this).create();
+			LayoutInflater NewCustomDialogLI = getLayoutInflater();
+			View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
+			NewCustomDialog.setView(NewCustomDialogCV);
+			NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+			final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
+			final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
+			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
+			final TextView dialog_yes_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_yes_button);
+			dialog_yes_button.setTextColor(0xFFF44336);
+			_viewGraphics(dialog_yes_button, 0xFFFFFFFF, 0xFFFFCDD2, 28, 0, Color.TRANSPARENT);
+			dialog_no_button.setTextColor(0xFF2196F3);
+			_viewGraphics(dialog_no_button, 0xFFFFFFFF, 0xFFBBDEFB, 28, 0, Color.TRANSPARENT);
+			dialog_title.setText(getResources().getString(R.string.info));
+			dialog_message.setText("Are you sure you want to delete this profile photo completely? ");
+			dialog_no_button.setText(getResources().getString(R.string.no));
+			dialog_yes_button.setText(getResources().getString(R.string.yes));
+			dialog_no_button.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View _view) {
+					NewCustomDialog.dismiss();
+				}
+			});
+			dialog_yes_button.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View _view) {
+					if (_uri.equals(CurrentAvatarUri)) {
+						mSendMap = new HashMap<>();
+						mSendMap.put("avatar", "null");
+						mSendMap.put("avatar_history_type", "local");
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
+						CurrentAvatarUri = "null";
+						mSendMap.clear();
+					}
+					dbService.getReference("profile-history/" + authService.getCurrentUser().getUid() + "/" + _key).setValue(null, null);
+					_getReference();
+					NewCustomDialog.dismiss();
+				}
+			});
+			NewCustomDialog.setCancelable(true);
+			NewCustomDialog.show();
+		}
+	}
+
+
+	public void _addProfilePhotoUrlDialog() {
+		MaterialAlertDialogBuilder Dialogs = new MaterialAlertDialogBuilder(ProfilePhotoHistoryActivity.this);
+		Dialogs.setTitle("Add image with link");
+		View EdittextDesign = LayoutInflater.from(ProfilePhotoHistoryActivity.this).inflate(R.layout.single_et, null);
+		Dialogs.setView(EdittextDesign);
+		final EditText edittext1 = EdittextDesign.findViewById(R.id.edittext1);
+		final TextInputLayout textinputlayout1 = EdittextDesign.findViewById(R.id.textinputlayout1);
+		edittext1.setFocusableInTouchMode(true);
+		Dialogs.setPositiveButton("Add", new DialogInterface.OnClickListener() {
 			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
+			public void onClick(DialogInterface _dialog, int _which) {
+				if (!edittext1.getText().toString().trim().equals("")) {
+					if (_checkValidUrl(edittext1.getText().toString().trim())) {
+						String ProfileHistoryKey = dbService.getReference("profile-history").push().getKey();
+						mAddProfilePhotoMap = new HashMap<>();
+						mAddProfilePhotoMap.put("key", ProfileHistoryKey);
+						mAddProfilePhotoMap.put("image_url", edittext1.getText().toString().trim());
+						mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
+						mAddProfilePhotoMap.put("type", "url");
+						dbService.getReference("profile-history/" + authService.getCurrentUser().getUid() + "/" + ProfileHistoryKey).setValue(mAddProfilePhotoMap, null);
+						_getReference();
+					}
+				}
 			}
-
+		});
+		Dialogs.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
+			public void onClick(DialogInterface _dialog, int _which) {
 
 			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
+		});
+		androidx.appcompat.app.AlertDialog edittextDialog = Dialogs.create();
+
+		edittextDialog.setCancelable(true);
+		edittextDialog.show();
+	}
 
 
+	public boolean _checkValidUrl(final String _url) {
+		try {
+			new URL(_url);
+			return true;
+		} catch (MalformedURLException e) {
+			return false;
+		}
+	}
+
+	public class ProfilePhotosHistoryListAdapter extends RecyclerView.Adapter<ProfilePhotosHistoryListAdapter.ViewHolder> {
+
+		ArrayList<HashMap<String, Object>> _data;
+
+		public ProfilePhotosHistoryListAdapter(ArrayList<HashMap<String, Object>> _arr) {
+			_data = _arr;
+		}
+
+		@Override
+		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			LayoutInflater _inflater = getLayoutInflater();
+			View _v = _inflater.inflate(R.layout.dp_history_cv, null);
+			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+			_v.setLayoutParams(_lp);
+			return new ViewHolder(_v);
+		}
+
+		@Override
+		public void onBindViewHolder(ViewHolder _holder, final int _position) {
+			View _view = _holder.itemView;
+
+			final LinearLayout body = _view.findViewById(R.id.body);
+			final androidx.cardview.widget.CardView card = _view.findViewById(R.id.card);
+			final RelativeLayout relative = _view.findViewById(R.id.relative);
+			final ImageView profile = _view.findViewById(R.id.profile);
+			final LinearLayout checked = _view.findViewById(R.id.checked);
+			final ImageView checked_ic = _view.findViewById(R.id.checked_ic);
+
+			checked.setBackgroundColor(0x50000000);
+			_ImageColor(checked_ic, 0xFFFFFFFF);
+			Glide.with(getApplicationContext()).load(Uri.parse(_data.get((int)_position).get("image_url").toString())).into(profile);
+			if (_data.get((int)_position).get("image_url").toString().equals(CurrentAvatarUri)) {
+				checked.setVisibility(View.VISIBLE);
+			} else {
+				checked.setVisibility(View.GONE);
+			}
+			body.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View _view) {
+					if (_data.get((int)_position).get("image_url").toString().equals(CurrentAvatarUri)) {
+						mSendMap = new HashMap<>();
+						mSendMap.put("avatar", "null");
+						mSendMap.put("avatar_history_type", "local");
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
+						CurrentAvatarUri = "null";
+						mSendMap.clear();
+						notifyDataSetChanged();
+					} else {
+						mSendMap = new HashMap<>();
+						mSendMap.put("avatar", _data.get((int)_position).get("image_url").toString());
+						mSendMap.put("avatar_history_type", _data.get((int)_position).get("type").toString());
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
+						CurrentAvatarUri = _data.get((int)_position).get("image_url").toString();
+						mSendMap.clear();
+						notifyDataSetChanged();
+					}
+				}
+			});
+			body.setOnLongClickListener(new View.OnLongClickListener() {
+				@Override
+				public boolean onLongClick(View _view) {
+					_deleteProfileImage(_data.get((int)_position).get("key").toString(), _data.get((int)_position).get("type").toString(), _data.get((int)_position).get("image_url").toString());
+					return true;
+				}
+			});
+		}
+
+		@Override
+		public int getItemCount() {
+			return _data.size();
+		}
+
+		public class ViewHolder extends RecyclerView.ViewHolder {
+			public ViewHolder(View v) {
+				super(v);
+			}
+		}
+	}
+}
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {

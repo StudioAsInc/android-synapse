@@ -3,32 +3,31 @@ package com.synapse.social.studioasinc.chat.common.service
 import android.app.Activity
 import android.content.Intent
 import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.AuthenticationService
+import com.synapse.social.studioasinc.backend.DatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 
-class UserBlockService(private val activity: Activity) {
+class UserBlockService(
+    private val activity: Activity,
+    private val dbService: IDatabaseService,
+    private val authService: IAuthenticationService
+) {
 
-    private val blocklistRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("skyline/blocklist")
-    private val myUid: String? = FirebaseAuth.getInstance().currentUser?.uid
+    private val blocklistRef = dbService.getReference("blocklist")
+    private val myUid: String? = authService.getCurrentUser()?.uid
 
     fun blockUser(uid: String) {
         if (myUid == null) return
-        val blockData = mapOf(uid to "true")
-        blocklistRef.child(myUid).updateChildren(blockData)
+        blocklistRef.child(myUid).child(uid).setValue("true", null)
     }
 
     fun unblockUser(uid: String) {
         if (myUid == null) return
-        blocklistRef.child(myUid).child(uid).removeValue()
-            .addOnSuccessListener {
-                val intent = activity.intent
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                activity.finish()
-                activity.startActivity(intent)
-            }
-            .addOnFailureListener { e ->
-                Log.e("UserBlockService", "Failed to unblock user", e)
-            }
+        blocklistRef.child(myUid).child(uid).setValue(null, null)
+        val intent = activity.intent
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        activity.finish()
+        activity.startActivity(intent)
     }
 }

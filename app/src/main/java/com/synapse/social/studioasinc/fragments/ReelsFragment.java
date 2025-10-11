@@ -13,12 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.RequestNetwork;
@@ -28,7 +22,6 @@ import java.util.HashMap;
 
 public class ReelsFragment extends Fragment {
 
-    private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
     public LineVideosRecyclerViewAdapter mLineVideosRecyclerViewAdapter;
     private ArrayList<HashMap<String, Object>> lineVideosListMap = new ArrayList<>();
     private SwipeRefreshLayout middleRelativeTopSwipe;
@@ -62,8 +55,6 @@ public class ReelsFragment extends Fragment {
             @Override
             public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
                 loadedBody.setVisibility(View.VISIBLE);
-                Query getLineVideosRef = FirebaseDatabase.getInstance().getReference("skyline/line-posts").orderByChild("post_type").equalTo("LINE_VIDEO").limitToLast(50);
-
                 middleRelativeTopSwipe.setRefreshing(false);
             }
 

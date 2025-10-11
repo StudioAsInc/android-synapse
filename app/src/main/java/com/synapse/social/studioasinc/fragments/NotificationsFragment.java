@@ -11,13 +11,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.adapter.NotificationAdapter;
 import com.synapse.social.studioasinc.model.Notification;
@@ -55,13 +48,6 @@ public class NotificationsFragment extends Fragment {
 
     private void fetchNotifications() {
         progressBar.setVisibility(View.VISIBLE);
-        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser == null) {
-            progressBar.setVisibility(View.GONE);
-            noNotificationsText.setVisibility(View.VISIBLE);
-            return;
-        }
-
         // Firebase RDB chat notifications have been removed
         // Notifications are now handled by OneSignal push notifications
         notificationList.clear();

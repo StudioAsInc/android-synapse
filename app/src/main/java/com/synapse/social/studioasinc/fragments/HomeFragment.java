@@ -161,8 +161,32 @@ public class HomeFragment extends Fragment {
     }
 
     private void _loadStories(final RecyclerView storiesView, final ArrayList<HashMap<String, Object>> storiesList) {
-        storiesDbRef.orderByChild("publish_date")
+        IQuery query = dbService.getReference("stories").orderByChild("publish_date");
+        dbService.getData(query, new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                storiesList.clear();
+                storiesList.add(new HashMap<>()); // For the "Add Story" item
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> map = new HashMap<>();
+                        map.put("key", snapshot.getKey());
+                        if (snapshot.getValue() instanceof HashMap) {
+                            map.putAll((HashMap<String, Object>) snapshot.getValue());
+                        }
+                        storiesList.add(map);
+                    }
+                }
+                if(storiesView.getAdapter() != null) {
+                    storiesView.getAdapter().notifyDataSetChanged();
+                }
+            }
 
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     public void _loadPosts() {
