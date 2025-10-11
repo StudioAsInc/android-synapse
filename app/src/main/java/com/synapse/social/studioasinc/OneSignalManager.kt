@@ -24,19 +24,16 @@ object OneSignalManager {
             return
         }
 
-        // TODO(supabase): Implement saving the player ID to the Supabase user profile.
-        // This will likely involve using the DatabaseService to update the user's record.
-        // Example:
-        // val dbService = DatabaseService(SynapseApp.supabaseClient)
-        // val userRef = dbService.getReference("users/$userUid")
-        // val updates = mapOf("oneSignalPlayerId" to playerId)
-        // dbService.updateChildren(userRef, updates, object : ICompletionListener<Unit> {
-        //     override fun onSuccess(result: Unit) {
-        //         Log.i(TAG, "OneSignal Player ID saved to Supabase for user: $userUid")
-        //     }
-        //     override fun onFailure(error: Exception) {
-        //         Log.e(TAG, "Failed to save OneSignal Player ID to Supabase for user: $userUid", error)
-        //     }
-        // })
+        val dbService = DatabaseService(SynapseApp.supabaseClient)
+        val userRef = dbService.getReference("users/$userUid")
+        val updates = mapOf("oneSignalPlayerId" to playerId)
+        dbService.updateChildren(userRef, updates, object : com.synapse.social.studioasinc.backend.interfaces.ICompletionListener<Unit> {
+            override fun onSuccess(result: Unit) {
+                Log.i(TAG, "OneSignal Player ID saved to Supabase for user: $userUid")
+            }
+            override fun onFailure(error: Exception) {
+                Log.e(TAG, "Failed to save OneSignal Player ID to Supabase for user: $userUid", error)
+            }
+        })
     }
 }
