@@ -152,9 +152,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        // TODO(supabase): The Supabase client should be initialized in SynapseApp.java.
-        authService = new AuthenticationService();
-        dbService = new DatabaseService();
+        authService = new AuthenticationService(SynapseApp.supabaseClient);
+        dbService = new DatabaseService(SynapseApp.supabaseClient);
     }
 
     private void setupListeners() {
