@@ -12,8 +12,8 @@ import java.util.HashMap
 
 class DatabaseHelper(
     private val context: Context,
-    // TODO(supabase): Replace with Supabase client
-    /* private val firebaseDatabase: FirebaseDatabase, */
+    private val dbService: IDatabaseService,
+    private val authService: IAuthenticationService,
     private val chatAdapter: ChatAdapter?,
     private var firstUserName: String,
     private val chatUIUpdater: ChatUIUpdater,
@@ -35,20 +35,14 @@ class DatabaseHelper(
     }
 
     fun getUserReference() {
-        // TODO(supabase): Replace with Supabase Auth
-        val currentUserUid = "TODO" // Replace with actual Supabase user ID
-        if (currentUserUid == "TODO") return
+        val currentUserUid = authService.getCurrentUser()?.uid
+        if (currentUserUid == null) return
 
-        // TODO(supabase): Implement with Supabase PostgREST
-        val getFirstUserNameRef = SupabaseClientManager.client.postgrest["users"]
-            .select("nickname,username")
-            .eq("uid", currentUserUid)
-            .single()
-            .then { response ->
-                val data = response.data as? Map<String, Any>
-                if (data != null) {
-                    val nickname = data["nickname"] as? String
-                    val username = data["username"] as? String
+        dbService.getData(dbService.getReference("users/$currentUserUid"), object : IDataListener {
+            override fun onDataChange(snapshot: IDataSnapshot) {
+                if(snapshot.exists()){
+                    val nickname = snapshot.child("nickname").getValue(String::class.java)
+                    val username = snapshot.child("username").getValue(String::class.java)
 
                     firstUserName = when {
                         nickname != null && nickname != "null" -> nickname
@@ -61,31 +55,27 @@ class DatabaseHelper(
                 chatAdapter?.setFirstUserName(firstUserName)
                 getChatMessagesRef()
             }
-            .catch { exception ->
+
+            override fun onCancelled(error: IDatabaseError) {
                 firstUserName = "Unknown User"
-                Log.e(TAG, "Failed to get user reference", exception)
+                Log.e(TAG, "Failed to get user reference", error.toException())
                 getChatMessagesRef()
             }
-        // getChatMessagesRef() // Temporarily call to avoid breaking flow
+        })
     }
 
     fun getChatMessagesRef() {
-        // TODO(supabase): Implement with Supabase PostgREST
-        SupabaseClientManager.client.postgrest["chat_messages"]
-            .select("*")
-            .order("timestamp", Order.DESC)
-            .limit(80)
-            .then { response ->
-                val data = response.data as? List<Map<String, Any>>
-                if (data != null && data.isNotEmpty()) {
+        dbService.getData(dbService.getReference("chat_messages").orderByChild("timestamp").limitToLast(80), object : IDataListener {
+            override fun onDataChange(snapshot: IDataSnapshot) {
+                if (snapshot.exists()) {
                     chatUIUpdater.updateNoChatVisibility(false)
                     chatMessagesList.clear()
                     messageKeys.clear()
                     val initialMessages = ArrayList<HashMap<String, Any>>()
 
-                    for (messageData in data) {
+                    for (messageSnapshot in snapshot.children) {
                         try {
-                            val messageMap = messageData as HashMap<String, Any>
+                            val messageMap = messageSnapshot.value as HashMap<String, Any>
                             if (messageMap["key"] != null) {
                                 initialMessages.add(messageMap)
                                 messageKeys.add(messageMap["key"].toString())
@@ -107,11 +97,12 @@ class DatabaseHelper(
                     chatUIUpdater.updateNoChatVisibility(true)
                 }
             }
-            .catch { exception ->
-                Log.e(TAG, "Initial message load failed", exception)
+
+            override fun onCancelled(error: IDatabaseError) {
+                Log.e(TAG, "Initial message load failed", error.toException())
                 chatUIUpdater.updateNoChatVisibility(true)
             }
-        // chatUIUpdater.updateNoChatVisibility(true) // Temporarily set to true
+        })
     }
 
     fun getOldChatMessagesRef() {
@@ -121,20 +112,14 @@ class DatabaseHelper(
         isLoading = true
         chatUIUpdater.showLoadMoreIndicator()
 
-        // TODO(supabase): Implement with Supabase PostgREST
-        SupabaseClientManager.client.postgrest["chat_messages"]
-            .select("*")
-            .order("timestamp", Order.DESC)
-            .lt("key", oldestMessageKey)
-            .limit(80)
-            .then { response ->
+        dbService.getData(dbService.getReference("chat_messages").orderByChild("key").endAt(oldestMessageKey).limitToLast(80), object : IDataListener {
+            override fun onDataChange(snapshot: IDataSnapshot) {
                 chatUIUpdater.hideLoadMoreIndicator()
-                val data = response.data as? List<Map<String, Any>>
-                if (data != null && data.isNotEmpty()) {
+                if (snapshot.exists()) {
                     val newMessages = ArrayList<HashMap<String, Any>>()
-                    for (messageData in data) {
+                    for (messageSnapshot in snapshot.children) {
                         try {
-                            val messageMap = messageData as HashMap<String, Any>
+                            val messageMap = messageSnapshot.value as HashMap<String, Any>
                             if (messageMap["key"] != null) {
                                 if (!messageKeys.contains(messageMap["key"].toString())) {
                                     newMessages.add(messageMap)
@@ -168,14 +153,15 @@ class DatabaseHelper(
                 } else {
                     oldestMessageKey = null
                 }
+                isLoading = false
             }
-            .catch { exception ->
+
+            override fun onCancelled(error: IDatabaseError) {
                 isLoading = false
                 chatUIUpdater.hideLoadMoreIndicator()
-                Log.e(TAG, "Error loading old messages", exception)
+                Log.e(TAG, "Error loading old messages", error.toException())
             }
-        // isLoading = false // Temporarily set to false
-        // chatUIUpdater.hideLoadMoreIndicator() // Temporarily hide
+        })
     }
 
     fun fetchRepliedMessages(messages: ArrayList<HashMap<String, Any>>) {
@@ -196,22 +182,20 @@ class DatabaseHelper(
         for (messageKey in repliedIdsToFetch) {
             repliedMessagesCache[messageKey] = HashMap()
 
-            // TODO(supabase): Implement with Supabase PostgREST
-            SupabaseClientManager.client.postgrest["chat_messages"]
-                .select("*")
-                .eq("key", messageKey)
-                .single()
-                .then { response ->
-                    val repliedMessage = response.data as? HashMap<String, Any>
-                    if (repliedMessage != null) {
+            dbService.getData(dbService.getReference("chat_messages/$messageKey"), object : IDataListener {
+                override fun onDataChange(snapshot: IDataSnapshot) {
+                    if (snapshot.exists()) {
+                        val repliedMessage = snapshot.value as HashMap<String, Any>
                         repliedMessagesCache[messageKey] = repliedMessage
                         updateMessageInRecyclerView(messageKey)
                     }
                 }
-                .catch { exception ->
+
+                override fun onCancelled(error: IDatabaseError) {
                     repliedMessagesCache.remove(messageKey)
-                    Log.e(TAG, "Failed to fetch replied message", exception)
+                    Log.e(TAG, "Failed to fetch replied message", error.toException())
                 }
+            })
         }
     }
 
@@ -236,34 +220,41 @@ class DatabaseHelper(
             detachChatListener()
         }
 
-        // TODO(supabase): Implement with Supabase Realtime
-        chatChildListener = SupabaseClientManager.client.realtime
-            .channel("chat_messages")
-            .on(Event.INSERT) { payload ->
-                val newMessage = payload.newRecord as? HashMap<String, Any>
+        chatChildListener = dbService.getReference("chat_messages").addChildEventListener(object : IChildEventListener {
+            override fun onChildAdded(snapshot: IDataSnapshot, previousChildName: String?) {
+                val newMessage = snapshot.value as? HashMap<String, Any>
                 if (newMessage != null) {
                     handleChildAdded(newMessage)
                 }
             }
-            .on(Event.UPDATE) { payload ->
-                val updatedMessage = payload.newRecord as? HashMap<String, Any>
+
+            override fun onChildChanged(snapshot: IDataSnapshot, previousChildName: String?) {
+                val updatedMessage = snapshot.value as? HashMap<String, Any>
                 if (updatedMessage != null) {
                     handleChildChanged(updatedMessage)
                 }
             }
-            .on(Event.DELETE) { payload ->
-                val removedMessage = payload.oldRecord as? HashMap<String, Any>
+
+            override fun onChildRemoved(snapshot: IDataSnapshot) {
+                val removedMessage = snapshot.value as? HashMap<String, Any>
                 if (removedMessage != null) {
                     handleChildRemoved(removedMessage)
                 }
             }
-            .subscribe()
+
+            override fun onChildMoved(snapshot: IDataSnapshot, previousChildName: String?) {
+                // Not implemented
+            }
+
+            override fun onCancelled(error: IDatabaseError) {
+                Log.e(TAG, "Chat listener cancelled", error.toException())
+            }
+        })
     }
 
     fun detachChatListener() {
         if (chatChildListener != null) {
-            // TODO(supabase): Implement with Supabase Realtime unsubscribe
-            (chatChildListener as RealtimeChannel).unsubscribe()
+            dbService.getReference("chat_messages").removeEventListener(chatChildListener as IChildEventListener)
             chatChildListener = null
         }
     }

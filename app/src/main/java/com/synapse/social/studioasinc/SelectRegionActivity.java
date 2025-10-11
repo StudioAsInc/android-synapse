@@ -44,17 +44,6 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.theartofdev.edmodo.cropper.*;
@@ -98,17 +87,8 @@ public class SelectRegionActivity extends AppCompatActivity {
 	private ProgressBar mLoadingBar;
 	
 	private Intent intent = new Intent();
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 	private PostgrestClient main = supabaseClient.from("skyline");
 	
 	private RequestNetwork getRegionsRef;
@@ -121,7 +101,8 @@ public class SelectRegionActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_select_region);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 		initializeLogic();
 	}
 	
@@ -134,7 +115,6 @@ public class SelectRegionActivity extends AppCompatActivity {
 		mTitle = findViewById(R.id.mTitle);
 		spc = findViewById(R.id.spc);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
         supabaseClient = Supabase.client;
 		getRegionsRef = new RequestNetwork(this);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -166,95 +146,6 @@ public class SelectRegionActivity extends AppCompatActivity {
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
 				final String _message = _param2;
-				
-			}
-		};
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
 				
 			}
 		};
@@ -363,13 +254,13 @@ public class SelectRegionActivity extends AppCompatActivity {
 	
 	
 	public void _getCurrentRegionRef() {
-        supabaseClient.from("skyline").select("user_region").eq("id", FirebaseAuth.getInstance().getCurrentUser().getUid()).execute(new PostgrestCallback<Map<String, Object>>() {
+        dbService.getData(dbService.getReference("users/" + authService.getCurrentUser().getUid()), new IDataListener() {
             @Override
-            public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
-                if (response.getError() == null && response.getData() != null && !response.getData().isEmpty()) {
-                    Map<String, Object> data = response.getData().get(0);
-                    if (data.containsKey("user_region")) {
-                        CurrentRegionCode = (String) data.get("user_region");
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    String region = dataSnapshot.child("user_region").getValue(String.class);
+                    if (region != null) {
+                        CurrentRegionCode = region;
                         appSavedData.edit().putString("user_region_data", CurrentRegionCode).commit();
                     } else {
                         CurrentRegionCode = "none";
@@ -379,12 +270,14 @@ public class SelectRegionActivity extends AppCompatActivity {
                     CurrentRegionCode = "none";
                     appSavedData.edit().putString("user_region_data", "none").commit();
                 }
-                mRegionList.getAdapter().notifyDataSetChanged();
+                if(mRegionList.getAdapter() != null) {
+                    mRegionList.getAdapter().notifyDataSetChanged();
+                }
             }
 
             @Override
-            public void onFailure(@NonNull PostgrestError error) {
-                // Handle error, e.g., log it or show a toast
+            public void onCancelled(IDatabaseError databaseError) {
+                Toast.makeText(getApplicationContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 	}
@@ -435,7 +328,7 @@ public class SelectRegionActivity extends AppCompatActivity {
 				@Override
 				public void onClick(View _view) {
 					if (!CurrentRegionCode.equals(_data.get((int)_position).get("code").toString())) {
-						supabaseClient.from("skyline").update(new HashMap<String, Object>() {{ put("user_region", _data.get((int)_position).get("code").toString()); }}).eq("id", FirebaseAuth.getInstance().getCurrentUser().getUid()).execute();
+						dbService.getReference("users/" + authService.getCurrentUser().getUid() + "/user_region").setValue(_data.get((int)_position).get("code").toString(), null);
 					}
 					vbr.vibrate((long)(28));
 				}

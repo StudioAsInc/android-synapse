@@ -14,11 +14,6 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
 import com.synapse.social.studioasinc.PostMoreBottomSheetDialog
 import com.synapse.social.studioasinc.ProfileActivity
@@ -314,29 +309,28 @@ class PostsAdapter(
         }
 
         private fun loadUserInfo(uid: String) {
-            databaseService.getReference("skyline/users").child(uid).getData(object : IDataListener {
+            databaseService.getData(databaseService.getReference("users/$uid"), object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
-                    val userMap = snapshot.value as? HashMap<String, Any>
-                    userMap?.let {
-                        userInfoCache["avatar-$uid"] = it["avatar"] as? String ?: ""
-                        userInfoCache["nickname-$uid"] = it["nickname"] as? String ?: ""
-                        userInfoCache["username-$uid"] = it["username"] as? String ?: ""
-                        userInfoCache["gender-$uid"] = it["gender"] as? String ?: ""
-                        userInfoCache["acc_type-$uid"] = it["acc_type"] as? String ?: ""
-                        userInfoCache["verify-$uid"] = it["verify"] as? String ?: ""
-                        userInfoCache["banned-$uid"] = it["banned"] as? String ?: ""
+                    if(snapshot.exists()){
+                        userInfoCache["avatar-$uid"] = snapshot.child("avatar").getValue(String::class.java) ?: ""
+                        userInfoCache["nickname-$uid"] = snapshot.child("nickname").getValue(String::class.java) ?: ""
+                        userInfoCache["username-$uid"] = snapshot.child("username").getValue(String::class.java) ?: ""
+                        userInfoCache["gender-$uid"] = snapshot.child("gender").getValue(String::class.java) ?: ""
+                        userInfoCache["acc_type-$uid"] = snapshot.child("account_type").getValue(String::class.java) ?: ""
+                        userInfoCache["verify-$uid"] = snapshot.child("verify").getValue(String::class.java) ?: ""
+                        userInfoCache["banned-$uid"] = snapshot.child("banned").getValue(String::class.java) ?: ""
                         displayUserInfoFromCache(uid)
                     }
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })
         }
 
         private fun loadLikeStatus(postKey: String) {
-            databaseService.getReference("skyline/posts-likes").child(postKey).child(currentUserUid).getData(object : IDataListener {
+            databaseService.getData(databaseService.getReference("posts-likes/$postKey/$currentUserUid"), object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
                         likeButtonIc.setImageResource(R.drawable.like_fill_ic)
@@ -345,7 +339,7 @@ class PostsAdapter(
                     }
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })
@@ -353,89 +347,69 @@ class PostsAdapter(
 
         private fun loadCounts(postKey: String) {
             // Load like count
-            databaseService.getReference("skyline/posts-likes").child(postKey).getData(object : IDataListener {
+            databaseService.getData(databaseService.getReference("posts-likes/$postKey"), object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
                     val likeCount = snapshot.childrenCount
                     likeButtonCount.text = CountUtils.formatCount(likeCount)
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })
 
             // Load comment count
-            databaseService.getReference("skyline/posts-comments").child(postKey).getData(object : IDataListener {
+            databaseService.getData(databaseService.getReference("posts-comments/$postKey"), object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
                     val commentCount = snapshot.childrenCount
                     commentsButtonCount.text = CountUtils.formatCount(commentCount)
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })
         }
 
         private fun toggleLike(post: Post) {
-            val likeRef = databaseService.getReference("skyline/posts-likes").child(post.key).child(currentUserUid)
-            likeRef.getData(object : IDataListener {
+            val likeRef = databaseService.getReference("posts-likes/${post.key}/$currentUserUid")
+            databaseService.getData(likeRef, object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
                         // Unlike post
-                        likeRef.setValue(null, object : IDatabaseReference.CompletionListener {
-                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
-                                if (error == null) {
-                                    likeButtonIc.setImageResource(R.drawable.like_ic)
-                                    loadCounts(post.key)
-                                }
-                            }
-                        })
+                        likeRef.setValue(null, null)
+                        likeButtonIc.setImageResource(R.drawable.like_ic)
+                        loadCounts(post.key)
                     } else {
                         // Like post
-                        likeRef.setValue(true, object : IDatabaseReference.CompletionListener {
-                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
-                                if (error == null) {
-                                    likeButtonIc.setImageResource(R.drawable.like_fill_ic)
-                                    loadCounts(post.key)
-                                }
-                            }
-                        })
+                        likeRef.setValue(true, null)
+                        likeButtonIc.setImageResource(R.drawable.like_fill_ic)
+                        loadCounts(post.key)
                     }
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })
         }
 
         private fun toggleFavorite(postKey: String) {
-            val favoriteRef = databaseService.getReference("skyline/favorite-posts").child(currentUserUid).child(postKey)
-            favoriteRef.getData(object : IDataListener {
+            val favoriteRef = databaseService.getReference("favorite-posts/$currentUserUid/$postKey")
+            databaseService.getData(favoriteRef, object : IDataListener {
                 override fun onDataChange(snapshot: IDataSnapshot) {
                     if (snapshot.exists()) {
                         // Unfavorite post
-                        favoriteRef.setValue(null, object : IDatabaseReference.CompletionListener {
-                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
-                                if (error == null) {
-                                    favoritePostButton.setImageResource(R.drawable.favorite_ic)
-                                }
-                            }
-                        })
+                        favoriteRef.setValue(null, null)
+                        favoritePostButton.setImageResource(R.drawable.favorite_ic)
                     } else {
                         // Favorite post
-                        favoriteRef.setValue(true, object : IDatabaseReference.CompletionListener {
-                            override fun onComplete(error: IDatabaseError?, ref: IDatabaseReference) {
-                                if (error == null) {
-                                    favoritePostButton.setImageResource(R.drawable.favorite_fill_ic)
-                                }
-                            }
-                        })
+                        favoriteRef.setValue(true, null)
+                        favoritePostButton.setImageResource(R.drawable.favorite_fill_ic)
                     }
                 }
 
-                override fun onError(error: IDatabaseError) {
+                override fun onCancelled(error: IDatabaseError) {
                     // Handle error
                 }
             })

@@ -56,17 +56,6 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -80,7 +69,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
-import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
 import androidx.core.view.WindowCompat;
@@ -91,10 +79,15 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.card.*;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.core.content.ContextCompat;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 
 public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
@@ -119,19 +112,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 	private TextView isDataNotExistsLayoutSubTitle;
 	private ProgressBar mLoadingBar;
 
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private Intent intent = new Intent();
 	private Calendar cc = Calendar.getInstance();
 	private AlertDialog.Builder Dialogs;
@@ -141,7 +121,8 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_photo_history);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
@@ -174,7 +155,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutTitle = findViewById(R.id.isDataNotExistsLayoutTitle);
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
-		auth = FirebaseAuth.getInstance();
 		Dialogs = new AlertDialog.Builder(this);
 
 		back.setOnClickListener(new View.OnClickListener() {
@@ -197,135 +177,6 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 				_addProfilePhotoUrlDialog();
 			}
 		});
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -371,16 +222,16 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 				SynapseLoadingDialog = new ProgressDialog(this);
 				SynapseLoadingDialog.setCancelable(false);
 				SynapseLoadingDialog.setCanceledOnTouchOutside(false);
-				
-				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE); 
+
+				SynapseLoadingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 				SynapseLoadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-				
+
 			}
 			SynapseLoadingDialog.show();
 			SynapseLoadingDialog.setContentView(R.layout.loading_synapse);
-			
+
 			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
-			
+
 
 			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
 		} else {
@@ -397,46 +248,58 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayout.setVisibility(View.GONE);
 		mSwipeLayout.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		maindb.from("users").select("avatar").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).single().execute(new PostgrestCallback<Map<String, Object>>() {
+		dbService.getData(dbService.getReference("users/" + authService.getCurrentUser().getUid()), new IDataListener() {
 			@Override
-			public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
-				if (response.getData() != null) {
-					CurrentAvatarUri = response.getData().get("avatar").toString();
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				if (dataSnapshot.exists()) {
+					CurrentAvatarUri = dataSnapshot.child("avatar").getValue(String.class);
 				} else {
 					CurrentAvatarUri = "";
 				}
 			}
+
 			@Override
-			public void onFailure(@NonNull PostgrestError error) {
-				Log.e("SupabaseError", "Failed to fetch user avatar: " + error.getMessage());
+			public void onCancelled(IDatabaseError databaseError) {
+				Log.e("SupabaseError", "Failed to fetch user avatar: " + databaseError.getMessage());
 				CurrentAvatarUri = "";
 			}
 		});
-		maindb.from("profile-history").select("*").eq("uid", FirebaseAuth.getInstance().getCurrentUser().getUid()).order("timestamp", PostgrestQuery.Order.DESCENDING).limit(100).execute(new PostgrestCallback<List<Map<String, Object>>>() {
+
+		dbService.getData(dbService.getReference("profile-history/" + authService.getCurrentUser().getUid()).orderByChild("upload_date").limitToLast(100), new IDataListener() {
 			@Override
-			public void onSuccess(@NonNull PostgrestResponse<List<Map<String, Object>>> response) {
-				if (response.getData() != null) {
-					ProfileHistoryList.clear();
-					for (Map<String, Object> item : response.getData()) {
-						ProfileHistoryList.add(new HashMap<>(item));
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				ProfileHistoryList.clear();
+				if (dataSnapshot.exists()) {
+					for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+						HashMap<String, Object> map = new HashMap<>();
+						map.put("key", snapshot.getKey());
+						if (snapshot.getValue() instanceof HashMap) {
+							map.putAll((HashMap<String, Object>) snapshot.getValue());
+						}
+						ProfileHistoryList.add(map);
 					}
-					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
-					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
-					mLoadingBody.setVisibility(View.GONE);
-					if (ProfileHistoryList.size() > 0) {
-						isDataExistsLayout.setVisibility(View.VISIBLE);
-						mSwipeLayout.setVisibility(View.VISIBLE);
-					} else {
-						isDataNotExistsLayout.setVisibility(View.VISIBLE);
-					}
-				} else {
-					mLoadingBody.setVisibility(View.GONE);
-					isDataNotExistsLayout.setVisibility(View.VISIBLE);
+					Collections.sort(ProfileHistoryList, (o1, o2) -> {
+						long date1 = Long.parseLong(o1.get("upload_date").toString());
+						long date2 = Long.parseLong(o2.get("upload_date").toString());
+						return Long.compare(date2, date1);
+					});
 				}
+
+				if (ProfileHistoryList.isEmpty()) {
+					isDataNotExistsLayout.setVisibility(View.VISIBLE);
+				} else {
+					isDataExistsLayout.setVisibility(View.VISIBLE);
+					mSwipeLayout.setVisibility(View.VISIBLE);
+				}
+				if(ProfilePhotosHistoryList.getAdapter() != null){
+					ProfilePhotosHistoryList.getAdapter().notifyDataSetChanged();
+				}
+				mLoadingBody.setVisibility(View.GONE);
 			}
+
 			@Override
-			public void onFailure(@NonNull PostgrestError error) {
-				Log.e("SupabaseError", "Failed to fetch profile history: " + error.getMessage());
+			public void onCancelled(IDatabaseError databaseError) {
+				Log.e("SupabaseError", "Failed to fetch profile history: " + databaseError.getMessage());
 				mLoadingBody.setVisibility(View.GONE);
 				isDataNotExistsLayout.setVisibility(View.VISIBLE);
 			}
@@ -452,7 +315,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 			View NewCustomDialogCV = (View) NewCustomDialogLI.inflate(R.layout.dialog_synapse_bg_view, null);
 			NewCustomDialog.setView(NewCustomDialogCV);
 			NewCustomDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-			
+
 			final TextView dialog_title = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_title);
 			final TextView dialog_message = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_message);
 			final TextView dialog_no_button = (TextView) NewCustomDialogCV.findViewById(R.id.dialog_no_button);
@@ -478,11 +341,11 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", "null");
 						mSendMap.put("avatar_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
 						CurrentAvatarUri = "null";
 						mSendMap.clear();
 					}
-					maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
+					dbService.getReference("profile-history/" + authService.getCurrentUser().getUid() + "/" + _key).setValue(null, null);
 					_getReference();
 					NewCustomDialog.dismiss();
 				}
@@ -506,13 +369,13 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 			public void onClick(DialogInterface _dialog, int _which) {
 				if (!edittext1.getText().toString().trim().equals("")) {
 					if (_checkValidUrl(edittext1.getText().toString().trim())) {
-						String ProfileHistoryKey = maindb.push().getKey();
+						String ProfileHistoryKey = dbService.getReference("profile-history").push().getKey();
 						mAddProfilePhotoMap = new HashMap<>();
 						mAddProfilePhotoMap.put("key", ProfileHistoryKey);
 						mAddProfilePhotoMap.put("image_url", edittext1.getText().toString().trim());
 						mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
 						mAddProfilePhotoMap.put("type", "url");
-						maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
+						dbService.getReference("profile-history/" + authService.getCurrentUser().getUid() + "/" + ProfileHistoryKey).setValue(mAddProfilePhotoMap, null);
 						_getReference();
 					}
 				}
@@ -521,11 +384,11 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 		Dialogs.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface _dialog, int _which) {
-				
+
 			}
 		});
 		androidx.appcompat.app.AlertDialog edittextDialog = Dialogs.create();
-		
+
 		edittextDialog.setCancelable(true);
 		edittextDialog.show();
 	}
@@ -583,7 +446,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", "null");
 						mSendMap.put("avatar_history_type", "local");
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
 						CurrentAvatarUri = "null";
 						mSendMap.clear();
 						notifyDataSetChanged();
@@ -591,7 +454,7 @@ public class ProfilePhotoHistoryActivity extends AppCompatActivity {
 						mSendMap = new HashMap<>();
 						mSendMap.put("avatar", _data.get((int)_position).get("image_url").toString());
 						mSendMap.put("avatar_history_type", _data.get((int)_position).get("type").toString());
-						maindb.child("skyline/users/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid())).updateChildren(mSendMap);
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(mSendMap, null);
 						CurrentAvatarUri = _data.get((int)_position).get("image_url").toString();
 						mSendMap.clear();
 						notifyDataSetChanged();
