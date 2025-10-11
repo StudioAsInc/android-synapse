@@ -30,43 +30,42 @@ class AuthenticationService(private val supabase: SupabaseClient) : IAuthenticat
     }
 
     override fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        supabase.gotrue.runCatching { 
-            signInWith(io.github.jan.supabase.gotrue.providers.AuthOtp(email)) { 
-                password = pass 
-            } 
-        }.onSuccess { 
-            listener.onSuccess(SupabaseAuthResult(true)) 
-        }.onFailure { 
-            listener.onFailure(SupabaseAuthResult(false, it.message)) 
+        supabase.gotrue.runCatching {
+            signInWith(io.github.jan.supabase.gotrue.providers.Email) {
+                this.email = email
+                this.password = pass
+            }
+        }.onSuccess {
+            listener.onSuccess(SupabaseAuthResult(true))
+        }.onFailure {
+            listener.onFailure(Exception(it.message))
         }
     }
 
     override fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
-        supabase.gotrue.runCatching { 
-            signUpWith(io.github.jan.supabase.gotrue.providers.AuthOtp(email)) { 
-                password = pass 
-            } 
-        }.onSuccess { 
-            listener.onSuccess(SupabaseAuthResult(true)) 
-        }.onFailure { 
-            listener.onFailure(SupabaseAuthResult(false, it.message)) 
+        supabase.gotrue.runCatching {
+            signUpWith(io.github.jan.supabase.gotrue.providers.Email) {
+                this.email = email
+                this.password = pass
+            }
+        }.onSuccess {
+            listener.onSuccess(SupabaseAuthResult(true))
+        }.onFailure {
+            listener.onFailure(Exception(it.message))
         }
     }
 
     override fun signOut() {
-        supabase.gotrue.runCatching { 
+        supabase.gotrue.runCatching {
             signOut()
         }
     }
 
     override fun deleteUser(listener: ICompletionListener<Unit>) {
-        supabase.gotrue.runCatching { 
-            deleteUser()
-        }.onSuccess { 
-            listener.onSuccess(Unit)
-        }.onFailure { 
-            listener.onFailure(SupabaseAuthResult(false, it.message))
-        }
+        // Deleting a user from the client-side is a protected operation that requires admin privileges.
+        // This should be implemented by calling a secure Supabase Edge Function.
+        // For now, we'll call onFailure to indicate that this feature is not implemented.
+        listener.onFailure(Exception("User deletion is not implemented on the client-side."))
     }
 }
 

@@ -142,26 +142,12 @@ class DatabaseService(private val supabase: SupabaseClient) : IDatabaseService {
     }
 
     class SupabaseDataSnapshot(private val data: JsonElement?, private val snapshotKey: String? = null) : IDataSnapshot {
+        private val gson = Gson()
+
         override fun <T> getValue(valueType: Class<T>): T? {
             if (data == null) return null
             return try {
-                // Attempt to deserialize the entire JsonElement to the target type
-                // This requires a proper JSON deserializer (e.g., kotlinx.serialization)
-                // For now, a basic attempt for common types and then a more generic map conversion
-                when (valueType) {
-                    String::class.java -> data.jsonPrimitive.content as? T
-                    Int::class.java -> data.jsonPrimitive.content.toIntOrNull() as? T
-                    Boolean::class.java -> data.jsonPrimitive.content.toBooleanStrictOrNull() as? T
-                    Map::class.java -> {
-                        if (data.isJsonObject()) {
-                            data.jsonObject.entries.associate { it.key to (it.value.jsonPrimitive.contentOrNull ?: it.value.jsonObject) } as? T
-                        } else null
-                    }
-                    else -> {
-                        Log.w("SupabaseDataSnapshot", "getValue for type ${valueType.simpleName} is not fully implemented. Consider using a proper JSON deserializer.")
-                        null
-                    }
-                }
+                gson.fromJson(data, valueType)
             } catch (e: Exception) {
                 Log.e("SupabaseDataSnapshot", "Error converting Supabase data to ${valueType.simpleName}", e)
                 null
@@ -222,19 +208,9 @@ class DatabaseService(private val supabase: SupabaseClient) : IDatabaseService {
 
                     if (value != null) {
                         val dataToInsert = if (value is Map<*, *>) value as Map<String, Any> else mapOf("value" to value)
+                        val finalData = if (primaryKey != null) dataToInsert + ("id" to primaryKey) else dataToInsert
 
-                        if (primaryKey != null) {
-                            // Attempt to update if primaryKey exists, otherwise insert
-                            val existing = supabase.postgrest[tableName].select { eq("id", primaryKey) }.execute().data
-                            if (existing.isNotBlank() && existing != "[]") {
-                                supabase.postgrest[tableName].update(dataToInsert) { eq("id", primaryKey) }.execute()
-                            } else {
-                                supabase.postgrest[tableName].insert(dataToInsert + ("id" to primaryKey)).execute()
-                            }
-                        } else {
-                            // Insert new data, Supabase will generate ID
-                            supabase.postgrest[tableName].insert(dataToInsert).execute()
-                        }
+                        supabase.postgrest[tableName].upsert(finalData, onConflict = "id").execute()
                         listener.onSuccess(Unit)
                     } else {
                         // Handle deletion if value is null

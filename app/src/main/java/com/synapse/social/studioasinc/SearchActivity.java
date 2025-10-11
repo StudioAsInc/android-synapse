@@ -42,19 +42,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -66,23 +61,18 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.core.widget.NestedScrollView;
-import com.google.firebase.database.Query;
 
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import java.util.HashMap;
 import java.util.Map;
 
 public class SearchActivity extends AppCompatActivity {
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private ArrayList<HashMap<String, Object>> searchedUsersList = new ArrayList<>();
 
@@ -114,23 +104,8 @@ public class SearchActivity extends AppCompatActivity {
 
 	private Intent intent = new Intent();
 	private Vibrator vbr;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
 	private RequestNetwork request;
 	private RequestNetwork.RequestListener _request_request_listener;
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -168,7 +143,8 @@ public class SearchActivity extends AppCompatActivity {
 		SearchUserLayoutRecyclerView = findViewById(R.id.SearchUserLayoutRecyclerView);
 		SearchUserLayoutNoUserFound = findViewById(R.id.SearchUserLayoutNoUserFound);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		auth = FirebaseAuth.getInstance();
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 		request = new RequestNetwork(this);
 
 		bottom_home.setOnClickListener(new View.OnClickListener() {
@@ -201,7 +177,7 @@ public class SearchActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View _view) {
 				intent.setClass(getApplicationContext(), ProfileActivity.class);
-				intent.putExtra("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+				intent.putExtra("uid", authService.getCurrentUser().getUid());
 				startActivity(intent);
 			}
 		});
@@ -586,23 +562,45 @@ public class SearchActivity extends AppCompatActivity {
 
 
 	public void _showAllUser() {
-		// Assume you have this defined somewhere
-		//EditText topLayoutBarMiddleSearchInput = findViewById(R.id.topLayoutBarMiddleSearchInput);
-
-		DatabaseReference searchRef = FirebaseDatabase.getInstance().getReference("skyline/users");
-		Query searchQuery;
-
+		IQuery searchQuery;
 		if (topLayoutBarMiddleSearchInput.getText().toString().isEmpty()) {
-			// If EditText is empty, show all users
-			searchQuery = searchRef.limitToLast(50);
+			searchQuery = dbService.getReference("skyline/users").limitToLast(50);
 		} else {
-			// If EditText is not empty, perform search
 			String searchText = topLayoutBarMiddleSearchInput.getText().toString();
-			searchQuery = searchRef.orderByChild("username").startAt(searchText).endAt(searchText + "\uf8ff").limitToLast(50);
+			searchQuery = dbService.getReference("skyline/users").orderByChild("username").startAt(searchText).endAt(searchText + "\uf8ff").limitToLast(50);
 		}
 
+		dbService.getData(searchQuery, new IDataListener() {
+			@Override
+			public void onDataChange(IDataSnapshot dataSnapshot) {
+				searchedUsersList.clear();
+				if (dataSnapshot.exists()) {
+					for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+						HashMap<String, Object> map = new HashMap<>();
+						map.put("uid", snapshot.child("uid").getValue(String.class));
+						map.put("username", snapshot.child("username").getValue(String.class));
+						map.put("nickname", snapshot.child("nickname").getValue(String.class));
+						map.put("avatar", snapshot.child("avatar").getValue(String.class));
+						map.put("gender", snapshot.child("gender").getValue(String.class));
+						map.put("account_type", snapshot.child("account_type").getValue(String.class));
+						map.put("account_premium", snapshot.child("account_premium").getValue(String.class));
+						map.put("verify", snapshot.child("verify").getValue(String.class));
+						map.put("status", snapshot.child("status").getValue(String.class));
+						map.put("banned", snapshot.child("banned").getValue(String.class));
+						searchedUsersList.add(map);
+					}
+					SearchUserLayoutRecyclerView.getAdapter().notifyDataSetChanged();
+					SearchUserLayoutNoUserFound.setVisibility(View.GONE);
+				} else {
+					SearchUserLayoutNoUserFound.setVisibility(View.VISIBLE);
+				}
+			}
 
-
+			@Override
+			public void onCancelled(IDatabaseError databaseError) {
+				Toast.makeText(SearchActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+			}
+		});
 	}
 
 

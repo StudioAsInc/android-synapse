@@ -49,17 +49,15 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.*;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.IQuery;
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
 import io.supabase.postgrest.PostgrestCallback;
 import io.supabase.postgrest.PostgrestResponse;
 import io.supabase.postgrest.PostgrestError;
@@ -88,10 +86,8 @@ import android.os.Looper;
 public class HomeFragment extends Fragment {
 
     private static final int SHIMMER_ITEM_COUNT = 5;
-    private SupabaseClient supabaseClient;
-    private PostgrestClient udb;
-    private PostgrestClient postsRef;
-    private PostgrestClient storiesDbRef;
+    private IAuthenticationService authService;
+    private IDatabaseService dbService;
 
     private HashMap<String, Object> createPostMap = new HashMap<>();
     private HashMap<String, Object> postLikeCountCache = new HashMap<>();
@@ -108,8 +104,6 @@ public class HomeFragment extends Fragment {
     private LinearLayout shimmer_container;
 
     private Intent intent = new Intent();
-    private Vibrator vbr;
-    private FirebaseAuth auth;
     private Calendar cc = Calendar.getInstance();
 
     @Nullable
@@ -122,12 +116,9 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        supabaseClient = Supabase.client;
-        udb = supabaseClient.from("skyline/users");
-         postsRef = supabaseClient.from("skyline/posts");
-         storiesDbRef = supabaseClient.from("skyline/stories");
+        authService = new AuthenticationService(SynapseApp.supabaseClient);
+        dbService = new DatabaseService(SynapseApp.supabaseClient);
         
-
         initialize(view);
         initializeLogic();
     }
@@ -138,9 +129,6 @@ public class HomeFragment extends Fragment {
         PublicPostsList = view.findViewById(R.id.PublicPostsList);
         loading_bar = view.findViewById(R.id.loading_bar);
         shimmer_container = view.findViewById(R.id.shimmer_container);
-
-        vbr = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
-        auth = FirebaseAuth.getInstance();
 
         swipeLayout.setOnRefreshListener(() -> {
             _loadPosts();
@@ -180,18 +168,50 @@ public class HomeFragment extends Fragment {
     public void _loadPosts() {
         _showShimmer();
         swipeLayout.setRefreshing(true);
-        Query query = postsRef.orderByChild("publish_date");
+        IQuery query = dbService.getReference("posts").orderByChild("publish_date");
         String notFoundMessage = "There are no public posts available at the moment.";
         _fetchAndDisplayPosts(query, notFoundMessage);
     }
 
-    private void _fetchAndDisplayPosts(Query query, final String notFoundMessage) {
+    private void _fetchAndDisplayPosts(IQuery query, final String notFoundMessage) {
         if (query == null) {
             _finalizePostDisplay(notFoundMessage, false);
             return;
         }
 
+        dbService.getData(query, new IDataListener() {
+            @Override
+            public void onDataChange(IDataSnapshot dataSnapshot) {
+                PostsList.clear();
+                if (dataSnapshot.exists()) {
+                    for (IDataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        HashMap<String, Object> map = new HashMap<>();
+                        map.put("key", snapshot.getKey());
+                        map.put("uid", snapshot.child("uid").getValue(String.class));
+                        map.put("post_text", snapshot.child("post_text").getValue(String.class));
+                        map.put("post_type", snapshot.child("post_type").getValue(String.class));
+                        map.put("post_hide_views_count", snapshot.child("post_hide_views_count").getValue(String.class));
+                        map.put("post_region", snapshot.child("post_region").getValue(String.class));
+                        map.put("post_hide_like_count", snapshot.child("post_hide_like_count").getValue(String.class));
+                        map.put("post_hide_comments_count", snapshot.child("post_hide_comments_count").getValue(String.class));
+                        map.put("post_visibility", snapshot.child("post_visibility").getValue(String.class));
+                        map.put("post_disable_favorite", snapshot.child("post_disable_favorite").getValue(String.class));
+                        map.put("post_disable_comments", snapshot.child("post_disable_comments").getValue(String.class));
+                        map.put("publish_date", snapshot.child("publish_date").getValue(String.class));
+                        if (snapshot.child("post_image") != null) {
+                            map.put("post_image", snapshot.child("post_image").getValue(String.class));
+                        }
+                        PostsList.add(map);
+                    }
+                }
+                _finalizePostDisplay(notFoundMessage, true);
+            }
 
+            @Override
+            public void onCancelled(IDatabaseError databaseError) {
+                _finalizePostDisplay(databaseError.getMessage(), false);
+            }
+        });
     }
 
     private void _showShimmer() {
@@ -342,9 +362,6 @@ public class HomeFragment extends Fragment {
             final ImageView miniPostLayoutMoreButton;
             final TextView miniPostLayoutTextPostPublish;
 
-            ValueEventListener profileListener;
-            DatabaseReference profileRef;
-
             public ViewHolder(View view) {
                 super(view);
                 storiesView = view.findViewById(R.id.storiesView);
@@ -373,27 +390,25 @@ public class HomeFragment extends Fragment {
             _viewGraphics(holder.miniPostLayoutTextPostPublish, Color.TRANSPARENT, Color.TRANSPARENT, 300, 2, 0xFF616161);
             _loadStories(holder.storiesView, storiesList);
 
-            holder.profileRef = udb.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-	        holder.profileListener = new ValueEventListener() {
-	            @Override
-	            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-	                if(dataSnapshot.exists()) {
-	                    if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-	                        Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(holder.miniPostLayoutProfileImage);
-	                    } else {
-	                        holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	                    }
-	                } else {
-	                    holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	                }
-	            }
-	            @Override
-	            public void onCancelled(@NonNull DatabaseError databaseError) {
-	                Toast.makeText(getContext(), "Error fetching user profile: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-	                holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
-	            }
-	        };
-            holder.profileRef.addValueEventListener(holder.profileListener);
+            dbService.getData(dbService.getReference("users/" + authService.getCurrentUser().getUid()), new IDataListener() {
+                @Override
+                public void onDataChange(IDataSnapshot dataSnapshot) {
+                    if(dataSnapshot.exists()) {
+                        if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+                            Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(holder.miniPostLayoutProfileImage);
+                        } else {
+                            holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                        }
+                    } else {
+                        holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                    }
+                }
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    Toast.makeText(getContext(), "Error fetching user profile: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    holder.miniPostLayoutProfileImage.setImageResource(R.drawable.avatar);
+                }
+            });
 
 	        holder.miniPostLayoutTextPostPublish.setVisibility(View.GONE);
 	        _ImageColor(holder.miniPostLayoutImagePost, 0xFF445E91);
@@ -439,11 +454,11 @@ public class HomeFragment extends Fragment {
                     Toast.makeText(getContext(), getResources().getString(R.string.please_enter_text), Toast.LENGTH_SHORT).show();
                 } else {
                     if (!(holder.miniPostLayoutTextPostInput.getText().toString().length() > 1500)) {
-                        String uniqueKey = udb.push().getKey();
+                        String uniqueKey = dbService.getReference("posts").push().getKey();
                         cc = Calendar.getInstance();
                         createPostMap = new HashMap<>();
                         createPostMap.put("key", uniqueKey);
-                        createPostMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+                        createPostMap.put("uid", authService.getCurrentUser().getUid());
                         createPostMap.put("post_text", holder.miniPostLayoutTextPostInput.getText().toString().trim());
                         createPostMap.put("post_type", "TEXT");
                         createPostMap.put("post_hide_views_count", "false");
@@ -454,26 +469,21 @@ public class HomeFragment extends Fragment {
                         createPostMap.put("post_disable_favorite", "false");
                         createPostMap.put("post_disable_comments", "false");
                         createPostMap.put("publish_date", String.valueOf((long)(cc.getTimeInMillis())));
-                        postsRef.update(createPostMap).eq("uniqueKey", uniqueKey).execute(new PostgrestCallback<Map<String, Object>>() {
+                        dbService.getReference("posts/" + uniqueKey).setValue(createPostMap, new ICompletionListener<Void>() {
                             @Override
-                            public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
-                                if (response.getError() == null) {
-                                    Toast.makeText(getContext(), getResources().getString(R.string.post_publish_success), Toast.LENGTH_SHORT).show();
-                                    _loadPosts();
-                                } else {
-                                    Toast.makeText(getContext(), response.getError().getMessage(), Toast.LENGTH_SHORT).show();
-                                }
+                            public void onSuccess(Void aVoid) {
+                                Toast.makeText(getContext(), getResources().getString(R.string.post_publish_success), Toast.LENGTH_SHORT).show();
+                                _loadPosts();
                             }
 
                             @Override
-                            public void onFailure(@NonNull PostgrestError error) {
-                                Toast.makeText(getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                            public void onFailure(Exception e) {
+                                Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
                             }
                         });
                         holder.miniPostLayoutTextPostInput.setText("");
                     }
                 }
-                vbr.vibrate((long)(48));
             });
         }
 
@@ -539,7 +549,26 @@ public class HomeFragment extends Fragment {
 
             if (_position == 0) {
                 storiesMyStoryTitle.setText(getResources().getString(R.string.add_story));
-                DatabaseReference getReference = _firebase.getReference().child("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                dbService.getData(dbService.getReference("users/" + authService.getCurrentUser().getUid()), new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
+                                Glide.with(getContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(storiesMyStoryProfileImage);
+                            } else {
+                                storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
+                            }
+                        } else {
+                            storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                        storiesMyStoryProfileImage.setImageResource(R.drawable.avatar);
+                    }
+                });
 
                 storiesMyStory.setVisibility(View.VISIBLE);
                 storiesSecondStory.setVisibility(View.GONE);
@@ -666,18 +695,93 @@ public class HomeFragment extends Fragment {
                 _updatePostViewVisibility(body, postPrivateStateIcon, postUid, _data.get(_position).get("post_visibility").toString());
                 _displayUserInfoFromCache(postUid, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge);
             } else {
-                ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-                Handler mMainHandler = new Handler(Looper.getMainLooper());
-                mExecutorService.execute(() -> {
-                    DatabaseReference userRef = _firebase.getReference().child("skyline/users").child(postUid);
+                dbService.getData(dbService.getReference("users/" + postUid), new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            UserInfoCacheMap.put("uid-".concat(postUid), dataSnapshot.child("uid").getValue(String.class));
+                            UserInfoCacheMap.put("username-".concat(postUid), dataSnapshot.child("username").getValue(String.class));
+                            UserInfoCacheMap.put("nickname-".concat(postUid), dataSnapshot.child("nickname").getValue(String.class));
+                            UserInfoCacheMap.put("avatar-".concat(postUid), dataSnapshot.child("avatar").getValue(String.class));
+                            UserInfoCacheMap.put("gender-".concat(postUid), dataSnapshot.child("gender").getValue(String.class));
+                            UserInfoCacheMap.put("acc_type-".concat(postUid), dataSnapshot.child("account_type").getValue(String.class));
+                            UserInfoCacheMap.put("verify-".concat(postUid), dataSnapshot.child("verify").getValue(String.class));
+                            UserInfoCacheMap.put("banned-".concat(postUid), dataSnapshot.child("banned").getValue(String.class));
+                            _updatePostViewVisibility(body, postPrivateStateIcon, postUid, _data.get(_position).get("post_visibility").toString());
+                            _displayUserInfoFromCache(postUid, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge);
+                        }
+                    }
 
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
 
-            DatabaseReference getLikeCheck = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-            DatabaseReference getCommentsCount = _firebase.getReference("skyline/posts-comments").child(_data.get(_position).get("key").toString());
-            DatabaseReference getLikesCount = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString());
-            DatabaseReference getFavoriteCheck = _firebase.getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get(_position).get("key").toString());
+            dbService.getData(dbService.getReference("posts-likes/" + _data.get(_position).get("key").toString() + "/" + authService.getCurrentUser().getUid()), new IDataListener() {
+                @Override
+                public void onDataChange(IDataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        likeButtonIc.setImageResource(R.drawable.like_2_filled);
+                    } else {
+                        likeButtonIc.setImageResource(R.drawable.like_2);
+                    }
+                }
+
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            dbService.getData(dbService.getReference("posts-comments/" + _data.get(_position).get("key").toString()), new IDataListener() {
+                @Override
+                public void onDataChange(IDataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        commentsButtonCount.setText(String.valueOf(dataSnapshot.getChildrenCount()));
+                    } else {
+                        commentsButtonCount.setText("0");
+                    }
+                }
+
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            dbService.getData(dbService.getReference("posts-likes/" + _data.get(_position).get("key").toString()), new IDataListener() {
+                @Override
+                public void onDataChange(IDataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        likeButtonCount.setText(String.valueOf(dataSnapshot.getChildrenCount()));
+                    } else {
+                        likeButtonCount.setText("0");
+                    }
+                }
+
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            dbService.getData(dbService.getReference("favorite-posts/" + authService.getCurrentUser().getUid() + "/" + _data.get(_position).get("key").toString()), new IDataListener() {
+                @Override
+                public void onDataChange(IDataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        favoritePostButton.setImageResource(R.drawable.favorite_filled);
+                    } else {
+                        favoritePostButton.setImageResource(R.drawable.favorite);
+                    }
+                }
+
+                @Override
+                public void onCancelled(IDatabaseError databaseError) {
+                    // Handle error
+                }
+            });
 
 
 
@@ -685,8 +789,43 @@ public class HomeFragment extends Fragment {
 
 
             likeButton.setOnClickListener(_view1 -> {
-                DatabaseReference likeRef = _firebase.getReference("skyline/posts-likes").child(_data.get(_position).get("key").toString()).child(FirebaseAuth.getInstance().getCurrentUser().getUid());
+                dbService.getData(dbService.getReference("posts-likes/" + _data.get(_position).get("key").toString() + "/" + authService.getCurrentUser().getUid()), new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            dbService.getReference("posts-likes/" + _data.get(_position).get("key").toString() + "/" + authService.getCurrentUser().getUid()).setValue(null, new ICompletionListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    likeButtonIc.setImageResource(R.drawable.like_2);
+                                }
 
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        } else {
+                            Map<String, Object> likeMap = new HashMap<>();
+                            likeMap.put("uid", authService.getCurrentUser().getUid());
+                            dbService.getReference("posts-likes/" + _data.get(_position).get("key").toString() + "/" + authService.getCurrentUser().getUid()).setValue(likeMap, new ICompletionListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    likeButtonIc.setImageResource(R.drawable.like_2_filled);
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
                 vbr.vibrate((long)(24));
             });
             commentsButton.setOnClickListener(_view1 -> {
@@ -704,8 +843,42 @@ public class HomeFragment extends Fragment {
                 startActivity(intent);
             });
             favoritePostButton.setOnClickListener(_view1 -> {
-                DatabaseReference favoriteRef = _firebase.getReference("skyline/favorite-posts").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child(_data.get(_position).get("key").toString());
+                dbService.getData(dbService.getReference("favorite-posts/" + authService.getCurrentUser().getUid() + "/" + _data.get(_position).get("key").toString()), new IDataListener() {
+                    @Override
+                    public void onDataChange(IDataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            dbService.getReference("favorite-posts/" + authService.getCurrentUser().getUid() + "/" + _data.get(_position).get("key").toString()).setValue(null, new ICompletionListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    favoritePostButton.setImageResource(R.drawable.favorite);
+                                }
 
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        } else {
+                            Map<String, Object> favoriteMap = new HashMap<>();
+                            favoriteMap.put("uid", authService.getCurrentUser().getUid());
+                            dbService.getReference("favorite-posts/" + authService.getCurrentUser().getUid() + "/" + _data.get(_position).get("key").toString()).setValue(favoriteMap, new ICompletionListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    favoritePostButton.setImageResource(R.drawable.favorite_filled);
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(IDatabaseError databaseError) {
+                        Toast.makeText(getContext(), databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
                 });
                 vbr.vibrate((long)(24));
             });
@@ -740,7 +913,7 @@ public class HomeFragment extends Fragment {
 
     private void _updatePostViewVisibility(LinearLayout body, ImageView postPrivateStateIcon, String postUid, String postVisibility) {
         if ("private".equals(postVisibility)) {
-            if (postUid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+            if (postUid.equals(authService.getCurrentUser().getUid())) {
                 postPrivateStateIcon.setVisibility(View.VISIBLE);
                 body.setVisibility(View.VISIBLE);
             } else {

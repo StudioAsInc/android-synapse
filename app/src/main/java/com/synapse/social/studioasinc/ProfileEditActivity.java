@@ -45,20 +45,14 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
 import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
-import com.synapse.social.studioasinc.FadeEditText;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener;
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError;
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -71,7 +65,6 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.appcompat.widget.SwitchCompat;
-import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
 import com.synapse.social.studioasinc.ImageUploader;
@@ -81,7 +74,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 	public final int REQ_CD_FP = 101;
 	public final int REQ_CD_FPCOVER = 102;
 
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
 
 	private ProgressDialog SynapseLoadingDialog;
 	private HashMap<String, Object> ProfileEditSendMap = new HashMap<>();
@@ -151,25 +145,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 
 	private Intent intent = new Intent();
 	private Vibrator vbr;
-	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
-	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private DatabaseReference pushusername = _firebase.getReference("synapse/username");
-	private ChildEventListener _pushusername_child_listener;
 	private Intent fp = new Intent(Intent.ACTION_GET_CONTENT);
 	private Intent fpcover = new Intent(Intent.ACTION_GET_CONTENT);
-	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
 	private Calendar cc = Calendar.getInstance();
 
 	@Override
@@ -177,7 +154,6 @@ public class ProfileEditActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_edit);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 1000);} else {
@@ -245,7 +221,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 		cover_image_history_stage_arrow = findViewById(R.id.cover_image_history_stage_arrow);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		auth = FirebaseAuth.getInstance();
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 		fp.setType("image/*");
 		fp.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		fpcover.setType("image/*");
@@ -264,8 +241,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 				if (!mUsernameInput.getText().toString().trim().equals("")) {
 					if (!(userNameErr || (nickNameErr || biographyErr))) {
 						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-						ProfileEditSendMap.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
+						ProfileEditSendMap.put("uid", authService.getCurrentUser().getUid());
+						ProfileEditSendMap.put("email", authService.getCurrentUser().getEmail());
 						ProfileEditSendMap.put("avatar", UserLastProfileUri);
 						ProfileEditSendMap.put("profile_cover_image", UserLastCoverUri);
 						ProfileEditSendMap.put("username", mUsernameInput.getText().toString().trim());
@@ -290,17 +267,42 @@ public class ProfileEditActivity extends AppCompatActivity {
 								}
 							}
 						}
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap);
-						FirebaseDatabase.getInstance().getReference("synapse/username")
-						.child(CurrentUsername)  // Use the CurrentUsername variable directly
-						.removeValue();
-						SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
-						map = new HashMap<>();
-						map.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
-						map.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
-						map.put("username", mUsernameInput.getText().toString());
-						pushusername.child(mUsernameInput.getText().toString()).updateChildren(map);
-						map.clear();
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).setValue(ProfileEditSendMap, new ICompletionListener<Void>() {
+							@Override
+							public void onSuccess(Void aVoid) {
+								dbService.getReference("synapse/username/" + CurrentUsername).setValue(null, new ICompletionListener<Void>() {
+									@Override
+									public void onSuccess(Void aVoid) {
+										SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.changes_saved));
+										map = new HashMap<>();
+										map.put("uid", authService.getCurrentUser().getUid());
+										map.put("email", authService.getCurrentUser().getEmail());
+										map.put("username", mUsernameInput.getText().toString());
+										dbService.getReference("synapse/username/" + mUsernameInput.getText().toString()).setValue(map, new ICompletionListener<Void>() {
+											@Override
+											public void onSuccess(Void aVoid) {
+												map.clear();
+											}
+
+											@Override
+											public void onFailure(Exception e) {
+												Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+											}
+										});
+									}
+
+									@Override
+									public void onFailure(Exception e) {
+										Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+									}
+								});
+							}
+
+							@Override
+							public void onFailure(Exception e) {
+								Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+							}
+						});
 					}
 				} else {
 					SketchwareUtil.showMessage(getApplicationContext(), getResources().getString(R.string.username_err_invalid));
@@ -331,16 +333,13 @@ public class ProfileEditActivity extends AppCompatActivity {
 									userNameErr = true;
 								} else {
 									mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
-									DatabaseReference checkUsernameRef = FirebaseDatabase.getInstance().getReference().child("skyline/users");
-
-									Query checkUsernameQuery = checkUsernameRef.orderByChild("username").equalTo(_charSeq.trim());
-									checkUsernameQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+									dbService.getData(dbService.getReference("skyline/users").orderByChild("username").equalTo(_charSeq.trim()), new IDataListener() {
 										@Override
-										public void onDataChange(DataSnapshot dataSnapshot) {
+										public void onDataChange(IDataSnapshot dataSnapshot) {
 											if (dataSnapshot.exists()) {
-												for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
+												for (IDataSnapshot childSnapshot : dataSnapshot.getChildren()) {
 													String uid = childSnapshot.child("uid").getValue(String.class);
-													if (uid != null && uid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+													if (uid != null && uid.equals(authService.getCurrentUser().getUid())) {
 														mUsernameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 														userNameErr = false;
 													} else {
@@ -356,8 +355,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 										}
 										
 										@Override
-										public void onCancelled(DatabaseError databaseError) {
-											
+										public void onCancelled(IDatabaseError databaseError) {
+											Toast.makeText(ProfileEditActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
 										}
 									});
 
@@ -499,212 +498,6 @@ public class ProfileEditActivity extends AppCompatActivity {
 				vbr.vibrate((long)(48));
 			}
 		});
-
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-
-		_pushusername_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		pushusername.addChildEventListener(_pushusername_child_listener);
-
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -770,37 +563,44 @@ public class ProfileEditActivity extends AppCompatActivity {
 						ProfileEditSendMap = new HashMap<>();
 						ProfileEditSendMap.put("avatar", imageUrl);
 						ProfileEditSendMap.put("avatar_history_type", "local");
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new ICompletionListener<Void>() {
 							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
+							public void onSuccess(Void aVoid) {
+								_LoadingDialog(false);
+								try {
+									String profileHistoryKey = dbService.getReference("skyline/profile-history/" + authService.getCurrentUser().getUid()).push().getKey();
+									mAddProfilePhotoMap = new HashMap<>();
+									mAddProfilePhotoMap.put("key", profileHistoryKey);
+									mAddProfilePhotoMap.put("image_url", imageUrl.trim());
+									mAddProfilePhotoMap.put("upload_date", String.valueOf((long) (cc.getTimeInMillis())));
+									mAddProfilePhotoMap.put("type", "url");
+									dbService.getReference("skyline/profile-history/" + authService.getCurrentUser().getUid() + "/" + profileHistoryKey).setValue(mAddProfilePhotoMap, new ICompletionListener<Void>() {
+										@Override
+										public void onSuccess(Void aVoid) {
+											// Handle success
+										}
+
+										@Override
+										public void onFailure(Exception e) {
+											Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+										}
+									});
+								} catch (Exception e) {
+									Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
 								}
 							}
+
+							@Override
+							public void onFailure(Exception e) {
+								SketchwareUtil.showMessage(getApplicationContext(), e.getMessage());
+								_LoadingDialog(false);
+							}
 						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
 					}
 
 					@Override
 					public void onUploadError(String errorMessage) {
-
-
-
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
+						SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
 						_LoadingDialog(false);
 					}
 				});
@@ -833,37 +633,44 @@ public class ProfileEditActivity extends AppCompatActivity {
 					public void onUploadComplete(String imageUrl) {
 						ProfileEditSendMap = new HashMap<>();
 						ProfileEditSendMap.put("profile_cover_image", imageUrl);
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
+						dbService.getReference("users/" + authService.getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new ICompletionListener<Void>() {
 							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
+							public void onSuccess(Void aVoid) {
+								_LoadingDialog(false);
+								try {
+									String profileHistoryKey = dbService.getReference("skyline/cover-image-history/" + authService.getCurrentUser().getUid()).push().getKey();
+									mAddProfilePhotoMap = new HashMap<>();
+									mAddProfilePhotoMap.put("key", profileHistoryKey);
+									mAddProfilePhotoMap.put("image_url", imageUrl.trim());
+									mAddProfilePhotoMap.put("upload_date", String.valueOf((long) (cc.getTimeInMillis())));
+									mAddProfilePhotoMap.put("type", "url");
+									dbService.getReference("skyline/cover-image-history/" + authService.getCurrentUser().getUid() + "/" + profileHistoryKey).setValue(mAddProfilePhotoMap, new ICompletionListener<Void>() {
+										@Override
+										public void onSuccess(Void aVoid) {
+											// Handle success
+										}
+
+										@Override
+										public void onFailure(Exception e) {
+											Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+										}
+									});
+								} catch (Exception e) {
+									Toast.makeText(ProfileEditActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
 								}
 							}
+
+							@Override
+							public void onFailure(Exception e) {
+								SketchwareUtil.showMessage(getApplicationContext(), e.getMessage());
+								_LoadingDialog(false);
+							}
 						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
 					}
 
 					@Override
 					public void onUploadError(String errorMessage) {
-
-
-
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
+						SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
 						_LoadingDialog(false);
 					}
 				});
@@ -904,10 +711,9 @@ public class ProfileEditActivity extends AppCompatActivity {
 	public void _getUserReference() {
 		mScroll.setVisibility(View.GONE);
 		mLoadingBody.setVisibility(View.VISIBLE);
-		DatabaseReference getUserReference = FirebaseDatabase.getInstance().getReference("skyline/users").child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-		getUserReference.addListenerForSingleValueEvent(new ValueEventListener() {
+		dbService.getData(dbService.getReference("skyline/users/" + authService.getCurrentUser().getUid()), new IDataListener() {
 			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+			public void onDataChange(IDataSnapshot dataSnapshot) {
 				if(dataSnapshot.exists()) {
 					mScroll.setVisibility(View.VISIBLE);
 					mLoadingBody.setVisibility(View.GONE);
@@ -966,8 +772,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 			}
 			
 			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				
+			public void onCancelled(IDatabaseError databaseError) {
+				Toast.makeText(ProfileEditActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
 			}
 		});
 	}
