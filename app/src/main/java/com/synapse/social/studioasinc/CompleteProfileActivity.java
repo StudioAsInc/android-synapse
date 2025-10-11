@@ -497,17 +497,13 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		// Add OneSignal Player ID
 		addOneSignalPlayerIdToMap(userProfile);
 
-		dbService.setValue(dbService.getReference("users/" + userId), userProfile, new ICompletionListener<Unit>() {
-			@Override
-			public void onSuccess(Unit result) {
+		dbService.setValue(dbService.getReference("users/" + userId), userProfile, (result, e) -> {
+			if (e == null) {
 				// Navigate to HomeActivity on success
 				Intent intent = new Intent(CompleteProfileActivity.this, HomeActivity.class);
 				startActivity(intent);
 				finish();
-			}
-
-			@Override
-			public void onFailure(Exception e) {
+			} else {
 				// Handle error
 				SketchwareUtil.showMessage(getApplicationContext(), "Error saving profile: " + e.getMessage());
 				complete_button.setEnabled(true);
