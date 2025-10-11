@@ -50,7 +50,10 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        // TODO: Implement presence with Supabase Realtime
+        // TODO: Migrate PresenceManager to Supabase Realtime.
+        // 1. Create a Supabase Realtime channel for presence tracking.
+        // 2. When the user comes online, broadcast their presence status on the channel.
+        // 3. Update the user's `last_seen` status in the Supabase database.
         // if (FirebaseAuth.getInstance().getCurrentUser() != null) {
         //     PresenceManager.setActivity(FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Home");
         // }
@@ -128,7 +131,9 @@ public class HomeActivity extends AppCompatActivity {
 
         nav_profile_ic.setOnClickListener(_view -> {
             Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
-            // TODO: Replace with Supabase Auth
+            // TODO: Replace FirebaseAuth with Supabase Auth.
+            // 1. Get the current user's ID from `Supabase.client.auth.currentUser.id`.
+            // 2. Pass the user's ID as an extra in the intent.
             // intent.putExtra("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
             startActivity(intent);
         });

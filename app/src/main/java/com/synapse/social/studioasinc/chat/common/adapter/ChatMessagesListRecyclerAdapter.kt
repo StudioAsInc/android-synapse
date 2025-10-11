@@ -31,6 +31,10 @@ class ChatMessagesListRecyclerAdapter(
         val view = holder.itemView
         val senderName = view.findViewById<TextView>(R.id.sender_name)
 
+        // TODO: Replace Firebase calls with Supabase to fetch user information.
+        // 1. Get the current user's ID from `Supabase.client.auth.currentUser.id`.
+        // 2. Query the `users` table in Supabase to get the sender's profile.
+        // 3. Use the retrieved data to display the sender's name.
         if (isGroup && data[position]["uid"].toString() != FirebaseAuth.getInstance().currentUser?.uid) {
             senderName.visibility = View.VISIBLE
             val senderUid = data[position]["uid"].toString()

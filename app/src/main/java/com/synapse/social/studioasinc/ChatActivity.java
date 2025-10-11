@@ -331,6 +331,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
 
+        // TODO: Replace MessageSendingHandler with a Supabase-specific implementation.
+        // 1. Create a `SupabaseMessageSendingHandler` that sends messages via Supabase.
+        // 2. This handler should manage message state, attachments, and replies.
+        // 3. Update all calls to `messageSendingHandler` to use the new `SupabaseMessageSendingHandler`.
         messageSendingHandler = new MessageSendingHandler(
                 this,
                 null, // TODO(supabase): Pass auth service
@@ -362,6 +366,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 
                 null, // TODO(supabase): Pass auth service
 
+        // TODO: Replace MessageInteractionHandler with a Supabase-specific implementation.
+        // 1. Create a `SupabaseMessageInteractionHandler` for handling message-related UI interactions.
+        // 2. This handler should manage message selection, context menus, and other UI feedback.
+        // 3. Update all calls to `messageInteractionHandler` to use the new `SupabaseMessageInteractionHandler`.
         messageInteractionHandler = new MessageInteractionHandler(
                 this,
                 this,
@@ -401,6 +409,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
         );
 
 		chatHelper = new ChatHelper(this);
+		// TODO: Replace DatabaseHelper with a Supabase-specific implementation.
+		// 1. Create a `SupabaseDatabaseHelper` that interacts with Supabase's real-time database.
+		// 2. This new helper should handle fetching messages, users, and chat metadata.
+		// 3. Update all calls to `databaseHelper` to use the new `SupabaseDatabaseHelper`.
 		databaseHelper = new DatabaseHelper(
 				this,
 				null, //TODO: pass database service
@@ -472,6 +484,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
         );
         attachmentHandler.setup();
 
+        // TODO: Replace ItemUploadHandler with Supabase Storage.
+        // 1. Create a `SupabaseItemUploadHandler` that uploads files to Supabase Storage.
+        // 2. This handler should manage the upload lifecycle, including progress and completion.
+        // 3. Update all calls to `itemUploadHandler` to use the new `SupabaseItemUploadHandler`.
         itemUploadHandler = new ItemUploadHandler(
                 this,
                 null, // TODO(supabase): Pass auth service
@@ -486,6 +502,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 		databaseHelper.attachChatListener();
 
         chatNavigator = new ChatNavigator(this, ChatMessagesListRecycler, ChatMessagesList);
+        // TODO: Replace UserBlockService with a Supabase-backed implementation.
+        // 1. Create a `SupabaseUserBlockService` that uses Supabase to manage blocked users.
+        // 2. This service should handle blocking, unblocking, and checking block status.
+        // 3. Update all calls to `userBlockService` to use the new `SupabaseUserBlockService`.
         userBlockService = new UserBlockService(this);
 	}
 
@@ -633,10 +653,17 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 
 
 	public void _getUserReference() {
+		// TODO: Replace this with a direct call to the Supabase database.
+		// 1. Use the `Supabase.client` to query the `users` table for the recipient's data.
+		// 2. Update the UI with the retrieved user information.
 		databaseHelper.getUserReference();
 	}
 
 	public void _getChatMessagesRef() {
+		// TODO: Replace this with a direct call to the Supabase database.
+		// 1. Use the `Supabase.client` to subscribe to the `messages` table for real-time updates.
+		// 2. Filter the messages based on the current chat conversation.
+		// 3. Update the chat UI with new and updated messages.
 		databaseHelper.getChatMessagesRef();
 	}
 
