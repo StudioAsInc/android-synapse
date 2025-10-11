@@ -1,8 +1,8 @@
 
 package com.synapse.social.studioasinc
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+// import com.google.firebase.auth.FirebaseAuth
+// import com.google.firebase.database.FirebaseDatabase
 import java.util.Calendar
 import java.util.HashMap
 
@@ -54,26 +54,22 @@ class UserDataPusher {
         createUserMap["join_date"] = getJoinTime.timeInMillis.toString()
         // addOneSignalPlayerIdToMap(createUserMap) // This needs to be handled
 
-        val main = FirebaseDatabase.getInstance().getReference("skyline")
-        main.child("users").child(uid).updateChildren(createUserMap)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val map = HashMap<String, Any>()
-                    map["uid"] = uid
-                    map["email"] = email
-                    map["username"] = username
-                    val pushusername = FirebaseDatabase.getInstance().getReference("synapse/username")
-                    pushusername.child(username).updateChildren(map)
-                        .addOnCompleteListener { pushTask ->
-                            if (pushTask.isSuccessful) {
-                                onComplete(true, null)
-                            } else {
-                                onComplete(false, pushTask.exception?.message)
-                            }
-                        }
-                } else {
-                    onComplete(false, task.exception?.message)
-                }
-            }
+        // TODO(supabase): Implement pushing user data to Supabase.
+        // This will involve using the DatabaseService to insert or update the user's record in the `users` table.
+        // Also, consider how to handle the `username` uniqueness, which was previously done in a separate `synapse/username` path.
+        // You might need a separate table for usernames or use a database function to ensure uniqueness.
+        //
+        // Example:
+        // val dbService = DatabaseService(SynapseApp.supabaseClient)
+        // val userRef = dbService.getReference("users/$uid")
+        // dbService.setValue(userRef, createUserMap, object : ICompletionListener<Unit> {
+        //     override fun onSuccess(result: Unit) {
+        //         // Handle username uniqueness check/insertion here
+        //         onComplete(true, null)
+        //     }
+        //     override fun onFailure(error: Exception) {
+        //         onComplete(false, error.message)
+        //     }
+        // })
     }
 }

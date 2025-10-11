@@ -49,7 +49,17 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-
+// import com.google.firebase.auth.FirebaseAuth;
+// import com.google.firebase.auth.FirebaseUser;
+// import com.google.firebase.database.ChildEventListener;
+// import com.google.firebase.database.DataSnapshot;
+// import com.google.firebase.database.DatabaseError;
+// import com.google.firebase.database.DatabaseReference;
+// import com.google.firebase.database.FirebaseDatabase;
+// import com.google.firebase.database.Query;
+// import com.google.firebase.database.ValueEventListener;
+// import com.google.firebase.storage.FirebaseStorage;
+// import com.google.firebase.storage.StorageReference;
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.chat.common.ui.ChatNavigator;
 import com.synapse.social.studioasinc.chat.common.ui.SwipeToReplyHandler;
@@ -102,6 +112,21 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
 	private boolean isLoading = false;
+
+	// TODO(supabase): Replace with Supabase client
+	// private FirebaseDatabase fdb = FirebaseDatabase.getInstance();
+	// private FirebaseStorage fst = FirebaseStorage.getInstance();
+	// private FirebaseAuth auth;
+	// private FirebaseUser user;
+
+	// TODO(supabase): Replace with Supabase database references/queries
+	// private DatabaseReference ChatMessagesRef;
+	// private DatabaseReference UserRef;
+	// private ChildEventListener ChatMessagesListener;
+	// private DatabaseReference TypingRef;
+	// private ChildEventListener TypingListener;
+	// private StorageReference ChatMediaRef;
+	// private ValueEventListener UserRefListener;
 	
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
