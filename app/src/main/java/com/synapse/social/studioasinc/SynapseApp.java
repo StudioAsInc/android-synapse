@@ -46,16 +46,15 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         this.mExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
         this.mCalendar = Calendar.getInstance();
         
-        // TODO(supabase): Initialize the Supabase client here.
-        supabaseClient = createSupabaseClient(
-            BuildConfig.SUPABASE_URL,
-            BuildConfig.SUPABASE_ANON_KEY
-        ) {
-            install(GoTrue)
-            install(Postgrest)
-            install(Realtime)
-            install(Storage)
-        }
+        // Supabase: Initialize the Supabase client.
+        supabaseClient = new SupabaseClient.Builder(
+                BuildConfig.SUPABASE_URL,
+                BuildConfig.SUPABASE_ANON_KEY
+        ).addPlugin(GoTrue.INSTANCE)
+                .addPlugin(Postgrest.INSTANCE)
+                .addPlugin(Realtime.INSTANCE)
+                .addPlugin(Storage.INSTANCE)
+                .build();
         
         // Create notification channels
         createNotificationChannels();

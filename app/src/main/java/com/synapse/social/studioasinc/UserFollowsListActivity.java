@@ -195,134 +195,6 @@ private PostgrestClient maindb;
 				_setTab(1);
 			}
 		});
-		
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
-			}
-			
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
-			}
-			
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-				
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-		
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
-			}
-		};
-		
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				
-			}
-		};
 	}
 	
 	private void initializeLogic() {
@@ -392,21 +264,61 @@ private PostgrestClient maindb;
 		followers_layout_list.setVisibility(View.GONE);
 		followers_layout_no_followers.setVisibility(View.GONE);
 		followers_layout_loading.setVisibility(View.VISIBLE);
-		// TODO(supabase): Replace with Supabase Postgrest query
-		// postgrest.from("skyline/followers").select().eq("uid", getIntent().getStringExtra("uid")).execute();
-		// TODO(supabase): Implement Supabase data fetching for followers reference
+		// Supabase: Fetch followers
+		postgrest.from("followers").select("*").eq("followed_uid", getIntent().getStringExtra("uid")).execute(new PostgrestCallback<List<HashMap<String, Object>>>() {
+			@Override
+			public void onSuccess(@NonNull PostgrestResponse<List<HashMap<String, Object>>> response) {
+				if (response.getData() != null && !response.getData().isEmpty()) {
+					mFollowersList.clear();
+					mFollowersList.addAll(response.getData());
+					followers_layout_list.getAdapter().notifyDataSetChanged();
+					followers_layout_list.setVisibility(View.VISIBLE);
+					followers_layout_no_followers.setVisibility(View.GONE);
+				} else {
+					followers_layout_list.setVisibility(View.GONE);
+					followers_layout_no_followers.setVisibility(View.VISIBLE);
+				}
+				followers_layout_loading.setVisibility(View.GONE);
+			}
 
+			@Override
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch followers: " + error.getMessage());
+				followers_layout_loading.setVisibility(View.GONE);
+				followers_layout_no_followers.setVisibility(View.VISIBLE);
+			}
+		});
 	}
-	
-	
+
+
 	public void _getFollowingReference() {
 		following_layout_list.setVisibility(View.GONE);
 		following_layout_no_follow.setVisibility(View.GONE);
 		following_layout_loading.setVisibility(View.VISIBLE);
-		// TODO(supabase): Replace with Supabase Postgrest query
-		// postgrest.from("skyline/following").select().eq("uid", getIntent().getStringExtra("uid")).execute();
-		// TODO(supabase): Implement Supabase data fetching for following reference
+		// Supabase: Fetch following
+		postgrest.from("followers").select("*").eq("follower_uid", getIntent().getStringExtra("uid")).execute(new PostgrestCallback<List<HashMap<String, Object>>>() {
+			@Override
+			public void onSuccess(@NonNull PostgrestResponse<List<HashMap<String, Object>>> response) {
+				if (response.getData() != null && !response.getData().isEmpty()) {
+					mFollowingList.clear();
+					mFollowingList.addAll(response.getData());
+					following_layout_list.getAdapter().notifyDataSetChanged();
+					following_layout_list.setVisibility(View.VISIBLE);
+					following_layout_no_follow.setVisibility(View.GONE);
+				} else {
+					following_layout_list.setVisibility(View.GONE);
+					following_layout_no_follow.setVisibility(View.VISIBLE);
+				}
+				following_layout_loading.setVisibility(View.GONE);
+			}
 
+			@Override
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch following: " + error.getMessage());
+				following_layout_loading.setVisibility(View.GONE);
+				following_layout_no_follow.setVisibility(View.VISIBLE);
+			}
+		});
 	}
 	
 	
@@ -414,10 +326,62 @@ private PostgrestClient maindb;
 		m_coordinator_layout.setVisibility(View.GONE);
 		topProfileLayout.setVisibility(View.GONE);
 		mLoadingLayout.setVisibility(View.VISIBLE);
-		// TODO(supabase): Replace with Supabase Postgrest query
-		// postgrest.from("skyline/users").select().eq("id", getIntent().getStringExtra("uid")).single().execute();
-		// TODO(supabase): Implement Supabase data fetching for user reference
+		// Supabase: Fetch user data
+		postgrest.from("users").select("*").eq("uid", getIntent().getStringExtra("uid")).single().execute(new PostgrestCallback<Map<String, Object>>() {
+			@Override
+			public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+				if (response.getData() != null) {
+					Map<String, Object> userData = response.getData();
+					if (userData.get("banned").toString().equals("true")) {
+						topProfileLayoutProfileImage.setImageResource(R.drawable.banned_avatar);
+					} else {
+						if (userData.get("avatar").toString().equals("null")) {
+							topProfileLayoutProfileImage.setImageResource(R.drawable.avatar);
+						} else {
+							Glide.with(getApplicationContext()).load(Uri.parse(userData.get("avatar").toString())).into(topProfileLayoutProfileImage);
+						}
+					}
+					if (userData.get("nickname").toString().equals("null")) {
+						topProfileLayoutUsername.setText("@" + userData.get("username").toString());
+					} else {
+						topProfileLayoutUsername.setText(userData.get("nickname").toString());
+					}
+					topProfileLayoutUsername2.setText("@" + userData.get("username").toString());
+					if (userData.get("gender").toString().equals("hidden")) {
+						topProfileLayoutGenderBadge.setVisibility(View.GONE);
+					} else if (userData.get("gender").toString().equals("male")) {
+						topProfileLayoutGenderBadge.setImageResource(R.drawable.male_badge);
+						topProfileLayoutGenderBadge.setVisibility(View.VISIBLE);
+					} else if (userData.get("gender").toString().equals("female")) {
+						topProfileLayoutGenderBadge.setImageResource(R.drawable.female_badge);
+						topProfileLayoutGenderBadge.setVisibility(View.VISIBLE);
+					}
+					if (userData.get("account_type").toString().equals("admin")) {
+						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.admin_badge);
+						topProfileLayoutVerifiedBadge.setVisibility(View.VISIBLE);
+					} else if (userData.get("account_type").toString().equals("moderator")) {
+						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.moderator_badge);
+						topProfileLayoutVerifiedBadge.setVisibility(View.VISIBLE);
+					} else if (userData.get("account_type").toString().equals("support")) {
+						topProfileLayoutVerifiedBadge.setImageResource(R.drawable.support_badge);
+						topProfileLayoutVerifiedBadge.setVisibility(View.VISIBLE);
+					} else if (userData.get("account_type").toString().equals("user")) {
+						topProfileLayoutVerifiedBadge.setVisibility(userData.get("verify").toString().equals("true") ? View.VISIBLE : View.GONE);
+					}
+					m_coordinator_layout.setVisibility(View.VISIBLE);
+					topProfileLayout.setVisibility(View.VISIBLE);
+					mLoadingLayout.setVisibility(View.GONE);
+					_getFollowersReference();
+					_getFollowingReference();
+				}
+			}
 
+			@Override
+			public void onFailure(@NonNull PostgrestError error) {
+				Log.e("SupabaseError", "Failed to fetch user data: " + error.getMessage());
+				// Handle error
+			}
+		});
 	}
 	
 	
@@ -541,16 +505,73 @@ private PostgrestClient maindb;
 				body.setVisibility(View.VISIBLE);
 			} else {
 				{
-					ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-					Handler mMainHandler = new Handler(Looper.getMainLooper());
-					
-					mExecutorService.execute(new Runnable() {
+					// Supabase: Fetch user data
+					postgrest.from("users").select("*").eq("uid", _data.get(_position).get("uid").toString()).single().execute(new PostgrestCallback<Map<String, Object>>() {
 						@Override
-						public void run() {
-							// TODO(supabase): Replace with Supabase Postgrest query
-							// postgrest.from("skyline/users").select().eq("id", _data.get((int)_position).get("uid").toString()).single().execute();
-							// TODO(supabase): Implement Supabase data fetching for user info
+						public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+							if (response.getData() != null) {
+								Map<String, Object> userData = response.getData();
+								UserInfoCacheMap.put("uid-".concat(_data.get(_position).get("uid").toString()), _data.get(_position).get("uid").toString());
+								UserInfoCacheMap.put("banned-".concat(_data.get(_position).get("uid").toString()), userData.get("banned").toString());
+								UserInfoCacheMap.put("nickname-".concat(_data.get(_position).get("uid").toString()), userData.get("nickname").toString());
+								UserInfoCacheMap.put("username-".concat(_data.get(_position).get("uid").toString()), userData.get("username").toString());
+								UserInfoCacheMap.put("status-".concat(_data.get(_position).get("uid").toString()), userData.get("status").toString());
+								UserInfoCacheMap.put("avatar-".concat(_data.get(_position).get("uid").toString()), userData.get("avatar").toString());
+								UserInfoCacheMap.put("gender-".concat(_data.get(_position).get("uid").toString()), userData.get("gender").toString());
+								UserInfoCacheMap.put("verify-".concat(_data.get(_position).get("uid").toString()), userData.get("verify").toString());
+								UserInfoCacheMap.put("acc_type-".concat(_data.get(_position).get("uid").toString()), userData.get("account_type").toString());
 
+								new Handler(Looper.getMainLooper()).post(() -> {
+									if (UserInfoCacheMap.get("banned-".concat(_data.get(_position).get("uid").toString())).equals("true")) {
+										profileAvatar.setImageResource(R.drawable.banned_avatar);
+									} else {
+										if (UserInfoCacheMap.get("avatar-".concat(_data.get(_position).get("uid").toString())).equals("null")) {
+											profileAvatar.setImageResource(R.drawable.avatar);
+										} else {
+											Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get(_position).get("uid").toString())).toString())).into(profileAvatar);
+										}
+									}
+									if (UserInfoCacheMap.get("status-".concat(_data.get(_position).get("uid").toString())).equals("online")) {
+										userStatusCircleBG.setVisibility(View.VISIBLE);
+									} else {
+										userStatusCircleBG.setVisibility(View.GONE);
+									}
+									if (UserInfoCacheMap.get("nickname-".concat(_data.get(_position).get("uid").toString())).equals("null")) {
+										username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get(_position).get("uid").toString())));
+									} else {
+										username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get(_position).get("uid").toString())).toString());
+									}
+									name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get(_position).get("uid").toString())));
+									if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("hidden")) {
+										genderBadge.setVisibility(View.GONE);
+									} else if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("male")) {
+										genderBadge.setImageResource(R.drawable.male_badge);
+										genderBadge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("female")) {
+										genderBadge.setImageResource(R.drawable.female_badge);
+										genderBadge.setVisibility(View.VISIBLE);
+									}
+									if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("admin")) {
+										badge.setImageResource(R.drawable.admin_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("moderator")) {
+										badge.setImageResource(R.drawable.moderator_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("support")) {
+										badge.setImageResource(R.drawable.support_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("user")) {
+										badge.setVisibility(UserInfoCacheMap.get("verify-".concat(_data.get(_position).get("uid").toString())).equals("true") ? View.VISIBLE : View.GONE);
+									}
+									body.setVisibility(View.VISIBLE);
+								});
+							}
+						}
+
+						@Override
+						public void onFailure(@NonNull PostgrestError error) {
+							Log.e("SupabaseError", "Failed to fetch user data: " + error.getMessage());
+							// Optionally, show a toast or some other UI indication of the error
 						}
 					});
 				}
@@ -677,97 +698,73 @@ private PostgrestClient maindb;
 				body.setVisibility(View.VISIBLE);
 			} else {
 				{
-					ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-					Handler mMainHandler = new Handler(Looper.getMainLooper());
-					
-					mExecutorService.execute(new Runnable() {
+					// Supabase: Fetch user data
+					postgrest.from("users").select("*").eq("uid", _data.get(_position).get("uid").toString()).single().execute(new PostgrestCallback<Map<String, Object>>() {
 						@Override
-						public void run() {
-							DatabaseReference getReference = FirebaseDatabase.getInstance().getReference().child("skyline/users").child(_data.get((int)_position).get("uid").toString());
+						public void onSuccess(@NonNull PostgrestResponse<Map<String, Object>> response) {
+							if (response.getData() != null) {
+								Map<String, Object> userData = response.getData();
+								UserInfoCacheMap.put("uid-".concat(_data.get(_position).get("uid").toString()), _data.get(_position).get("uid").toString());
+								UserInfoCacheMap.put("banned-".concat(_data.get(_position).get("uid").toString()), userData.get("banned").toString());
+								UserInfoCacheMap.put("nickname-".concat(_data.get(_position).get("uid").toString()), userData.get("nickname").toString());
+								UserInfoCacheMap.put("username-".concat(_data.get(_position).get("uid").toString()), userData.get("username").toString());
+								UserInfoCacheMap.put("status-".concat(_data.get(_position).get("uid").toString()), userData.get("status").toString());
+								UserInfoCacheMap.put("avatar-".concat(_data.get(_position).get("uid").toString()), userData.get("avatar").toString());
+								UserInfoCacheMap.put("gender-".concat(_data.get(_position).get("uid").toString()), userData.get("gender").toString());
+								UserInfoCacheMap.put("verify-".concat(_data.get(_position).get("uid").toString()), userData.get("verify").toString());
+								UserInfoCacheMap.put("acc_type-".concat(_data.get(_position).get("uid").toString()), userData.get("account_type").toString());
 
-								@Override
-								public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-									if(dataSnapshot.exists()) {
-										UserInfoCacheMap.put("uid-".concat(_data.get((int)_position).get("uid").toString()), _data.get((int)_position).get("uid").toString());
-										UserInfoCacheMap.put("banned-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("banned").getValue(String.class));
-										UserInfoCacheMap.put("nickname-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("nickname").getValue(String.class));
-										UserInfoCacheMap.put("username-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("username").getValue(String.class));
-										UserInfoCacheMap.put("status-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("status").getValue(String.class));
-										UserInfoCacheMap.put("avatar-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("avatar").getValue(String.class));
-										UserInfoCacheMap.put("gender-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("gender").getValue(String.class));
-										UserInfoCacheMap.put("verify-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("verify").getValue(String.class));
-										UserInfoCacheMap.put("acc_type-".concat(_data.get((int)_position).get("uid").toString()), dataSnapshot.child("account_type").getValue(String.class));
-										
-										mMainHandler.post(new Runnable() {
-											@Override
-											public void run() {
-												if (UserInfoCacheMap.get("banned-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
-													profileAvatar.setImageResource(R.drawable.banned_avatar);
-												} else {
-													if (UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
-														profileAvatar.setImageResource(R.drawable.avatar);
-													} else {
-														Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString())).into(profileAvatar);
-													}
-												}
-												if (UserInfoCacheMap.get("status-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("online")) {
-													userStatusCircleBG.setVisibility(View.VISIBLE);
-												} else {
-													userStatusCircleBG.setVisibility(View.GONE);
-												}
-												if (UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("null")) {
-													username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												} else {
-													username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												}
-												name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get((int)_position).get("uid").toString())).toString());
-												if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("hidden")) {
-													genderBadge.setVisibility(View.GONE);
-												} else {
-													if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("male")) {
-														genderBadge.setImageResource(R.drawable.male_badge);
-														genderBadge.setVisibility(View.VISIBLE);
-													} else {
-														if (UserInfoCacheMap.get("gender-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("female")) {
-															genderBadge.setImageResource(R.drawable.female_badge);
-															genderBadge.setVisibility(View.VISIBLE);
-														}
-													}
-												}
-												if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("admin")) {
-													badge.setImageResource(R.drawable.admin_badge);
-													badge.setVisibility(View.VISIBLE);
-												} else {
-													if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("moderator")) {
-														badge.setImageResource(R.drawable.moderator_badge);
-														badge.setVisibility(View.VISIBLE);
-													} else {
-														if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("support")) {
-															badge.setImageResource(R.drawable.support_badge);
-															badge.setVisibility(View.VISIBLE);
-														} else {
-															if (UserInfoCacheMap.get("acc_type-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("user")) {
-																if (UserInfoCacheMap.get("verify-".concat(_data.get((int)_position).get("uid").toString())).toString().equals("true")) {
-																	badge.setVisibility(View.VISIBLE);
-																} else {
-																	badge.setVisibility(View.GONE);
-																}
-															}
-														}
-													}
-												}
-												body.setVisibility(View.VISIBLE);
-											}
-										});
+								new Handler(Looper.getMainLooper()).post(() -> {
+									if (UserInfoCacheMap.get("banned-".concat(_data.get(_position).get("uid").toString())).equals("true")) {
+										profileAvatar.setImageResource(R.drawable.banned_avatar);
 									} else {
-										
+										if (UserInfoCacheMap.get("avatar-".concat(_data.get(_position).get("uid").toString())).equals("null")) {
+											profileAvatar.setImageResource(R.drawable.avatar);
+										} else {
+											Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get(_position).get("uid").toString())).toString())).into(profileAvatar);
+										}
 									}
-								}
-								@Override
-								public void onCancelled(@NonNull DatabaseError databaseError) {
-									
-								}
-							});
+									if (UserInfoCacheMap.get("status-".concat(_data.get(_position).get("uid").toString())).equals("online")) {
+										userStatusCircleBG.setVisibility(View.VISIBLE);
+									} else {
+										userStatusCircleBG.setVisibility(View.GONE);
+									}
+									if (UserInfoCacheMap.get("nickname-".concat(_data.get(_position).get("uid").toString())).equals("null")) {
+										username.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get(_position).get("uid").toString())));
+									} else {
+										username.setText(UserInfoCacheMap.get("nickname-".concat(_data.get(_position).get("uid").toString())).toString());
+									}
+									name.setText("@" + UserInfoCacheMap.get("username-".concat(_data.get(_position).get("uid").toString())));
+									if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("hidden")) {
+										genderBadge.setVisibility(View.GONE);
+									} else if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("male")) {
+										genderBadge.setImageResource(R.drawable.male_badge);
+										genderBadge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("gender-".concat(_data.get(_position).get("uid").toString())).equals("female")) {
+										genderBadge.setImageResource(R.drawable.female_badge);
+										genderBadge.setVisibility(View.VISIBLE);
+									}
+									if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("admin")) {
+										badge.setImageResource(R.drawable.admin_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("moderator")) {
+										badge.setImageResource(R.drawable.moderator_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("support")) {
+										badge.setImageResource(R.drawable.support_badge);
+										badge.setVisibility(View.VISIBLE);
+									} else if (UserInfoCacheMap.get("acc_type-".concat(_data.get(_position).get("uid").toString())).equals("user")) {
+										badge.setVisibility(UserInfoCacheMap.get("verify-".concat(_data.get(_position).get("uid").toString())).equals("true") ? View.VISIBLE : View.GONE);
+									}
+									body.setVisibility(View.VISIBLE);
+								});
+							}
+						}
+
+						@Override
+						public void onFailure(@NonNull PostgrestError error) {
+							Log.e("SupabaseError", "Failed to fetch user data: " + error.getMessage());
+							// Optionally, show a toast or some other UI indication of the error
 						}
 					});
 				}
