@@ -23,21 +23,7 @@ import io.github.jan.supabase.storage.Storage
 // 3.  Implement signIn, signUp, signOut, and deleteUser using Supabase Auth.
 // 4.  Create Supabase-specific wrappers for IAuthResult and IUser to map the Supabase API to the existing interfaces.
 
-class AuthenticationService : IAuthenticationService {
-
-    private lateinit var supabase: SupabaseClient
-
-    init {
-        // TODO(supabase): Replace with your actual Supabase URL and Anon Key
-        val SUPABASE_URL = "YOUR_SUPABASE_URL"
-        val SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"
-
-        supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY) {
-            install(GoTrue)
-            install(Postgrest)
-            install(Storage)
-        }
-    }
+class AuthenticationService(private val supabase: SupabaseClient) : IAuthenticationService {
 
     override fun getCurrentUser(): IUser? {
         return supabase.gotrue.currentUserOrNull()?.let { SupabaseUser(it) }

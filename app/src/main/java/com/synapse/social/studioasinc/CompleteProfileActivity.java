@@ -67,25 +67,24 @@ import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
 import com.synapse.social.studioasinc.util.ViewUtilsKt;
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
+import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener;
+import com.synapse.social.studioasinc.backend.interfaces.IUser;
 
 
 public class CompleteProfileActivity extends AppCompatActivity {
 
 	public final int REQ_CD_SELECTAVATAR = 101;
 
+	private IAuthenticationService authService;
+	private IDatabaseService dbService;
+
 	private boolean userNameErr = false;
 	private String avatarUri = "";
-	private String avatarName = "";
-	private String StorageDB = "";
-	private HashMap<String, Object> createUserMap = new HashMap<>();
-	private boolean emailVerify = false;
-	private HashMap<String, Object> m = new HashMap<>();
-	private HashMap<String, Object> m2 = new HashMap<>();
-	private HashMap<String, Object> map = new HashMap<>();
-	private String IMG_BB_API_KEY = "";
 	private String path = "";
-	private String imageUrl = "";
-	private HashMap<String, Object> mDp = new HashMap<>();
 	private String thedpurl = "";
 
 	private ScrollView scroll;
@@ -172,6 +171,9 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		SelectAvatar.setType("image/*");
 		SelectAvatar.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+
+		authService = new AuthenticationService(SynapseApp.supabaseClient);
+		dbService = new DatabaseService(SynapseApp.supabaseClient);
 
 		profile_image_card.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
@@ -303,7 +305,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 					complete_button.setEnabled(false);
 					complete_button.setText("Loading...");
 					username_input.setEnabled(false);
-
+					saveUserProfile();
 				}
 			}
 		});
@@ -472,6 +474,49 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		title.setTypeface(Typeface.DEFAULT, 1);
 	}
 
+	private void saveUserProfile() {
+		IUser currentUser = authService.getCurrentUser();
+		if (currentUser == null) {
+			// Handle error: user is not logged in
+			SketchwareUtil.showMessage(getApplicationContext(), "Error: Not logged in.");
+			return;
+		}
+
+		String userId = currentUser.getUid();
+		String username = username_input.getText().toString();
+		String nickname = nickname_input.getText().toString();
+		String biography = biography_input.getText().toString();
+
+		HashMap<String, Object> userProfile = new HashMap<>();
+		userProfile.put("id", userId); // Assuming "id" is the primary key column in your Supabase table
+		userProfile.put("username", username);
+		userProfile.put("nickname", nickname);
+		userProfile.put("biography", biography);
+		userProfile.put("avatar_url", thedpurl); // Use thedpurl from image upload
+
+		// Add OneSignal Player ID
+		addOneSignalPlayerIdToMap(userProfile);
+
+		dbService.setValue(dbService.getReference("users/" + userId), userProfile, new ICompletionListener<Unit>() {
+			@Override
+			public void onSuccess(Unit result) {
+				// Navigate to HomeActivity on success
+				Intent intent = new Intent(CompleteProfileActivity.this, HomeActivity.class);
+				startActivity(intent);
+				finish();
+			}
+
+			@Override
+			public void onFailure(Exception e) {
+				// Handle error
+				SketchwareUtil.showMessage(getApplicationContext(), "Error saving profile: " + e.getMessage());
+				complete_button.setEnabled(true);
+				complete_button.setText("Complete Profile");
+				username_input.setEnabled(true);
+			}
+		});
+	}
+
 	private void addOneSignalPlayerIdToMap(HashMap<String, Object> userMap) {
 		// Get current OneSignal Player ID if available
 		if (OneSignal.getUser().getPushSubscription().getOptedIn()) {
@@ -481,8 +526,4 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			}
 		}
 	}
-
-
-
-
 }

@@ -57,13 +57,11 @@ import android.graphics.drawable.ColorDrawable;
 import com.google.gson.Gson; // Import Gson
 import com.google.gson.reflect.TypeToken; // Import TypeToken
 import android.content.pm.PackageManager; // Import PackageManager
+import com.synapse.social.studioasinc.backend.AuthenticationService;
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
 
 
-// TODO: Migrate to Supabase
 // This is the main entry point of the app.
-// The following needs to be done:
-// 1. Replace all Firebase database calls with calls to the `DatabaseService` interface.
-// 2. Replace all Firebase auth calls with calls to the `AuthenticationService` interface.
 public class MainActivity extends AppCompatActivity {
 
 	private ArrayList<HashMap<String, Object>> commentsListMap = new ArrayList<>();
@@ -84,8 +82,6 @@ public class MainActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_main);
 		initialize(_savedInstanceState);
-		// TODO: Initialize Supabase client in SynapseApp.java instead of here.
-		// FirebaseApp.initializeApp(this);
 		createNotificationChannels();
 		initializeLogic();
 	}
@@ -137,12 +133,6 @@ public class MainActivity extends AppCompatActivity {
 		app_logo.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
-				// TODO: Replace with Supabase Auth
-				// if (FirebaseAuth.getInstance().getCurrentUser() != null && FirebaseAuth.getInstance().getCurrentUser().getEmail() != null && FirebaseAuth.getInstance().getCurrentUser().getEmail().equals("mashikahamed0@gmail.com")) {
-				// 	finish(); // This seems to be the intended action for the long click
-				// } else {
-				// 	// Optionally, do something else or nothing
-				// }
 				return true;
 			}
 		});
@@ -262,7 +252,17 @@ public class MainActivity extends AppCompatActivity {
     // Helper method to encapsulate the delayed auth check logic
     private void proceedToAuthCheck() {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // TODO: Implement with Supabase
+            IAuthenticationService authService = new AuthenticationService(SynapseApp.supabaseClient);
+            if (authService.getCurrentUser() != null) {
+                // User is logged in, go to HomeActivity
+                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                startActivity(intent);
+            } else {
+                // User is not logged in, go to AuthActivity
+                Intent intent = new Intent(MainActivity.this, AuthActivity.class);
+                startActivity(intent);
+            }
+            finish(); // Finish MainActivity so it's not on the back stack
         }, 500); // 500ms delay
     }
 
