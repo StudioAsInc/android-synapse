@@ -44,9 +44,14 @@ class HeaderAdapter(
 
     override fun getItemCount(): Int = 1
 
+    override fun onViewRecycled(holder: ViewHolder) {
+        super.onViewRecycled(holder)
+        holder.profileRef?.removeEventListener(holder.profileListener!!)
+    }
+
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val storiesView: RecyclerView = itemView.findViewById(R.id.storiesView)
-        private val miniPostLayoutProfileCard: CardView = itemView.findViewById(R.id.miniPostLayoutProfileCard)
+        val storiesView: RecyclerView = itemView.findViewById(R.id.storiesView)
+        val miniPostLayoutProfileCard: CardView = itemView.findViewById(R.id.miniPostLayoutProfileCard)
         private val miniPostLayoutTextPostInput: EditText = itemView.findViewById(R.id.miniPostLayoutTextPostInput)
         private val miniPostLayoutProfileImage: ImageView = itemView.findViewById(R.id.miniPostLayoutProfileImage)
         private val miniPostLayoutImagePost: ImageView = itemView.findViewById(R.id.miniPostLayoutImagePost)
@@ -63,7 +68,7 @@ class HeaderAdapter(
                 adapter = storyAdapter
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             }
-            _viewGraphics(miniPostLayoutTextPostPublish, Color.TRANSPARENT, Color.TRANSPARENT, 300.0, 2.0, 0xFF616161)
+            _viewGraphics(miniPostLayoutTextPostPublish, Color.TRANSPARENT, Color.TRANSPARENT, 300.0, 2.0, 0xFF616161.toInt())
 
             loadProfileImage()
             setupClickListeners()
@@ -95,21 +100,21 @@ class HeaderAdapter(
 
         private fun setupClickListeners() {
             miniPostLayoutTextPostPublish.visibility = View.GONE
-            _imageColor(miniPostLayoutImagePost, 0xFF445E91)
-            _imageColor(miniPostLayoutVideoPost, 0xFF445E91)
-            _imageColor(miniPostLayoutTextPost, 0xFF445E91)
-            _imageColor(miniPostLayoutMoreButton, 0xFF445E91)
-            _viewGraphics(miniPostLayoutImagePost, 0xFFFFFFFF, 0xFFEEEEEE, 300.0, 1.0, 0xFFEEEEEE)
-            _viewGraphics(miniPostLayoutVideoPost, 0xFFFFFFFF, 0xFFEEEEEE, 300.0, 1.0, 0xFFEEEEEE)
-            _viewGraphics(miniPostLayoutTextPost, 0xFFFFFFFF, 0xFFEEEEEE, 300.0, 1.0, 0xFFEEEEEE)
-            _viewGraphics(miniPostLayoutMoreButton, 0xFFFFFFFF, 0xFFEEEEEE, 300.0, 1.0, 0xFFEEEEEE)
+            _imageColor(miniPostLayoutImagePost, 0xFF445E91.toInt())
+            _imageColor(miniPostLayoutVideoPost, 0xFF445E91.toInt())
+            _imageColor(miniPostLayoutTextPost, 0xFF445E91.toInt())
+            _imageColor(miniPostLayoutMoreButton, 0xFF445E91.toInt())
+            _viewGraphics(miniPostLayoutImagePost, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 1.0, 0xFFEEEEEE.toInt())
+            _viewGraphics(miniPostLayoutVideoPost, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 1.0, 0xFFEEEEEE.toInt())
+            _viewGraphics(miniPostLayoutTextPost, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 1.0, 0xFFEEEEEE.toInt())
+            _viewGraphics(miniPostLayoutMoreButton, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 1.0, 0xFFEEEEEE.toInt())
 
             miniPostLayoutTextPostInput.addTextChangedListener(object : TextWatcher {
                 override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                     if (s.isEmpty()) {
                         miniPostLayoutTextPostPublish.visibility = View.GONE
                     } else {
-                        _viewGraphics(miniPostLayoutTextPostPublish, context.resources.getColor(R.color.colorPrimary), 0xFFC5CAE9, 300.0, 0.0, Color.TRANSPARENT)
+                        _viewGraphics(miniPostLayoutTextPostPublish, context.resources.getColor(R.color.colorPrimary), 0xFFC5CAE9.toInt(), 300.0, 0.0, Color.TRANSPARENT)
                         miniPostLayoutTextPostPublish.visibility = View.VISIBLE
                     }
                 }

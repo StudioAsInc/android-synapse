@@ -90,8 +90,8 @@ class PostAdapter(
                 cornerRadius = 300f
                 setColor(Color.TRANSPARENT)
             }
-            _imageColor(postPrivateStateIcon, 0xFF616161)
-            _viewGraphics(topMoreButton, 0xFFFFFFFF, 0xFFEEEEEE, 300.0, 0.0, Color.TRANSPARENT)
+            _imageColor(postPrivateStateIcon, 0xFF616161.toInt())
+            _viewGraphics(topMoreButton, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 0.0, Color.TRANSPARENT)
 
             post.post_text?.let {
                 MarkdownRenderer.get(context).render(postMessageTextMiddle, it)
