@@ -12,6 +12,7 @@ import com.synapse.social.studioasinc.repository.UserRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * ViewModel for the [ProfileActivity].
