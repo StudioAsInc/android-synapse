@@ -207,23 +207,30 @@ class PostAdapter(
                 val likeRef = firebaseDatabase.getReference("skyline/posts-likes").child(postKey).child(currentUid)
                 likeRef.addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(dataSnapshot: DataSnapshot) {
+                        var currentLikes = postLikeCountCache[postKey] ?: 0L
                         if (dataSnapshot.exists()) {
                             likeRef.removeValue()
+                            currentLikes--
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
                         } else {
                             likeRef.setValue(currentUid)
                             NotificationUtils.sendPostLikeNotification(postKey, post.uid)
+                            currentLikes++
+                            likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
                         }
+                        postLikeCountCache[postKey] = currentLikes
+                        _setCount(likeButtonCount, currentLikes.toDouble())
                     }
                     override fun onCancelled(databaseError: DatabaseError) {}
                 })
-                vibrator.vibrate(24)
+                vibrator.vibrate(24L)
             }
 
             commentsButton.setOnClickListener {
                 val sendPostKey = Bundle().apply {
                     putString("postKey", postKey)
                     putString("postPublisherUID", post.uid)
-                    userInfoCache["avatar-" + post.uid]?.let { putString("postPublisherAvatar", it.avatar) }
+                    userInfoCache[post.uid]?.let { putString("postPublisherAvatar", it.avatar) }
                 }
                 PostCommentsBottomSheetDialog().apply {
                     arguments = sendPostKey
@@ -247,7 +254,7 @@ class PostAdapter(
                     }
                     override fun onCancelled(databaseError: DatabaseError) {}
                 })
-                vibrator.vibrate(24)
+                vibrator.vibrate(24L)
             }
 
             topMoreButton.setOnClickListener {

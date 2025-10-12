@@ -155,7 +155,7 @@ class HeaderAdapter(
                         miniPostLayoutTextPostInput.setText("")
                     }
                 }
-                vbr.vibrate(48)
+                vbr.vibrate(48L)
             }
         }
     }
