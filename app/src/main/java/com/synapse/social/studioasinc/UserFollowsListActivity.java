@@ -531,6 +531,9 @@ private PostgrestClient maindb;
 											Glide.with(getApplicationContext()).load(Uri.parse(UserInfoCacheMap.get("avatar-".concat(_data.get(_position).get("uid").toString())).toString())).into(profileAvatar);
 										}
 									}
+									if (UserInfoCacheMap.get("banned-".concat(_data.get(_position).get("uid").toString())).equals("true")) {
+										profileAvatar.setImageResource(R.drawable.banned_avatar);
+									}
 									if (UserInfoCacheMap.get("status-".concat(_data.get(_position).get("uid").toString())).equals("online")) {
 										userStatusCircleBG.setVisibility(View.VISIBLE);
 									} else {

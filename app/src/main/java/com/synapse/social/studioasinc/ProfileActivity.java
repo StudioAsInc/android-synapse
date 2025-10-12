@@ -416,7 +416,8 @@ class c {
 		ProfilePageTabUserInfoNickname.setTypeface(Typeface.DEFAULT, 1);
 		ProfilePageNoInternetBodyRetry.setBackgroundResource(R.drawable.shape_rounded_20dp);
 		String intentUid = getIntent().getStringExtra("uid");
-		if (intentUid != null && auth.getCurrentUser() != null && intentUid.equals(auth.getCurrentUser().getId())) {
+		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+		if (intentUid != null && currentUser != null && intentUid.equals(currentUser.getUid())) {
 			ProfilePageTabUserInfoSecondaryButtons.setVisibility(View.GONE);
 			btnEditProfile.setVisibility(View.VISIBLE);
 		} else {
@@ -526,22 +527,27 @@ class c {
 			}
 		});
 	}
-			}
-		});
-		ProfilePageSwipeLayout.setRefreshing(false);
-	}
 
 
 	public void _getUserPostsReference() {
-		// Supabase: Fetch user posts
-		postgrest.from("posts").select("*").eq("uid", getIntent().getStringExtra("uid")).order("publish_date", Postgrest.Order.DESC).execute(new PostgrestCallback<List<HashMap<String, Object>>>() {
+		Query getUserPostsRef = supabase.from("posts").select().order("uid", PostgrestClient.Order.ASCENDING).eq("uid", getIntent().getStringExtra("uid"));
+		getUserPostsRef.addListenerForSingleValueEvent(new ValueEventListener() {
 			@Override
-			public void onSuccess(@NonNull PostgrestResponse<List<HashMap<String, Object>>> response) {
-				if (response.getData() != null && !response.getData().isEmpty()) {
+			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+				if(dataSnapshot.exists()) {
 					ProfilePageTabUserPostsRecyclerView.setVisibility(View.VISIBLE);
 					ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.GONE);
 					UserPostsList.clear();
-					UserPostsList.addAll(response.getData());
+					try {
+						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
+						for (DataSnapshot _data : dataSnapshot.getChildren()) {
+							HashMap<String, Object> _map = _data.getValue(_ind);
+							UserPostsList.add(_map);
+						}
+					} catch (Exception _e) {
+						_e.printStackTrace();
+					}
+					SketchwareUtil.sortListMap(UserPostsList, "publish_date", false, false);
 					ProfilePageTabUserPostsRecyclerView.setAdapter(new ProfilePageTabUserPostsRecyclerViewAdapter(UserPostsList));
 				} else {
 					ProfilePageTabUserPostsRecyclerView.setVisibility(View.GONE);
@@ -550,10 +556,8 @@ class c {
 			}
 
 			@Override
-			public void onFailure(@NonNull PostgrestError error) {
-				Log.e("SupabaseError", "Failed to fetch user posts: " + error.getMessage());
-				ProfilePageTabUserPostsRecyclerView.setVisibility(View.GONE);
-				ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.VISIBLE);
+			public void onCancelled(@NonNull DatabaseError databaseError) {
+
 			}
 		});
 	}
@@ -654,30 +658,17 @@ class c {
 
 
 	public void _getUserCountReference() {
-		CoroutineScope scope = CoroutineScope.get(Dispatchers.getMain());
+		// TODO: Implement with Supabase Postgrest queries
+		// This will involve multiple async calls for followers, following, and likes.
+		// Example for followers:
+		/*
 		scope.launch(it -> {
-			try {
-				// Fetch followers count
-				PostgrestResult followersResult = postgrest.from("followers").select("count", new Count.Exact()).eq("followed_uid", getIntent().getStringExtra("uid")).execute();
-				long followersCount = followersResult.getOrNull() != null ? followersResult.getOrNull().getCount() : 0;
-
-				// Fetch following count
-				PostgrestResult followingResult = postgrest.from("followers").select("count", new Count.Exact()).eq("follower_uid", getIntent().getStringExtra("uid")).execute();
-				long followingCount = followingResult.getOrNull() != null ? followingResult.getOrNull().getCount() : 0;
-
-				withContext(Dispatchers.getMain(), it2 -> {
-					ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(followersCount).concat(" ").concat(getResources().getString(R.string.followers)));
-					ProfilePageTabUserInfoFollowingCount.setText(_getStyledNumber(followingCount).concat(" ").concat(getResources().getString(R.string.following)));
-				});
-			} catch (Exception e) {
-				Log.e("SupabaseError", "Failed to fetch user counts", e);
-			}
+			CountResult result = postgrest.from("followers").select(Count.EXACT).eq("followed_id", getIntent().getStringExtra("uid")).count();
+			withContext(Dispatchers.getMain(), it2 -> {
+				ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(result.getCount()).concat(" ").concat(getResources().getString(R.string.followers)));
+			});
 		});
-
-		// Fetch likes count
-		// This requires a more complex query, potentially a view or RPC in Supabase
-		// For now, we'll set it to 0
-		likeUserProfileButtonLikeCount.setText("0");
+		*/
 	}
 
 
