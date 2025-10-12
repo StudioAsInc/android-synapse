@@ -1,12 +1,16 @@
 package com.synapse.social.studioasinc
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
+import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.UserProfileManager
 import com.synapse.social.studioasinc.util.adapter.PostAdapter
 import io.noties.markwon.Markwon
@@ -25,6 +29,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var viewModel: ProfileViewModel
     private lateinit var userProfileManager: UserProfileManager
     private lateinit var postAdapter: PostAdapter
+    private lateinit var markwon: Markwon
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,8 +39,8 @@ class ProfileActivity : AppCompatActivity() {
         // Initialize ViewModel
         viewModel = ViewModelProvider(this).get(ProfileViewModel::class.java)
 
-        // Initialize UserProfileManager
-        val markwon = Markwon.create(this)
+        // Initialize UserProfileManager and Markwon
+        markwon = Markwon.create(this)
         userProfileManager = UserProfileManager(this, markwon)
 
         // Get user ID from intent
@@ -47,6 +52,9 @@ class ProfileActivity : AppCompatActivity() {
 
         // Observe user posts
         observeUserPosts(userId)
+
+        // Observe UI feedback
+        observeUIFeedback()
 
         // Setup UI listeners
         setupUIListeners(userId, currentUid)
@@ -81,10 +89,17 @@ class ProfileActivity : AppCompatActivity() {
      * @param userId The ID of the user whose posts are to be observed.
      */
     private fun observeUserPosts(userId: String) {
-        postAdapter = PostAdapter()
+        postAdapter = PostAdapter(
+            markwon = markwon,
+            onLikeClicked = { post -> viewModel.togglePostLike(post) },
+            onCommentClicked = { post -> showCommentsDialog(post) },
+            onShareClicked = { post -> /* Handle share click */ },
+            onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
+            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) }
+        )
         binding.ProfilePageTabUserPostsRecyclerView.adapter = postAdapter
 
-        viewModel.getUserPosts(userId).observe(this) { posts ->
+        viewModel.userPosts.observe(this) { posts ->
             if (posts.isNullOrEmpty()) {
                 binding.ProfilePageTabUserPostsRecyclerView.visibility = View.GONE
                 binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.VISIBLE
@@ -93,6 +108,42 @@ class ProfileActivity : AppCompatActivity() {
                 binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.GONE
                 postAdapter.submitList(posts)
             }
+        }
+        viewModel.getUserPosts(userId)
+    }
+
+    private fun showCommentsDialog(post: Post) {
+        val bundle = Bundle()
+        bundle.putString("postKey", post.key)
+        bundle.putString("postPublisherUID", post.uid)
+        val commentsDialog = PostCommentsBottomSheetDialog()
+        commentsDialog.arguments = bundle
+        commentsDialog.show(supportFragmentManager, commentsDialog.tag)
+    }
+
+    private fun showMoreOptionsDialog(post: Post) {
+        val bundle = Bundle()
+        bundle.putString("postKey", post.key)
+        bundle.putString("postPublisherUID", post.uid)
+        bundle.putString("postType", post.postType)
+        val moreOptionsDialog = PostMoreBottomSheetDialog()
+        moreOptionsDialog.arguments = bundle
+        moreOptionsDialog.show(supportFragmentManager, moreOptionsDialog.tag)
+    }
+
+    /**
+     * Observes the LiveData streams from the [ProfileViewModel] to provide UI feedback.
+     */
+    private fun observeUIFeedback() {
+        viewModel.isFollowing.observe(this) { isFollowing ->
+            binding.btnFollow.text = if (isFollowing) getString(R.string.unfollow) else getString(R.string.follow)
+        }
+
+        viewModel.isProfileLiked.observe(this) { isLiked ->
+            val icon = if (isLiked) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1
+            val color = if (isLiked) R.color.md_theme_primary else R.color.md_theme_onSurface
+            binding.likeUserProfileButtonIc.setImageResource(icon)
+            binding.likeUserProfileButtonIc.setColorFilter(ContextCompat.getColor(this, color))
         }
     }
 
@@ -109,6 +160,23 @@ class ProfileActivity : AppCompatActivity() {
 
         binding.likeUserProfileButton.setOnClickListener {
             viewModel.toggleProfileLike(userId, currentUid)
+        }
+
+        binding.btnEditProfile.setOnClickListener {
+            val intent = Intent(this, ProfileEditActivity::class.java)
+            startActivity(intent)
+        }
+
+        binding.btnMessage.setOnClickListener {
+            val intent = Intent(this, ChatActivity::class.java)
+            intent.putExtra("uid", userId)
+            startActivity(intent)
+        }
+
+        binding.ProfilePageTabUserInfoFollowsDetails.setOnClickListener {
+            val intent = Intent(this, UserFollowsListActivity::class.java)
+            intent.putExtra("uid", userId)
+            startActivity(intent)
         }
 
         binding.ProfilePageTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
