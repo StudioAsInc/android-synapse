@@ -262,9 +262,9 @@ class ProfileActivity : AppCompatActivity() {
                     val user = snapshot.getValue(com.synapse.social.studioasinc.model.User::class.java)
                     user?.let {
                         if (it.avatar != "null") {
-                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(it.avatar).into(dialogBinding.avatar)
+                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(user.avatar).into(dialogBinding.avatar)
                             dialogBinding.saveToHistory.setOnClickListener {
-                                saveToHistory(it.avatar)
+                                saveToHistory(user.avatar)
                                 dialog.dismiss()
                             }
                         }

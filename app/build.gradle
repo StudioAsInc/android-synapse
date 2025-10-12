@@ -172,7 +172,7 @@ dependencies {
 
     // Kotlin coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4'
 
     // Desugaring for Java 8+ APIs
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
