@@ -60,8 +60,8 @@ class HeaderAdapter(
         private val miniPostLayoutMoreButton: ImageView = itemView.findViewById(R.id.miniPostLayoutMoreButton)
         private val miniPostLayoutTextPostPublish: TextView = itemView.findViewById(R.id.miniPostLayoutTextPostPublish)
 
-        private var profileListener: ValueEventListener? = null
-        private var profileRef: DatabaseReference? = null
+        var profileListener: ValueEventListener? = null
+        var profileRef: DatabaseReference? = null
 
         fun bind() {
             storiesView.apply {
