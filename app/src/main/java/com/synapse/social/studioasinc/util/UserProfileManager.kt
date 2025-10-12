@@ -16,6 +16,7 @@ import com.synapse.social.studioasinc.model.User
 import io.noties.markwon.Markwon
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 /**
  * Manages the user profile screen, responsible for fetching user data
@@ -45,6 +46,7 @@ class UserProfileManager(
                     val user = snapshot.getValue(User::class.java)
                     user?.let {
                         populateUI(it, currentUid, views)
+                        loadUserCounts(uid, views)
                     }
                 }
             }
@@ -118,7 +120,51 @@ class UserProfileManager(
             markwon.setMarkdown(views.bio, user.biography)
         }
 
-        // Additional details like join date, followers, etc. can be set here
+        // Set join date
+        val joinDate = Calendar.getInstance()
+        joinDate.timeInMillis = user.join_date.toLong()
+        views.joinDate.text = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).format(joinDate.time)
+
+        // Set user status
+        when (user.status) {
+            "online" -> {
+                views.status.text = context.getString(R.string.online)
+                views.status.setTextColor(context.getColor(R.color.online_green))
+            }
+            "offline" -> {
+                views.status.text = context.getString(R.string.offline)
+                views.status.setTextColor(context.getColor(R.color.offline_gray))
+            }
+            else -> {
+                // Handle last seen time
+            }
+        }
+    }
+
+    /**
+     * Loads the user's follower and following counts from Firebase.
+     *
+     * @param uid The user ID.
+     * @param views A data class containing the views to populate.
+     */
+    private fun loadUserCounts(uid: String, views: ProfileViews) {
+        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(uid)
+        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                views.followersCount.text = "${NumberFormatter.format(snapshot.childrenCount.toDouble())} Followers"
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        val followingRef = FirebaseDatabase.getInstance().getReference("skyline/following").child(uid)
+        followingRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                views.followingCount.text = "${NumberFormatter.format(snapshot.childrenCount.toDouble())} Following"
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
     /**
@@ -147,6 +193,10 @@ class UserProfileManager(
         val nickname: TextView,
         val username: TextView,
         val bio: TextView,
+        val joinDate: TextView,
+        val status: TextView,
+        val followersCount: TextView,
+        val followingCount: TextView,
         val btnEditProfile: Button,
         val secondaryButtons: View
     )

@@ -7,6 +7,10 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.databinding.SynapsePostCvBinding
 import com.synapse.social.studioasinc.model.Post
@@ -45,8 +49,27 @@ class PostAdapter : ListAdapter<Post, PostAdapter.PostViewHolder>(PostDiffCallba
                     .into(binding.postImage)
             }
 
-            // You'll need to fetch the user data to display the avatar and username
-            // This is a simplified example
+            // Fetch and display user data
+            val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(post.uid)
+            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val user = snapshot.getValue(User::class.java)
+                        user?.let {
+                            binding.userInfoUsername.text = if (it.nickname == "null") "@${it.username}" else it.nickname
+                            if (it.avatar == "null") {
+                                binding.userInfoProfileImage.setImageResource(R.drawable.avatar)
+                            } else {
+                                Glide.with(binding.root.context)
+                                    .load(Uri.parse(it.avatar))
+                                    .into(binding.userInfoProfileImage)
+                            }
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
         }
     }
 
