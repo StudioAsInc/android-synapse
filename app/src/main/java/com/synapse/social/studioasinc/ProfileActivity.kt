@@ -1,19 +1,27 @@
 package com.synapse.social.studioasinc
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
+import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.UserProfileManager
 import com.synapse.social.studioasinc.util.adapter.PostAdapter
 import io.noties.markwon.Markwon
+import java.util.Calendar
+import java.util.HashMap
 
 /**
  * Activity for displaying a user's profile.
@@ -49,6 +57,10 @@ class ProfileActivity : AppCompatActivity() {
 
         // Load user profile
         loadUserProfile(userId, currentUid)
+
+        // Fetch initial states
+        viewModel.fetchInitialFollowState(userId, currentUid)
+        viewModel.fetchInitialProfileLikeState(userId, currentUid)
 
         // Observe user posts
         observeUserPosts(userId)
@@ -95,19 +107,35 @@ class ProfileActivity : AppCompatActivity() {
             onCommentClicked = { post -> showCommentsDialog(post) },
             onShareClicked = { post -> /* Handle share click */ },
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
-            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) }
+            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) },
+            onUserClicked = { uid ->
+                val intent = Intent(this, ProfileActivity::class.java)
+                intent.putExtra("uid", uid)
+                startActivity(intent)
+            }
         )
         binding.ProfilePageTabUserPostsRecyclerView.adapter = postAdapter
 
-        viewModel.userPosts.observe(this) { posts ->
-            if (posts.isNullOrEmpty()) {
-                binding.ProfilePageTabUserPostsRecyclerView.visibility = View.GONE
-                binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.VISIBLE
-            } else {
-                binding.ProfilePageTabUserPostsRecyclerView.visibility = View.VISIBLE
-                binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.GONE
-                postAdapter.submitList(posts)
+        viewModel.userPosts.observe(this) { state ->
+            when (state) {
+                is ProfileViewModel.State.Loading -> {
+                    binding.ProfilePageLoadingBody.visibility = View.VISIBLE
+                    binding.ProfilePageSwipeLayout.visibility = View.GONE
+                    binding.ProfilePageNoInternetBody.visibility = View.GONE
+                }
+                is ProfileViewModel.State.Success -> {
+                    binding.ProfilePageLoadingBody.visibility = View.GONE
+                    binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
+                    binding.ProfilePageNoInternetBody.visibility = View.GONE
+                    postAdapter.submitList(state.posts)
+                }
+                is ProfileViewModel.State.Error -> {
+                    binding.ProfilePageLoadingBody.visibility = View.GONE
+                    binding.ProfilePageSwipeLayout.visibility = View.GONE
+                    binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
+                }
             }
+            binding.ProfilePageSwipeLayout.isRefreshing = false
         }
         viewModel.getUserPosts(userId)
     }
@@ -154,6 +182,17 @@ class ProfileActivity : AppCompatActivity() {
      * @param currentUid The ID of the current user.
      */
     private fun setupUIListeners(userId: String, currentUid: String) {
+        binding.ProfilePageTopBarBack.setOnClickListener {
+            onBackPressed()
+        }
+        binding.ProfilePageSwipeLayout.setOnRefreshListener {
+            viewModel.getUserPosts(userId)
+            loadUserProfile(userId, currentUid)
+        }
+        binding.ProfilePageTopBarMenu.setOnClickListener {
+            val intent = Intent(this, ChatsettingsActivity::class.java)
+            startActivity(intent)
+        }
         binding.btnFollow.setOnClickListener {
             viewModel.toggleFollow(userId, currentUid)
         }
@@ -179,6 +218,18 @@ class ProfileActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        binding.ProfilePageTabUserInfoProfileImage.setOnClickListener {
+            showProfileImagePreview(userId)
+        }
+
+        binding.userUidLayoutText.setOnLongClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("UID", binding.userUidLayoutText.text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "UID copied to clipboard", Toast.LENGTH_SHORT).show()
+            true
+        }
+
         binding.ProfilePageTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 when (tab?.position) {
@@ -196,5 +247,45 @@ class ProfileActivity : AppCompatActivity() {
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+    }
+
+    private fun showProfileImagePreview(userId: String) {
+        val dialogBinding = DpPreviewBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogBinding.root)
+            .create()
+
+        val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(userId)
+        userRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                if (snapshot.exists()) {
+                    val user = snapshot.getValue(com.synapse.social.studioasinc.model.User::class.java)
+                    user?.let {
+                        if (it.avatar != "null") {
+                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(it.avatar).into(dialogBinding.avatar)
+                            dialogBinding.saveToHistory.setOnClickListener {
+                                saveToHistory(it.avatar)
+                                dialog.dismiss()
+                            }
+                        }
+                    }
+                }
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+        })
+        dialog.show()
+    }
+
+    private fun saveToHistory(imageUrl: String) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseDatabase.getInstance()
+        val historyRef = db.getReference("skyline/profile-history").child(currentUid).push()
+        val historyItem = HashMap<String, Any>()
+        historyItem["key"] = historyRef.key ?: ""
+        historyItem["image_url"] = imageUrl
+        historyItem["upload_date"] = Calendar.getInstance().timeInMillis.toString()
+        historyItem["type"] = "url"
+        historyRef.setValue(historyItem)
+        Toast.makeText(this, "Saved to History", Toast.LENGTH_SHORT).show()
     }
 }

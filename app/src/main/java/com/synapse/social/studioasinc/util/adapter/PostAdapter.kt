@@ -1,24 +1,21 @@
 package com.synapse.social.studioasinc.util.adapter
 
+import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.synapse.social.studioasinc.ProfileViewModel
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.databinding.SynapsePostCvBinding
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.User
-import com.synapse.social.studioasinc.repository.UserRepository
 import com.synapse.social.studioasinc.util.DateFormatter
 import com.synapse.social.studioasinc.util.NumberFormatter
 import io.noties.markwon.Markwon
@@ -32,8 +29,9 @@ class PostAdapter(
     private val onCommentClicked: (Post) -> Unit,
     private val onShareClicked: (Post) -> Unit,
     private val onMoreOptionsClicked: (Post) -> Unit,
-    private val onFavoriteClicked: (Post) -> Unit
-) : ListAdapter<Post, PostAdapter.PostViewHolder>(PostDiffCallback()) {
+    private val onFavoriteClicked: (Post) -> Unit,
+    private val onUserClicked: (String) -> Unit
+) : ListAdapter<ProfileViewModel.PostUiState, PostAdapter.PostViewHolder>(PostDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
         val binding = SynapsePostCvBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -44,25 +42,51 @@ class PostAdapter(
         holder.bind(getItem(position))
     }
 
-    override fun onViewRecycled(holder: PostViewHolder) {
-        super.onViewRecycled(holder)
-        holder.cleanup()
-    }
-
     /**
      * ViewHolder for a post item.
      */
     inner class PostViewHolder(private val binding: SynapsePostCvBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        private val listeners = mutableListOf<Pair<DatabaseReference, ValueEventListener>>()
-        private var isLiked = false
-        private var isFavorited = false
+        init {
+            binding.likeButton.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onLikeClicked(getItem(adapterPosition).post)
+                }
+            }
+            binding.commentsButton.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onCommentClicked(getItem(adapterPosition).post)
+                }
+            }
+            binding.shareButton.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onShareClicked(getItem(adapterPosition).post)
+                }
+            }
+            binding.topMoreButton.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onMoreOptionsClicked(getItem(adapterPosition).post)
+                }
+            }
+            binding.favoritePostButton.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onFavoriteClicked(getItem(adapterPosition).post)
+                }
+            }
+            binding.userInfo.setOnClickListener {
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onUserClicked(getItem(adapterPosition).post.uid)
+                }
+            }
+        }
 
         /**
          * Binds the post data to the views.
          */
-        fun bind(post: Post) {
+        fun bind(postState: ProfileViewModel.PostUiState) {
+            val post = postState.post
+            val user = postState.user
             val currentUid = FirebaseAuth.getInstance().currentUser?.uid
 
             // Handle visibility of private posts
@@ -86,112 +110,64 @@ class PostAdapter(
                 Glide.with(binding.root.context)
                     .load(Uri.parse(post.postImage))
                     .into(binding.postImage)
+                binding.postImage.setOnClickListener {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(post.postImage))
+                    binding.root.context.startActivity(intent)
+                }
             } else {
                 binding.postImage.visibility = View.GONE
             }
 
-            // Fetch and display user data using the repository
-            UserRepository.getUser(post.uid) { user ->
-                user?.let {
-                    binding.userInfoUsername.text = if (it.nickname == "null") "@${it.username}" else it.nickname
-                    if (it.avatar == "null") {
-                        binding.userInfoProfileImage.setImageResource(R.drawable.avatar)
-                    } else {
-                        Glide.with(binding.root.context)
-                            .load(Uri.parse(it.avatar))
-                            .into(binding.userInfoProfileImage)
-                    }
-                    // Implement badge logic here based on user properties
+            // User Info
+            user?.let {
+                binding.userInfoUsername.text = if (it.nickname == "null") "@${it.username}" else it.nickname
+                if (it.avatar == "null") {
+                    binding.userInfoProfileImage.setImageResource(R.drawable.avatar)
+                } else {
+                    Glide.with(binding.root.context)
+                        .load(Uri.parse(it.avatar))
+                        .into(binding.userInfoProfileImage)
                 }
             }
 
-            // Fetch and display post stats
-            fetchPostStats(post)
-
-            // Set up click listeners
-            binding.likeButton.setOnClickListener {
-                onLikeClicked(post)
-                isLiked = !isLiked
-                updateLikeButton()
-            }
-            binding.commentsButton.setOnClickListener { onCommentClicked(post) }
-            binding.shareButton.setOnClickListener { onShareClicked(post) }
-            binding.topMoreButton.setOnClickListener { onMoreOptionsClicked(post) }
-            binding.favoritePostButton.setOnClickListener {
-                onFavoriteClicked(post)
-                isFavorited = !isFavorited
-                updateFavoriteButton()
-            }
-
-            binding.commentsButton.visibility = if (post.postDisableComments == "true") View.GONE else View.VISIBLE
-        }
-
-        private fun fetchPostStats(post: Post) {
-            val db = FirebaseDatabase.getInstance()
-
-            // Likes
-            val likesRef = db.getReference("skyline/posts-likes").child(post.key)
-            val likesListener = likesRef.addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val likeCount = snapshot.childrenCount
-                    binding.likeButtonCount.text = NumberFormatter.format(likeCount.toDouble())
-                    binding.likeButtonCount.visibility = if (post.postHideLikeCount == "true") View.GONE else View.VISIBLE
-                    // Update like icon state
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
-            listeners.add(likesRef to likesListener)
-
-
-            // Comments
-            val commentsRef = db.getReference("skyline/posts-comments").child(post.key)
-            val commentsListener = commentsRef.addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val commentCount = snapshot.childrenCount
-                    binding.commentsButtonCount.text = NumberFormatter.format(commentCount.toDouble())
-                    binding.commentsButtonCount.visibility = if (post.postHideCommentsCount == "true") View.GONE else View.VISIBLE
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
-            listeners.add(commentsRef to commentsListener)
-
-
-            // Publish Date
+            // Post Stats
+            binding.likeButtonCount.text = NumberFormatter.format(postState.likeCount.toDouble())
+            binding.commentsButtonCount.text = NumberFormatter.format(postState.commentCount.toDouble())
             binding.postPublishDate.text = DateFormatter.format(binding.root.context, post.publishDate.toLong())
+
+            // Post State
+            binding.likeButtonCount.visibility = if (post.postHideLikeCount == "true") View.GONE else View.VISIBLE
+            binding.commentsButton.visibility = if (post.postDisableComments == "true") View.GONE else View.VISIBLE
+            binding.commentsButtonCount.visibility = if (post.postHideCommentsCount == "true") View.GONE else View.VISIBLE
+            binding.postPrivateStateIcon.visibility = if (post.postVisibility == "private") View.VISIBLE else View.GONE
+
+            // Like and Favorite Buttons
+            updateLikeButton(postState.isLiked)
+            updateFavoriteButton(postState.isFavorited)
         }
 
-        private fun updateLikeButton() {
+        private fun updateLikeButton(isLiked: Boolean) {
             val icon = if (isLiked) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1
             val color = if (isLiked) R.color.md_theme_primary else R.color.md_theme_onSurface
             binding.likeButtonIc.setImageResource(icon)
             binding.likeButtonIc.setColorFilter(ContextCompat.getColor(binding.root.context, color))
         }
 
-        private fun updateFavoriteButton() {
+        private fun updateFavoriteButton(isFavorited: Boolean) {
             val favIcon = if (isFavorited) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic
             binding.favoritePostButton.setImageResource(favIcon)
-        }
-
-
-        fun cleanup() {
-            listeners.forEach { (ref, listener) ->
-                ref.removeEventListener(listener)
-            }
-            listeners.clear()
         }
     }
 
     /**
      * DiffUtil callback for the list of posts.
      */
-    private class PostDiffCallback : DiffUtil.ItemCallback<Post>() {
-        override fun areItemsTheSame(oldItem: Post, newItem: Post): Boolean {
-            return oldItem.key == newItem.key
+    private class PostDiffCallback : DiffUtil.ItemCallback<ProfileViewModel.PostUiState>() {
+        override fun areItemsTheSame(oldItem: ProfileViewModel.PostUiState, newItem: ProfileViewModel.PostUiState): Boolean {
+            return oldItem.post.key == newItem.post.key
         }
 
-        override fun areContentsTheSame(oldItem: Post, newItem: Post): Boolean {
+        override fun areContentsTheSame(oldItem: ProfileViewModel.PostUiState, newItem: ProfileViewModel.PostUiState): Boolean {
             return oldItem == newItem
         }
     }

@@ -13,6 +13,9 @@ public class User {
     public String biography;
     public String join_date;
     public String status;
+    public String account_type;
+    public String gender;
+    public String verify;
 
     public User() {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)

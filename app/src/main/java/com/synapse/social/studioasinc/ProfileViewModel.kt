@@ -3,9 +3,15 @@ package com.synapse.social.studioasinc
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.User
+import com.synapse.social.studioasinc.repository.UserRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel for the [ProfileActivity].
@@ -16,8 +22,23 @@ import com.synapse.social.studioasinc.model.Post
  */
 class ProfileViewModel : ViewModel() {
 
-    private val _userPosts = MutableLiveData<List<Post>>()
-    val userPosts: LiveData<List<Post>> = _userPosts
+    data class PostUiState(
+        val post: Post,
+        val user: User?,
+        val likeCount: Long,
+        val commentCount: Long,
+        val isLiked: Boolean,
+        val isFavorited: Boolean
+    )
+
+    sealed class State {
+        object Loading : State()
+        data class Success(val posts: List<PostUiState>) : State()
+        object Error : State()
+    }
+
+    private val _userPosts = MutableLiveData<State>()
+    val userPosts: LiveData<State> = _userPosts
 
     private val _isFollowing = MutableLiveData<Boolean>()
     val isFollowing: LiveData<Boolean> = _isFollowing
@@ -26,9 +47,10 @@ class ProfileViewModel : ViewModel() {
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
     private var postsListener: ValueEventListener? = null
-    private var postsRef: DatabaseReference? = null
+    private var postsRef: Query? = null
 
     fun getUserPosts(userId: String) {
+        _userPosts.postValue(State.Loading)
         postsRef = FirebaseDatabase.getInstance().getReference("skyline/posts")
             .orderByChild("uid").equalTo(userId)
 
@@ -36,17 +58,86 @@ class ProfileViewModel : ViewModel() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val posts = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    _userPosts.postValue(posts)
+                    enrichPostsWithState(posts)
                 } else {
-                    _userPosts.postValue(emptyList())
+                    _userPosts.postValue(State.Success(emptyList()))
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                _userPosts.postValue(emptyList())
+                _userPosts.postValue(State.Error)
             }
         })
     }
+
+    private fun enrichPostsWithState(posts: List<Post>) {
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        if (posts.isEmpty()) {
+            _userPosts.postValue(State.Success(emptyList()))
+            return
+        }
+
+        viewModelScope.launch {
+            val enrichedPosts = posts.map { post ->
+                async {
+                    val userDeferred = async { UserRepository.getUser(post.uid) }
+                    val likesDeferred = async { getLikes(post.key, currentUid) }
+                    val commentsDeferred = async { getCommentCount(post.key) }
+                    val favoritesDeferred = async { getFavoriteStatus(post.key, currentUid) }
+
+                    val user = userDeferred.await()
+                    val (likeCount, isLiked) = likesDeferred.await()
+                    val commentCount = commentsDeferred.await()
+                    val isFavorited = favoritesDeferred.await()
+
+                    PostUiState(post, user, likeCount, commentCount, isLiked, isFavorited)
+                }
+            }.awaitAll()
+            _userPosts.postValue(State.Success(enrichedPosts))
+        }
+    }
+
+    private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
+        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(postKey)
+        val snapshot = ref.get().await()
+        return Pair(snapshot.childrenCount, snapshot.hasChild(currentUid))
+    }
+
+    private suspend fun getCommentCount(postKey: String): Long {
+        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey)
+        val snapshot = ref.get().await()
+        return snapshot.childrenCount
+    }
+
+    private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
+        val ref = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(postKey)
+        val snapshot = ref.get().await()
+        return snapshot.exists()
+    }
+
+
+    fun fetchInitialFollowState(userId: String, currentUid: String) {
+        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
+        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                _isFollowing.postValue(snapshot.exists())
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
+        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
+        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                _isProfileLiked.postValue(snapshot.exists())
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
 
     fun toggleFollow(userId: String, currentUid: String) {
         val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)

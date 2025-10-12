@@ -17,6 +17,7 @@ import io.noties.markwon.Markwon
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 /**
  * Manages the user profile screen, responsible for fetching user data
@@ -136,7 +137,17 @@ class UserProfileManager(
                 views.status.setTextColor(context.getColor(R.color.offline_gray))
             }
             else -> {
-                // Handle last seen time
+                val lastSeen = user.status.toLong()
+                val now = System.currentTimeMillis()
+                val diff = now - lastSeen
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
+                val hours = TimeUnit.MILLISECONDS.toHours(diff)
+                val days = TimeUnit.MILLISECONDS.toDays(diff)
+                views.status.text = when {
+                    minutes < 60 -> "Last seen $minutes minutes ago"
+                    hours < 24 -> "Last seen $hours hours ago"
+                    else -> "Last seen $days days ago"
+                }
             }
         }
     }
