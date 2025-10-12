@@ -50,33 +50,33 @@ class PostAdapter(
 
         init {
             binding.likeButton.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onLikeClicked(getItem(adapterPosition).post)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onLikeClicked(getItem(bindingAdapterPosition).post)
                 }
             }
             binding.commentsButton.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onCommentClicked(getItem(adapterPosition).post)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onCommentClicked(getItem(bindingAdapterPosition).post)
                 }
             }
             binding.shareButton.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onShareClicked(getItem(adapterPosition).post)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onShareClicked(getItem(bindingAdapterPosition).post)
                 }
             }
             binding.topMoreButton.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onMoreOptionsClicked(getItem(adapterPosition).post)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onMoreOptionsClicked(getItem(bindingAdapterPosition).post)
                 }
             }
             binding.favoritePostButton.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onFavoriteClicked(getItem(adapterPosition).post)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onFavoriteClicked(getItem(bindingAdapterPosition).post)
                 }
             }
             binding.userInfo.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onUserClicked(getItem(adapterPosition).post.uid)
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    onUserClicked(getItem(bindingAdapterPosition).post.uid)
                 }
             }
         }

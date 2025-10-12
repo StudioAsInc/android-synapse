@@ -183,7 +183,7 @@ class ProfileActivity : AppCompatActivity() {
      */
     private fun setupUIListeners(userId: String, currentUid: String) {
         binding.ProfilePageTopBarBack.setOnClickListener {
-            onBackPressed()
+            onBackPressedDispatcher.onBackPressed()
         }
         binding.ProfilePageSwipeLayout.setOnRefreshListener {
             viewModel.getUserPosts(userId)
