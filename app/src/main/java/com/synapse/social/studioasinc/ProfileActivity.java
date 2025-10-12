@@ -91,7 +91,7 @@ import com.synapse.social.studioasinc.adapter.PostsAdapter;
 public class ProfileActivity extends AppCompatActivity {
 
 	private Timer _timer = new Timer();
-	private SupabaseClient supabase;
+	private ProfileViewModel profileViewModel;
 
 	private HashMap<String, Object> UserInfoCacheMap = new HashMap<>();
 	private HashMap<String, Object> postLikeCountCache = new HashMap<>();
@@ -266,25 +266,89 @@ class c {
 		ProfilePageNoInternetBodySubtitle = findViewById(R.id.ProfilePageNoInternetBodySubtitle);
 		ProfilePageNoInternetBodyRetry = findViewById(R.id.ProfilePageNoInternetBodyRetry);
 		ProfilePageLoadingBodyBar = findViewById(R.id.ProfilePageLoadingBodyBar);
-		supabase = SynapseApp.supabaseClient;
-		auth = supabase.get(GoTrue.class);
-		postgrest = supabase.get(Postgrest.class);
-		vbr = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		req = new RequestNetwork(this);
+		profileViewModel = new ViewModelProvider(this).get(ProfileViewModel.class);
 
-		ProfilePageTopBarBack.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
+		profileViewModel.getUser().observe(this, user -> {
+			if (user != null) {
+				user_uid_layout_text.setText(user.getUid());
+				JoinDateCC.setTimeInMillis(Long.parseLong(user.getJoinDate()));
+				join_date_layout_text.setText(new SimpleDateFormat("dd MMMM yyyy").format(JoinDateCC.getTime()));
+
+				if (user.isBanned()) {
+					UserAvatarUri = "null";
+					ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.banned_avatar);
+					ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.banned_cover_photo);
+				} else {
+					UserAvatarUri = user.getAvatar();
+					if (user.getProfileCoverImage().equals("null")) {
+						ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.user_null_cover_photo);
+					} else {
+						Glide.with(getApplicationContext()).load(Uri.parse(user.getProfileCoverImage())).into(ProfilePageTabUserInfoCoverImage);
+					}
+					if (user.getAvatar().equals("null")) {
+						ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.avatar);
+					} else {
+						Glide.with(getApplicationContext()).load(Uri.parse(user.getAvatar())).into(ProfilePageTabUserInfoProfileImage);
+					}
+				}
+
+				if (user.getStatus().equals("online")) {
+					ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.online));
+					ProfilePageTabUserInfoStatus.setTextColor(0xFF2196F3);
+				} else {
+					if (user.getStatus().equals("offline")) {
+						ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.offline));
+					} else {
+						_setUserLastSeen(Double.parseDouble(user.getStatus()), ProfilePageTabUserInfoStatus);
+					}
+					ProfilePageTabUserInfoStatus.setTextColor(0xFF757575);
+				}
+				ProfilePageTabUserInfoUsername.setText("@" + user.getUsername());
+				if (user.getNickname().equals("null")) {
+					ProfilePageTabUserInfoNickname.setText("@" + user.getUsername());
+				} else {
+					ProfilePageTabUserInfoNickname.setText(user.getNickname());
+					nickname = user.getNickname();
+				}
+				if (!user.getBiography().equals("null")) {
+					ProfilePageTabUserInfoBioLayoutText.setText(user.getBiography());
+				}
+			}
+		});
+
+		profileViewModel.getPosts().observe(this, posts -> {
+			if (posts != null && !posts.isEmpty()) {
+				ProfilePageTabUserPostsRecyclerView.setVisibility(View.VISIBLE);
+				ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.GONE);
+				UserPostsList.clear();
+				for (Post post : posts) {
+					UserPostsList.add(post.toHashMap());
+				}
+				ProfilePageTabUserPostsRecyclerView.setAdapter(new ProfilePageTabUserPostsRecyclerViewAdapter(UserPostsList));
+			} else {
+				ProfilePageTabUserPostsRecyclerView.setVisibility(View.GONE);
+				ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.VISIBLE);
+			}
+		});
+
+		profileViewModel.getIsLoading().observe(this, isLoading -> {
+			ProfilePageLoadingBody.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+		});
+
+		profileViewModel.getErrorMessage().observe(this, errorMessage -> {
+			if (errorMessage != null) {
+				Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
+			}
+		});
+
+		ProfilePageTopBarBack.setOnClickListener(_view -> {
 				onBackPressed();
 			}
 		});
 
-		ProfilePageTopBarMenu.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), ChatsettingsActivity.class);
-				startActivity(intent);
-			}
+		ProfilePageTopBarMenu.setOnClickListener(_view -> {
+			intent.setClass(getApplicationContext(), ChatsettingsActivity.class);
+			startActivity(intent);
 		});
 
 		ProfilePageTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -314,94 +378,54 @@ class c {
 			}
 		});
 
-		ProfilePageSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-			@Override
-			public void onRefresh() {
-				_loadRequest();
+		ProfilePageSwipeLayout.setOnRefreshListener(() -> {
+			String intentUid = getIntent().getStringExtra("uid");
+			profileViewModel.fetchUserProfile(intentUid);
+			profileViewModel.fetchUserPosts(intentUid);
+			ProfilePageSwipeLayout.setRefreshing(false);
+		});
+
+		ProfilePageTabUserInfoProfileImage.setOnClickListener(_view -> {
+			if (getIntent().hasExtra("uid")) {
+				_ProfileImagePreview(getIntent().getStringExtra("uid"));
 			}
 		});
 
-		ProfilePageTabUserInfoProfileImage.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				if (getIntent().hasExtra("uid")) {
-					_ProfileImagePreview(getIntent().getStringExtra("uid"));
-				}
-			}
+		likeUserProfileButton.setOnClickListener(_view -> {
+			String intentUid = getIntent().getStringExtra("uid");
+			profileViewModel.likePost(intentUid);
 		});
 
-		likeUserProfileButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) { /* TODO: Implement with Supabase */ }
+		ProfilePageTabUserInfoFollowsDetails.setOnClickListener(_view -> {
+			intent.setClass(getApplicationContext(), UserFollowsListActivity.class);
+			intent.putExtra("uid", getIntent().getStringExtra("uid"));
+			startActivity(intent);
 		});
 
-		ProfilePageTabUserInfoFollowsDetails.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), UserFollowsListActivity.class);
-				intent.putExtra("uid", getIntent().getStringExtra("uid"));
-				startActivity(intent);
-			}
+		btnEditProfile.setOnClickListener(_view -> {
+			intent.setClass(getApplicationContext(), ProfileEditActivity.class);
+			startActivity(intent);
 		});
 
-		btnEditProfile.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), ProfileEditActivity.class);
-				startActivity(intent);
-			}
+		btnFollow.setOnClickListener(_view -> {
+			String intentUid = getIntent().getStringExtra("uid");
+			profileViewModel.followUser(intentUid);
 		});
 
-		btnFollow.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) { /* TODO: Implement with Supabase */ }
+		btnMessage.setOnClickListener(_view -> {
+			intent.setClass(getApplicationContext(), ChatActivity.class);
+			intent.putExtra("uid", getIntent().getStringExtra("uid"));
+			intent.putExtra("origin", "ProfileActivity");
+			intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+			startActivity(intent);
 		});
 
-		btnMessage.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				intent.setClass(getApplicationContext(), ChatActivity.class);
-				intent.putExtra("uid", getIntent().getStringExtra("uid"));
-				intent.putExtra("origin", "ProfileActivity");
-				intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-				startActivity(intent);
-			}
+		user_uid_layout_text.setOnLongClickListener(_view -> {
+			((ClipboardManager) getSystemService(getApplicationContext().CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("clipboard", user_uid_layout_text.getText().toString()));
+			return true;
 		});
 
-		user_uid_layout_text.setOnLongClickListener(new View.OnLongClickListener() {
-			@Override
-			public boolean onLongClick(View _view) {
-				((ClipboardManager) getSystemService(getApplicationContext().CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("clipboard", user_uid_layout_text.getText().toString()));
-				return true;
-			}
-		});
-
-		ProfilePageNoInternetBodyRetry.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View _view) {
-				_loadRequest();
-			}
-		});
-
-		_req_request_listener = new RequestNetwork.RequestListener() {
-			@Override
-			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
-				final String _tag = _param1;
-				final String _response = _param2;
-				final HashMap<String, Object> _responseHeaders = _param3;
-				_getUserReference();
-			}
-
-			@Override
-			public void onErrorResponse(String _param1, String _param2) {
-				final String _tag = _param1;
-				final String _message = _param2;
-				ProfilePageSwipeLayout.setVisibility(View.GONE);
-				ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
-				ProfilePageLoadingBody.setVisibility(View.GONE);
-			}
-		};
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
+		ProfilePageNoInternetBodyRetry.setOnClickListener(_view -> _loadRequest());
 	}
 
 	private void initializeLogic() {
@@ -413,12 +437,17 @@ class c {
 		new int[] {0xFFEEEEEE}));
 		ProfilePageTabLayout.setSelectedTabIndicatorColor(0xFF445E91);
 		ProfilePageTabUserPostsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-		_loadRequest();
 		ProfilePageTabUserInfoNickname.setTypeface(Typeface.DEFAULT, 1);
 		ProfilePageNoInternetBodyRetry.setBackgroundResource(R.drawable.shape_rounded_20dp);
+
 		String intentUid = getIntent().getStringExtra("uid");
-		FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-		if (intentUid != null && currentUser != null && intentUid.equals(currentUser.getUid())) {
+		profileViewModel.fetchUserProfile(intentUid);
+		profileViewModel.fetchUserPosts(intentUid);
+
+		AuthenticationService authService = new AuthenticationService(SynapseApp.supabaseClient);
+		String currentUserId = authService.getCurrentUser().getUid();
+
+		if (intentUid != null && intentUid.equals(currentUserId)) {
 			ProfilePageTabUserInfoSecondaryButtons.setVisibility(View.GONE);
 			btnEditProfile.setVisibility(View.VISIBLE);
 		} else {
@@ -443,272 +472,6 @@ class c {
 	}
 
 
-	public void _getUserReference() {
-		supabase.from("users").select("*").eq("uid", getIntent().getStringExtra("uid")).single().execute(new PostgrestCallback() {
-			@Override
-			public void onSuccess(PostgrestResponse response) {
-				try {
-					if (response.getData() != null) {
-						ProfilePageSwipeLayout.setVisibility(View.VISIBLE);
-						ProfilePageNoInternetBody.setVisibility(View.GONE);
-						ProfilePageLoadingBody.setVisibility(View.GONE);
-
-						JSONObject userData = new JSONObject(response.getData().toString());
-
-						user_uid_layout_text.setText(userData.getString("uid"));
-						JoinDateCC.setTimeInMillis((long)(Double.parseDouble(userData.getString("join_date"))));
-
-						if (userData.getString("banned").equals("true")) {
-							UserAvatarUri = "null";
-							ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.banned_avatar);
-							ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.banned_cover_photo);
-						} else {
-							_getUserPostsReference();
-							_getUserCountReference();
-							UserAvatarUri = userData.getString("avatar");
-							if (userData.getString("profile_cover_image").equals("null")) {
-								ProfilePageTabUserInfoCoverImage.setImageResource(R.drawable.user_null_cover_photo);
-							} else {
-								Glide.with(getApplicationContext()).load(Uri.parse(userData.getString("profile_cover_image"))).into(ProfilePageTabUserInfoCoverImage);
-							}
-							if (userData.getString("avatar").equals("null")) {
-								ProfilePageTabUserInfoProfileImage.setImageResource(R.drawable.avatar);
-							} else {
-								Glide.with(getApplicationContext()).load(Uri.parse(userData.getString("avatar"))).into(ProfilePageTabUserInfoProfileImage);
-							}
-						}
-
-						// Check user status
-						if (userData.getString("status").equals("online")) {
-							ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.online));
-							ProfilePageTabUserInfoStatus.setTextColor(0xFF2196F3);
-						} else {
-							if (userData.getString("status").equals("offline")) {
-								ProfilePageTabUserInfoStatus.setText(getResources().getString(R.string.offline));
-							} else {
-								_setUserLastSeen(Double.parseDouble(userData.getString("status")), ProfilePageTabUserInfoStatus);
-							}
-							ProfilePageTabUserInfoStatus.setTextColor(0xFF757575);
-						}
-						ProfilePageTabUserInfoUsername.setText("@" + userData.getString("username"));
-						if (userData.getString("nickname").equals("null")) {
-							ProfilePageTabUserInfoNickname.setText("@" + userData.getString("username"));
-						} else {
-							ProfilePageTabUserInfoNickname.setText(userData.getString("nickname"));
-							nickname = userData.getString("nickname");
-						}
-						if (userData.getString("biography").equals("null")) {
-
-						} else {
-							ProfilePageTabUserInfoBioLayoutText.setText(userData.getString("biography"));
-						}
-						join_date_layout_text.setText(new SimpleDateFormat("dd MMMM yyyy").format(JoinDateCC.getTime()));
-					} else {
-						// Handle case where no data is returned
-						ProfilePageSwipeLayout.setVisibility(View.GONE);
-						ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
-						ProfilePageLoadingBody.setVisibility(View.GONE);
-					}
-				} catch (JSONException e) {
-					e.printStackTrace();
-					// Handle JSON parsing error
-					ProfilePageSwipeLayout.setVisibility(View.GONE);
-					ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
-					ProfilePageLoadingBody.setVisibility(View.GONE);
-				}
-			}
-
-			@Override
-			public void onError(PostgrestError error) {
-				error.printStackTrace();
-				// Handle Supabase query error
-				ProfilePageSwipeLayout.setVisibility(View.GONE);
-				ProfilePageNoInternetBody.setVisibility(View.VISIBLE);
-				ProfilePageLoadingBody.setVisibility(View.GONE);
-			}
-		});
-	}
-			}
-		});
-		ProfilePageSwipeLayout.setRefreshing(false);
-	}
-
-
-	public void _getUserPostsReference() {
-		Query getUserPostsRef = supabase.from("posts").select().order("uid", PostgrestClient.Order.ASCENDING).eq("uid", getIntent().getStringExtra("uid"));
-		getUserPostsRef.addListenerForSingleValueEvent(new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if(dataSnapshot.exists()) {
-					ProfilePageTabUserPostsRecyclerView.setVisibility(View.VISIBLE);
-					ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.GONE);
-					UserPostsList.clear();
-					try {
-						GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-						for (DataSnapshot _data : dataSnapshot.getChildren()) {
-							HashMap<String, Object> _map = _data.getValue(_ind);
-							UserPostsList.add(_map);
-						}
-					} catch (Exception _e) {
-						_e.printStackTrace();
-					}
-					SketchwareUtil.sortListMap(UserPostsList, "publish_date", false, false);
-					ProfilePageTabUserPostsRecyclerView.setAdapter(new ProfilePageTabUserPostsRecyclerViewAdapter(UserPostsList));
-				} else {
-					ProfilePageTabUserPostsRecyclerView.setVisibility(View.GONE);
-					ProfilePageTabUserPostsNoPostsSubtitle.setVisibility(View.VISIBLE);
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-
-			}
-		});
-	}
-
-
-	public void _setCount(final TextView _txt, final double _number) {
-		if (_number < 10000) {
-			_txt.setText(String.valueOf((long) _number));
-		} else {
-			DecimalFormat decimalFormat = new DecimalFormat("0.0");
-			String numberFormat;
-			double formattedNumber;
-			if (_number < 1000000) {
-				numberFormat = "K";
-				formattedNumber = _number / 1000;
-			} else if (_number < 1000000000) {
-				numberFormat = "M";
-				formattedNumber = _number / 1000000;
-			} else if (_number < 1000000000000L) {
-				numberFormat = "B";
-				formattedNumber = _number / 1000000000;
-			} else {
-				numberFormat = "T";
-				formattedNumber = _number / 1000000000000L;
-			}
-			_txt.setText(decimalFormat.format(formattedNumber) + numberFormat);
-		}
-
-	}
-
-
-	public void _setTime(final double _currentTime, final TextView _txt) {
-		Calendar c1 = Calendar.getInstance();
-		Calendar c2 = Calendar.getInstance();
-		double time_diff = c1.getTimeInMillis() - _currentTime;
-		if (time_diff < 60000) {
-			if ((time_diff / 1000) < 2) {
-				_txt.setText("1" + " " + getResources().getString(R.string.seconds_ago));
-			} else {
-				_txt.setText(String.valueOf((long)(time_diff / 1000)).concat(" " + getResources().getString(R.string.seconds_ago)));
-			}
-		} else {
-			if (time_diff < (60 * 60000)) {
-				if ((time_diff / 60000) < 2) {
-					_txt.setText("1" + " " + getResources().getString(R.string.minutes_ago));
-				} else {
-					_txt.setText(String.valueOf((long)(time_diff / 60000)).concat(" " + getResources().getString(R.string.minutes_ago)));
-				}
-			} else {
-				if (time_diff < (24 * (60 * 60000))) {
-					if ((time_diff / (60 * 60000)) < 2) {
-						_txt.setText(String.valueOf((long)(time_diff / (60 * 60000))).concat(" " + getResources().getString(R.string.hours_ago)));
-					} else {
-						_txt.setText(String.valueOf((long)(time_diff / (60 * 60000))).concat(" " + getResources().getString(R.string.hours_ago)));
-					}
-				} else {
-					if (time_diff < (7 * (24 * (60 * 60000)))) {
-						if ((time_diff / (24 * (60 * 60000))) < 2) {
-							_txt.setText(String.valueOf((long)(time_diff / (24 * (60 * 60000)))).concat(" " + getResources().getString(R.string.days_ago)));
-						} else {
-							_txt.setText(String.valueOf((long)(time_diff / (24 * (60 * 60000)))).concat(" " + getResources().getString(R.string.days_ago)));
-						}
-					} else {
-						c2.setTimeInMillis((long)(_currentTime));
-						_txt.setText(new SimpleDateFormat("dd-MM-yyyy").format(c2.getTime()));
-					}
-				}
-			}
-		}
-	}
-
-
-	public void _setMargin(final View _view, final double _r, final double _l, final double _t, final double _b) {
-		float dpRatio = new c(this).getContext().getResources().getDisplayMetrics().density;
-		int right = (int)(_r * dpRatio);
-		int left = (int)(_l * dpRatio);
-		int top = (int)(_t * dpRatio);
-		int bottom = (int)(_b * dpRatio);
-
-		boolean _default = false;
-
-		ViewGroup.LayoutParams p = _view.getLayoutParams();
-		if (p instanceof LinearLayout.LayoutParams) {
-			LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		} else if (p instanceof RelativeLayout.LayoutParams) {
-			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		} else if (p instanceof TableRow.LayoutParams) {
-			TableRow.LayoutParams lp = (TableRow.LayoutParams)p;
-			lp.setMargins(left, top, right, bottom);
-			_view.setLayoutParams(lp);
-		}
-
-	}
-
-
-	public void _getUserCountReference() {
-		// TODO: Implement with Supabase Postgrest queries
-		// This will involve multiple async calls for followers, following, and likes.
-		// Example for followers:
-		/*
-		scope.launch(it -> {
-			CountResult result = postgrest.from("followers").select(Count.EXACT).eq("followed_id", getIntent().getStringExtra("uid")).count();
-			withContext(Dispatchers.getMain(), it2 -> {
-				ProfilePageTabUserInfoFollowersCount.setText(_getStyledNumber(result.getCount()).concat(" ").concat(getResources().getString(R.string.followers)));
-			});
-		});
-		*/
-	}
-
-
-	public String _getStyledNumber(final double _number) {
-		if (_number < 10000) {
-			return String.valueOf((long) _number);
-		} else {
-			DecimalFormat decimalFormat = new DecimalFormat("0.0");
-			String numberFormat;
-			double formattedNumber;
-			if (_number < 1000000) {
-				numberFormat = "K";
-				formattedNumber = _number / 1000;
-			} else if (_number < 1000000000) {
-				numberFormat = "M";
-				formattedNumber = _number / 1000000;
-			} else if (_number < 1000000000000L) {
-				numberFormat = "B";
-				formattedNumber = _number / 1000000000;
-			} else {
-				numberFormat = "T";
-				formattedNumber = _number / 1000000000000L;
-			}
-			return decimalFormat.format(formattedNumber) + numberFormat;
-		}
-
-	}
-
-
-	public void _loadRequest() {
-		ProfilePageSwipeLayout.setVisibility(View.GONE);
-		ProfilePageNoInternetBody.setVisibility(View.GONE);
-		ProfilePageLoadingBody.setVisibility(View.VISIBLE);
-		req.startRequestNetwork(RequestNetworkController.POST, "https://google.com", "google", _req_request_listener);
-	}
 
 
 	public double _convertXpToLevel(final double _xp_point) {
@@ -760,33 +523,13 @@ class c {
 			body.setVisibility(View.GONE);
 			_viewGraphics(save_to_history, 0xFFFFFFFF, 0xFFEEEEEE, 300, 0, Color.TRANSPARENT);
 			avatarCard.setBackgroundResource(R.drawable.shape_circular);
-			supabase.from("users").select("*").eq("uid", _uid).single().execute(new PostgrestCallback() {
-				@Override
-				public void onSuccess(PostgrestResponse response) {
-					try {
-						if (response.getData() != null) {
-							JSONObject userData = new JSONObject(response.getData().toString());
-							String avatarUri = userData.getString("avatar");
-							if (avatarUri.equals("null")) {
-								avatar.setImageResource(R.drawable.avatar);
-							} else {
-								Glide.with(getApplicationContext()).load(Uri.parse(avatarUri)).into(avatar);
-							}
-						} else {
-							// Handle case where no data is returned
-						}
-					} catch (JSONException e) {
-						e.printStackTrace();
-						// Handle JSON parsing error
-					}
-				}
-
-				@Override
-				public void onError(PostgrestError error) {
-					error.printStackTrace();
-					// Handle Supabase query error
-				}
-			});
+			// The avatar URL should be fetched from the ViewModel's User object
+			String avatarUrl = UserAvatarUri; // Placeholder
+			if (avatarUrl == null || avatarUrl.equals("null")) {
+				avatar.setImageResource(R.drawable.avatar);
+			} else {
+				Glide.with(getApplicationContext()).load(Uri.parse(avatarUrl)).into(avatar);
+			}
 
 			mProfileImageViewDialog.setCancelable(true);
 			mProfileImageViewDialog.show();
@@ -1139,79 +882,30 @@ class c {
 							}
 				*/
 			}
-			// TODO: Migrate to Supabase
-
-			likeButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					supabase.from("posts-likes").select("*").eq("key", _data.get((int)_position).get("key").toString()).eq("uid", auth.getUser().getId()).single().execute(new PostgrestCallback() {
-						@Override
-						public void onSuccess(PostgrestResponse response) {
-							try {
-								if (response.getData() != null) {
-									// Data exists, user has liked the post
-									likeButtonIc.setImageResource(R.drawable.like_fill_icon);
-								} else {
-									// No data, user has not liked the post
-									likeButtonIc.setImageResource(R.drawable.like_icon);
-								}
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
-
-						@Override
-						public void onError(PostgrestError error) {
-							error.printStackTrace();
-						}
-					});
-					vbr.vibrate((long)(24));
-				}
+			likeButton.setOnClickListener(_view -> {
+				String postId = _data.get(_position).get("key").toString();
+				profileViewModel.likePost(postId);
 			});
-			commentsButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					Bundle sendPostKey = new Bundle();
-					sendPostKey.putString("postKey", _data.get((int)_position).get("key").toString());
-					sendPostKey.putString("postPublisherUID", _data.get((int)_position).get("uid").toString());
-					sendPostKey.putString("postPublisherAvatar", UserInfoCacheMap.get("avatar-".concat(_data.get((int)_position).get("uid").toString())).toString());
-					PostCommentsBottomSheetDialog postCommentsBottomSheet = new PostCommentsBottomSheetDialog();
-					postCommentsBottomSheet.setArguments(sendPostKey);
-					postCommentsBottomSheet.show(getSupportFragmentManager(), postCommentsBottomSheet.getTag());
-				}
-			});
-			userInfo.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					intent.setClass(getApplicationContext(), ProfileActivity.class);
-					intent.putExtra("uid", _data.get((int)_position).get("uid").toString());
-					startActivity(intent);
-				}
-			});
-			favoritePostButton.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					supabase.from("favorite-posts").select("*").eq("uid", auth.getUser().getId()).eq("key", _data.get((int)_position).get("key").toString()).single().execute(new PostgrestCallback() {
-						@Override
-						public void onSuccess(PostgrestResponse response) {
-							try {
-								if (response.getData() != null) {
-									favoritePostButtonIc.setImageResource(R.drawable.bookmark_fill_icon);
-								} else {
-									favoritePostButtonIc.setImageResource(R.drawable.bookmark_icon);
-								}
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
 
-						@Override
-						public void onError(PostgrestError error) {
-							error.printStackTrace();
-						}
-					});
-					vbr.vibrate((long)(24));
-				}
+			commentsButton.setOnClickListener(_view -> {
+				Bundle sendPostKey = new Bundle();
+				sendPostKey.putString("postKey", _data.get(_position).get("key").toString());
+				sendPostKey.putString("postPublisherUID", _data.get(_position).get("uid").toString());
+				String avatarUrl = UserInfoCacheMap.get("avatar-" + _data.get(_position).get("uid").toString()).toString();
+				sendPostKey.putString("postPublisherAvatar", avatarUrl);
+				PostCommentsBottomSheetDialog postCommentsBottomSheet = new PostCommentsBottomSheetDialog();
+				postCommentsBottomSheet.setArguments(sendPostKey);
+				postCommentsBottomSheet.show(getSupportFragmentManager(), postCommentsBottomSheet.getTag());
+			});
+
+			userInfo.setOnClickListener(_view -> {
+				intent.setClass(getApplicationContext(), ProfileActivity.class);
+				intent.putExtra("uid", _data.get(_position).get("uid").toString());
+				startActivity(intent);
+			});
+
+			favoritePostButton.setOnClickListener(_view -> {
+				// TODO: Implement with ViewModel
 			});
 			topMoreButton.setOnClickListener(new View.OnClickListener() {
 				@Override
