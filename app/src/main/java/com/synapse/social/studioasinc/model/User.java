@@ -1,20 +1,24 @@
 package com.synapse.social.studioasinc.model;
 
+import com.google.firebase.database.IgnoreExtraProperties;
+
+@IgnoreExtraProperties
 public class User {
-    private String uid;
-    private String username;
-    private String nickname;
-    private String avatar;
+    public String uid;
+    public String username;
+    public String nickname;
+    public String avatar;
+    public String banned;
+    public String profile_cover_image;
+    public String biography;
+    public String join_date;
+    public String status;
+    public String account_type;
+    public String gender;
+    public String verify;
 
     public User() {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)
-    }
-
-    public User(String uid, String username, String nickname, String avatar) {
-        this.uid = uid;
-        this.username = username;
-        this.nickname = nickname;
-        this.avatar = avatar;
     }
 
     public String getUid() {

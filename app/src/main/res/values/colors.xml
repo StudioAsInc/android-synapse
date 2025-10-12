@@ -179,4 +179,8 @@
     <color name="success_green">#4CAF50</color>
     <color name="light_red_ripple">#FFCDD2</color>
     <color name="light_blue_ripple">#BBDEFB</color>
+
+    <!-- Colors for User Profile Status -->
+    <color name="online_green">#2196F3</color>
+    <color name="offline_gray">#757575</color>
 </resources>
