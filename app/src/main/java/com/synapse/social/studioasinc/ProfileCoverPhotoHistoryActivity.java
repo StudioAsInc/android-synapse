@@ -61,11 +61,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.OnProgressListener;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -81,21 +76,20 @@ import java.util.regex.*;
 import org.json.*;
 import com.google.firebase.database.Query;
 import java.net.URL;
-import java.net.MalformedURLException;
+import java.net.MalformedURLException;
 
 public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
-	
+
 	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
-	private FirebaseStorage _firebase_storage = FirebaseStorage.getInstance();
-	
+
 	private ProgressDialog SynapseLoadingDialog;
 	private FloatingActionButton _fab;
 	private String CurrentAvatarUri = "";
 	private HashMap<String, Object> mAddProfilePhotoMap = new HashMap<>();
 	private HashMap<String, Object> mSendMap = new HashMap<>();
-	
+
 	private ArrayList<HashMap<String, Object>> ProfileHistoryList = new ArrayList<>();
-	
+
 	private LinearLayout main;
 	private LinearLayout top;
 	private LinearLayout body;
@@ -110,7 +104,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private TextView isDataNotExistsLayoutTitle;
 	private TextView isDataNotExistsLayoutSubTitle;
 	private ProgressBar mLoadingBar;
-	
+
 	private Calendar cc = Calendar.getInstance();
 	private DatabaseReference maindb = _firebase.getReference("/");
 	private ChildEventListener _maindb_child_listener;
@@ -125,29 +119,22 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 	private OnCompleteListener<Void> auth_updateProfileListener;
 	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
 	private OnCompleteListener<AuthResult> auth_googleSignInListener;
-	private StorageReference storage = _firebase_storage.getReference("/");
-	private OnCompleteListener<Uri> _storage_upload_success_listener;
-	private OnSuccessListener<FileDownloadTask.TaskSnapshot> _storage_download_success_listener;
-	private OnSuccessListener _storage_delete_success_listener;
-	private OnProgressListener _storage_upload_progress_listener;
-	private OnProgressListener _storage_download_progress_listener;
-	private OnFailureListener _storage_failure_listener;
 	private Intent intent = new Intent();
-	
+
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_profile_cover_photo_history);
 		initialize(_savedInstanceState);
 		FirebaseApp.initializeApp(this);
-		
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);} else {
 			initializeLogic();
 		}
 	}
-	
+
 	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -155,7 +142,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			initializeLogic();
 		}
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		_fab = findViewById(R.id._fab);
 		main = findViewById(R.id.main);
@@ -173,204 +160,158 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		isDataNotExistsLayoutSubTitle = findViewById(R.id.isDataNotExistsLayoutSubTitle);
 		mLoadingBar = findViewById(R.id.mLoadingBar);
 		auth = FirebaseAuth.getInstance();
-		
+
 		back.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				onBackPressed();
 			}
 		});
-		
+
 		mSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
 			public void onRefresh() {
 				_getReference();
 			}
 		});
-		
+
 		_fab.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				_addProfilePhotoUrlDialog();
 			}
 		});
-		
+
 		_maindb_child_listener = new ChildEventListener() {
 			@Override
 			public void onChildAdded(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildChanged(DataSnapshot _param1, String _param2) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onChildMoved(DataSnapshot _param1, String _param2) {
-				
+
 			}
-			
+
 			@Override
 			public void onChildRemoved(DataSnapshot _param1) {
 				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
 				final String _childKey = _param1.getKey();
 				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-				
+
 			}
-			
+
 			@Override
 			public void onCancelled(DatabaseError _param1) {
 				final int _errorCode = _param1.getCode();
 				final String _errorMessage = _param1.getMessage();
-				
+
 			}
 		};
 		maindb.addChildEventListener(_maindb_child_listener);
-		
-		_storage_upload_progress_listener = new OnProgressListener<UploadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(UploadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_storage_download_progress_listener = new OnProgressListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onProgress(FileDownloadTask.TaskSnapshot _param1) {
-				double _progressValue = (100.0 * _param1.getBytesTransferred()) / _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_storage_upload_success_listener = new OnCompleteListener<Uri>() {
-			@Override
-			public void onComplete(Task<Uri> _param1) {
-				final String _downloadUrl = _param1.getResult().toString();
-				
-			}
-		};
-		
-		_storage_download_success_listener = new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-			@Override
-			public void onSuccess(FileDownloadTask.TaskSnapshot _param1) {
-				final long _totalByteCount = _param1.getTotalByteCount();
-				
-			}
-		};
-		
-		_storage_delete_success_listener = new OnSuccessListener() {
-			@Override
-			public void onSuccess(Object _param1) {
-				
-			}
-		};
-		
-		_storage_failure_listener = new OnFailureListener() {
-			@Override
-			public void onFailure(Exception _param1) {
-				final String _message = _param1.getMessage();
-				
-			}
-		};
-		
+
+
 		auth_updateEmailListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updatePasswordListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_deleteUserListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_updateProfileListener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> task) {
 				final boolean _success = task.isSuccessful();
 				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(Task<AuthResult> _param1) {
 				final boolean _success = _param1.isSuccessful();
 				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-				
+
 			}
 		};
-		
+
 		_auth_reset_password_listener = new OnCompleteListener<Void>() {
 			@Override
 			public void onComplete(Task<Void> _param1) {
 				final boolean _success = _param1.isSuccessful();
-				
+
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		_stateColor(0xFFFFFFFF, 0xFFFFFFFF);
 		_viewGraphics(back, 0xFFFFFFFF, 0xFFE0E0E0, 300, 0, Color.TRANSPARENT);
@@ -379,24 +320,24 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		ProfilePhotosHistoryList.setAdapter(new ProfilePhotosHistoryListAdapter(ProfileHistoryList));
 		_getReference();
 	}
-	
+
 	@Override
 	public void onBackPressed() {
 		finish();
 	}
-	
+
 	public void _stateColor(final int _statusColor, final int _navigationColor) {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 		getWindow().setStatusBarColor(_statusColor);
 		getWindow().setNavigationBarColor(_navigationColor);
 	}
-	
-	
+
+
 	public void _ImageColor(final ImageView _image, final int _color) {
 		_image.setColorFilter(_color,PorterDuff.Mode.SRC_ATOP);
 	}
-	
-	
+
+
 	public void _viewGraphics(final View _view, final int _onFocus, final int _onRipple, final double _radius, final double _stroke, final int _strokeColor) {
 		android.graphics.drawable.GradientDrawable GG = new android.graphics.drawable.GradientDrawable();
 		GG.setColor(_onFocus);
@@ -405,8 +346,8 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		android.graphics.drawable.RippleDrawable RE = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{ _onRipple}), GG, null);
 		_view.setBackground(RE);
 	}
-	
-	
+
+
 	public void _LoadingDialog(final boolean _visibility) {
 		if (_visibility) {
 			if (SynapseLoadingDialog== null){
@@ -423,17 +364,17 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			
 			LinearLayout loading_bar_layout = (LinearLayout)SynapseLoadingDialog.findViewById(R.id.loading_bar_layout);
 			
-			
+
 			//loading_bar_layout.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)100, 0xFFFFFFFF));
 		} else {
 			if (SynapseLoadingDialog != null){
 				SynapseLoadingDialog.dismiss();
 			}
 		}
-		
+
 	}
-	
-	
+
+
 	public void _getReference() {
 		isDataExistsLayout.setVisibility(View.GONE);
 		isDataNotExistsLayout.setVisibility(View.GONE);
@@ -491,8 +432,8 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 		});
 		mSwipeLayout.setRefreshing(false);
 	}
-	
-	
+
+
 	public boolean _checkValidUrl(final String _url) {
 		try {
 			new URL(_url);
@@ -501,8 +442,8 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			return false;
 		}
 	}
-	
-	
+
+
 	public void _addProfilePhotoUrlDialog() {
 		{
 			final AlertDialog NewCustomDialog = new AlertDialog.Builder(ProfileCoverPhotoHistoryActivity.this).create();
@@ -517,7 +458,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			final ImageView user_avatar_image = NewCustomDialogCV.findViewById(R.id.user_avatar_image);
 			final TextView add_button = NewCustomDialogCV.findViewById(R.id.add_button);
 			final TextView cancel_button = NewCustomDialogCV.findViewById(R.id.cancel_button);
-			
+
 			dialog_card.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)28, 0xFFFFFFFF));
 			user_avatar_card.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b) { this.setCornerRadius(a); this.setColor(b); return this; } }.getIns((int)28, Color.TRANSPARENT));
 			user_avatar_url_input.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, Color.TRANSPARENT));
@@ -549,7 +490,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 					
 				}
 			});
-			
+
 			add_button.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View _view) {
@@ -580,8 +521,8 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			NewCustomDialog.show();
 		}
 	}
-	
-	
+
+
 	public void _deleteProfileImage(final String _key, final String _type, final String _uri) {
 		{
 			final AlertDialog NewCustomDialog = new AlertDialog.Builder(ProfileCoverPhotoHistoryActivity.this).create();
@@ -620,7 +561,7 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 						mSendMap.clear();
 					}
 					if (_type.equals("local")) {
-						_firebase_storage.getReferenceFromUrl(_uri).delete().addOnSuccessListener(_storage_delete_success_listener).addOnFailureListener(_storage_failure_listener);
+						// Firebase Storage removal requested
 					}
 					maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(_key)))).removeValue();
 					_getReference();
@@ -631,15 +572,15 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			NewCustomDialog.show();
 		}
 	}
-	
+
 	public class ProfilePhotosHistoryListAdapter extends RecyclerView.Adapter<ProfilePhotosHistoryListAdapter.ViewHolder> {
-		
+
 		ArrayList<HashMap<String, Object>> _data;
-		
+
 		public ProfilePhotosHistoryListAdapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-		
+
 		@Override
 		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -648,18 +589,18 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 			_v.setLayoutParams(_lp);
 			return new ViewHolder(_v);
 		}
-		
+
 		@Override
 		public void onBindViewHolder(ViewHolder _holder, final int _position) {
 			View _view = _holder.itemView;
-			
+
 			final LinearLayout body = _view.findViewById(R.id.body);
 			final androidx.cardview.widget.CardView card = _view.findViewById(R.id.card);
 			final RelativeLayout relative = _view.findViewById(R.id.relative);
 			final ImageView profile = _view.findViewById(R.id.profile);
 			final LinearLayout checked = _view.findViewById(R.id.checked);
 			final ImageView checked_ic = _view.findViewById(R.id.checked_ic);
-			
+
 			RecyclerView.LayoutParams _lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			_view.setLayoutParams(_lp);
 			_viewGraphics(body, 0xFFFFFFFF, 0xFFEEEEEE, 28, 0, Color.TRANSPARENT);
@@ -702,16 +643,16 @@ public class ProfileCoverPhotoHistoryActivity extends AppCompatActivity {
 				}
 			});
 		}
-		
+
 		@Override
 		public int getItemCount() {
 			return _data.size();
 		}
-		
+
 		public class ViewHolder extends RecyclerView.ViewHolder {
 			public ViewHolder(View v) {
 				super(v);
 			}
 		}
 	}
-}
+}

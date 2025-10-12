@@ -118,7 +118,6 @@ dependencies {
     // Re-adding -ktx suffixes as they are included in this BoM version
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
     implementation 'com.google.firebase:firebase-perf-ktx'
     implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.google.firebase:firebase-analytics-ktx'
@@ -199,9 +198,9 @@ dependencies {
     implementation 'io.noties.markwon:ext-latex:4.6.2'
     implementation 'io.noties.markwon:html:4.6.2'
 
-    // ExoPlayer for video playback
-    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+    // AndroidX Media3 (replaces ExoPlayer)
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
 
     // Testing
 }

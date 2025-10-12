@@ -2,11 +2,11 @@ package com.synapse.social.studioasinc
 
 import android.Manifest
 import android.app.Activity
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -25,8 +25,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
+import androidx.activity.OnBackPressedCallback
 import com.google.firebase.database.*
-import com.google.firebase.storage.FirebaseStorage
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import java.util.ArrayList
 import java.util.Calendar
@@ -143,7 +143,13 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         _getChatMessagesRef()
         _attachChatListener()
 
-        back.setOnClickListener { onBackPressed() }
+        back.setOnClickListener { finish() }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finish()
+            }
+        })
 
         btn_sendMessage.setOnClickListener { _send_btn() }
 
@@ -324,7 +330,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                                 chatAdapter?.notifyDataSetChanged()
                             }
                         }
-                        
+
                         override fun onCancelled(error: DatabaseError) {
                             membersProcessed++
                             if (membersProcessed == totalMembers) {
@@ -437,7 +443,11 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private fun _AudioRecorderStart() {
         val cc = Calendar.getInstance()
         recordMs = 0
-        AudioMessageRecorder = android.media.MediaRecorder()
+        AudioMessageRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            android.media.MediaRecorder(this)
+        } else {
+            android.media.MediaRecorder()
+        }
 
         val getCacheDir = externalCacheDir
         val getCacheDirName = "audio_records"
@@ -487,19 +497,21 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
     private fun uploadAudioFile() {
-        if (audioFilePath != null && audioFilePath!!.isNotEmpty()) {
-            val file = java.io.File(audioFilePath)
-            if (file.exists()) {
-                AsyncUploadService.uploadWithNotification(this, audioFilePath, file.name, object : AsyncUploadService.UploadProgressListener {
-                    override fun onProgress(filePath: String, percent: Int) {}
-                    override fun onSuccess(filePath: String, url: String, publicId: String) {
-                        _sendVoiceMessage(url, recordMs)
-                    }
+        audioFilePath?.let { path ->
+            if (path.isNotEmpty()) {
+                val file = java.io.File(path)
+                if (file.exists()) {
+                    AsyncUploadService.uploadWithNotification(this, path, file.name, object : AsyncUploadService.UploadProgressListener {
+                        override fun onProgress(filePath: String, percent: Int) {}
+                        override fun onSuccess(filePath: String, url: String, publicId: String) {
+                            _sendVoiceMessage(url, recordMs)
+                        }
 
-                    override fun onFailure(filePath: String, error: String) {
-                        Toast.makeText(applicationContext, "Failed to upload audio.", Toast.LENGTH_SHORT).show()
-                    }
-                })
+                        override fun onFailure(filePath: String, error: String) {
+                            Toast.makeText(applicationContext, "Failed to upload audio.", Toast.LENGTH_SHORT).show()
+                        }
+                    })
+                }
             }
         }
     }
@@ -515,7 +527,9 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         chatSendMap["audio_url"] = audioUrl
         chatSendMap["audio_duration"] = duration
         chatSendMap["message_state"] = "sended"
-        if (ReplyMessageID != "null") chatSendMap["replied_message_id"] = ReplyMessageID!!
+        if (ReplyMessageID != null && ReplyMessageID != "null") {
+            chatSendMap["replied_message_id"] = ReplyMessageID!!
+        }
         chatSendMap["key"] = uniqueMessageKey!!
         chatSendMap["push_date"] = ServerValue.TIMESTAMP
 
@@ -531,16 +545,14 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         if (position < 0 || position >= attactmentmap.size) {
             return
         }
+
         val itemMap = attactmentmap[position]
-        if (itemMap == null || "pending" != itemMap["uploadState"]) {
+        if (itemMap["uploadState"] != "pending") {
             return
         }
-        itemMap["uploadState"] = "uploading"
-        itemMap["uploadProgress"] = 0.0
-        rv_attacmentList.adapter?.notifyItemChanged(position)
 
-        val filePath = itemMap["localPath"].toString()
-        if (filePath.isEmpty()) {
+        val filePath = itemMap["localPath"] as? String
+        if (filePath.isNullOrEmpty()) {
             itemMap["uploadState"] = "failed"
             rv_attacmentList.adapter?.notifyItemChanged(position)
             return
@@ -553,11 +565,15 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             return
         }
 
+        itemMap["uploadState"] = "uploading"
+        itemMap["uploadProgress"] = 0.0
+        rv_attacmentList.adapter?.notifyItemChanged(position)
+
         AsyncUploadService.uploadWithNotification(this, filePath, file.name, object : AsyncUploadService.UploadProgressListener {
             override fun onProgress(filePath: String, percent: Int) {
-                if (position >= 0 && position < attactmentmap.size) {
+                if (position < attactmentmap.size) {
                     val currentItem = attactmentmap[position]
-                    if (currentItem != null && filePath == currentItem["localPath"]) {
+                    if (filePath == currentItem["localPath"]) {
                         currentItem["uploadProgress"] = percent.toDouble()
                         rv_attacmentList.adapter?.notifyItemChanged(position)
                     }
@@ -565,9 +581,9 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             }
 
             override fun onSuccess(filePath: String, url: String, publicId: String) {
-                if (position >= 0 && position < attactmentmap.size) {
+                if (position < attactmentmap.size) {
                     val mapToUpdate = attactmentmap[position]
-                    if (mapToUpdate != null && filePath == mapToUpdate["localPath"]) {
+                    if (filePath == mapToUpdate["localPath"]) {
                         mapToUpdate["uploadState"] = "success"
                         mapToUpdate["cloudinaryUrl"] = url
                         mapToUpdate["publicId"] = publicId
@@ -577,9 +593,9 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
             }
 
             override fun onFailure(filePath: String, error: String) {
-                if (position >= 0 && position < attactmentmap.size) {
+                if (position < attactmentmap.size) {
                     val currentItem = attactmentmap[position]
-                    if (currentItem != null && filePath == currentItem["localPath"]) {
+                    if (filePath == currentItem["localPath"]) {
                         currentItem["uploadState"] = "failed"
                         rv_attacmentList.adapter?.notifyItemChanged(position)
                     }

@@ -509,7 +509,7 @@ public class InboxChatsFragment extends Fragment {
 					{
 						ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
 						Handler mMainHandler = new Handler(Looper.getMainLooper());
-						
+
 						mExecutorService.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -534,10 +534,10 @@ public class InboxChatsFragment extends Fragment {
 											}
 										});
 									}
-									
+
 									@Override
 									public void onCancelled(@NonNull DatabaseError databaseError) {
-										
+
 									}
 								});
 							}
@@ -781,7 +781,7 @@ public class InboxChatsFragment extends Fragment {
 					});
 				}
 			}catch(Exception e){
-				
+
 			}
 		}
 
