@@ -16,7 +16,7 @@
 
 - **Language Distribution**: Primarily Java with Kotlin components (exact distribution may vary)
 - **Package**: `com.synapse.social.studioasinc`
-- **Version**: 1.0.0-alpha06 (versionCode: 14) *- Check app/build.gradle for current version*
+- **Version**: 1.0.0-alpha07 (versionCode: 15) *- Check app/build.gradle for current version*
 - **Min SDK**: 26, Target SDK: 32, Compile SDK: 36 *- Check app/build.gradle for current SDK levels*
 
 ## Project Structure
@@ -24,12 +24,12 @@
 ```
 synapse-android/
 ├── app/                              # Main Android application module
+│   ├── libs/                         # Local AAR dependencies
 │   ├── src/main/                     # Main source directory
-│   │   ├── java/com/synapse/social/studioasinc/  # Core application code
+│   │   ├── java/com/studioasinc/synapse/ # Core application code
 │   │   ├── res/                      # Android resources
 │   │   ├── assets/                   # Application assets
 │   │   └── AndroidManifest.xml       # App configuration and permissions
-│   ├── libs/                         # Local AAR dependencies
 │   ├── build.gradle                  # App-level build configuration
 │   └── proguard-rules.pro           # Code obfuscation rules
 ├── gradle/                           # Gradle wrapper files
@@ -116,7 +116,7 @@ synapse-android/
 ### Package Organization
 
 ```
-com.synapse.social.studioasinc/
+com.studioasinc.synapse/
 ├── [root]                           # Main activities and core classes
 ├── AI/                              # Artificial Intelligence components
 ├── adapter/                         # RecyclerView adapters
@@ -197,8 +197,14 @@ com.synapse.social.studioasinc/
 - `update_animation.json` - Update notification animation
 
 ### Web Integration
+
 - `firebase-presence.js` - `[REMOVED]`
 - `presence-integration-example.html` - `[REMOVED]`
+
+
+## Notification System
+- **Deep Linking**: The application supports deep linking from notifications, allowing users to navigate directly to specific content (e.g., a chat, post, or profile) from a notification. For more details, see [NOTIFICATION_DEEP_LINKING.md](../NOTIFICATION_DEEP_LINKING.md).
+- **OneSignal**: Push notifications are handled by OneSignal and managed through the `OneSignalManager.kt` and `NotificationHelper.kt` classes.
 
 ## CI/CD Pipeline
 
