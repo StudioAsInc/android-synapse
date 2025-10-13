@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
@@ -32,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         createNotificationChannels()
         setupListeners()
         setupObservers()
-        viewModel.checkForUpdates(this)
+        viewModel.checkForUpdates()
     }
 
     private fun setupFullscreen() {
@@ -58,7 +59,7 @@ class MainActivity : AppCompatActivity() {
                 lightColor = Color.RED
                 enableVibration(true)
                 setShowBadge(true)
-                lockscreenVisibility = View.VISIBLE
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             }
 
             val generalChannel = NotificationChannel(
@@ -78,7 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.appLogo.setOnLongClickListener {
-            if (FirebaseAuth.getInstance().currentUser?.email == "mashikahamed0@gmail.com") {
+            if (FirebaseAuth.getInstance().currentUser?.email == BuildConfig.DEVELOPER_EMAIL) {
                 finish()
             }
             true
