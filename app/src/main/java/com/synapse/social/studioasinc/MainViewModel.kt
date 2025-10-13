@@ -1,25 +1,28 @@
 package com.synapse.social.studioasinc
 
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
-import android.net.NetworkInfo
+import android.net.NetworkCapabilities
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _updateState = MutableLiveData<UpdateState>()
     val updateState: LiveData<UpdateState> = _updateState
@@ -27,8 +30,8 @@ class MainViewModel : ViewModel() {
     private val _authState = MutableLiveData<AuthState>()
     val authState: LiveData<AuthState> = _authState
 
-    fun checkForUpdates(context: Context) {
-        if (!isNetworkAvailable(context)) {
+    fun checkForUpdates() {
+        if (!isNetworkAvailable()) {
             _updateState.value = UpdateState.NoUpdate
             return
         }
@@ -54,7 +57,7 @@ class MainViewModel : ViewModel() {
                 )
 
                 val currentVersionCode = try {
-                    context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+                    getApplication<Application>().packageManager.getPackageInfo(getApplication<Application>().packageName, 0).versionCode
                 } catch (e: PackageManager.NameNotFoundException) {
                     _updateState.value = UpdateState.Error("Version check failed: ${e.message}")
                     return@launch
@@ -73,7 +76,9 @@ class MainViewModel : ViewModel() {
                 } else {
                     _updateState.value = UpdateState.NoUpdate
                 }
-            } catch (e: Exception) {
+            } catch (e: IOException) {
+                _updateState.value = UpdateState.Error("Network error: ${e.message}")
+            } catch (e: JsonSyntaxException) {
                 _updateState.value = UpdateState.Error("Update parsing error: ${e.message}")
             }
         }
@@ -81,10 +86,12 @@ class MainViewModel : ViewModel() {
 
     fun checkUserAuthentication() {
         viewModelScope.launch {
-            val user = FirebaseAuth.getInstance().currentUser
-            if (user != null) {
-                val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(user.uid)
-                userRef.get().addOnSuccessListener { snapshot ->
+            try {
+                val user = FirebaseAuth.getInstance().currentUser
+                if (user != null) {
+                    val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(user.uid)
+                    val snapshot = userRef.get().await()
+
                     if (snapshot.exists()) {
                         val banned = snapshot.child("banned").getValue(String::class.java)
                         if ("false" == banned) {
@@ -95,19 +102,20 @@ class MainViewModel : ViewModel() {
                     } else {
                         _authState.value = AuthState.NeedsProfileCompletion
                     }
-                }.addOnFailureListener {
-                    _authState.value = AuthState.Error("Database error")
+                } else {
+                    _authState.value = AuthState.Unauthenticated
                 }
-            } else {
-                _authState.value = AuthState.Unauthenticated
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Database error: ${e.message}")
             }
         }
     }
 
-    private fun isNetworkAvailable(context: Context): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork: NetworkInfo? = cm.activeNetworkInfo
-        return activeNetwork?.isConnectedOrConnecting == true
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
 
