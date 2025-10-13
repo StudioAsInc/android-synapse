@@ -18,7 +18,7 @@
 			android:layout_width="36dp"
 			android:layout_height="36dp"
 			app:cardElevation="0dp">
-			<ImageView
+			<de.hdodenhof.circleimageview.CircleImageView
 				android:id="@+id/profileImage"
 				android:focusable="false"
 				android:layout_width="wrap_content"

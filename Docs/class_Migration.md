@@ -10,6 +10,11 @@ This document lists all Java classes that have been migrated to Kotlin.
 - **Status:** Migrated to `UserMention.kt`
 - **Line Count:** 158
 
+### PostCommentsBottomSheetDialog.java
+- **Path:** `app/src/main/java/com/synapse/social/studioasinc/PostCommentsBottomSheetDialog.java`
+- **Status:** Migrated to multiple Kotlin files
+- **Line Count:** 550
+
 ## Unmigrated Classes
 
 ### ProfileCoverPhotoHistoryActivity.java
@@ -237,10 +242,6 @@ This document lists all Java classes that have been migrated to Kotlin.
 - **Status:** Not Migrated
 - **Line Count:** 336
 
-### PostCommentsBottomSheetDialog.java
-- **Path:** `./app/src/main/java/com/synapse/social/studioasinc/PostCommentsBottomSheetDialog.java`
-- **Status:** Not Migrated
-- **Line Count:** 1758
 
 ### ChatsettingsActivity.java
 - **Path:** `./app/src/main/java/com/synapse/social/studioasinc/ChatsettingsActivity.java`
