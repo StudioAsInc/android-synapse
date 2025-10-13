@@ -115,22 +115,10 @@ public class SearchActivity extends AppCompatActivity {
 	private Intent intent = new Intent();
 	private Vibrator vbr;
 	private FirebaseAuth auth;
-	private OnCompleteListener<AuthResult> _auth_create_user_listener;
-	private OnCompleteListener<AuthResult> _auth_sign_in_listener;
-	private OnCompleteListener<Void> _auth_reset_password_listener;
-	private OnCompleteListener<Void> auth_updateEmailListener;
-	private OnCompleteListener<Void> auth_updatePasswordListener;
-	private OnCompleteListener<Void> auth_emailVerificationSentListener;
-	private OnCompleteListener<Void> auth_deleteUserListener;
-	private OnCompleteListener<Void> auth_updateProfileListener;
-	private OnCompleteListener<AuthResult> auth_phoneAuthListener;
-	private OnCompleteListener<AuthResult> auth_googleSignInListener;
 	private DatabaseReference main = _firebase.getReference("skyline");
-	private ChildEventListener _main_child_listener;
 	private RequestNetwork request;
 	private RequestNetwork.RequestListener _request_request_listener;
 	private DatabaseReference maindb = _firebase.getReference("/");
-	private ChildEventListener _maindb_child_listener;
 
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -267,45 +255,6 @@ public class SearchActivity extends AppCompatActivity {
 			}
 		});
 
-		_main_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		main.addChildEventListener(_main_child_listener);
-
 		_request_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
@@ -352,133 +301,6 @@ public class SearchActivity extends AppCompatActivity {
 			}
 		};
 
-		_maindb_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
-		maindb.addChildEventListener(_maindb_child_listener);
-
-		auth_updateEmailListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updatePasswordListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_emailVerificationSentListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_deleteUserListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_phoneAuthListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_updateProfileListener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		auth_googleSignInListener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> task) {
-				final boolean _success = task.isSuccessful();
-				final String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_create_user_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_sign_in_listener = new OnCompleteListener<AuthResult>() {
-			@Override
-			public void onComplete(Task<AuthResult> _param1) {
-				final boolean _success = _param1.isSuccessful();
-				final String _errorMessage = _param1.getException() != null ? _param1.getException().getMessage() : "";
-
-			}
-		};
-
-		_auth_reset_password_listener = new OnCompleteListener<Void>() {
-			@Override
-			public void onComplete(Task<Void> _param1) {
-				final boolean _success = _param1.isSuccessful();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
