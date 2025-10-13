@@ -78,10 +78,12 @@ android {
             } else {
                 signingConfig = signingConfigs.debug
             }
+            buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
         }
     }
 
