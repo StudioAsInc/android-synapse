@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Synapse - Inbox</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- ✅ Tailwind CSS Added -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+
+    <link rel="stylesheet" href="styles/inbox.css">
+    <script type="module" src="scripts/inbox.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+</head>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-white dark:bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+  <div class="flex flex-col items-center">
+    <dotlottie-player
+      src="https://lottie.host/806ea075-1040-4a18-956c-8345ebab2a36/Y8CHL2ZU0T.lottie"
+      background="transparent"
+      speed="1"
+      style="width: 180px; height: 180px"
+      loop
+      autoplay>
+    </dotlottie-player>
+    <p class="mt-4 text-indigo-600 dark:text-indigo-400 font-medium">Loading inbox</p>
+  </div>
+</div>
+
+<!-- Lottie Player Script -->
+<script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <header class="flex justify-between items-center p-4 bg-white dark:bg-gray-800 shadow-sm">
+        <h1 class="text-xl font-semibold">Messages</h1>
+        <div class="flex items-center space-x-4">
+            <!-- Single theme toggle button -->
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Toggle theme">
+                <span class="material-icons text-gray-600 dark:text-gray-300" id="theme-icon">brightness_auto</span>
+            </button>
+
+            <div id="user-info" class="compact-profile" style="display: none !important;"></div>
+            <div id="user1-info" class="compact-profile">
+                <div class="profile-avatar" id="profile-trigger">
+                    <!-- Avatar will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Profile (hidden by default) -->
+    <div id="profile-dialog" class="profile-dialog">
+        <div class="dialog-content">
+            <div class="profile-banner"></div>
+            <div class="profile-header">
+                <div class="dialog-avatar"></div>
+                <button class="edit-profile-btn" onclick="location.href='edit-profile.html'">
+                    Edit Profile
+                </button>
+            </div>
+            <div class="profile-body">
+                <h2 class="profile-name">User Name</h2>
+                <p class="profile-username">@username</p>
+                <p class="profile-bio">This is a sample bio. Click edit profile to update your information.</p>
+                <button class="logout-btn" onclick="window.location.href='authentication.html'">
+  <svg class="logout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  </svg>
+  Log Out
+</button>
+            </div>
+
+            <button class="dialog-close" id="dialog-close">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="conversations-list" class="bg-gray-50 dark:bg-gray-800">
+        <!-- Conversations will be loaded here -->
+    </div>
+
+    <div id="loading" class="p-4 text-center text-gray-600 dark:text-gray-400">Loading conversations...</div>
+
+    <!-- Floating action button -->
+    <a href="users.html" class="fab bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">
+        <span class="material-icons text-white">add</span>
+    </a>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg border-t border-gray-200 dark:border-gray-700 flex justify-around items-center p-2 z-40">
+        <a href="home.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 p-2">
+            <span class="material-icons">home</span>
+            <span class="text-xs mt-1">Home</span>
+        </a>
+        <a href="messages.html" class="flex flex-col items-center text-blue-500 dark:text-blue-400 p-2">
+            <span class="material-icons">chat</span>
+            <span class="text-xs mt-1">Chat</span>
+        </a>
+        <a href="notifications.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 p-2">
+            <span class="material-icons">notifications</span>
+            <span class="text-xs mt-1">Notifications</span>
+        </a>
+        <a href="settings.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 p-2">
+            <span class="material-icons">settings</span>
+            <span class="text-xs mt-1">Settings</span>
+        </a>
+    </nav>
+</body>
+</html>

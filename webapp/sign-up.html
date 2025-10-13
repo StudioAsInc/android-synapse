@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign Up | Synapse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body
+  class="bg-gray-50 min-h-screen flex items-center justify-center p-4 select-none touch-manipulation">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <div id="verificationDialog" class="hidden fixed inset-0 z-[9999] bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full">
+      <h3 class="text-xl font-bold text-gray-800 mb-2">Verify Your Email</h3>
+      <p class="text-gray-600 mb-4">
+        We've sent a verification email to
+        <span id="sentEmail" class="font-medium"></span>.
+        Please check your inbox and verify your email address.
+      </p>
+      <p class="text-gray-600 mb-4">
+        You'll be redirected to the sign in page in
+        <span id="countdown" class="font-medium">30</span> seconds...
+      </p>
+      <button
+        onclick="redirectToSignIn()"
+        class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+
+  <div class="w-full max-w-md bg-white rounded-xl shadow-md p-8">
+    <h2 class="text-2xl font-bold text-gray-800 mb-2">Create an account</h2>
+    <p class="text-gray-600 mb-6">Get started with your free account</p>
+
+    <button
+      class="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors mb-4"
+      onclick="googleLogin()"
+    >
+      <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="20" alt="Google" />
+      Continue with Google
+    </button>
+
+    <div class="relative flex items-center my-6">
+      <div class="flex-grow border-t border-gray-300"></div>
+      <span class="flex-shrink mx-4 text-gray-400">or</span>
+      <div class="flex-grow border-t border-gray-300"></div>
+    </div>
+
+    <form id="signupForm" class="space-y-4">
+      <div>
+        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <input
+          type="text"
+          id="username"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+          placeholder="Choose a username"
+          pattern="[a-z0-9]+"
+          title="Only lowercase letters (a-z) and numbers (0-9) are allowed"
+          required
+        />
+        <p class="text-xs text-gray-500 mt-1">Only lowercase letters and numbers, no spaces or special characters</p>
+      </div>
+
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input
+          type="email"
+          id="email"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+          placeholder="you@example.com"
+          required
+        />
+      </div>
+
+      <div class="relative">
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <div class="relative">
+          <input
+            type="password"
+            id="password"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition pr-10"
+            placeholder="••••••••"
+            minlength="6"
+            required
+          />
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+            onclick="togglePasswordVisibility()"
+          >
+            <i id="password-icon" class="fas fa-eye-slash"></i>
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+      </div>
+
+      <button
+        type="submit"
+        class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+        id="signupBtn"
+      >
+        <span id="btn-text">Sign Up</span>
+        <span id="btn-spinner" class="hidden">
+          <i class="fas fa-spinner fa-spin"></i>
+        </span>
+      </button>
+    </form>
+
+    <div id="error-message" class="mt-4 text-sm text-red-600 text-center"></div>
+    <div id="success-message" class="mt-4 text-sm text-emerald-600 text-center"></div>
+
+    <div class="mt-6 text-center text-sm text-gray-600">
+      Already have an account?
+      <a href="sign-in.html" class="font-medium text-gray-900 hover:text-emerald-600">Sign In Now</a>
+    </div>
+  </div>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    sendEmailVerification
+  } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCvefmiD5UjOo7ZkoUKhwNd0XGrnK52quE",
+    authDomain: "synapse-social-sai.firebaseapp.com",
+    projectId: "synapse-social-sai",
+    storageBucket: "synapse-social-sai.firebasestorage.app",
+    messagingSenderId: "269633434355",
+    appId: "1:269633434355:web:67b44261499ca8b0a3bd86",
+    databaseURL: "https://synapse-social-sai-default-rtdb.firebaseio.com/"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const database = getDatabase(app);
+  const provider = new GoogleAuthProvider();
+
+  // Generate random username like sy25052210032
+  function generateRandomUsername() {
+    const now = new Date();
+    const datePart = `${now.getDate()}${now.getMonth()+1}${now.getFullYear().toString().slice(-2)}`;
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    return `user${datePart}${randomPart}`;
+  }
+
+  // Set default username when page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('username').value = generateRandomUsername();
+  });
+
+  // Toggle password visibility
+  window.togglePasswordVisibility = () => {
+    const passwordInput = document.getElementById('password');
+    const passwordIcon = document.getElementById('password-icon');
+
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      passwordIcon.classList.remove('fa-eye-slash');
+      passwordIcon.classList.add('fa-eye');
+    } else {
+      passwordInput.type = 'password';
+      passwordIcon.classList.remove('fa-eye');
+      passwordIcon.classList.add('fa-eye-slash');
+    }
+  }
+
+  // Add username input validation (lowercase and alphanumeric)
+  document.getElementById('username').addEventListener('input', function(e) {
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  });
+
+  // Verification Dialog Functions
+  let countdownTimer;
+  window.showVerificationDialog = (email) => {
+    const dialog = document.getElementById('verificationDialog');
+    const sentEmail = document.getElementById('sentEmail');
+    const countdownElement = document.getElementById('countdown');
+
+    sentEmail.textContent = email;
+    dialog.classList.remove('hidden');
+
+    let seconds = 30;
+    countdownTimer = setInterval(() => {
+      seconds--;
+      countdownElement.textContent = seconds;
+      if(seconds <= 0) redirectToSignIn();
+    }, 1000);
+  }
+
+  window.redirectToSignIn = () => {
+    clearInterval(countdownTimer);
+    window.location.href = "sign-in.html";
+  }
+
+  // Handle form submission
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Validate username format
+    const username = document.getElementById('username').value;
+    const usernameRegex = /^[a-z0-9]+$/; // Updated regex for lowercase and alphanumeric
+    if (!usernameRegex.test(username)) {
+      document.getElementById('error-message').textContent = 'Username can only contain lowercase letters and numbers, no spaces or special characters';
+      return;
+    }
+
+    await signup();
+  });
+
+  window.signup = async () => {
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('error-message');
+    const successDiv = document.getElementById('success-message');
+    const signupBtn = document.getElementById('signupBtn');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+
+    errorDiv.textContent = '';
+    successDiv.textContent = '';
+
+    // Show loading state
+    signupBtn.disabled = true;
+    btnText.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
+
+    try {
+      // 1. Create user account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Send verification email
+      await sendEmailVerification(user);
+      showVerificationDialog(email); // Show the new dialog
+
+      // 3. Add user data to the database
+      await set(ref(database, 'users/' + user.uid), {
+        username: username,
+        email: email,
+        createdAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      errorDiv.textContent = error.message;
+      // Reset button state
+      signupBtn.disabled = false;
+      btnText.classList.remove('hidden');
+      btnSpinner.classList.add('hidden');
+    }
+  }
+
+  window.googleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Add user data to the database if they don't already exist
+      // This is a simplified check; in a real app, you might check if the user's data exists
+      // in your database based on their UID or email.
+      const userRef = ref(database, 'users/' + user.uid);
+      const snapshot = await get(userRef); // Assuming 'get' is available from firebase/database (it is)
+      if (!snapshot.exists()) {
+        await set(userRef, {
+          username: user.displayName || generateRandomUsername(), // Use Google display name or generate a random one
+          email: user.email,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      // Immediately redirect to sign-in page
+      window.location.href = "sign-in.html";
+    } catch (error) {
+      document.getElementById('error-message').textContent = error.message;
+    }
+  }
+  </script>
+</body>
+</html>

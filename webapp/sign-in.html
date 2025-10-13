@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | Synapse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+</head>
+<body
+  class="bg-gray-50 min-h-screen flex items-center justify-center p-4 select-none touch-manipulation">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
+    <div class="text-center mb-8">
+      <h2 class="text-2xl font-bold text-gray-800">Welcome back</h2>
+      <p class="text-gray-500 mt-2">Sign in to your account</p>
+    </div>
+
+    <button
+      id="google-btn"
+      class="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+      onclick="googleLogin()"
+    >
+      <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="20" alt="Google" />
+      Continue with Google
+    </button>
+
+    <div class="relative my-6">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-gray-200"></div>
+      </div>
+      <div class="relative flex justify-center text-sm">
+        <span class="px-2 bg-white text-gray-500">or</span>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <i class="far fa-envelope text-gray-400"></i>
+        </div>
+        <input
+          type="email"
+          id="email"
+          placeholder="you@example.com"
+          class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+          oninput="validateEmailInput(this)"
+        />
+      </div>
+
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <i class="fas fa-lock text-gray-400"></i>
+        </div>
+        <input
+          type="password"
+          id="password"
+          placeholder="Password"
+          class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+        />
+      </div>
+
+
+      <div
+        class="text-right text-sm text-gray-500 hover:text-gray-700 hover:underline cursor-pointer mb-4"
+        onclick="alert('Reset Password flow goes here')"
+      >
+        Forgot Password?
+      </div>
+
+      <button
+        id="login-btn"
+        class="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all duration-300 hover:shadow-md flex items-center justify-center"
+        onclick="login()"
+      >
+        <span id="btn-text">Sign In</span>
+        <svg id="spinner" class="hidden w-5 h-5 ml-2 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </button>
+
+      <div id="error-message" class="text-red-500 text-sm text-center mt-2 min-h-4"></div>
+    </div>
+
+    <div class="text-center text-sm text-gray-500 mt-6">
+      Don't have an account? <a href="sign-up.html" class="text-gray-800 font-medium hover:text-emerald-600">Sign Up Now</a>
+    </div>
+  </div>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCvefmiD5UjOo7ZkoUKhwNd0XGrnK52quE",
+    authDomain: "synapse-social-sai.firebaseapp.com",
+    projectId: "synapse-social-sai",
+    storageBucket: "synapse-social-sai.appspot.com",
+    messagingSenderId: "269633434355",
+    appId: "1:269633434355:web:67b44261499ca8b0a3bd86"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  window.validateEmailInput = (input) => {
+    input.value = input.value.toLowerCase().replace(/[^a-z0-9@.]/g, '');
+  }
+
+  window.login = () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('error-message');
+    const btn = document.getElementById('login-btn');
+    const btnText = document.getElementById('btn-text');
+    const spinner = document.getElementById('spinner');
+
+    btn.disabled = true;
+    btnText.textContent = 'Signing in...';
+    spinner.classList.remove('hidden');
+    errorDiv.textContent = '';
+
+    signInWithEmailAndPassword(auth, email, password)
+      .then(userCredential => {
+        const user = userCredential.user;
+        window.location.href = "messages.html";
+      })
+      .catch(error => {
+        errorDiv.textContent = error.message;
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btnText.textContent = 'Sign In';
+        spinner.classList.add('hidden');
+      });
+  }
+
+  window.googleLogin = () => {
+    const btn = document.getElementById('google-btn');
+    const errorDiv = document.getElementById('error-message');
+
+    btn.disabled = true;
+    errorDiv.textContent = '';
+
+    signInWithPopup(auth, provider)
+      .then(result => {
+        const user = result.user;
+        window.location.href = "messages.html";
+      })
+      .catch(error => {
+        errorDiv.textContent = error.message;
+      })
+      .finally(() => {
+        btn.disabled = false;
+      });
+  }
+  </script>
+</body>
+</html>

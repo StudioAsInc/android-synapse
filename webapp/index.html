@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Splash screen | Synapse</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        .linear-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+        }
+
+        .center-crop-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://i.postimg.cc/rsGGxxxF/default-pattern.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .linear1, .middle-layout, .linear3 {
+            display: flex;
+            width: 100%;
+            background-color: transparent;
+        }
+
+        .linear1 {
+            padding: 1.5vw;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+        }
+
+        .middle-layout {
+            justify-content: center;
+            align-items: center;
+            flex: 3;
+            position: relative;
+        }
+
+        .app-logo {
+            width: 23vw;
+            height: 23vw;
+            max-width: 90px;
+            max-height: 90px;
+            object-fit: contain;
+        }
+
+        .linear3 {
+            justify-content: center;
+            align-items: flex-end;
+            flex: 1;
+            padding-bottom: 2vh;
+        }
+
+        .company-logo {
+            height: 18vw;
+            max-height: 70px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 5vw;
+        }
+
+        /* Loading Progress */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #ffffff;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="linear-layout">
+        <div class="center-crop-layout">
+            <div class="linear1" id="linear1">
+                <!-- Content for linear1 would go here -->
+            </div>
+            <div class="middle-layout" id="middleLayout">
+                <img src="https://i.postimg.cc/fL9fW6bd/appicon.png" class="app-logo" id="app_logo" alt="App Logo">
+            </div>
+            <div class="linear3" id="linear3">
+                <img src="https://i.postimg.cc/prMYmq96/bycompany-mtrl.png" class="company-logo" id="imageview4" alt="Company Logo">
+            </div>
+        </div>
+    </div>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script>
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCvefmiD5UjOo7ZkoUKhwNd0XGrnK52quE",
+        authDomain: "synapse-social-sai.firebaseapp.com",
+        projectId: "synapse-social-sai",
+        storageBucket: "synapse-social-sai.firebasestorage.app",
+        messagingSenderId: "269633434355",
+        appId: "1:269633434355:android:67b44261499ca8b0a3bd86",
+        databaseURL: "https://synapse-social-sai-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Simulate loading progress
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBar = document.getElementById('progressBar');
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 10;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                setTimeout(() => {
+                    progressBar.style.opacity = '0';
+                    setTimeout(() => {
+                        progressBar.parentElement.style.display = 'none';
+                    }, 300);
+                }, 500);
+            }
+            progressBar.style.width = progress + '%';
+        }, 100);
+
+        // Prevent zooming with pinch gesture
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // Check auth status after 3 seconds
+        setTimeout(function() {
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (user) {
+                    // User is signed in
+                    window.location.href = "messages.html";
+                } else {
+                    // No user is signed in
+                    window.location.href = "auth.html";
+                }
+            });
+        }, 1700);
+    });
+
+    // Additional zoom prevention
+    document.addEventListener('touchmove', function(event) {
+        if (event.scale !== 1) { event.preventDefault(); }
+    }, { passive: false });
+</script>
+</body>
+</html>

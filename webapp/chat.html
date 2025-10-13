@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM | Synapse</title>
+  <link rel="stylesheet" href="styles/chat.css" />
+  <style>
+    /* Add styles for the loading overlay */
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      flex-direction: column;
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      color: #4f46e5;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body style="background: url('https://i.postimg.cc/rsGGxxxF/default-pattern.png'); background-repeat: repeat;">
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <dotlottie-player
+      src="https://lottie.host/806ea075-1040-4a18-956c-8345ebab2a36/Y8CHL2ZU0T.lottie"
+      background="transparent"
+      speed="1"
+      style="width: 180px; height: 180px"
+      loop
+      autoplay>
+    </dotlottie-player>
+    <p class="loading-text">Loading conversations...</p>
+  </div>
+
+  <div class="app-container">
+    <!-- Fixed header at the top of the chat -->
+    <div class="chat-header">
+      <!-- Back button with base64 encoded arrow icon -->
+      <button class="back-button" id="back-button">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAV0lEQVR4nGNgGAWjYEiCUgYGhpu0NPw/FFMdlCEZTnULytEMB+FICrE/AwODJMjwBCyGU8OCSKgltLcAW/hTNYiwpSCapCIQKKG1BTCfXAOzRsEoGBkAAGUMOl9RiLQWAAAAAElFTkSuQmCC" alt="Back">
+      </button>
+
+      <!-- Container for user information (avatar, name, status) -->
+      <div class="user-info">
+        <div class="user-avatar" id="partner-avatar"></div>
+        <div>
+          <div class="user-name" id="partner-name">Loading...</div>
+          <div class="user-status" id="partner-status">Online</div>
+        </div>
+      </div>
+
+      <!-- Action buttons on the right side of header -->
+      <div style="display: flex; gap: 30px;">
+        <!-- Three buttons with icons from icons8.com -->
+        <button class="btn-clean" onclick="yourFunction()">
+          <img src="https://img.icons8.com/?size=100&id=7F5rHoJbVeWL&format=png&color=000000" alt="Icon" style="width:24px; height:24px;">
+        </button>
+        <button class="btn-clean" onclick="yourFunction()">
+          <img src="https://img.icons8.com/?size=100&id=86797&format=png&color=000000" alt="Icon" style="width:24px; height:24px;">
+        </button>
+        <button class="btn-clean" onclick="yourFunction()">
+          <img src="https://img.icons8.com/?size=100&id=88598&format=png&color=000000" alt="Icon" style="width:24px; height:24px;">
+        </button>
+      </div>
+    </div>
+
+    <!-- Message Area -->
+    <div class="content-wrapper">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Messages will be injected here -->
+      </div>
+    </div>
+
+    <!-- Fixed input area at the bottom of the screen -->
+    <div class="chat-input-area">
+      <!-- Text input for new messages -->
+      <textarea class="message-input" id="message-input" placeholder="Type a message..." autocomplete="off"></textarea>
+      <!-- Send button with image icon -->
+      <button class="send-button" id="send-button" style="background: transparent; border: none;">
+        <img src="https://i.postimg.cc/V5yk1NXC/send-button.png" alt="Send" style="width:24px; height:24px;">
+      </button>
+    </div>
+  </div>
+
+  <!-- Lottie Player Script -->
+  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+
+  <!-- JavaScript module for chat functionality -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      set,
+      onChildAdded,
+      query,
+      orderByChild,
+      serverTimestamp,
+      onValue,
+      update,
+      get
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJSkL4MsVRVwb9sWGvkFQHz-RaGUY-2xo", // Your Firebase project API key
+    databaseURL: "https://sai-synapse-default-rtdb.firebaseio.com", // URL of your Realtime Database
+    projectId: "sai-synapse",     // Your Firebase project ID
+    storageBucket: "synapse-social-sai.firebasestorage.app", // Your Firebase Storage bucket URL
+    appId: "1:308269400761:android:91c2e7415671cc49ed9168" // Your Firebase App ID (often for Android/iOS)
+};
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    const storage = getStorage(app);
+
+    // DOM elements
+    const backButton = document.getElementById('back-button');
+    const partnerAvatar = document.getElementById('partner-avatar');
+    const partnerName = document.getElementById('partner-name');
+    const partnerStatus = document.getElementById('partner-status');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    // Get URL parameters to identify the chat partner
+    const urlParams = new URLSearchParams(window.location.search);
+    const partnerUid = urlParams.get('uid');
+    const partnerNameFromUrl = urlParams.get('name');
+
+    // Variables to store user data
+    let currentUser = null;  // Will store the current user's UID
+    let partnerData = null;  // Will store the partner's data
+
+    // Initialize authentication state listener
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in
+        currentUser = user.uid;
+        await loadPartnerData();  // Load partner's information
+        loadMessages();         // Load chat messages
+        setupTypingIndicator(); // Set up typing indicator listener
+      } else {
+        // User is not signed in, redirect to login
+        window.location.href = 'authentication.html';
+      }
+    });
+
+    /**
+     * Loads partner data from Firebase
+     */
+    async function loadPartnerData() {
+      try {
+        // Set name from URL first (fallback to 'User')
+        partnerName.textContent = decodeURIComponent(partnerNameFromUrl) || 'User';
+
+        // Get partner details from database
+        const partnerRef = ref(database, `skyline/users/${partnerUid}`);
+        const snapshot = await get(partnerRef);
+        partnerData = snapshot.val();
+
+        // Update name if available in database
+        if (partnerData?.nickname || partnerData?.username) {
+          partnerName.textContent = partnerData.nickname || partnerData.username;
+        }
+
+        // Load profile picture
+        try {
+          if (partnerData?.avatar && partnerData.avatar !== "null") {
+            // Check if avatar is a URL or needs to be fetched from storage
+            if (partnerData.avatar.startsWith('http')) {
+              partnerAvatar.innerHTML = `<img src="${partnerData.avatar}" alt="${partnerName.textContent}" />`;
+            } else {
+              // Get from Firebase Storage
+              const profilePicRef = storageRef(storage, `profile_pictures/${partnerUid}`);
+              const profilePicUrl = await getDownloadURL(profilePicRef);
+              partnerAvatar.innerHTML = `<img src="${profilePicUrl}" alt="${partnerName.textContent}" />`;
+            }
+
+          } else {
+            // Fallback to showing initial if no avatar
+            partnerAvatar.textContent = partnerName.textContent.charAt(0).toUpperCase();
+          }
+        } catch (error) {
+          console.error("Error loading profile picture:", error);
+          partnerAvatar.textContent = partnerName.textContent.charAt(0).toUpperCase();
+        }
+
+      } catch (error) {
+        console.error("Error loading partner data:", error);
+      }
+    }
+
+    /**
+     * Loads messages for the current chat from Firebase
+     */
+    function loadMessages() {
+      if (!currentUser || !partnerUid) return;
+
+      // Clear existing messages
+      chatMessages.innerHTML = '';
+
+      // Reference to the messages in Firebase
+      const messagesRef = ref(database, `skyline/chats/${currentUser}/${partnerUid}`);
+      // Query to order messages by timestamp
+      const messagesQuery = query(messagesRef, orderByChild('push_date'));
+
+      // Listen for new messages being added
+      onChildAdded(messagesQuery, (snapshot) => {
+        const message = snapshot.val();
+        if (message.TYPE === "MESSAGE") {
+          displayMessage(message);
+          // Scroll to bottom when new message arrives
+          scrollToBottom();
+          // Hide loading overlay once messages start appearing
+          loadingOverlay.style.display = 'none';
+        }
+      });
+    }
+
+    /**
+     * Displays a message in the chat UI
+     * @param {Object} messageData - The message data to display
+     */
+    function displayMessage(messageData) {
+      if (!messageData || messageData.TYPE !== "MESSAGE") return;
+
+      // Create message element
+      const messageElement = document.createElement('div');
+      const isCurrentUser = messageData.uid === currentUser;
+      // Add appropriate class based on sender
+      messageElement.classList.add('message', isCurrentUser ? 'message-sent' : 'message-received');
+
+      // Format timestamp
+      const timestamp = parseInt(messageData.push_date);
+      const timeString = isNaN(timestamp) ? 'now' :
+        new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Show sender name only for received messages (for potential group chat support)
+      const showSender = !isCurrentUser;
+
+      // Create message HTML
+      messageElement.innerHTML = `
+        ${showSender ? `<div class="message-sender">${partnerName.textContent}</div>` : ''}
+        <div class="message-text">${messageData.message_text}</div>
+        <div class="message-time">${timeString}</div>
+      `;
+
+      // Add message to the chat
+      chatMessages.appendChild(messageElement);
+    }
+
+    /**
+     * Scrolls the chat to the bottom to show the most recent message
+     */
+    function scrollToBottom() {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 0);
+    }
+
+    // Initial scroll to bottom after messages load (with delay)
+    setTimeout(scrollToBottom, 500);
+
+    /**
+     * Sends a new message to the chat
+     */
+    async function sendMessage() {
+      const messageText = messageInput.value.trim();
+      if (!messageText || !currentUser || !partnerUid) return;
+
+      try {
+        const timestamp = Date.now().toString();
+        const messageId = push(ref(database)).key;
+
+        // Create message object
+        const message = {
+          TYPE: "MESSAGE",
+          key: messageId,
+          message_state: "sended",
+          message_text: messageText,
+          push_date: timestamp,
+          uid: currentUser
+        };
+
+        // Save message to both users' chat nodes (sender and receiver)
+        await set(ref(database, `skyline/chats/${currentUser}/${partnerUid}/${messageId}`), message);
+        await set(ref(database, `skyline/chats/${partnerUid}/${currentUser}/${messageId}`), message);
+
+        // Update inbox for both users with last message info
+        await updateInbox(currentUser, partnerUid, messageText, timestamp);
+        await updateInbox(partnerUid, currentUser, messageText, timestamp);
+
+        // Clear input and scroll to bottom
+        messageInput.value = '';
+        setTimeout(() => {
+          messageInput.focus();
+        }, 1); // ছোট delay দিলে flickering কমে যায়
+
+      } catch (error) {
+        console.error("Error sending message:", error);
+        alert("Failed to send message. Please try again.");
+      }
+    }
+
+    /**
+     * Updates the inbox with the last message info
+     * @param {string} userId - The user's ID
+     * @param {string} contactId - The contact's ID
+     * @param {string} lastMessage - The last message text
+     * @param {string} timestamp - The timestamp of the message
+     */
+    async function updateInbox(userId, contactId, lastMessage, timestamp) {
+      const inboxRef = ref(database, `skyline/inbox/${userId}/${contactId}`);
+      await set(inboxRef, {
+        TYPE: "MESSAGE",
+        last_message_state: "sended",
+        last_message_text: lastMessage,
+        last_message_uid: userId,
+        push_date: timestamp,
+        uid: contactId
+      });
+    }
+
+    /**
+     * Sets up listener for typing indicator from the partner
+     */
+    function setupTypingIndicator() {
+      const typingRef = ref(database, `skyline/chats/${partnerUid}/${currentUser}/typing-message`);
+      onValue(typingRef, (snapshot) => {
+        const typingData = snapshot.val();
+        if (typingData && typingData.typingMessageStatus === "true") {
+          // Show typing indicator
+          typingIndicator.textContent = `${partnerName.textContent} is typing...`;
+          typingIndicator.style.display = 'block';
+        } else {
+          // Hide typing indicator
+          typingIndicator.style.display = 'none';
+        }
+      });
+    }
+
+    // Handle typing indicator with timeout
+    let typingTimeout;
+    messageInput.addEventListener('input', () => {
+      // Set typing status to true when user is typing
+      update(ref(database, `skyline/chats/${currentUser}/${partnerUid}/typing-message`), {
+        typingMessageStatus: "true",
+        uid: currentUser
+      });
+
+      // Clear previous timeout
+      if (typingTimeout) clearTimeout(typingTimeout);
+
+      // Set timeout to clear typing status after 2 seconds of inactivity
+      typingTimeout = setTimeout(() => {
+        update(ref(database, `skyline/chats/${currentUser}/${partnerUid}/typing-message`), {
+          typingMessageStatus: "false",
+          uid: currentUser
+        });
+      }, 2000);
+    });
+
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+
+    backButton.addEventListener('click', () => {
+      window.history.back();
+    });
+
+    // Hide loading overlay after 5 seconds max (fallback in case messages don't load)
+    setTimeout(() => {
+      loadingOverlay.style.display = 'none';
+    }, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+/* ============================================= */
+/*               CSS Variables                   */
+/* ============================================= */
+:root {
+  /* Color Palette */
+  --primary-color: #007bff;       /* Primary brand color */
+  --primary-hover: #0069d9;       /* Primary hover state */
+  --secondary-color: #6c757d;     /* Secondary color */
+  --light-color: #f8f9fa;         /* Light background */
+  --dark-color: #343a40;          /* Dark text color */
+  --success-color: #28a745;       /* Success state color */
+  --white: #ffffff;               /* Pure white */
+  --gray-light: #e9ecef;          /* Light gray */
+  --chat-bg: #eeeeee;             /* Chat background */
+  --message-sent-bg: var(--primary-color); /* Sent message background */
+  --message-received-bg: var(--white);     /* Received message background */
+  --anti-flash-white: #F2F2F2;
+  --message-received-border: var(--anti-flash-white); /* Border color */
+
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-circle: 50%;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+
+  /* Transitions */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.3s;
+  --transition-slow: 0.5s;
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] {
+  --primary-color: #6B4CFF;
+  --primary-hover: #5a3fe6;
+  --light-color: #343a40;
+  --dark-color: #f8f9fa;
+  --white: #212529;
+  --gray-light: #495057;
+  --chat-bg: #121212;
+  --message-received-bg: #2d2d2d;
+  --message-received-border: #3d3d3d;
+}
+
+
+[data-theme="dark"] {
+    --primary-color: #6B4CFF;
+    --secondary-color: #6c757d;
+    --light-color: #343a40;
+    --dark-color: #f8f9fa;
+    --white: #212529;
+    --gray-light: #495057;
+    --chat-bg: #121212;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--chat-bg);
+}
+
+.chat-header {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--dark-color);
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    height: 65px;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .chat-header {
+    background: rgba(33, 37, 41, 0.7);
+    color: var(--dark-color);
+}
+
+.back-button {
+    color: var(--dark-color);
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    margin-right: 15px;
+    cursor: pointer;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 10;
+}
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 100%;
+    background-color: var(--white);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+    overflow: hidden;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.user-status {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 70px 8px 0 0;
+/* top right bottom left */
+    overflow-y: auto;
+    gap: 3px;
+    display: flex;
+    flex-direction: column;
+}
+
+.message {
+    max-width: 70%;
+    margin: 0px 0;
+    padding: 8px 12px;
+   border-radius: 7.5px;
+    position: relative;
+    display: inline-block;
+    word-wrap: break-word;
+}
+
+/* Sent Message */
+.message-sent {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #8A2BE2 0%, #6A5ACD 100%); /* Purple gradient */
+  color: white;
+  border-radius: 18px 4px 18px 18px; /* Modern asymmetric shape */
+  padding: 12px 16px;
+  margin: 3px 0;
+  max-width: 78%;
+
+  /* Text styling */
+  font-size: 0.95rem;
+  line-height: 1.4;
+  font-weight: 500;
+  word-break: break-word;
+
+  /* Visual effects */
+  box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+
+  /* Smooth transition */
+  transition: all 0.2s ease;
+}
+
+
+
+/* Received Message */
+.message-received {
+    align-self: flex-start;
+    background-color: var(--message-received-bg);
+    color: var(--dark-color);
+    border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+    margin-right: 20%;
+    border: 2px solid var(--message-received-border);
+    position: relative; /* Required for the pseudo-element positioning */
+    margin-left: 6px; /* Make space for the tail */
+}
+
+
+/* Speech bubble tail/pointer */
+.message-received::after {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    background: var(--message-received-bg);
+    border-left: 1px solid var(--message-received-border);
+    border-bottom: 1px solid var(--message-received-border);
+    transform: rotate(45deg);
+    clip-path: polygon(0% 0%, 100% 100%, 0% 100%);
+    z-index: -1; /* Ensures the tail appears behind adjacent messages */
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .message-received::after {
+    border-left-color: var(--message-received-border);
+    border-bottom-color: var(--message-received-border);
+}
+
+[data-theme="dark"] .message-received {
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow:
+        inset 0 0 0.5px 1px rgba(255, 255, 255, 0.05),
+        0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+.message-time {
+    font-size: 0rem;
+    color: var(--secondary-color);
+    text-align: right;
+    margin-top: 3px;
+}
+
+.message-sender {
+    font-weight: bold;
+    font-size: 0rem;
+    margin-bottom: 3px;
+    color: var(--dark-color);
+}
+
+.chat-input-area {
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    position: sticky;
+    bottom: 0;
+    height: 90px;
+    border-top: 0px solid var(--gray-light);
+    z-index: 10;
+}
+
+[data-theme="dark"] .chat-input-area {
+    background-color: rgba(33, 37, 41, 0.7);
+}
+
+.message-input {
+    flex: 1;
+    padding: 15px 15px;
+    border: 2px solid var(--gray-light);
+    border-radius: 40px;
+    outline: none;
+    font-size: 1.0rem;
+    background-color: var(--white);
+    color: var(--dark-color);
+}
+
+.send-button {
+    margin-left: 10px;
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+.send-button:hover {
+    background-color: #0069d9;
+}
+
+.send-button:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+}
+
+.typing-indicator {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    padding: 5px 15px;
+    font-style: italic;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 2px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+}
+
+.btn-clean {
+    border: none;
+    background: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+body {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.chat-input-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-top: 1px solid var(--gray-light);
+}
+
+.message-input {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid var(--gray-light);
+    border-radius: 20px;
+    outline: none;
+    font-size: 1rem;
+    resize: none;
+    min-height: 40px;
+    max-height: 100px;
+    overflow-y: auto;
+    line-height: 1.3;
+}
+
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+      .content-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 0 0 0;
+/* top right bottom left */
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+
+
+
+    //header
+.chat-header {
+  position: relative;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.chat-header::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('https://www.transparenttextures.com/patterns/noise-lines.png');
+  background-repeat: repeat;
+  opacity: 0.5; /* এখানে opacity adjust কর */
+  pointer-events: none;
+  z-index: 0;
+}
+
+.chat-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hover effect */
+.message-sent:hover {
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .message-sent {
+  background: linear-gradient(135deg, #7B1FA2 0%, #4527A0
+

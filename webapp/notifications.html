@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications | Synapse</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3a86ff;
+            --primary-light: #e6f0ff;
+            --text-color: #2d3748;
+            --secondary-text: #718096;
+            --border-color: #e2e8f0;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --unread-dot: #ff5a5f;
+            --hover-background: #f1f5f9;
+            --like-color: #ff5a5f;
+            --comment-color: #3a86ff;
+            --follow-color: #4cc9f0;
+            --mention-color: #8338ec;
+            --photo-color: #06d6a0;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --card-hover-shadow: rgba(0, 0, 0, 0.08);
+            --snackbar-bg: #333;
+            --snackbar-text: #fff;
+        }
+
+        [data-theme='dark'] {
+            --primary-color: #5b9bff;
+            --primary-light: #2a3a5f;
+            --text-color: #e2e8f0;
+            --secondary-text: #a0aec0;
+            --border-color: #4a5568;
+            --background-color: #1a202c;
+            --card-background: #2d3748;
+            --unread-dot: #ff5a5f;
+            --hover-background: #4a5568;
+            --like-color: #ff7b81;
+            --comment-color: #5b9bff;
+            --follow-color: #6ed3ff;
+            --mention-color: #9f6ee6;
+            --photo-color: #26e6b3;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --card-hover-shadow: rgba(0, 0, 0, 0.3);
+            --snackbar-bg: #4a5568;
+            --snackbar-text: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Header Styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: var(--card-background);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px var(--shadow-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-button {
+            background: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: var(--secondary-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .icon-button:hover {
+            background-color: var(--hover-background);
+            color: var(--primary-color);
+        }
+
+        /* Tab Styles */
+        .tabs-container {
+            position: sticky;
+            top: 68px;
+            background-color: var(--card-background);
+            z-index: 90;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tabs {
+            display: flex;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 16px;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-button {
+            padding: 14px 16px;
+            border: none;
+            background: none;
+            color: var(--secondary-text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .tab-button:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 16px;
+            right: 16px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 3px 3px 0 0;
+            animation: tabUnderline 0.3s forwards;
+        }
+
+        @keyframes tabUnderline {
+            from { transform: scaleX(0.8); opacity: 0; }
+            to { transform: scaleX(1); opacity: 1; }
+        }
+
+        .tab-icon {
+            margin-right: 6px;
+            font-size: 1.1rem;
+            vertical-align: middle;
+        }
+
+        /* Main Content */
+        .main-container {
+            display: flex;
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .notification-feed {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        /* Desktop Sidebar */
+        .sidebar {
+            width: 300px;
+            padding: 24px 16px;
+            border-right: 1px solid var(--border-color);
+            display: none;
+        }
+
+        @media (min-width: 992px) {
+            .sidebar {
+                display: block;
+            }
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--secondary-text);
+            margin-bottom: 12px;
+            padding-left: 8px;
+        }
+
+        .sidebar-filter {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-filter:hover {
+            background-color: var(--hover-background);
+        }
+
+        .sidebar-filter.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .sidebar-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        /* Notification Cards */
+        .notification-card {
+            display: flex;
+            align-items: flex-start;
+            background-color: var(--card-background);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 2px var(--shadow-color);
+            transition: all 0.2s ease;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .notification-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--card-hover-shadow);
+        }
+
+        .notification-card.unread {
+            background-color: var(--primary-light); /* Softer highlight for unread */
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .notification-card.like {
+            border-left-color: var(--like-color);
+        }
+
+        .notification-card.comment {
+            border-left-color: var(--comment-color);
+        }
+
+        .notification-card.follow {
+            border-left-color: var(--follow-color);
+        }
+
+        .notification-card.mention {
+            border-left-color: var(--mention-color);
+        }
+
+        .notification-card.photo {
+            border-left-color: var(--photo-color);
+        }
+
+        .notification-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 16px;
+            flex-shrink: 0;
+            border: 2px solid var(--border-color);
+            transition: border-color 0.2s ease;
+        }
+
+        .notification-card:hover .notification-avatar {
+            border-color: var(--primary-color);
+        }
+
+        .notification-content {
+            flex: 1;
+            min-width: 0; /* Prevent flex overflow */
+        }
+
+        .notification-text {
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+
+        .notification-text strong {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+            display: flex;
+            align-items: center;
+        }
+
+        .notification-time .material-icons {
+            font-size: 1rem;
+            margin-right: 4px;
+        }
+
+        .notification-thumbnail {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-left: 12px;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .action-button {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .action-button .material-icons {
+            font-size: 1rem;
+            margin-right: 4px;
+        }
+
+        .action-button.primary {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .action-button.primary:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .action-button.secondary {
+            background-color: var(--hover-background);
+            color: var(--secondary-text);
+        }
+
+        .action-button.secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .unread-dot {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 10px;
+            height: 10px;
+            background-color: var(--unread-dot);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .notification-card.unread .unread-dot {
+            display: block;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--secondary-text);
+        }
+
+        .empty-state .material-icons {
+            font-size: 64px;
+            margin-bottom: 16px;
+            color: var(--border-color); /* Lighter icon for empty state */
+        }
+
+        .empty-state h3 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            max-width: 300px;
+            margin-bottom: 20px;
+        }
+
+        .empty-button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .empty-button:hover {
+            background-color: #2b6cb0;
+            transform: translateY(-1px);
+        }
+
+        /* Mark All Read Button (Header) */
+        .mark-all-read {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0 16px 8px;
+        }
+
+        .mark-all-read-button {
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .mark-all-read-button:hover {
+            background-color: #2b6cb0;
+            transform: translateY(-1px);
+        }
+
+        .mark-all-read-button .material-icons {
+            font-size: 1.1rem;
+            margin-right: 4px;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 50;
+        }
+
+        .fab:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 16px var(--card-hover-shadow);
+        }
+
+        /* Bottom Navigation (Mobile) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-background);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            color: var(--secondary-text);
+            text-decoration: none;
+            font-size: 0.7rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: var(--primary-color);
+        }
+
+        .nav-item .material-icons {
+            font-size: 1.5rem;
+            margin-bottom: 2px;
+        }
+
+        @media (min-width: 992px) {
+            .bottom-nav {
+                display: none;
+            }
+            .fab {
+                bottom: 30px;
+                right: 30px;
+            }
+        }
+
+        /* Snackbar for new notifications */
+        .snackbar {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: var(--snackbar-bg);
+            color: var(--snackbar-text);
+            text-align: center;
+            border-radius: 8px;
+            padding: 14px 20px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 12px var(--shadow-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .snackbar.show {
+            visibility: visible;
+            animation: fadeIn 0.3s, fadeOut 0.3s 2.7s forwards;
+        }
+
+        .snackbar-close {
+            background: none;
+            border: none;
+            color: var(--snackbar-text);
+            cursor: pointer;
+            margin-left: 12px;
+        }
+
+        @keyframes fadeIn {
+            from { bottom: 0; opacity: 0; }
+            to { bottom: 30px; opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { bottom: 30px; opacity: 1; }
+            to { bottom: 0; opacity: 0; }
+        }
+
+        /* Responsive Adjustments */
+        @media (min-width: 768px) {
+            .notification-feed {
+                padding: 24px;
+            }
+            .notification-card {
+                padding: 20px;
+            }
+            .header {
+                padding: 16px 24px;
+            }
+        }
+
+        /* Animation for new notifications */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        .new-notification {
+            animation: pulse 0.6s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="icon-button" onclick="window.history.back()">
+            <span class="material-icons">arrow_back</span>
+        </button>
+        <h1>Notifications</h1>
+        <div class="header-actions">
+            <button class="icon-button" id="themeToggle">
+                <span class="material-icons">light_mode</span>
+            </button>
+            <button class="icon-button" onclick="markAllAsRead()">
+                <span class="material-icons">done_all</span>
+            </button>
+            <button class="icon-button" onclick="location.href='settings.html'">
+                <span class="material-icons">settings</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab-button active" data-filter="all">
+                <span class="material-icons tab-icon">notifications</span>
+                All
+            </button>
+            <button class="tab-button" data-filter="photo">
+                <span class="material-icons tab-icon">photo_camera</span>
+                Photos
+            </button>
+            <button class="tab-button" data-filter="like">
+                <span class="material-icons tab-icon">favorite</span>
+                Likes
+            </button>
+            <button class="tab-button" data-filter="comment">
+                <span class="material-icons tab-icon">comment</span>
+                Comments
+            </button>
+            <button class="tab-button" data-filter="mention">
+                <span class="material-icons tab-icon">alternate_email</span>
+                Mentions
+            </button>
+            <button class="tab-button" data-filter="follow">
+                <span class="material-icons tab-icon">person_add</span>
+                Follows
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Filters</div>
+                <div class="sidebar-filter active" data-filter="all">
+                    <span class="material-icons sidebar-icon">notifications</span>
+                    All Notifications
+                </div>
+                <div class="sidebar-filter" data-filter="unread">
+                    <span class="material-icons sidebar-icon">mark_email_unread</span>
+                    Unread Only
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Notification Types</div>
+                <div class="sidebar-filter" data-filter="photo">
+                    <span class="material-icons sidebar-icon">photo_camera</span>
+                    Photos
+                </div>
+                <div class="sidebar-filter" data-filter="like">
+                    <span class="material-icons sidebar-icon">favorite</span>
+                    Likes
+                </div>
+                <div class="sidebar-filter" data-filter="comment">
+                    <span class="material-icons sidebar-icon">comment</span>
+                    Comments
+                </div>
+                <div class="sidebar-filter" data-filter="mention">
+                    <span class="material-icons sidebar-icon">alternate_email</span>
+                    Mentions
+                </div>
+                <div class="sidebar-filter" data-filter="follow">
+                    <span class="material-icons sidebar-icon">person_add</span>
+                    Follows
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Settings</div>
+                <div class="sidebar-filter" onclick="location.href='notification-settings.html'">
+                    <span class="material-icons sidebar-icon">settings</span>
+                    Notification Settings
+                </div>
+            </div>
+        </div>
+
+        <div class="notification-feed" id="notificationFeed">
+            </div>
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+        <span class="material-icons">notifications_off</span>
+        <h3>No notifications yet</h3>
+        <p>When you get notifications, they'll show up here</p>
+        <button class="empty-button" onclick="refreshNotifications()">
+            <span class="material-icons">refresh</span>
+            Refresh
+        </button>
+    </div>
+
+    <button class="fab" onclick="location.href='new-post.html'">
+        <span class="material-icons">add</span>
+    </button>
+
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item">
+            <span class="material-icons">home</span>
+            Home
+        </a>
+
+        <a href="messages.html" class="nav-item">
+            <span class="material-icons">chat</span>
+            Chat
+        </a>
+        <a href="notifications.html" class="nav-item active">
+            <span class="material-icons">notifications</span>
+            Notifications
+        </a>
+        <a href="settings.html" class="nav-item">
+            <span class="material-icons">settings</span>
+            Settings
+        </a>
+    </nav>
+
+    <div id="snackbar" class="snackbar">
+        <span id="snackbar-message">New notifications available</span>
+        <button class="snackbar-close" onclick="hideSnackbar()">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+
+    <script>
+        // Notification Data
+        let notifications = [
+            {
+                id: '1',
+                type: 'like',
+                user: {
+                    name: 'Alex Johnson',
+                    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+                    username: '@alexj'
+                },
+                action: 'liked your photo',
+                time: '5 min ago',
+                thumbnail: '', // Will be generated dynamically
+                link: '#',
+                read: false,
+                postId: 'p123'
+            },
+            {
+                id: '2',
+                type: 'comment',
+                user: {
+                    name: 'Maria Garcia',
+                    avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+                    username: '@mariag'
+                },
+                action: 'commented: "This is amazing! 😍"',
+                time: '1 hour ago',
+                thumbnail: '', // Will be generated dynamically
+                link: '#',
+                read: true,
+                postId: 'p456'
+            },
+            {
+                id: '3',
+                type: 'photo',
+                user: {
+                    name: 'Sam Wilson',
+                    avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
+                    username: '@samw'
+                },
+                action: 'tagged you in a photo',
+                time: '2 hours ago',
+                thumbnail: '', // Will be generated dynamically
+                link: '#',
+                read: false,
+                postId: 'p789'
+            },
+            {
+                id: '4',
+                type: 'follow',
+                user: {
+                    name: 'Taylor Smith',
+                    avatar: 'https://randomuser.me/api/portraits/women/33.jpg',
+                    username: '@taylors'
+                },
+                action: 'started following you',
+                time: '1 day ago',
+                thumbnail: '',
+                link: '#',
+                read: true,
+                postId: null
+            },
+            {
+                id: '5',
+                type: 'mention',
+                user: {
+                    name: 'Jordan Lee',
+                    avatar: 'https://randomuser.me/api/portraits/men/55.jpg',
+                    username: '@jordanl'
+                },
+                action: 'mentioned you in a comment: "Hey @you check this out!"',
+                time: '3 days ago',
+                thumbnail: '',
+                link: '#',
+                read: false,
+                postId: 'p101'
+            },
+            {
+                id: '6',
+                type: 'like',
+                user: {
+                    name: 'Casey Kim',
+                    avatar: 'https://randomuser.me/api/portraits/women/66.jpg',
+                    username: '@caseyk'
+                },
+                action: 'liked your post',
+                time: '1 week ago',
+                thumbnail: '', // Will be generated dynamically
+                link: '#',
+                read: true,
+                postId: 'p112'
+            },
+            {
+                id: '7',
+                type: 'photo',
+                user: {
+                    name: 'Riley Chen',
+                    avatar: 'https://randomuser.me/api/portraits/men/77.jpg',
+                    username: '@rileyc'
+                },
+                action: 'added a new photo you might like',
+                time: '2 weeks ago',
+                thumbnail: '', // Will be generated dynamically
+                link: '#',
+                read: true,
+                postId: 'p131'
+            }
+        ];
+
+        // DOM Elements
+        const notificationFeed = document.getElementById('notificationFeed');
+        const emptyState = document.getElementById('emptyState');
+        const snackbar = document.getElementById('snackbar');
+        const snackbarMessage = document.getElementById('snackbar-message');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const sidebarFilters = document.querySelectorAll('.sidebar-filter');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Current filter state
+        let currentFilter = 'all';
+        let currentView = 'all'; // 'all' or 'unread'
+
+        // Theme management
+        const themes = ['light', 'dark', 'auto'];
+        let currentThemeIndex = 0;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTheme();
+            renderNotifications();
+            setupEventListeners();
+
+            // Simulate a new notification after 3 seconds
+            setTimeout(() => {
+                simulateNewNotification();
+            }, 3000);
+        });
+
+        // --- Theme Functions ---
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                applyTheme(savedTheme);
+                currentThemeIndex = themes.indexOf(savedTheme);
+            } else {
+                // Default to 'auto' if no theme saved
+                applyTheme('auto');
+                currentThemeIndex = themes.indexOf('auto');
+            }
+            updateThemeToggleButton();
+        }
+
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'dark') {
+                html.dataset.theme = 'dark';
+            } else if (theme === 'light') {
+                html.dataset.theme = 'light';
+            } else { // 'auto'
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    html.dataset.theme = 'dark';
+                } else {
+                    html.dataset.theme = 'light';
+                }
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            const newTheme = themes[currentThemeIndex];
+            applyTheme(newTheme);
+            updateThemeToggleButton();
+        }
+
+        function updateThemeToggleButton() {
+            const icon = themeToggle.querySelector('.material-icons');
+            const currentTheme = localStorage.getItem('theme') || 'auto'; // Read from localStorage
+
+            switch (currentTheme) {
+                case 'light':
+                    icon.textContent = 'light_mode';
+                    icon.title = 'Switch to Dark Mode';
+                    break;
+                case 'dark':
+                    icon.textContent = 'dark_mode';
+                    icon.title = 'Switch to Auto Mode';
+                    break;
+                case 'auto':
+                    icon.textContent = 'brightness_auto';
+                    icon.title = 'Switch to Light Mode';
+                    break;
+            }
+        }
+
+        // Listen for system theme changes if 'auto' is selected
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (localStorage.getItem('theme') === 'auto') {
+                applyTheme('auto');
+            }
+        });
+
+
+        // --- Notification Functions ---
+
+        // Render notifications based on current filter
+        function renderNotifications() {
+            notificationFeed.innerHTML = '';
+
+            // Filter notifications
+            let filteredNotifications = notifications;
+
+            if (currentFilter !== 'all') {
+                filteredNotifications = filteredNotifications.filter(notif => notif.type === currentFilter);
+            }
+
+            if (currentView === 'unread') {
+                filteredNotifications = filteredNotifications.filter(notif => !notif.read);
+            }
+
+            // Show empty state if no notifications
+            if (filteredNotifications.length === 0) {
+                emptyState.style.display = 'flex';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            // Create notification cards
+            filteredNotifications.forEach(notification => {
+                const card = createNotificationCard(notification);
+                notificationFeed.appendChild(card);
+            });
+        }
+
+        // Generate a random image URL
+        function getRandomImageUrl(category = 'abstract') {
+            const width = 200;
+            const height = 200;
+            const seed = Math.floor(Math.random() * 1000000); // Random seed for unique images
+            return `https://picsum.photos/seed/${seed}/${width}/${height}?grayscale&blur=1`;
+        }
+
+        // Create a notification card element
+        function createNotificationCard(notification) {
+            const card = document.createElement('div');
+            card.className = `notification-card ${notification.type} ${notification.read ? '' : 'unread'}`;
+            card.dataset.id = notification.id;
+
+            // Determine icon based on notification type
+            let icon = '';
+            let iconColor = '';
+            switch(notification.type) {
+                case 'like':
+                    icon = 'favorite';
+                    iconColor = 'style="color: var(--like-color)"';
+                    break;
+                case 'comment':
+                    icon = 'comment';
+                    iconColor = 'style="color: var(--comment-color)"';
+                    break;
+                case 'follow':
+                    icon = 'person_add';
+                    iconColor = 'style="color: var(--follow-color)"';
+                    break;
+                case 'mention':
+                    icon = 'alternate_email';
+                    iconColor = 'style="color: var(--mention-color)"';
+                    break;
+                case 'photo':
+                    icon = 'photo_camera';
+                    iconColor = 'style="color: var(--photo-color)"';
+                    break;
+                default:
+                    icon = 'notifications';
+            }
+
+            // Use random image for thumbnail if not a follow notification
+            const thumbnailUrl = notification.type !== 'follow' ? getRandomImageUrl() : '';
+            const thumbnail = thumbnailUrl
+                ? `<img src="${thumbnailUrl}" alt="Post thumbnail" class="notification-thumbnail">`
+                : '';
+
+            card.innerHTML = `
+                <img src="${notification.user.avatar}" alt="${notification.user.name}" class="notification-avatar">
+                <div class="notification-content">
+                    <p class="notification-text">
+                        <strong>${notification.user.name}</strong> ${notification.action}
+                    </p>
+                    <div class="notification-time">
+                        <span class="material-icons" ${iconColor}>${icon}</span>
+                        ${notification.time}
+                    </div>
+                    ${notification.type !== 'follow' ? `
+                    <div class="notification-actions">
+                        <button class="action-button primary" data-action="view" data-post="${notification.postId}">
+                            <span class="material-icons">visibility</span>
+                            View
+                        </button>
+                        <button class="action-button secondary" data-action="reply">
+                            <span class="material-icons">reply</span>
+                            Reply
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+                ${thumbnail}
+                <span class="unread-dot"></span>
+            `;
+
+            // Add click handler for the whole card
+            card.addEventListener('click', (e) => {
+                // Don't navigate if clicking a button inside the card
+                if (!e.target.closest('.action-button')) {
+                    markAsRead(notification.id);
+                    // In a real app, navigate to the notification link
+                    console.log(`Navigating to: ${notification.link}`);
+                }
+            });
+
+            // Add handlers for action buttons
+            const viewButtons = card.querySelectorAll('[data-action="view"]');
+            viewButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const postId = button.dataset.post;
+                    console.log(`Viewing post: ${postId}`);
+                    markAsRead(notification.id);
+                });
+            });
+
+            const replyButtons = card.querySelectorAll('[data-action="reply"]');
+            replyButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    console.log(`Replying to ${notification.user.name}`);
+                    markAsRead(notification.id);
+                });
+            });
+
+            return card;
+        }
+
+        // Mark notification as read
+        function markAsRead(id) {
+            const notification = notifications.find(n => n.id === id);
+            if (notification && !notification.read) {
+                notification.read = true;
+
+                // Update the card in the DOM
+                const card = notificationFeed.querySelector(`.notification-card[data-id="${id}"]`);
+                if (card) {
+                    card.classList.remove('unread');
+                }
+
+                // In a real app, you would update the server here
+                console.log(`Marked notification ${id} as read`);
+            }
+        }
+
+        // Mark all notifications as read
+        function markAllAsRead() {
+            notifications.forEach(notification => {
+                notification.read = true;
+            });
+
+            // Update all cards in the DOM
+            const cards = notificationFeed.querySelectorAll('.notification-card.unread');
+            cards.forEach(card => {
+                card.classList.remove('unread');
+            });
+
+            showSnackbar('All notifications marked as read');
+
+            // In a real app, you would update the server here
+            console.log('Marked all notifications as read');
+            renderNotifications(); // Re-render to update unread count if applicable
+        }
+
+        // Filter notifications by type
+        function filterNotifications(filter) {
+            currentFilter = filter;
+
+            // Update active tab
+            tabButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.filter === filter);
+            });
+
+            // Update active sidebar filter
+            sidebarFilters.forEach(sidebarFilter => {
+                const sidebarFilterType = sidebarFilter.dataset.filter;
+                if (['all', 'unread'].includes(sidebarFilterType)) {
+                    // Handle 'all' and 'unread' filters separately
+                    if (sidebarFilterType === filter) {
+                        currentView = 'all'; // If clicking 'all' or 'unread', reset the view
+                        sidebarFilter.classList.add('active');
+                    } else if (sidebarFilterType === 'unread' && filter === 'unread') {
+                        currentView = 'unread';
+                        sidebarFilter.classList.add('active');
+                    } else {
+                        sidebarFilter.classList.remove('active');
+                    }
+                } else {
+                    // For type filters (photo, like, etc.)
+                    sidebarFilter.classList.toggle('active', sidebarFilter.dataset.filter === filter);
+                }
+            });
+
+            renderNotifications();
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    filterNotifications(button.dataset.filter);
+                    // Deactivate 'unread' sidebar filter if a specific type tab is clicked
+                    sidebarFilters.forEach(sf => {
+                        if (sf.dataset.filter === 'unread') {
+                            sf.classList.remove('active');
+                            currentView = 'all';
+                        }
+                    });
+                });
+            });
+
+            // Sidebar filters
+            sidebarFilters.forEach(filter => {
+                filter.addEventListener('click', () => {
+                    const filterType = filter.dataset.filter;
+                    if (filterType === 'unread') {
+                        currentView = 'unread';
+                        currentFilter = 'all'; // Unread filter works on all types
+                        tabButtons.forEach(tb => tb.classList.remove('active'));
+                        document.querySelector('.tab-button[data-filter="all"]').classList.add('active');
+                    } else {
+                        currentView = 'all'; // Reset view to all if type filter is clicked
+                        filterNotifications(filterType);
+                    }
+                    // Manage active state for sidebar filters (ensure only one 'view' filter is active)
+                    sidebarFilters.forEach(sf => sf.classList.remove('active'));
+                    filter.classList.add('active');
+                    renderNotifications();
+                });
+            });
+
+            // Theme Toggle
+            themeToggle.addEventListener('click', toggleTheme);
+        }
+
+        // Show snackbar message
+        function showSnackbar(message) {
+            snackbarMessage.textContent = message;
+            snackbar.classList.add('show');
+
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                snackbar.classList.remove('show');
+            }, 3000);
+        }
+
+        // Hide snackbar
+        function hideSnackbar() {
+            snackbar.classList.remove('show');
+        }
+
+        // Refresh notifications
+        function refreshNotifications() {
+            // In a real app, this would fetch new notifications from the server
+            console.log('Refreshing notifications...');
+
+            // Simulate a short delay
+            setTimeout(() => {
+                renderNotifications();
+                showSnackbar('Notifications refreshed');
+            }, 800);
+        }
+
+        // Simulate a new notification arriving
+        function simulateNewNotification() {
+            const notificationTypes = ['like', 'comment', 'follow', 'mention', 'photo'];
+            const randomType = notificationTypes[Math.floor(Math.random() * notificationTypes.length)];
+
+            const newNotification = {
+                id: `new-${Date.now()}`,
+                type: randomType,
+                user: {
+                    name: ['Jamie', 'Morgan', 'Casey', 'Riley', 'Taylor'][Math.floor(Math.random() * 5)],
+                    avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`,
+                    username: `@${Math.random().toString(36).substring(2, 8)}`
+                },
+                action: {
+                    'like': 'liked your post',
+                    'comment': 'commented: "This is great!"',
+                    'follow': 'started following you',
+                    'mention': 'mentioned you in a post',
+                    'photo': 'tagged you in a photo'
+                }[randomType],
+                time: 'just now',
+                thumbnail: '', // Thumbnail will be generated in createNotificationCard
+                link: '#',
+                read: false,
+                postId: `p${Math.floor(Math.random() * 1000)}`
+            };
+
+            // Add to beginning of array
+            notifications.unshift(newNotification);
+
+            // Re-render if we're showing all or this type, AND not in unread-only view for a specific type
+            const shouldRender = (currentFilter === 'all' || currentFilter === newNotification.type) && (currentView !== 'unread' || !newNotification.read);
+
+            if (shouldRender) {
+                renderNotifications();
+
+                // Highlight the new notification
+                const newCard = notificationFeed.querySelector(`.notification-card[data-id="${newNotification.id}"]`);
+                if (newCard) {
+                    newCard.classList.add('new-notification');
+                }
+            }
+
+            // Show snackbar
+            let message = '';
+            switch(newNotification.type) {
+                case 'like':
+                    message = `${newNotification.user.name} liked your post`;
+                    break;
+                case 'comment':
+                    message = `${newNotification.user.name} commented on your post`;
+                    break;
+                case 'follow':
+                    message = `${newNotification.user.name} started following you`;
+                    break;
+                case 'mention':
+                    message = `${newNotification.user.name} mentioned you`;
+                    break;
+                case 'photo':
+                    message = `${newNotification.user.name} tagged you in a photo`;
+                    break;
+            }
+
+            showSnackbar(message);
+
+            // Schedule next notification (for demo purposes)
+            setTimeout(simulateNewNotification, 10000 + Math.random() * 20000);
+        }
+
+        /* // In a real app, you would use Firebase like this:
+        function setupFirebase() {
+            const firebaseConfig = {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_AUTH_DOMAIN",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_SENDER_ID",
+                appId: "YOUR_APP_ID"
+            };
+
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const auth = firebase.auth();
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // User is signed in, listen for notifications
+                    const notificationsRef = db.collection('notifications')
+                        .where('userId', '==', user.uid)
+                        .orderBy('timestamp', 'desc');
+
+                    notificationsRef.onSnapshot(snapshot => {
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added') {
+                                // Add new notification
+                                const data = change.doc.data();
+                                notifications.unshift({
+                                    id: change.doc.id,
+                                    ...data
+                                });
+
+                                // Show snackbar if not initial load
+                                if (!change.doc.metadata.hasPendingWrites) {
+                                    showSnackbarForNotification(data);
+                                }
+                            }
+
+                            if (change.type === 'modified') {
+                                // Update existing notification
+                                const index = notifications.findIndex(n => n.id === change.doc.id);
+                                if (index !== -1) {
+                                    notifications[index] = {
+                                        id: change.doc.id,
+                                        ...change.doc.data()
+                                    };
+                                }
+                            }
+
+                            if (change.type === 'removed') {
+                                // Remove notification
+                                notifications = notifications.filter(n => n.id !== change.doc.id);
+                            }
+                        });
+
+                        renderNotifications();
+                    });
+                }
+            });
+        }
+        */
+    </script>
+</body>
+</html>

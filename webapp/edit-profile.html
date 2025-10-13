@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edit Profile - Synapse Social</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <style>
+    * {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .avatar-preview:hover {
+            transform: scale(1.05);
+        }
+        #avatarUpload {
+            display: none;
+        }
+        .cover-preview {
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .cover-preview:hover {
+            opacity: 0.9;
+        }
+        #coverUpload {
+            display: none;
+        }
+        .loading-spinner {
+            border-top-color: #4f46e5;
+            animation: spinner 0.8s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .bio-textarea {
+            resize: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-50 min-h-screen">
+    <!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+  <div class="flex flex-col items-center">
+    <dotlottie-player
+      src="https://lottie.host/806ea075-1040-4a18-956c-8345ebab2a36/Y8CHL2ZU0T.lottie"
+      background="transparent"
+      speed="1"
+      style="width: 180px; height: 180px"
+      loop
+      autoplay>
+    </dotlottie-player>
+    <p class="mt-4 text-indigo-600 font-medium">Connecting to server...</p>
+  </div>
+</div>
+
+<!-- Lottie Player Script -->
+<script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+
+    <div class="w-full">
+        <div class="bg-white rounded-none shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-white flex items-center">
+                        <i class="fas fa-user-edit mr-3"></i> Edit Profile
+                    </h1>
+                    <button onclick="window.history.back()" class="text-white hover:text-indigo-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cover Photo -->
+            <div class="relative">
+                <div id="coverPreview" class="cover-preview bg-gradient-to-r from-indigo-100 to-purple-100 w-full flex items-center justify-center">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i class="fas fa-image text-4xl text-indigo-300 mb-2"></i>
+                        <p class="text-indigo-400">Cover Photo</p>
+                    </div>
+                </div>
+
+
+
+
+                <div class="absolute bottom-4 right-4 flex space-x-2">
+  <label for="coverUpload" class="w-12 h-12 backdrop-blur-sm bg-white/50 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/60 shadow-md">
+    <i class="fas fa-camera text-indigo-600"></i>
+  </label>
+  <button id="coverUrlBtn" class="w-12 h-12 backdrop-blur-sm bg-white/50 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/60 shadow-md">
+    <i class="fas fa-link text-indigo-600"></i>
+  </button>
+</div>
+
+
+
+                <input type="file" id="coverUpload" accept="image/*">
+            </div>
+
+            <!-- Avatar and Basic Info -->
+            <div class="px-8 py-6 flex flex-col md:flex-row items-start relative">
+                <div class="absolute -top-16 left-8 md:left-12 transform md:translate-y-0 z-10">
+                    <div id="avatarPreview" class="avatar-preview bg-indigo-200 flex items-center justify-center">
+                        <i class="fas fa-user text-4xl text-indigo-500"></i>
+                    </div>
+
+
+                    <div class="absolute -bottom-2 -right-2 flex space-x-1">
+  <label for="avatarUpload" class="w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer hover:bg-white/40 shadow-md">
+    <i class="fas fa-camera text-indigo-600 text-sm"></i>
+  </label>
+  <button id="avatarUrlBtn" class="w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer hover:bg-white/40 shadow-md">
+    <i class="fas fa-link text-indigo-600 text-sm"></i>
+  </button>
+</div>
+
+
+                    <input type="file" id="avatarUpload" accept="image/*">
+                </div>
+
+                <div class="flex-1 mt-16 md:mt-0 md:ml-40">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <i class="fas fa-at mr-2 text-indigo-500"></i> Username
+                            </label>
+                            <input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label for="nickname" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <i class="fas fa-signature mr-2 text-indigo-500"></i> Nickname
+                            </label>
+                            <input type="text" id="nickname" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <i class="fas fa-phone mr-2 text-indigo-500"></i> Phone Number
+                            </label>
+                            <input type="tel" id="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label for="region" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                <i class="fas fa-globe mr-2 text-indigo-500"></i> Region
+                            </label>
+                            <select id="region" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+  <option value="">Select Country</option>
+</select>
+
+<script>
+  fetch("https://restcountries.com/v3.1/all")
+    .then(res => res.json())
+    .then(data => {
+      const select = document.getElementById("region");
+      const countries = data
+        .map(country => country.name.common)
+        .sort(); // Alphabetical order
+
+      countries.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    })
+    .catch(err => console.error("Failed to load countries:", err));
+</script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Sections -->
+            <div class="px-8 py-6 border-t border-gray-200">
+                <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-indigo-500"></i> Personal Information
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-envelope mr-2 text-indigo-500"></i> Email
+                        </label>
+                        <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" disabled>
+                    </div>
+
+                    <div>
+                        <label for="gender" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-venus-mars mr-2 text-indigo-500"></i> Gender
+                        </label>
+                        <select id="gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="hidden">Prefer not to say</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-8 py-6 border-t border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                        <i class="fas fa-book-open mr-2 text-indigo-500"></i> About
+                    </h2>
+                    <div id="bioCounter" class="text-sm text-gray-500">0/500</div>
+                </div>
+                <div>
+                    <textarea id="biography" rows="5" maxlength="500" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bio-textarea"></textarea>
+                </div>
+            </div>
+
+
+            <!-- Add this to the body section, before the action buttons -->
+<div class="px-8 py-6 border-t border-gray-200">
+    <div class="accordion-group">
+        <!-- Basic Info Accordion -->
+        <div class="accordion-item mb-4 border border-gray-200 rounded-lg overflow-hidden">
+            <button class="accordion-header w-full px-4 py-3 bg-gray-50 text-left font-medium flex justify-between items-center hover:bg-gray-100">
+                <span class="flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-indigo-500"></i> Basic Information
+                </span>
+                <i class="fas fa-chevron-down transition-transform duration-200"></i>
+            </button>
+            <div class="accordion-content hidden px-4 py-3 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="pronouns" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-user-tag mr-2 text-indigo-500"></i> Pronouns
+                        </label>
+                        <select id="pronouns" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="">Select pronouns</option>
+                            <option value="he">He/Him</option>
+                            <option value="she">She/Her</option>
+                            <option value="they">They/Them</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="dob" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-birthday-cake mr-2 text-indigo-500"></i> Date of Birth
+                        </label>
+                        <input type="date" id="dob" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="otherNames" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-tags mr-2 text-indigo-500"></i> Other Names
+                        </label>
+                        <input type="text" id="otherNames" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="relationshipStatus" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-heart mr-2 text-indigo-500"></i> Relationship Status
+                        </label>
+                        <select id="relationshipStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="">Select status</option>
+                            <option value="single">Single</option>
+                            <option value="in_relationship">In a relationship</option>
+                            <option value="engaged">Engaged</option>
+                            <option value="married">Married</option>
+                            <option value="complicated">It's complicated</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Accordion -->
+        <div class="accordion-item mb-4 border border-gray-200 rounded-lg overflow-hidden">
+            <button class="accordion-header w-full px-4 py-3 bg-gray-50 text-left font-medium flex justify-between items-center hover:bg-gray-100">
+                <span class="flex items-center">
+                    <i class="fas fa-map-marker-alt mr-2 text-indigo-500"></i> Location Information
+                </span>
+                <i class="fas fa-chevron-down transition-transform duration-200"></i>
+            </button>
+            <div class="accordion-content hidden px-4 py-3 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="currentCity" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-location-arrow mr-2 text-indigo-500"></i> Current City
+                        </label>
+                        <input type="text" id="currentCity" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="hometown" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-home mr-2 text-indigo-500"></i> Hometown
+                        </label>
+                        <input type="text" id="hometown" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="currentLocation" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-map-pin mr-2 text-indigo-500"></i> Current Location
+                            <button id="getLocationBtn" class="ml-2 text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-crosshairs"></i>
+                            </button>
+                        </label>
+                        <input type="text" id="currentLocation" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Work & Education Accordion -->
+        <div class="accordion-item mb-4 border border-gray-200 rounded-lg overflow-hidden">
+            <button class="accordion-header w-full px-4 py-3 bg-gray-50 text-left font-medium flex justify-between items-center hover:bg-gray-100">
+                <span class="flex items-center">
+                    <i class="fas fa-briefcase mr-2 text-indigo-500"></i> Work & Education
+                </span>
+                <i class="fas fa-chevron-down transition-transform duration-200"></i>
+            </button>
+            <div class="accordion-content hidden px-4 py-3 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="worksAt" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-building mr-2 text-indigo-500"></i> Works At
+                        </label>
+                        <input type="text" id="worksAt" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="position" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-indigo-500"></i> Position
+                        </label>
+                        <input type="text" id="position" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="education" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-graduation-cap mr-2 text-indigo-500"></i> Education
+                        </label>
+                        <input type="text" id="education" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Social Media Accordion -->
+        <div class="accordion-item mb-4 border border-gray-200 rounded-lg overflow-hidden">
+            <button class="accordion-header w-full px-4 py-3 bg-gray-50 text-left font-medium flex justify-between items-center hover:bg-gray-100">
+                <span class="flex items-center">
+                    <i class="fas fa-share-alt mr-2 text-indigo-500"></i> Social Media Links
+                </span>
+                <i class="fas fa-chevron-down transition-transform duration-200"></i>
+            </button>
+            <div class="accordion-content hidden px-4 py-3 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="facebook" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fab fa-facebook mr-2 text-blue-600"></i> Facebook
+                        </label>
+                        <input type="url" id="facebook" placeholder="https://facebook.com/username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="twitter" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fab fa-twitter mr-2 text-blue-400"></i> Twitter
+                        </label>
+                        <input type="url" id="twitter" placeholder="https://twitter.com/username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="instagram" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fab fa-instagram mr-2 text-pink-600"></i> Instagram
+                        </label>
+                        <input type="url" id="instagram" placeholder="https://instagram.com/username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="linkedin" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fab fa-linkedin mr-2 text-blue-700"></i> LinkedIn
+                        </label>
+                        <input type="url" id="linkedin" placeholder="https://linkedin.com/in/username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+     <!-- Favorites Accordion -->
+<div class="accordion-item mb-4 border border-gray-200 rounded-lg overflow-hidden">
+    <button class="accordion-header w-full px-4 py-3 bg-gray-50 text-left font-medium flex justify-between items-center hover:bg-gray-100">
+        <span class="flex items-center">
+            <i class="fas fa-star mr-2 text-indigo-500"></i> Favorites
+        </span>
+        <i class="fas fa-chevron-down transition-transform duration-200"></i>
+    </button>
+    <div class="accordion-content hidden px-4 py-3 bg-white">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Music -->
+            <div>
+                <label for="spotify" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fab fa-spotify mr-2 text-green-500"></i> Favorite Music
+                </label>
+                <input type="url" id="spotify" placeholder="https://open.spotify.com/track/..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Movies -->
+            <div>
+                <label for="favoriteMovies" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-film mr-2 text-purple-500"></i> Favorite Movies
+                </label>
+                <input type="text" id="favoriteMovies" placeholder="List your favorite movies" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Books -->
+            <div>
+                <label for="favoriteBooks" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-book mr-2 text-indigo-500"></i> Favorite Books
+                </label>
+                <input type="text" id="favoriteBooks" placeholder="List your favorite books" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- TV Shows -->
+            <div>
+                <label for="favoriteShows" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-tv mr-2 text-blue-500"></i> Favorite TV Shows
+                </label>
+                <input type="text" id="favoriteShows" placeholder="List your favorite shows" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Anime -->
+            <div>
+                <label for="favoriteAnime" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-dragon mr-2 text-red-500"></i> Favorite Anime
+                </label>
+                <input type="text" id="favoriteAnime" placeholder="List your favorite anime" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Video Games -->
+            <div>
+                <label for="favoriteGames" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-gamepad mr-2 text-yellow-500"></i> Favorite Video Games
+                </label>
+                <input type="text" id="favoriteGames" placeholder="List your favorite games" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Actors -->
+            <div>
+                <label for="favoriteActors" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-user-secret mr-2 text-pink-500"></i> Favorite Actors
+                </label>
+                <input type="text" id="favoriteActors" placeholder="List your favorite actors" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Food -->
+            <div>
+                <label for="favoriteFood" class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <i class="fas fa-utensils mr-2 text-orange-500"></i> Favorite Food
+                </label>
+                <input type="text" id="favoriteFood" placeholder="List your favorite food" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+        </div>
+    </div>
+</div>
+
+        <!-- Languages Section -->
+<br>
+    <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <i class="fas fa-language mr-2 text-indigo-500"></i> Languages
+    </h2>
+
+    <div class="mb-4">
+        <label for="languageSearch" class="block text-sm font-medium text-gray-700 mb-1">Add Language</label>
+        <div class="flex">
+            <input type="text" id="languageSearch" placeholder="Search languages..."
+                   class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button id="addLanguageBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-r-lg hover:bg-indigo-700 flex items-center justify-center w-12">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="languagesList" class="space-y-2">
+        <!-- Languages will be added here dynamically -->
+    </div>
+</div>
+
+        <!-- Family Members Section -->
+<br>
+    <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <i class="fas fa-users mr-2 text-indigo-500"></i> Family Members
+    </h2>
+
+    <div class="mb-4">
+        <label for="familySearch" class="block text-sm font-medium text-gray-700 mb-1">Link Family Member</label>
+        <div class="flex">
+            <input type="text" id="familySearch" placeholder="Search by name, email, username or phone..."
+                   class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button id="addFamilyBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-r-lg hover:bg-indigo-700 flex items-center justify-center w-12">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="familyResults" class="hidden mb-4 border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+        <!-- Search results will appear here -->
+    </div>
+
+    <div id="familyList" class="space-y-3">
+        <!-- Linked family members will appear here -->
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+            <!-- Action Buttons -->
+            <div class="px-8 py-6 bg-gray-50 flex justify-end space-x-4">
+                <button id="cancelBtn" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex items-center">
+                    <i class="fas fa-times mr-2"></i> Cancel
+                </button>
+                <button id="saveBtn" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex items-center">
+                    <i class="fas fa-save mr-2"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- URL Input Modal -->
+    <div id="urlModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800" id="modalTitle">Enter Image URL</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <input type="text" id="imageUrlInput" placeholder="https://example.com/image.jpg" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-end space-x-3">
+                <button id="cancelUrl" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button id="confirmUrl" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      // Firebase configuration (replace with your actual config)
+const firebaseConfig = {
+    apiKey: "AIzaSyCJSkL4MsVRVwb9sWGvkFQHz-RaGUY-2xo", // Your Firebase project API key
+    databaseURL: "https://sai-synapse-default-rtdb.firebaseio.com", // URL of your Realtime Database
+    projectId: "sai-synapse",     // Your Firebase project ID
+    authDomain: "sai-synapse.firebasestorage.app",
+    storageBucket: "synapse-social-sai.firebasestorage.app", // Your Firebase Storage bucket URL
+    appId: "1:308269400761:android:91c2e7415671cc49ed9168" // Your Firebase App ID (often for Android/iOS)
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const auth = firebase.auth();
+
+// DOM elements
+const loadingOverlay = document.getElementById('loadingOverlay');
+const avatarPreview = document.getElementById('avatarPreview');
+const coverPreview = document.getElementById('coverPreview');
+const avatarUpload = document.getElementById('avatarUpload');
+const coverUpload = document.getElementById('coverUpload');
+const avatarUrlBtn = document.getElementById('avatarUrlBtn');
+const coverUrlBtn = document.getElementById('coverUrlBtn');
+const usernameInput = document.getElementById('username');
+const nicknameInput = document.getElementById('nickname');
+const phoneInput = document.getElementById('phone');
+const regionSelect = document.getElementById('region');
+const emailInput = document.getElementById('email');
+const genderSelect = document.getElementById('gender');
+const biographyTextarea = document.getElementById('biography');
+const bioCounter = document.getElementById('bioCounter');
+const saveBtn = document.getElementById('saveBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const urlModal = document.getElementById('urlModal');
+const modalTitle = document.getElementById('modalTitle');
+const imageUrlInput = document.getElementById('imageUrlInput');
+const confirmUrl = document.getElementById('confirmUrl');
+const cancelUrl = document.getElementById('cancelUrl');
+const closeModal = document.getElementById('closeModal');
+
+// Accordion elements
+const accordionHeaders = document.querySelectorAll('.accordion-header');
+
+// Location elements
+const getLocationBtn = document.getElementById('getLocationBtn');
+const currentLocationInput = document.getElementById('currentLocation');
+
+// Language elements
+const languageSearchInput = document.getElementById('languageSearch');
+const addLanguageBtn = document.getElementById('addLanguageBtn');
+const languagesList = document.getElementById('languagesList');
+
+// Family elements
+const familySearchInput = document.getElementById('familySearch');
+const addFamilyBtn = document.getElementById('addFamilyBtn');
+const familyResultsDiv = document.getElementById('familyResults');
+const familyListDiv = document.getElementById('familyList');
+
+// Additional Profile Fields
+const pronounsSelect = document.getElementById('pronouns');
+const dobInput = document.getElementById('dob');
+const otherNamesInput = document.getElementById('otherNames');
+const relationshipStatusSelect = document.getElementById('relationshipStatus');
+const currentCityInput = document.getElementById('currentCity');
+const hometownInput = document.getElementById('hometown');
+const worksAtInput = document.getElementById('worksAt');
+const positionInput = document.getElementById('position');
+const educationInput = document.getElementById('education');
+const facebookInput = document.getElementById('facebook');
+const twitterInput = document.getElementById('twitter');
+const instagramInput = document.getElementById('instagram');
+const linkedinInput = document.getElementById('linkedin');
+const spotifyInput = document.getElementById('spotify');
+const favoriteMoviesInput = document.getElementById('favoriteMovies'); // Added from HTML
+const favoriteBooksInput = document.getElementById('favoriteBooks');
+const favoriteShowsInput = document.getElementById('favoriteShows'); // Added from HTML
+const favoriteAnimeInput = document.getElementById('favoriteAnime'); // Added from HTML
+const favoriteGamesInput = document.getElementById('favoriteGames'); // Added from HTML
+const favoriteActorsInput = document.getElementById('favoriteActors'); // Added from HTML
+const favoriteFoodInput = document.getElementById('favoriteFood'); // Added from HTML
+
+
+// Current user data
+let currentUser = null;
+let userData = null;
+let currentUrlAction = null; // 'avatar' or 'cover'
+
+// Utility function to safely get values from nested objects
+const getNestedValue = (obj, path, defaultValue = '') => {
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj) || defaultValue;
+};
+
+// Initialize the page
+function initPage() {
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            loadUserData(user.uid);
+        } else {
+            // Redirect to login if not authenticated
+            window.location.href = 'login.html'; // Assuming you have a login page
+        }
+    });
+}
+
+// Load user data from Firebase
+function loadUserData(uid) {
+    loadingOverlay.classList.remove('hidden');
+
+    const userRef = database.ref(`skyline/users/${uid}`);
+
+    userRef.once('value').then((snapshot) => {
+        userData = snapshot.val();
+        if (userData) {
+            // Populate basic form fields
+            usernameInput.value = userData.username || '';
+            nicknameInput.value = userData.nickname || '';
+            phoneInput.value = userData.phone || '';
+            regionSelect.value = userData.user_region || '';
+            emailInput.value = userData.email || '';
+            genderSelect.value = userData.gender || 'hidden';
+            biographyTextarea.value = userData.biography || '';
+
+            // Update bio counter
+            bioCounter.textContent = `${biographyTextarea.value.length}/500`;
+
+            // Set avatar if exists
+            if (userData.avatar && userData.avatar !== 'null') {
+                avatarPreview.style.backgroundImage = `url('${userData.avatar}')`;
+                avatarPreview.innerHTML = '';
+            } else {
+                avatarPreview.style.backgroundImage = 'none';
+                avatarPreview.innerHTML = '<i class="fas fa-user text-4xl text-indigo-500"></i>';
+            }
+
+            // Set cover if exists
+            if (userData.profile_cover_image && userData.profile_cover_image !== 'null') {
+                coverPreview.style.backgroundImage = `url('${userData.profile_cover_image}')`;
+                coverPreview.innerHTML = '';
+            } else {
+                coverPreview.style.backgroundImage = 'none';
+                coverPreview.innerHTML = `
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i class="fas fa-image text-4xl text-indigo-300 mb-2"></i>
+                        <p class="text-indigo-400">Cover Photo</p>
+                    </div>
+                `;
+            }
+
+            // Populate additional profile fields using getNestedValue
+            pronounsSelect.value = getNestedValue(userData, 'personalInfo.pronouns');
+            dobInput.value = getNestedValue(userData, 'personalInfo.dob');
+            otherNamesInput.value = getNestedValue(userData, 'personalInfo.otherNames');
+            relationshipStatusSelect.value = getNestedValue(userData, 'personalInfo.relationshipStatus');
+            currentCityInput.value = getNestedValue(userData, 'locationInfo.currentCity');
+            hometownInput.value = getNestedValue(userData, 'locationInfo.hometown');
+            currentLocationInput.value = getNestedValue(userData, 'locationInfo.currentLocation');
+            worksAtInput.value = getNestedValue(userData, 'workEducation.worksAt');
+            positionInput.value = getNestedValue(userData, 'workEducation.position');
+            educationInput.value = getNestedValue(userData, 'workEducation.education');
+            facebookInput.value = getNestedValue(userData, 'socialLinks.facebook');
+            twitterInput.value = getNestedValue(userData, 'socialLinks.twitter');
+            instagramInput.value = getNestedValue(userData, 'socialLinks.instagram');
+            linkedinInput.value = getNestedValue(userData, 'socialLinks.linkedin');
+            spotifyInput.value = getNestedValue(userData, 'favorites.spotify');
+            favoriteMoviesInput.value = getNestedValue(userData, 'favorites.favoriteMovies');
+            favoriteBooksInput.value = getNestedValue(userData, 'favorites.favoriteBooks');
+            favoriteShowsInput.value = getNestedValue(userData, 'favorites.favoriteShows');
+            favoriteAnimeInput.value = getNestedValue(userData, 'favorites.favoriteAnime');
+            favoriteGamesInput.value = getNestedValue(userData, 'favorites.favoriteGames');
+            favoriteActorsInput.value = getNestedValue(userData, 'favorites.favoriteActors');
+            favoriteFoodInput.value = getNestedValue(userData, 'favorites.favoriteFood');
+
+            // Populate languages
+            languagesList.innerHTML = ''; // Clear existing
+            if (userData.languages && Array.isArray(userData.languages)) {
+                userData.languages.forEach(lang => addLanguageToDisplay(lang));
+            }
+
+            // Populate family members
+            familyListDiv.innerHTML = ''; // Clear existing
+            if (userData.familyMembers) {
+                // Assuming familyMembers is an object where keys are UIDs and values are relationship
+                for (const memberId in userData.familyMembers) {
+                    const relationship = userData.familyMembers[memberId];
+                    // Fetch member's profile for name/avatar only if not already loaded or cached
+                    fetchFamilyMemberDetails(memberId, relationship);
+                }
+            }
+
+        }
+
+        setTimeout(() => {
+            loadingOverlay.classList.add('hidden');
+        }, 500); // Minimum loading time for better UX
+    }).catch((error) => {
+        console.error("Error loading user data:", error);
+        loadingOverlay.classList.add('hidden');
+        alert('Failed to load profile data. Please try again.');
+    });
+}
+
+// Fetch details for a family member by UID
+function fetchFamilyMemberDetails(memberId, relationship) {
+    database.ref(`skyline/users/${memberId}`).once('value')
+        .then(snapshot => {
+            const memberData = snapshot.val();
+            if (memberData) {
+                addFamilyMemberToDisplay(
+                    memberId,
+                    relationship,
+                    memberData.nickname || memberData.username || 'Unknown',
+                    memberData.avatar || 'https://via.placeholder.com/150'
+                );
+            } else {
+                addFamilyMemberToDisplay(memberId, relationship, 'User Not Found', 'https://via.placeholder.com/150');
+            }
+        })
+        .catch(error => {
+            console.error(`Error fetching family member ${memberId}:`, error);
+            addFamilyMemberToDisplay(memberId, relationship, 'Error Loading User', 'https://via.placeholder.com/150');
+        });
+}
+
+// Handle avatar upload
+avatarUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            avatarPreview.style.backgroundImage = `url('${event.target.result}')`;
+            avatarPreview.innerHTML = '';
+            // For file uploads, you would typically upload to Firebase Storage here.
+            // For this example, we'll assume direct URL updates.
+            // A real app would store the uploaded image URL and update the DB on Save.
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Handle cover upload
+coverUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            coverPreview.style.backgroundImage = `url('${event.target.result}')`;
+            coverPreview.innerHTML = '';
+            // Same as avatar, handle storage upload later.
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Handle URL input for avatar
+avatarUrlBtn.addEventListener('click', () => {
+    currentUrlAction = 'avatar';
+    modalTitle.textContent = 'Enter Avatar URL';
+    imageUrlInput.placeholder = 'https://res.studioasinc.com/avatar.png';
+    // Pre-fill with current URL if any, or null if it's 'null' string
+    imageUrlInput.value = (avatarPreview.style.backgroundImage.replace(/url\("?(.+?)"?\)/, '$1') === 'none' || !userData.avatar || userData.avatar === 'null') ? '' : userData.avatar;
+    urlModal.classList.remove('hidden');
+});
+
+// Handle URL input for cover
+coverUrlBtn.addEventListener('click', () => {
+    currentUrlAction = 'cover';
+    modalTitle.textContent = 'Enter Cover Photo URL';
+    imageUrlInput.placeholder = 'https://res.studioasinc.com/cover.png';
+    // Pre-fill with current URL if any, or null if it's 'null' string
+    imageUrlInput.value = (coverPreview.style.backgroundImage.replace(/url\("?(.+?)"?\)/, '$1') === 'none' || !userData.profile_cover_image || userData.profile_cover_image === 'null') ? '' : userData.profile_cover_image;
+    urlModal.classList.remove('hidden');
+});
+
+// Confirm URL input
+confirmUrl.addEventListener('click', () => {
+    const url = imageUrlInput.value.trim();
+
+    // Basic URL validation
+    if (url && !/^https?:\/\/.+\.(png|jpg|jpeg|gif|svg|webp)$/i.test(url)) {
+        alert('Please enter a valid image URL (e.g., .png, .jpg, .gif).');
+        return;
+    }
+
+    // Update the preview immediately
+    if (currentUrlAction === 'avatar') {
+        if (url) {
+            avatarPreview.style.backgroundImage = `url('${url}')`;
+            avatarPreview.innerHTML = '';
+            database.ref(`skyline/users/${currentUser.uid}/avatar`).set(url);
+            database.ref(`skyline/users/${currentUser.uid}/avatar_history_type`).set('url');
+        } else {
+            avatarPreview.style.backgroundImage = 'none';
+            avatarPreview.innerHTML = '<i class="fas fa-user text-4xl text-indigo-500"></i>';
+            database.ref(`skyline/users/${currentUser.uid}/avatar`).set('null');
+            database.ref(`skyline/users/${currentUser.uid}/avatar_history_type`).set('local'); // Or 'null' if preferred
+        }
+    } else if (currentUrlAction === 'cover') {
+        if (url) {
+            coverPreview.style.backgroundImage = `url('${url}')`;
+            coverPreview.innerHTML = '';
+            database.ref(`skyline/users/${currentUser.uid}/profile_cover_image`).set(url);
+        } else {
+            coverPreview.style.backgroundImage = 'none';
+            coverPreview.innerHTML = `
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-image text-4xl text-indigo-300 mb-2"></i>
+                    <p class="text-indigo-400">Cover Photo</p>
+                </div>
+            `;
+            database.ref(`skyline/users/${currentUser.uid}/profile_cover_image`).set('null');
+        }
+    }
+    urlModal.classList.add('hidden');
+});
+
+// Close modal
+const closeModalFunc = () => {
+    urlModal.classList.add('hidden');
+    imageUrlInput.value = ''; // Clear input on close
+};
+closeModal.addEventListener('click', closeModalFunc);
+cancelUrl.addEventListener('click', closeModalFunc);
+
+// Bio character counter
+biographyTextarea.addEventListener('input', () => {
+    const currentLength = biographyTextarea.value.length;
+    bioCounter.textContent = `${currentLength}/500`;
+
+    // Limit to 10 lines (approximate, as users can type long lines)
+    const lines = biographyTextarea.value.split('\n');
+    if (lines.length > 10) {
+        biographyTextarea.value = lines.slice(0, 10).join('\n');
+        bioCounter.textContent = `${biographyTextarea.value.length}/500`; // Update after truncation
+    }
+});
+
+// Save changes
+saveBtn.addEventListener('click', () => {
+    if (!currentUser) {
+        alert('User not authenticated.');
+        return;
+    }
+
+    // Basic validation for username
+    const username = usernameInput.value.trim();
+    if (!username) {
+        alert('Username cannot be empty.');
+        usernameInput.focus();
+        return;
+    }
+
+    // Check if username is valid (alphanumeric, dots, underscores, hyphens only)
+    if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+        alert('Username can only contain letters, numbers, dots, underscores, and hyphens.');
+        usernameInput.focus();
+        return;
+    }
+
+
+    // Show loading
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+    saveBtn.disabled = true;
+
+    // Prepare data for update
+    const updates = {
+        username: username,
+        nickname: nicknameInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        user_region: regionSelect.value,
+        gender: genderSelect.value,
+        biography: biographyTextarea.value.trim(),
+        // Nested fields
+        'personalInfo/pronouns': pronounsSelect.value,
+        'personalInfo/dob': dobInput.value,
+        'personalInfo/otherNames': otherNamesInput.value.trim(),
+        'personalInfo/relationshipStatus': relationshipStatusSelect.value,
+        'locationInfo/currentCity': currentCityInput.value.trim(),
+        'locationInfo/hometown': hometownInput.value.trim(),
+        'locationInfo/currentLocation': currentLocationInput.value.trim(),
+        'workEducation/worksAt': worksAtInput.value.trim(),
+        'workEducation/position': positionInput.value.trim(),
+        'workEducation/education': educationInput.value.trim(),
+        'socialLinks/facebook': facebookInput.value.trim(),
+        'socialLinks/twitter': twitterInput.value.trim(),
+        'socialLinks/instagram': instagramInput.value.trim(),
+        'socialLinks/linkedin': linkedinInput.value.trim(),
+        'favorites/spotify': spotifyInput.value.trim(),
+        'favorites/favoriteMovies': favoriteMoviesInput.value.trim(),
+        'favorites/favoriteBooks': favoriteBooksInput.value.trim(),
+        'favorites/favoriteShows': favoriteShowsInput.value.trim(),
+        'favorites/favoriteAnime': favoriteAnimeInput.value.trim(),
+        'favorites/favoriteGames': favoriteGamesInput.value.trim(),
+        'favorites/favoriteActors': favoriteActorsInput.value.trim(),
+        'favorites/favoriteFood': favoriteFoodInput.value.trim(),
+        languages: Array.from(languagesList.querySelectorAll('.language-item-text')).map(span => span.textContent),
+        familyMembers: {} // This will be populated below
+    };
+
+    // Populate family members
+    familyListDiv.querySelectorAll('.family-member-item').forEach(item => {
+        const memberId = item.dataset.id;
+        const relationship = item.querySelector('.relationship-select').value;
+        if (memberId) {
+            updates[`familyMembers/${memberId}`] = relationship;
+        }
+    });
+
+    // Check if the username has changed and if so, update the 'synapse/username' node
+    const oldUsername = userData?.username;
+    if (oldUsername !== username) {
+        // First, check if the new username is already taken
+        database.ref(`synapse/username/${username.toLowerCase()}`).once('value')
+            .then(snapshot => {
+                if (snapshot.exists() && snapshot.val().uid !== currentUser.uid) {
+                    // New username is taken by another user
+                    alert('This username is already taken. Please choose another.');
+                    saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save';
+                    saveBtn.disabled = false;
+                    usernameInput.focus();
+                    return;
+                } else {
+                    // Update the username in the main users node
+                    database.ref(`skyline/users/${currentUser.uid}`).update(updates)
+                        .then(() => {
+                            // If old username existed, remove it from 'synapse/username'
+                            if (oldUsername) {
+                                database.ref(`synapse/username/${oldUsername.toLowerCase()}`).remove();
+                            }
+                            // Add/Update the new username in 'synapse/username'
+                            database.ref(`synapse/username/${username.toLowerCase()}`).set({
+                                uid: currentUser.uid,
+                                username: username,
+                                email: currentUser.email // Assuming email is consistent
+                            });
+
+                            saveBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Saved';
+                            setTimeout(() => {
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save';
+                                saveBtn.disabled = false;
+                            }, 3000); // Display "Saved" for 3 seconds
+                            // Reload user data to reflect changes
+                            loadUserData(currentUser.uid);
+                        })
+                        .catch((error) => {
+                            console.error("Error updating profile:", error);
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Changes';
+                            saveBtn.disabled = false;
+                            alert('Failed to update profile. Please try again.');
+                        });
+                }
+            })
+            .catch(error => {
+                console.error("Error checking username availability:", error);
+                alert('An error occurred while checking username. Please try again.');
+                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Changes';
+                saveBtn.disabled = false;
+            });
+    } else {
+        // If username hasn't changed, just update other fields
+        database.ref(`skyline/users/${currentUser.uid}`).update(updates)
+            .then(() => {
+                saveBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Saved';
+                setTimeout(() => {
+                    saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save';
+                    saveBtn.disabled = false;
+                }, 3000); // Display "Saved" for 3 seconds
+                // Reload user data to reflect changes
+                loadUserData(currentUser.uid);
+            })
+            .catch((error) => {
+                console.error("Error updating profile:", error);
+                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Changes';
+                saveBtn.disabled = false;
+                alert('Failed to update profile. Please try again.');
+            });
+    }
+});
+
+// Cancel button
+cancelBtn.addEventListener('click', () => {
+    if (confirm('Discard all changes?')) {
+        // Reload the original data
+        if (currentUser) {
+            loadUserData(currentUser.uid);
+        } else {
+            window.location.reload(); // Fallback if user is null for some reason
+        }
+    }
+});
+
+// Initialize the page when loaded
+document.addEventListener('DOMContentLoaded', initPage);
+
+// Disable right click
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Prevent pinch zoom
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Prevent double-tap zoom
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (e) {
+    let now = new Date().getTime();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
+
+// Accordion functionality
+accordionHeaders.forEach(header => {
+    header.addEventListener('click', () => {
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('.fa-chevron-down');
+
+        // Toggle content
+        content.classList.toggle('hidden');
+
+        // Rotate icon
+        icon.classList.toggle('rotate-180');
+    });
+});
+
+// Current Location functionality
+getLocationBtn.addEventListener('click', () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Using Nominatim API for reverse geocoding
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const location = data.display_name || `${lat}, ${lng}`;
+                        currentLocationInput.value = location;
+                    })
+                    .catch(error => {
+                        console.error('Error getting detailed location:', error);
+                        currentLocationInput.value = `${lat}, ${lng}`; // Fallback to coordinates
+                        alert('Could not get detailed location. Coordinates copied.');
+                    });
+            },
+            error => {
+                console.error('Geolocation error:', error);
+                let errorMessage = 'Could not get your location. Please enter it manually.';
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMessage = 'Location access denied. Please enable location services for this site in your browser settings.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMessage = 'Location information is unavailable.';
+                } else if (error.code === error.TIMEOUT) {
+                    errorMessage = 'The request to get user location timed out.';
+                }
+                alert(errorMessage);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000, // 10 seconds
+                maximumAge: 0 // No cached position
+            }
+        );
+    } else {
+        alert('Geolocation is not supported by your browser.');
+    }
+});
+
+// Function to add a language to the display
+function addLanguageToDisplay(languageText) {
+    const languageItem = document.createElement('div');
+    languageItem.className = 'flex items-center justify-between bg-gray-50 p-2 rounded';
+    languageItem.innerHTML = `
+        <span class="language-item-text">${languageText}</span>
+        <button class="text-red-500 hover:text-red-700 remove-language">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    languagesList.appendChild(languageItem);
+
+    // Add remove functionality
+    languageItem.querySelector('.remove-language').addEventListener('click', () => {
+        languageItem.remove();
+    });
+}
+
+// Language functionality
+addLanguageBtn.addEventListener('click', () => {
+    const language = languageSearchInput.value.trim();
+
+    if (language) {
+        // Prevent duplicate languages
+        const existingLanguages = Array.from(languagesList.querySelectorAll('.language-item-text')).map(span => span.textContent.toLowerCase());
+        if (!existingLanguages.includes(language.toLowerCase())) {
+            addLanguageToDisplay(language);
+            languageSearchInput.value = '';
+        } else {
+            alert('This language has already been added.');
+        }
+    }
+});
+
+
+// Function to add a family member to the display
+function addFamilyMemberToDisplay(memberId, relationship, memberName = "Unknown User", memberAvatar = "https://via.placeholder.com/150/0000FF/FFFFFF?text=SYN") {
+    // Check if the member is already in the list
+    if (familyListDiv.querySelector(`[data-id="${memberId}"]`)) {
+        return; // Already added, do nothing
+    }
+
+    const familyItem = document.createElement('div');
+    familyItem.className = 'flex items-center justify-between bg-gray-50 p-2 rounded family-member-item';
+    familyItem.dataset.id = memberId; // Store the user ID
+
+    familyItem.innerHTML = `
+        <div class="flex items-center">
+            <img src="${memberAvatar}" class="w-8 h-8 rounded-full mr-2 object-cover">
+            <span class="font-medium">${memberName}</span>
+        </div>
+        <div class="flex space-x-2 items-center">
+            <select class="text-sm border border-gray-300 rounded px-2 py-1 relationship-select focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="parent">Parent</option>
+                <option value="sibling">Sibling</option>
+                <option value="child">Child</option>
+                <option value="partner">Partner</option>
+                <option value="relative">Relative</option>
+                <option value="other">Other</option>
+            </select>
+            <button class="text-red-500 hover:text-red-700 remove-family text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    familyListDiv.appendChild(familyItem);
+
+    // Set the selected relationship
+    const selectElement = familyItem.querySelector('.relationship-select');
+    if (relationship) {
+        selectElement.value = relationship;
+    }
+
+    // Add remove functionality
+    familyItem.querySelector('.remove-family').addEventListener('click', () => {
+        familyItem.remove();
+    });
+}
+
+// Family member search functionality
+addFamilyBtn.addEventListener('click', () => {
+    const searchTerm = familySearchInput.value.trim().toLowerCase();
+    if (searchTerm) {
+        familyResultsDiv.innerHTML = '<p class="text-center py-4 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> Searching for users...</p>';
+        familyResultsDiv.classList.remove('hidden');
+
+        const usersRef = database.ref('skyline/users');
+        let results = [];
+        let searchPromises = [];
+
+        // Search by username
+        searchPromises.push(
+            usersRef.orderByChild('username')
+                .startAt(searchTerm)
+                .endAt(searchTerm + "\uf8ff")
+                .limitToFirst(10)
+                .once('value')
+                .then(snapshot => snapshot.forEach(child => results.push({ id: child.key, ...child.val() })))
+        );
+
+        // Search by nickname
+        searchPromises.push(
+            usersRef.orderByChild('nickname')
+                .startAt(searchTerm)
+                .endAt(searchTerm + "\uf8ff")
+                .limitToFirst(10)
+                .once('value')
+                .then(snapshot => snapshot.forEach(child => results.push({ id: child.key, ...child.val() })))
+        );
+
+        // Search by email
+        searchPromises.push(
+            usersRef.orderByChild('email')
+                .startAt(searchTerm)
+                .endAt(searchTerm + "\uf8ff")
+                .limitToFirst(10)
+                .once('value')
+                .then(snapshot => snapshot.forEach(child => results.push({ id: child.key, ...child.val() })))
+        );
+
+        // Search by phone (if you store it searchable)
+        searchPromises.push(
+            usersRef.orderByChild('phone')
+                .startAt(searchTerm)
+                .endAt(searchTerm + "\uf8ff")
+                .limitToFirst(10)
+                .once('value')
+                .then(snapshot => snapshot.forEach(child => results.push({ id: child.key, ...child.val() })))
+        );
+
+        Promise.all(searchPromises).then(() => {
+            // Filter unique results and remove current user
+            const uniqueResults = Array.from(new Map(results.map(item => [item.id, item])).values())
+                .filter(user => user.id !== currentUser.uid);
+
+            if (uniqueResults.length > 0) {
+                familyResultsDiv.innerHTML = ''; // Clear previous results
+                uniqueResults.forEach(user => {
+                    // Check if user is already in the family list
+                    if (familyListDiv.querySelector(`[data-id="${user.id}"]`)) {
+                        return; // Skip if already added
+                    }
+
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'p-2 flex items-center border-b border-gray-100 last:border-b-0 text-sm'; // Compact styling
+                    resultItem.innerHTML = `
+                        <img src="${user.avatar || 'https://via.placeholder.com/150/0000FF/FFFFFF?text=SYN'}" class="w-8 h-8 rounded-full mr-2 object-cover flex-shrink-0">
+                        <div class="flex-1 overflow-hidden">
+                            <span class="font-semibold text-gray-800 truncate">${user.nickname || user.username || 'Unknown'}</span>
+                            <p class="text-gray-500 truncate">${user.username ? `@${user.username}` : ''}${user.email ? ` | ${user.email}` : ''}</p>
+                        </div>
+                        <button class="ml-2 text-indigo-600 hover:text-indigo-800 add-found-family flex-shrink-0" data-id="${user.id}"
+                                data-name="${user.nickname || user.username || 'Unknown'}" data-avatar="${user.avatar || 'https://via.placeholder.com/150/0000FF/FFFFFF?text=SYN'}">
+                            <i class="fas fa-plus-circle text-lg"></i>
+                        </button>
+                    `;
+                    familyResultsDiv.appendChild(resultItem);
+                });
+
+                // Add click handlers to the add buttons for search results
+                document.querySelectorAll('.add-found-family').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const userId = button.getAttribute('data-id');
+                        const userName = button.getAttribute('data-name');
+                        const userAvatar = button.getAttribute('data-avatar');
+                        addFamilyMemberToDisplay(userId, 'other', userName, userAvatar); // Default to 'other' relationship
+                        familySearchInput.value = ''; // Clear search input
+                        familyResultsDiv.classList.add('hidden'); // Hide results
+                        familyResultsDiv.innerHTML = ''; // Clear results div
+                    });
+                });
+            } else {
+                familyResultsDiv.innerHTML = '<p class="text-center py-4 text-gray-500">No users found.</p>';
+            }
+        }).catch(error => {
+            console.error("Error searching for family members:", error);
+            familyResultsDiv.innerHTML = '<p class="text-center py-4 text-red-500">Error searching for users.</p>';
+        });
+    } else {
+        familyResultsDiv.classList.add('hidden'); // Hide if search term is empty
+        familyResultsDiv.innerHTML = ''; // Clear results when empty
+    }
+});
+
+
+// Country dropdown population (moved from HTML to JS for cleaner separation)
+fetch("https://restcountries.com/v3.1/all")
+    .then(res => res.json())
+    .then(data => {
+        const select = document.getElementById("region");
+        const countries = data
+            .map(country => country.name.common)
+            .sort(); // Alphabetical order
+
+        countries.forEach(name => {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
+        // After populating, set the pre-existing value if any from userData
+        if (userData && userData.user_region) {
+            select.value = userData.user_region;
+        }
+    })
+    .catch(err => console.error("Failed to load countries:", err));
+
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "auth.html";
+  }
+});
+    </script>
+</body>
+</html>

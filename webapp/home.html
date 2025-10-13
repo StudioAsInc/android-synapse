@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Synapse</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+  <!-- Add Firebase Auth SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <!-- Lottie Web Player -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+  <style>
+    /* Custom styles for bottom sheets */
+    .bottom-sheet {
+      transition: transform 0.3s ease-out;
+      transform: translateY(100%);
+    }
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
+
+    /* Styles for verified badge */
+    .verified-badge {
+        font-size: 1rem; /* Adjust size as needed */
+        color: #8B5CF6; /* Purple color for verified badge */
+        vertical-align: middle; /* Align with text baseline */
+    }
+
+    /* Prevent text selection and long press context menus */
+    body {
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none;   /* Safari */
+        -khtml-user-select: none;    /* Konqueror HTML */
+        -moz-user-select: none;      /* Old versions of Firefox */
+        -ms-user-select: none;       /* Internet Explorer/Edge */
+        user-select: none;           /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        touch-action: manipulation; /* Disable double-tap-to-zoom and context menus */
+    }
+
+    /* Fixed header and footer transitions */
+    .header-fixed, .footer-fixed {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    /* Hide on scroll down */
+    .header-fixed.hidden-top {
+      transform: translateY(-100%);
+    }
+    .footer-fixed.hidden-bottom {
+      transform: translateY(100%);
+    }
+
+    /* Custom font for Synapse title if Product Sans is desired */
+    @font-face {
+        font-family: 'Product Sans';
+        src: url('https://fonts.gstatic.com/s/productsans/v11/RnC8h3p-Jz7s8_yA-fS-hDUSQ_A.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+    }
+    @font-face {
+        font-family: 'Product Sans Bold';
+        src: url('https://fonts.gstatic.com/s/productsans/v11/RnC8h3p-Jz7s8_yA-fS-hDUSQ_B.woff2') format('woff2'); /* Bold variant */
+        font-weight: 700;
+        font-style: normal;
+    }
+
+    .font-product-sans {
+        font-family: 'Product Sans', sans-serif;
+    }
+    .font-product-sans-bold {
+        font-family: 'Product Sans Bold', sans-serif;
+    }
+
+    /* Custom scrollbar for better aesthetics */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+        background: #333;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #666;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #888;
+    }
+
+    /* Hide default scrollbar for specific elements */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+  </style>
+  <script>
+    // Auto theme detection
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJSkL4MsVRVwb9sWGvkFQHz-RaGUY-2xo",
+      databaseURL: "https://sai-synapse-default-rtdb.firebaseio.com",
+      projectId: "sai-synapse",
+      authDomain: "sai-synapse.firebaseapp.com", // Corrected typical Firebase Auth domain
+      storageBucket: "synapse-social-sai.firebasestorage.app",
+      appId: "1:308269400761:android:91c2e7415671cc49ed9168"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth(); // Initialize Firebase Auth
+
+    // --- Global Variables ---
+    let currentUserId = null; // Will be set by auth state listener
+    let currentUserData = null; // To store full user data once fetched
+
+    let activePostIdForComments = null;
+    let activePostIdForOptionsMenu = null;
+    let currentPostFilter = 'global'; // Default filter
+    let lastFetchedPostTimestamp = null; // For pagination
+    let isLoadingPosts = false;
+    const POSTS_PER_LOAD = 100; // Load 100 posts at once
+
+    // Function to handle user not logged in
+    function redirectToLogin() {
+        // Redirect to your login page.
+        // Make sure you have a authentication.html or similar page.
+        window.location.href = 'authentication.html'; // Adjust this path as needed
+        // For debugging, you can also use alert("You are not logged in. Redirecting to login page.");
+    }
+
+    // --- Firebase Authentication State Listener ---
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            // User is signed in.
+            currentUserId = user.uid;
+            console.log("User logged in with UID:", currentUserId);
+
+            // Fetch current user's full data
+            currentUserData = await getUserData(currentUserId);
+            if (currentUserData) {
+                // Update profile picture elements (e.g., in header, "Add Story" section)
+                document.querySelectorAll('.current-user-avatar').forEach(img => {
+                    img.src = currentUserData.avatar || 'https://i.ibb.co/tpjC9xQL/1000153687.jpg'; // Fallback to a default if no avatar in DB
+                    img.alt = currentUserData.nickname || currentUserData.username || 'User';
+                });
+                // Update "What's on your mind" placeholder
+                document.getElementById('miniPostLayoutTextPostInput').placeholder = `What's on your mind, ${currentUserData.nickname || currentUserData.username}?`;
+                document.getElementById('miniPostLayoutTextPostInput').disabled = false; // Enable input
+            } else {
+                console.warn("Current user data not found in database for UID:", currentUserId);
+                // Keep default placeholder if user data not found
+                document.getElementById('miniPostLayoutTextPostInput').placeholder = `What's on your mind?`;
+                document.getElementById('miniPostLayoutTextPostInput').disabled = false; // Enable input anyway if logged in
+            }
+
+            // After setting currentUserId, initialize the filter buttons and fetch posts
+            // This ensures posts are fetched only when a user is authenticated.
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.addEventListener('click', () => selectFilter(button.dataset.filter));
+            });
+            selectFilter(currentPostFilter); // Apply initial filter and load posts
+            updateShareButtonState(); // Ensure share button is enabled if input has text
+
+        } else {
+            // User is signed out.
+            currentUserId = null;
+            currentUserData = null;
+            console.log("User not logged in.");
+
+            // Clear posts and display a message
+            const postsContainer = document.getElementById('posts-container');
+            postsContainer.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400">Please log in to see posts.</div>';
+            document.getElementById('loading-animation').style.display = 'none';
+            document.getElementById('no-posts-found').style.display = 'none';
+            if (document.getElementById('load-more-posts')) {
+                document.getElementById('load-more-posts').remove();
+            }
+
+            // Update profile picture elements to a default/login icon
+            document.querySelectorAll('.current-user-avatar').forEach(img => {
+                img.src = 'https://i.ibb.co/tpjC9xQL/1000153687.jpg'; // Default profile pic for logged out
+                img.alt = 'Guest';
+            });
+            document.getElementById('miniPostLayoutTextPostInput').placeholder = `Please log in to post.`;
+            document.getElementById('miniPostLayoutTextPostInput').disabled = true; // Disable input
+            updateShareButtonState(); // Disable share button
+
+            redirectToLogin(); // Redirect to login page
+        }
+    });
+
+    // --- Helper Functions ---
+    /**
+     * Formats a timestamp into a human-readable "X [unit] ago" string.
+     * @param {string} timestamp The timestamp string (e.g., "1753953984050").
+     * @returns {string} Formatted time string.
+     */
+    function formatTime(timestamp) {
+        const date = new Date(parseInt(timestamp));
+        const now = new Date();
+        const diffSeconds = Math.floor((now - date) / 1000);
+
+        if (diffSeconds < 60) {
+            return `${diffSeconds}s ago`;
+        } else if (diffSeconds < 3600) {
+            return `${Math.floor(diffSeconds / 60)}m ago`;
+        } else if (diffSeconds < 86400) {
+            return `${Math.floor(diffSeconds / 3600)}h ago`;
+        } else if (diffSeconds < 2592000) { // Approx 30 days
+            return `${Math.floor(diffSeconds / 86400)}d ago`;
+        } else if (diffSeconds < 31536000) { // Approx 365 days
+            return `${Math.floor(diffSeconds / 2592000)}mo ago`;
+        } else {
+            return `${Math.floor(diffSeconds / 31536000)}y ago`;
+        }
+    }
+
+    /**
+     * Renders text content, converting URLs into clickable links.
+     * @param {string} text The raw text content.
+     * @returns {string} HTML string with links.
+     */
+    function renderTextWithLinks(text) {
+        const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+        return text.replace(urlRegex, (url) => {
+            let fullUrl = url;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                fullUrl = 'http://' + url;
+            }
+            return `<a href="${fullUrl}" target="_blank" class="text-blue-500 hover:underline" style="user-select: text;">${url}</a>`;
+        });
+    }
+
+    /**
+     * Fetches user data from Firebase.
+     * @param {string} uid The user ID.
+     * @returns {Promise<object|null>} User data or null if not found.
+     */
+    async function getUserData(uid) {
+        try {
+            const userRef = database.ref(`skyline/users/${uid}`);
+            const userSnapshot = await userRef.once('value');
+            return userSnapshot.val();
+        } catch (error) {
+            console.error("Error fetching user data for UID:", uid, error);
+            return null;
+        }
+    }
+
+    // --- Post Loading Functions ---
+    /**
+     * Fetches and displays posts based on the selected filter and pagination.
+     * @param {string} filterType The type of filter to apply ('global', 'following', 'saved', 'ai_based').
+     * @param {boolean} append If true, new posts are appended; otherwise, the list is cleared.
+     */
+    async function fetchPosts(filterType = currentPostFilter, append = false) {
+      if (!currentUserId) {
+          console.log("Cannot fetch posts: User not logged in.");
+          return; // Don't fetch if user isn't logged in
+      }
+      if (isLoadingPosts) return; // Prevent multiple simultaneous loads
+
+      isLoadingPosts = true;
+      const postsContainer = document.getElementById('posts-container');
+      const loadingAnimation = document.getElementById('loading-animation');
+      const noPostsFound = document.getElementById('no-posts-found');
+      let loadMoreButton = document.getElementById('load-more-posts');
+
+      // Clear posts and reset pagination on initial load or filter change
+      if (!append) {
+        postsContainer.innerHTML = '';
+        lastFetchedPostTimestamp = null;
+        noPostsFound.style.display = 'none';
+        if (loadMoreButton) loadMoreButton.remove(); // Remove old button
+      }
+
+      loadingAnimation.style.display = 'block'; // Show Lottie animation
+
+      let postsQuery = database.ref('skyline/posts').orderByChild('publish_date');
+
+      // Implement pagination: fetch posts older than the last fetched one
+      if (lastFetchedPostTimestamp) {
+          postsQuery = postsQuery.endBefore(parseInt(lastFetchedPostTimestamp));
+      }
+      postsQuery = postsQuery.limitToLast(POSTS_PER_LOAD); // Fetch in batches
+
+      try {
+          const snapshot = await postsQuery.once('value');
+          loadingAnimation.style.display = 'none'; // Hide Lottie animation
+
+          let postsArray = [];
+          snapshot.forEach((childSnapshot) => {
+            postsArray.push({ id: childSnapshot.key, ...childSnapshot.val() });
+          });
+
+          // Sort in descending order by publish_date to show newest first
+          postsArray.sort((a, b) => parseInt(b.publish_date) - parseInt(a.publish_date));
+
+          let filteredPosts = [];
+
+          // Apply filtering based on selected chip
+          if (filterType === 'global') {
+              filteredPosts = postsArray;
+          } else if (filterType === 'following') {
+              // Ensure currentUserId is available before fetching following list
+              if (!currentUserId) {
+                  console.warn("Cannot filter by 'following': currentUserId is not set.");
+                  filteredPosts = []; // No posts if user not logged in
+              } else {
+                  const followingSnapshot = await database.ref(`skyline/following/${currentUserId}`).once('value');
+                  const followedUids = followingSnapshot.exists() ? Object.keys(followingSnapshot.val()) : [];
+                  filteredPosts = postsArray.filter(post => followedUids.includes(post.uid));
+              }
+          } else if (filterType === 'saved') {
+              // Ensure currentUserId is available before fetching saved posts
+              if (!currentUserId) {
+                  console.warn("Cannot filter by 'saved': currentUserId is not set.");
+                  filteredPosts = []; // No posts if user not logged in
+              } else {
+                  const savedSnapshot = await database.ref(`skyline/favorite-posts/${currentUserId}`).once('value');
+                  const savedPostIds = savedSnapshot.exists() ? Object.keys(savedSnapshot.val()) : [];
+                  filteredPosts = postsArray.filter(post => savedPostIds.includes(post.id));
+              }
+          } else if (filterType === 'ai_based') {
+              // AI Based filter logic would go here. For now, defaulting to global posts.
+              filteredPosts = postsArray;
+          }
+
+          // Handle no posts found for the current filter
+          if (filteredPosts.length === 0 && postsContainer.children.length === 0) { // Only show if no posts at all
+              noPostsFound.style.display = 'block';
+          } else {
+              noPostsFound.style.display = 'none';
+          }
+
+          // Update lastFetchedPostTimestamp for the next load
+          if (postsArray.length > 0) {
+              lastFetchedPostTimestamp = postsArray[postsArray.length - 1].publish_date;
+          }
+
+          // Render posts
+          for (const post of filteredPosts) {
+            const postElement = await createPostElement(post);
+            postsContainer.appendChild(postElement);
+          }
+
+          // Manage "Load More" button visibility
+          if (postsArray.length === POSTS_PER_LOAD) { // If we fetched a full batch, there might be more
+              if (!loadMoreButton) { // Create if it doesn't exist
+                  loadMoreButton = document.createElement('button');
+                  loadMoreButton.id = 'load-more-posts';
+                  loadMoreButton.className = 'w-full py-3 mt-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200';
+                  loadMoreButton.textContent = 'Load More Posts';
+                  loadMoreButton.onclick = () => fetchPosts(currentPostFilter, true);
+                  postsContainer.parentNode.appendChild(loadMoreButton);
+              }
+          } else { // Less than a full batch means no more posts, remove button
+              if (loadMoreButton) loadMoreButton.remove();
+          }
+
+      } catch (error) {
+          console.error("Error fetching posts:", error);
+          loadingAnimation.style.display = 'none';
+          if (!append && postsContainer.children.length === 0) {
+            postsContainer.innerHTML = '<div class="text-center py-8 text-red-500 dark:text-red-400">Failed to load posts. Please try again.</div>';
+          }
+      } finally {
+          isLoadingPosts = false;
+      }
+    }
+
+    /**
+     * Creates and returns a DOM element for a single post.
+     * @param {object} post The post data.
+     * @returns {Promise<HTMLElement>} The created post element.
+     */
+    async function createPostElement(post) {
+      const postElement = document.createElement('div');
+      postElement.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-md px-4 py-3 mb-4';
+      postElement.setAttribute('data-post-id', post.id);
+
+      const user = await getUserData(post.uid); // Fetch user data for post creator
+
+      const header = document.createElement('div');
+      header.className = 'flex items-center justify-between mb-3';
+
+      const userDisplay = document.createElement('div');
+      userDisplay.className = 'flex items-center gap-x-3'; // Using gap-x for spacing
+
+      const avatar = document.createElement('img');
+      avatar.src = user?.avatar || 'https://via.placeholder.com/40'; // Fallback for post creator
+      avatar.alt = user?.nickname || 'User';
+      avatar.className = 'w-10 h-10 rounded-full object-cover';
+      userDisplay.appendChild(avatar);
+
+      const userInfo = document.createElement('div');
+      userInfo.className = 'flex flex-col';
+
+      const nicknameContainer = document.createElement('div');
+      nicknameContainer.className = 'flex items-center h-5';
+
+      const nickname = document.createElement('span');
+      nickname.className = 'font-semibold text-gray-900 dark:text-gray-100 text-base pr-1 max-w-[120px] truncate'; // Using pr for spacing
+      nickname.textContent = user?.nickname || user?.username || 'Unknown User';
+      nicknameContainer.appendChild(nickname);
+
+      if (user?.verify === "true") {
+          const verifiedBadge = document.createElement('span');
+          verifiedBadge.className = 'material-icons-outlined verified-badge pl-0.5 text-purple-500 text-base leading-none'; // Using pl for spacing
+          verifiedBadge.textContent = 'verified';
+          nicknameContainer.appendChild(verifiedBadge);
+      }
+      userInfo.appendChild(nicknameContainer);
+
+      const timeAndPrivacy = document.createElement('div');
+      timeAndPrivacy.className = 'flex items-center text-xs text-gray-500 dark:text-gray-400 pt-0.5'; // Using pt for spacing
+      const timeSpan = document.createElement('span');
+      timeSpan.textContent = formatTime(post.publish_date);
+      timeAndPrivacy.appendChild(timeSpan);
+
+      if (post.post_visibility !== 'public') {
+          const privateIcon = document.createElement('span');
+          privateIcon.className = 'material-icons-outlined text-xs pl-1'; // Using pl for spacing
+          privateIcon.textContent = 'lock';
+          timeAndPrivacy.appendChild(privateIcon);
+      }
+      userInfo.appendChild(timeAndPrivacy);
+
+      userDisplay.appendChild(userInfo);
+      header.appendChild(userDisplay);
+
+      // More Options (three dots)
+      const threeDotsIcon = document.createElement('span');
+      threeDotsIcon.className = 'material-icons text-gray-500 dark:text-gray-400 cursor-pointer p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700';
+      threeDotsIcon.textContent = 'more_horiz';
+      threeDotsIcon.onclick = () => openPostOptionsMenu(post.id, post.uid);
+      header.appendChild(threeDotsIcon);
+
+      postElement.appendChild(header);
+
+      // Post content
+      if (post.post_text) {
+        const text = document.createElement('p');
+        text.className = 'mb-3 whitespace-pre-wrap text-gray-900 dark:text-gray-100 px-1 leading-relaxed';
+        text.innerHTML = renderTextWithLinks(post.post_text);
+        postElement.appendChild(text);
+      }
+
+      // Post image/video
+      if (post.post_image && post.post_image.startsWith('http')) {
+        const image = document.createElement('img');
+        image.src = post.post_image;
+        image.alt = 'Post image';
+        image.className = 'w-full rounded-lg mb-3 object-cover max-h-96';
+        postElement.appendChild(image);
+      } else if (post.post_type === "LINE_VIDEO") {
+        const videoPlaceholder = document.createElement('div');
+        videoPlaceholder.className = 'w-full h-48 rounded-lg mb-3 bg-gray-200 dark:bg-gray-700 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400';
+        videoPlaceholder.innerHTML = '<span class="material-icons text-7xl mb-2">videocam</span><p class="text-sm">Video content not directly playable here.</p>';
+        postElement.appendChild(videoPlaceholder);
+      }
+
+      // Likes and Comments Count bar
+      const interactionsBar = document.createElement('div');
+      interactionsBar.className = 'flex items-center text-sm text-gray-600 dark:text-gray-300 py-2 px-1 border-t border-gray-200 dark:border-gray-700 mt-2';
+
+      const likesCountRef = database.ref(`skyline/posts-likes/${post.id}`);
+      const likesCountSnapshot = await likesCountRef.once('value');
+      const likeCount = likesCountSnapshot.exists() ? Object.keys(likesCountSnapshot.val()).length : 0;
+      // Check if currentUserId exists before checking if user has liked
+      const userHasLiked = currentUserId && likesCountSnapshot.exists() && likesCountSnapshot.hasChild(currentUserId);
+
+      const commentsCountRef = database.ref(`skyline/posts-comments/${post.id}`);
+      const commentsCountSnapshot = await commentsCountRef.once('value');
+      const commentCount = commentsCountSnapshot.exists() ? Object.keys(commentsCountSnapshot.val()).length : 0;
+
+      const likesCommentsContainer = document.createElement('div');
+      likesCommentsContainer.className = 'flex items-center flex-grow gap-x-4'; // Using gap-x for spacing
+
+      const likeButtonActual = document.createElement('button');
+      likeButtonActual.className = `flex items-center py-1.5 px-3 rounded-full transition-colors duration-200 ${userHasLiked ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`;
+      likeButtonActual.innerHTML = `<span class="material-icons text-base pr-1">${userHasLiked ? 'thumb_up' : 'thumb_up_alt'}</span> <span id="like-count-${post.id}" class="text-sm font-semibold">${likeCount}</span> <span class="text-sm pl-1 text-gray-500 dark:text-gray-400">Likes</span>`; // Using pr/pl for spacing
+      likeButtonActual.onclick = () => toggleLike(post.id);
+      likesCommentsContainer.appendChild(likeButtonActual);
+
+
+      const commentsButtonActual = document.createElement('button');
+      commentsButtonActual.className = 'flex items-center py-1.5 px-3 rounded-full transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+      commentsButtonActual.innerHTML = `<span class="material-icons text-base pr-1">chat_bubble_outline</span> <span id="comment-count-${post.id}" class="text-sm font-semibold">${commentCount}</span> <span class="text-sm pl-1 text-gray-500 dark:text-gray-400">Comments</span>`; // Using pr/pl for spacing
+      commentsButtonActual.onclick = () => openCommentBottomSheet(post.id);
+      likesCommentsContainer.appendChild(commentsButtonActual);
+
+      interactionsBar.appendChild(likesCommentsContainer);
+
+      const saveButton = document.createElement('button');
+      const isFavoritedRef = database.ref(`skyline/favorite-posts/${currentUserId}/${post.id}`);
+      // Check if currentUserId exists before querying favorite posts
+      const isFavoritedSnapshot = currentUserId ? await isFavoritedRef.once('value') : { exists: () => false };
+      const userHasFavorited = isFavoritedSnapshot.exists();
+
+      saveButton.className = `p-2 rounded-full transition-colors duration-200 ${userHasFavorited ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`;
+      saveButton.innerHTML = `<span class="material-icons">${userHasFavorited ? 'bookmark' : 'bookmark_border'}</span>`;
+      saveButton.onclick = (event) => toggleSavePost(post.id, event);
+      interactionsBar.appendChild(saveButton);
+
+
+      postElement.appendChild(interactionsBar);
+
+      return postElement;
+    }
+
+    // --- Post Actions ---
+    /**
+     * Toggles the like status of a post for the current user.
+     * @param {string} postId The ID of the post to like/unlike.
+     */
+    async function toggleLike(postId) {
+      if (!currentUserId) {
+        alert("Please log in to like posts.");
+        redirectToLogin();
+        return;
+      }
+      const likeRef = database.ref(`skyline/posts-likes/${postId}/${currentUserId}`);
+      const likeCountSpan = document.getElementById(`like-count-${postId}`);
+      const likeButtonElement = likeCountSpan.closest('button');
+
+      try {
+        const snapshot = await likeRef.once('value');
+        let currentLikes = parseInt(likeCountSpan.textContent);
+
+        if (snapshot.exists()) {
+          await likeRef.remove();
+          currentLikes--;
+          likeButtonElement.classList.remove('text-blue-600', 'dark:text-blue-400');
+          likeButtonElement.classList.add('text-gray-600', 'dark:text-gray-300');
+          likeButtonElement.querySelector('.material-icons').textContent = 'thumb_up_alt'; // Change to outline
+        } else {
+          await likeRef.set(currentUserId);
+          currentLikes++;
+          likeButtonElement.classList.add('text-blue-600', 'dark:text-blue-400');
+          likeButtonElement.classList.remove('text-gray-600', 'dark:text-gray-300');
+          likeButtonElement.querySelector('.material-icons').textContent = 'thumb_up'; // Change to filled
+        }
+        likeCountSpan.textContent = currentLikes;
+      } catch (error) {
+        console.error("Error toggling like:", error);
+        alert("Failed to toggle like. Please try again.");
+      }
+    }
+
+    /**
+     * Toggles the saved/favorite status of a post for the current user.
+     * @param {string} postId The ID of the post to save/unsave.
+     * @param {Event} event The click event.
+     */
+    async function toggleSavePost(postId, event) {
+        if (!currentUserId) {
+            alert("Please log in to save posts.");
+            redirectToLogin();
+            return;
+        }
+        const favoriteRef = database.ref(`skyline/favorite-posts/${currentUserId}/${postId}`);
+        const saveButton = event.currentTarget;
+
+        try {
+            const snapshot = await favoriteRef.once('value');
+
+            if (snapshot.exists()) {
+                await favoriteRef.remove();
+                saveButton.classList.remove('text-blue-600', 'dark:text-blue-400');
+                saveButton.classList.add('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+                saveButton.querySelector('.material-icons').textContent = 'bookmark_border';
+            } else {
+                await favoriteRef.set(postId); // Store the postId as value for easy check
+                saveButton.classList.add('text-blue-600', 'dark:text-blue-400');
+                saveButton.classList.remove('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
+                saveButton.querySelector('.material-icons').textContent = 'bookmark';
+            }
+        } catch (error) {
+            console.error("Error toggling save post:", error);
+            alert("Failed to save/unsave post. Please try again.");
+        }
+    }
+
+    // --- Post Options Bottom Sheet Functions ---
+    /**
+     * Opens the post options bottom sheet for a given post.
+     * @param {string} postId The ID of the post.
+     * @param {string} postUid The UID of the post creator.
+     */
+    function openPostOptionsMenu(postId, postUid) {
+      if (!currentUserId) {
+        alert("Please log in to access post options.");
+        redirectToLogin();
+        return;
+      }
+      activePostIdForOptionsMenu = postId;
+      const optionsBottomSheet = document.getElementById('post-options-bottom-sheet');
+      const deleteOption = document.getElementById('delete-post-option');
+      const editOption = document.getElementById('edit-post-option');
+
+      // Show/hide edit/delete options based on whether current user owns the post
+      if (postUid === currentUserId) {
+        deleteOption.classList.remove('hidden');
+        editOption.classList.remove('hidden');
+      } else {
+        deleteOption.classList.add('hidden');
+        editOption.classList.add('hidden');
+      }
+
+      optionsBottomSheet.classList.add('open');
+      document.body.classList.add('overflow-hidden'); // Prevent background scroll
+    }
+
+    /**
+     * Closes the post options bottom sheet.
+     */
+    function closePostOptionsMenu() {
+      document.getElementById('post-options-bottom-sheet').classList.remove('open');
+      document.body.classList.remove('overflow-hidden');
+      activePostIdForOptionsMenu = null;
+    }
+
+    /**
+     * Handles the selected action from the post options menu.
+     * @param {string} action The action to perform ('copy', 'share', 'edit', 'report', 'delete').
+     */
+    function handlePostOption(action) {
+        if (!currentUserId) {
+            alert("Please log in to perform this action.");
+            redirectToLogin();
+            return;
+        }
+        if (!activePostIdForOptionsMenu) return;
+
+        switch(action) {
+            case 'copy':
+                const dummyInput = document.createElement('textarea');
+                document.body.appendChild(dummyInput);
+                dummyInput.value = `https://dl-synapse.pages.dev/post?post=${activePostIdForOptionsMenu}`; // Strict share link format
+                dummyInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummyInput);
+                alert('Link copied to clipboard!');
+                break;
+            case 'share':
+                // Implement native Web Share API if available, otherwise fallback
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Synapse Post',
+                        text: 'Check out this post on Synapse!',
+                        url: `https://dl-synapse.pages.dev/post?post=${activePostIdForOptionsMenu}`,
+                    })
+                    .then(() => console.log('Successful share'))
+                    .catch((error) => console.log('Error sharing', error));
+                } else {
+                    alert(`Share post ${activePostIdForOptionsMenu}. (Web Share API not supported on this device)`);
+                }
+                break;
+            case 'edit':
+                alert(`Edit post ${activePostIdForOptionsMenu}. (Functionality not implemented)`);
+                break;
+            case 'report':
+                alert(`Post ${activePostIdForOptionsMenu} reported. Thank you for making Synapse a better place.`);
+                break;
+            case 'delete':
+                deletePost(activePostIdForOptionsMenu);
+                break;
+        }
+        closePostOptionsMenu();
+    }
+
+    /**
+     * Deletes a post and its associated data from Firebase.
+     * @param {string} postId The ID of the post to delete.
+     */
+    async function deletePost(postId) {
+      if (!currentUserId) {
+        alert("Please log in to delete posts.");
+        redirectToLogin();
+        return;
+      }
+      if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+        return;
+      }
+
+      const postRef = database.ref(`skyline/posts/${postId}`);
+      const postLikesRef = database.ref(`skyline/posts-likes/${postId}`);
+      const postCommentsRef = database.ref(`skyline/posts-comments/${postId}`);
+      const favoritePostRef = database.ref(`skyline/favorite-posts`);
+
+      try {
+        await postRef.remove();
+        await postLikesRef.remove();
+        await postCommentsRef.remove();
+
+        // Remove from all users' favorite posts
+        const allFavoritePostsSnapshot = await favoritePostRef.once('value');
+        if (allFavoritePostsSnapshot.exists()) {
+            allFavoritePostsSnapshot.forEach(userFavoritesSnapshot => {
+                if (userFavoritesSnapshot.hasChild(postId)) {
+                    database.ref(`skyline/favorite-posts/${userFavoritesSnapshot.key}/${postId}`).remove();
+                }
+            });
+        }
+
+        // Remove post element from DOM
+        const postElementToRemove = document.querySelector(`[data-post-id="${postId}"]`);
+        if (postElementToRemove) {
+            postElementToRemove.remove();
+        }
+        alert('Post deleted successfully!');
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        alert("Failed to delete post. Please try again.");
+      }
+    }
+
+
+    // --- Comment Bottom Sheet Functions ---
+    /**
+     * Opens the comment bottom sheet for a given post and loads its comments.
+     * @param {string} postId The ID of the post to view comments for.
+     */
+    async function openCommentBottomSheet(postId) {
+      if (!currentUserId) {
+        alert("Please log in to view or post comments.");
+        redirectToLogin();
+        return;
+      }
+      activePostIdForComments = postId;
+      const commentsContainer = document.getElementById('comments-list');
+      commentsContainer.innerHTML = '<div class="text-center py-4 text-gray-500 dark:text-gray-400">Loading comments...</div>';
+      document.getElementById('comment-input').value = '';
+
+      document.getElementById('comment-bottom-sheet').classList.add('open');
+      document.body.classList.add('overflow-hidden');
+
+      const commentsRef = database.ref(`skyline/posts-comments/${postId}`);
+      // Use 'value' listener for real-time updates on comments
+      commentsRef.on('value', async (snapshot) => {
+        commentsContainer.innerHTML = ''; // Clear previous comments before re-rendering
+        const postCommentCountSpan = document.getElementById(`comment-count-${postId}`);
+
+        if (!snapshot.exists()) {
+          commentsContainer.innerHTML = '<div class="text-center py-4 text-gray-500 dark:text-gray-400">No comments yet. Be the first to comment!</div>';
+          if (postCommentCountSpan) {
+              postCommentCountSpan.textContent = 0;
+          }
+          return;
+        }
+
+        const commentsArray = [];
+        snapshot.forEach((childSnapshot) => {
+          commentsArray.push({ id: childSnapshot.key, ...childSnapshot.val() });
+        });
+
+        commentsArray.sort((a, b) => parseInt(a.push_time) - parseInt(b.push_time)); // Sort by time
+
+        for (const comment of commentsArray) {
+          const commentElement = await createCommentElement(comment);
+          commentsContainer.appendChild(commentElement);
+        }
+        commentsContainer.scrollTop = commentsContainer.scrollHeight; // Scroll to bottom
+
+        if (postCommentCountSpan) {
+            postCommentCountSpan.textContent = commentsArray.length;
+        }
+      });
+    }
+
+    /**
+     * Closes the comment bottom sheet.
+     */
+    function closeCommentBottomSheet() {
+      // Detach the real-time listener when closing the sheet to prevent memory leaks
+      if (activePostIdForComments) {
+        database.ref(`skyline/posts-comments/${activePostIdForComments}`).off('value');
+      }
+      document.getElementById('comment-bottom-sheet').classList.remove('open');
+      document.body.classList.remove('overflow-hidden');
+      activePostIdForComments = null;
+    }
+
+    /**
+     * Creates and returns a DOM element for a single comment.
+     * @param {object} comment The comment data.
+     * @returns {Promise<HTMLElement>} The created comment element.
+     */
+    async function createCommentElement(comment) {
+        const commentElement = document.createElement('div');
+        commentElement.className = 'flex items-start mb-4';
+
+        const user = await getUserData(comment.uid); // Fetch user data for the commenter
+
+        const avatar = document.createElement('img');
+        avatar.src = user?.avatar || 'https://via.placeholder.com/36'; // Fallback for commenter
+        avatar.alt = user?.nickname || 'User';
+        avatar.className = 'w-9 h-9 rounded-full object-cover flex-shrink-0';
+        commentElement.appendChild(avatar);
+
+        const commentContent = document.createElement('div');
+        commentContent.className = 'flex-grow bg-gray-100 dark:bg-gray-700 rounded-lg p-3';
+
+        const commentHeader = document.createElement('div');
+        commentHeader.className = 'flex justify-between items-center mb-1';
+
+        const commenterInfo = document.createElement('span');
+        commenterInfo.className = 'font-semibold text-gray-900 dark:text-gray-100 text-sm';
+        commenterInfo.textContent = user?.nickname || user?.username || 'Unknown User';
+        commentHeader.appendChild(commenterInfo);
+
+        const commentTime = document.createElement('span');
+        commentTime.className = 'text-xs text-gray-500 dark:text-gray-400';
+        commentTime.textContent = formatTime(comment.push_time);
+        commentHeader.appendChild(commentTime);
+
+        const commentText = document.createElement('p');
+        commentText.className = 'text-gray-800 dark:text-gray-100 text-sm whitespace-pre-wrap leading-normal';
+        commentText.innerHTML = renderTextWithLinks(comment.comment);
+
+        commentContent.appendChild(commentHeader);
+        commentContent.appendChild(commentText);
+        commentElement.appendChild(commentContent);
+
+        return commentElement;
+    }
+
+    /**
+     * Posts a new comment to the active post.
+     */
+    async function postComment() {
+      if (!currentUserId) {
+        alert("Please log in to post comments.");
+        redirectToLogin();
+        return;
+      }
+      const commentInput = document.getElementById('comment-input');
+      const commentText = commentInput.value.trim();
+
+      if (!commentText || !activePostIdForComments) {
+        alert('Comment cannot be empty!');
+        return;
+      }
+
+      const newCommentRef = database.ref(`skyline/posts-comments/${activePostIdForComments}`).push();
+      try {
+        await newCommentRef.set({
+          TYPE: "MESSAGE",
+          comment: commentText,
+          key: newCommentRef.key,
+          like: "0", // Default like count for a new comment
+          push_time: Date.now().toString(),
+          uid: currentUserId
+        });
+        commentInput.value = ''; // Clear input after successful post
+      } catch (error) {
+        console.error("Error posting comment:", error);
+        alert("Failed to post comment. Please try again.");
+      }
+    }
+
+    // --- Scrolling Header/Footer Logic (Collapsing) ---
+    let lastScrollY = window.scrollY;
+    const header = document.querySelector('.header-fixed');
+    const footer = document.querySelector('.footer-fixed');
+    let scrollTimeout; // Debounce timer
+
+    window.addEventListener('scroll', () => {
+        // Do not collapse if any bottom sheet is open (as they add overflow-hidden to body)
+        if (document.body.classList.contains('overflow-hidden')) {
+            return;
+        }
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY;
+
+            // Hide header/footer when scrolling down and past the header's height
+            if (currentScrollY > header.offsetHeight && scrollDelta > 0) {
+                header.classList.add('hidden-top');
+                footer.classList.add('hidden-bottom');
+            }
+            // Show header/footer when scrolling up or at the very top of the page
+            else if (scrollDelta < 0 || currentScrollY <= 0) {
+                header.classList.remove('hidden-top');
+                footer.classList.remove('hidden-bottom');
+            }
+            lastScrollY = currentScrollY; // Update last scroll position
+        }, 50); // Adjust debounce time as needed for smoothness vs responsiveness
+    });
+
+    // --- Postable (What's on your mind?) Logic ---
+    /**
+     * Publishes a new text post to Firebase.
+     */
+    async function publishNewPost() {
+        if (!currentUserId) {
+            alert("Please log in to publish posts.");
+            redirectToLogin();
+            return;
+        }
+        const miniPostInput = document.getElementById('miniPostLayoutTextPostInput');
+        const postText = miniPostInput.value.trim();
+
+        if (!postText) {
+            alert('Your post cannot be empty!');
+            return;
+        }
+
+        try {
+            const newPostRef = database.ref('skyline/posts').push(); // Generate a unique key
+            const postId = newPostRef.key;
+            const timestamp = Date.now().toString();
+
+            await newPostRef.set({
+                key: postId,
+                post_disable_comments: "false",
+                post_disable_favorite: "false",
+                post_hide_comments_count: "false",
+                post_hide_like_count: "false",
+                post_hide_views_count: "false",
+                post_region: "none", // Placeholder, could be dynamic in a full implementation
+                post_text: postText,
+                post_type: "TEXT", // Hardcoded for text post; could be "IMAGE", "VIDEO"
+                post_visibility: "public", // Hardcoded for public; could be "private", "followers"
+                publish_date: timestamp,
+                uid: currentUserId
+            });
+
+            miniPostInput.value = ''; // Clear input field
+            updateShareButtonState(); // Update button state (disable it)
+            alert('Post published successfully!');
+            // Prepend the new post immediately or re-fetch based on preference
+            // For simplicity, let's re-fetch.
+            await fetchPosts(currentPostFilter);
+        } catch (error) {
+            console.error("Error publishing post:", error);
+            alert("Failed to publish post. Please try again.");
+        }
+    }
+
+    // --- Filter (Chip) Logic ---
+    /**
+     * Selects a post filter and reloads posts.
+     * @param {string} filterType The type of filter to apply.
+     */
+    function selectFilter(filterType) {
+        currentPostFilter = filterType;
+        const filterButtons = document.querySelectorAll('.filter-button');
+        filterButtons.forEach(button => {
+            // Apply active styles to the selected button
+            if (button.dataset.filter === filterType) {
+                button.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                button.classList.remove('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
+            } else {
+                // Remove active styles from other buttons
+                button.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                button.classList.add('text-gray-600', 'dark:text-gray-300', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
+            }
+        });
+        // Only fetch posts if currentUserId is available. If not, the onAuthStateChanged listener will handle it.
+        if (currentUserId) {
+            fetchPosts(filterType); // Fetch posts based on new filter (resets pagination)
+        }
+    }
+
+    // --- Initial Load and Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const miniPostInput = document.getElementById('miniPostLayoutTextPostInput');
+        miniPostInput.addEventListener('input', updateShareButtonState);
+        // Initial state set by onAuthStateChanged
+    });
+
+    /**
+     * Updates the state of the "Share" button based on input content and user login status.
+     */
+    function updateShareButtonState() {
+        const miniPostInput = document.getElementById('miniPostLayoutTextPostInput');
+        const shareButton = document.getElementById('miniPostLayoutTextPostPublish');
+
+        if (miniPostInput.value.trim().length > 0 && currentUserId) { // Also check if user is logged in
+            shareButton.classList.remove('bg-gray-400', 'text-gray-100', 'cursor-not-allowed');
+            shareButton.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'cursor-pointer');
+            shareButton.onclick = publishNewPost; // Enable and assign post function
+        } else {
+            shareButton.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'cursor-pointer');
+            shareButton.classList.add('bg-gray-400', 'text-gray-100', 'cursor-not-allowed');
+            shareButton.onclick = null; // Disable click
+        }
+    }
+  </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col font-product-sans">
+
+  <!-- Main Header -->
+  <header class="header-fixed fixed top-0 w-full bg-white dark:bg-gray-800 shadow-sm z-30">
+    <div class="flex items-center justify-between p-4 pb-2">
+      <h1 class="text-4xl font-product-sans-bold text-blue-600 dark:text-blue-400">Synapse</h1>
+      <div class="flex items-center gap-x-3"> <!-- Using gap-x for spacing, no mr/ml -->
+        <a href="#" class="material-icons text-gray-600 dark:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">search</a>
+        <!-- Removed videocam icon as per request -->
+        <a href="messages.html" class="material-icons text-gray-600 dark:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">chat</a>
+        <a href="#" class="pr-1"> <!-- Using pr for spacing before profile pic -->
+            <!-- Image for current user, updated by JS -->
+            <img src="https://i.ibb.co/tpjC9xQL/1000153687.jpg" alt="Profile" class="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-600 current-user-avatar">
+        </a>
+        <button class="material-icons text-gray-600 dark:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">menu</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-grow pt-20 pb-16 px-4"> <!-- Adjusted padding for fixed header/footer. No margin left/right here -->
+
+    <!-- Add Story & What's on your mind -->
+    <section class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+        <div class="flex items-center mb-4">
+            <div class="relative w-14 h-14 rounded-full border-2 border-blue-500 dark:border-blue-400 pr-4 flex-shrink-0"> <!-- Using pr for spacing -->
+                <!-- Image for current user, updated by JS -->
+                <img src="https://i.ibb.co/tpjC9xQL/1000153687.jpg" alt="Your Story" class="w-full h-full rounded-full object-cover current-user-avatar">
+                <div class="absolute bottom-0 right-0 bg-blue-500 rounded-full p-0.5 border-2 border-white dark:border-gray-800">
+                    <span class="material-icons text-white text-base leading-none">add</span>
+                </div>
+            </div>
+            <div class="flex flex-col">
+                <span class="font-semibold text-gray-900 dark:text-gray-100 text-lg">Add Story</span>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+            <div class="flex items-center mb-3 gap-x-3"> <!-- Using gap-x for spacing -->
+                <!-- Image for current user, updated by JS -->
+                <img src="https://i.ibb.co/tpjC9xQL/1000153687.jpg" alt="Your Profile" class="w-10 h-10 rounded-full object-cover flex-shrink-0 current-user-avatar">
+                <input type="text" id="miniPostLayoutTextPostInput" placeholder="What's on your mind, username?" class="flex-grow bg-gray-50 dark:bg-gray-700 rounded-full px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-base" maxlength="1500" disabled>
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-3 px-3"> <!-- Using px for internal padding -->
+                <div class="flex gap-x-2"> <!-- Using gap-x for spacing -->
+                    <button class="p-2 rounded-full text-green-500 hover:text-green-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <span class="material-icons">photo_library</span>
+                    </button>
+                    <button class="p-2 rounded-full text-red-500 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <span class="material-icons">videocam</span>
+                    </button>
+                    <button class="p-2 rounded-full text-blue-500 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <span class="material-icons">description</span>
+                    </button>
+                    <button class="p-2 rounded-full text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <span class="material-icons">more_horiz</span>
+                    </button>
+                </div>
+                <button id="miniPostLayoutTextPostPublish" class="py-2 px-6 rounded-full text-sm font-product-sans transition-colors duration-200">Share</button>
+            </div>
+        </div>
+        <div class="h-0.5 bg-gray-100 dark:bg-gray-700 mt-4"></div>
+    </section>
+
+    <!-- Tabs Section (Filters) -->
+    <section class="overflow-x-auto scrolling-touch py-2 mb-4 whitespace-nowrap scrollbar-hide">
+        <div class="inline-flex items-center gap-x-3.5 w-full justify-center px-4"> <!-- Using gap-x and px for spacing -->
+            <button class="filter-button py-2 px-4 rounded-full text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" data-filter="ai_based">AI based</button>
+            <button class="filter-button py-2 px-4 rounded-full text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" data-filter="global">Global</button>
+            <button class="filter-button py-2 px-4 rounded-full text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" data-filter="following">Following</button>
+            <button class="filter-button py-2 px-4 rounded-full text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" data-filter="saved">Saved posts</button>
+        </div>
+    </section>
+    <div class="h-0.5 bg-gray-100 dark:bg-gray-700 mb-4"></div>
+
+
+    <!-- Posts Container -->
+    <section id="posts-container" class="pt-2">
+      <!-- Posts will be dynamically inserted here -->
+    </section>
+
+    <!-- Loading Animation -->
+    <div id="loading-animation" class="flex justify-center items-center py-8" style="display: none;">
+      <lottie-player src="loading.json" background="transparent" speed="1" style="width: 80px; height: 80px; margin: 0 auto; display: block;" loop autoplay></lottie-player>
+    </div>
+
+    <!-- No Posts Found -->
+    <div id="no-posts-found" class="text-center py-8 text-gray-500 dark:text-gray-400" style="display: none;">
+      <p class="text-lg font-medium">No posts available at the moment.</p>
+      <p class="text-sm mt-1">Check back later or make your first post!</p>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="footer-fixed fixed bottom-0 w-full bg-white dark:bg-gray-800 shadow-lg border-t border-gray-200 dark:border-gray-700 flex justify-around items-center p-2 z-40">
+    <a href="home.html" class="flex flex-col items-center text-blue-500 dark:text-blue-400 py-1 px-3 rounded-md transition-colors duration-200">
+      <span class="material-icons text-xl">home</span>
+      <span class="text-xs mt-1">Home</span>
+    </a>
+    <a href="messages.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 py-1 px-3 rounded-md transition-colors duration-200">
+      <span class="material-icons text-xl">chat</span>
+      <span class="text-xs mt-1">Chat</span>
+    </a>
+    <a href="notifications.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 py-1 px-3 rounded-md transition-colors duration-200">
+      <span class="material-icons text-xl">notifications</span>
+      <span class="text-xs mt-1">Notifications</span>
+    </a>
+    <a href="settings.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 py-1 px-3 rounded-md transition-colors duration-200">
+      <span class="material-icons text-xl">settings</span>
+      <span class="text-xs mt-1">Settings</span>
+    </a>
+  </nav>
+
+  <!-- Comment Bottom Sheet -->
+  <div id="comment-bottom-sheet" class="bottom-sheet fixed inset-x-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-lg shadow-lg flex flex-col z-50 max-h-[80vh]">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Comments</h3>
+      <button class="material-icons text-gray-600 dark:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="closeCommentBottomSheet()">close</button>
+    </div>
+
+    <!-- Comments List -->
+    <div id="comments-list" class="flex-grow overflow-y-auto p-4 custom-scrollbar">
+      <!-- Comments will be dynamically loaded here -->
+    </div>
+
+    <!-- Comment Input -->
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-x-2"> <!-- Using gap-x for spacing -->
+      <input type="text" id="comment-input" placeholder="Add a comment..." class="flex-grow bg-gray-100 dark:bg-gray-700 rounded-full px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400">
+      <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200" onclick="postComment()">Post</button>
+    </div>
+  </div>
+
+  <!-- Post Options Bottom Sheet -->
+  <div id="post-options-bottom-sheet" class="bottom-sheet fixed inset-x-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-lg shadow-lg flex flex-col z-50 max-h-[50vh]">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Post Options</h3>
+      <button class="material-icons text-gray-600 dark:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="closePostOptionsMenu()">close</button>
+    </div>
+
+    <!-- Options List -->
+    <div class="flex-grow overflow-y-auto p-2">
+      <button class="flex items-center w-full p-3 my-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors duration-200 gap-x-3" onclick="handlePostOption('copy')"> <!-- Using gap-x for spacing -->
+        <span class="material-icons">content_copy</span> Copy Link
+      </button>
+      <button class="flex items-center w-full p-3 my-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors duration-200 gap-x-3" onclick="handlePostOption('share')"> <!-- Using gap-x for spacing -->
+        <span class="material-icons">share</span> Share
+      </button>
+      <button id="edit-post-option" class="flex items-center w-full p-3 my-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors duration-200 gap-x-3 hidden" onclick="handlePostOption('edit')"> <!-- Using gap-x for spacing -->
+        <span class="material-icons">edit</span> Edit Post
+      </button>
+      <button class="flex items-center w-full p-3 my-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors duration-200 gap-x-3" onclick="handlePostOption('report')"> <!-- Using gap-x for spacing -->
+        <span class="material-icons">flag</span> Report Post
+      </button>
+      <button id="delete-post-option" class="flex items-center w-full p-3 my-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900 text-red-600 transition-colors duration-200 gap-x-3 hidden" onclick="handlePostOption('delete')"> <!-- Using gap-x for spacing -->
+        <span class="material-icons">delete</span> Delete Post
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>
