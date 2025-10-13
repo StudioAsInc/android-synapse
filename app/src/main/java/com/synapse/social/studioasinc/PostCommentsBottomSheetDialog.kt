@@ -29,7 +29,6 @@ import java.text.DecimalFormat
 
 class PostCommentsBottomSheetDialog : BottomSheetDialogFragment() {
 
-    private lateinit var rootView: View
     private lateinit var body: LinearLayout
     private lateinit var comments_list: RecyclerView
     private lateinit var no_comments_body: LinearLayout
@@ -59,14 +58,23 @@ class PostCommentsBottomSheetDialog : BottomSheetDialogFragment() {
     private val viewModel: PostCommentsViewModel by viewModels()
     private lateinit var commentsAdapter: CommentsAdapter
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val dialog = BottomSheetDialog(requireContext(), R.style.PostCommentsBottomSheetDialogStyle)
-        rootView = View.inflate(context, R.layout.synapse_comments_cbsd, null)
-        dialog.setContentView(rootView)
-        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.synapse_comments_cbsd, container, false)
+    }
 
-        dialog.setOnShowListener { dialogInterface ->
-            val d = dialogInterface as BottomSheetDialog
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        initializeViews(view)
+        setupClickListeners()
+        setupRecyclerView()
+        observeViewModel()
+
+        dialog?.setOnShowListener { dialog ->
+            val d = dialog as BottomSheetDialog
             val bottomSheet = d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             bottomSheet?.let {
                 val display = requireActivity().windowManager.defaultDisplay
@@ -81,23 +89,6 @@ class PostCommentsBottomSheetDialog : BottomSheetDialogFragment() {
                 BottomSheetBehavior.from(it).state = BottomSheetBehavior.STATE_EXPANDED
             }
         }
-        return dialog
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return rootView
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        initializeViews(view)
-        setupClickListeners()
-        setupRecyclerView()
-        observeViewModel()
 
         arguments?.let {
             postKey = it.getString("postKey")
