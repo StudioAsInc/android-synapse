@@ -102,7 +102,7 @@ class CommentsAdapter(
                     "admin" -> badge.setImageResource(R.drawable.admin_badge)
                     "moderator" -> badge.setImageResource(R.drawable.moderator_badge)
                     "support" -> badge.setImageResource(R.drawable.support_badge)
-                    else -> if (it.verify == true) badge.setImageResource(R.drawable.verified_badge)
+                    else -> if (it.verify == "true") badge.setImageResource(R.drawable.verified_badge)
                 }
             }
 
