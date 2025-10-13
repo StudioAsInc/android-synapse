@@ -79,7 +79,9 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import com.google.firebase.database.Query;
-import com.synapse.social.studioasinc.ImageUploader;
+import com.synapse.social.studioasinc.home.ImageUploadViewModel;
+import com.synapse.social.studioasinc.model.ImgbbResponse;
+import androidx.lifecycle.ViewModelProvider;
 import com.onesignal.OneSignal;
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver;
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState;
@@ -106,6 +108,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	private String imageUrl = "";
 	private HashMap<String, Object> mDp = new HashMap<>();
 	private String thedpurl = "";
+	private ImageUploadViewModel imageUploadViewModel;
 
 	private ScrollView scroll;
 	private androidx.constraintlayout.widget.ConstraintLayout body;
@@ -611,6 +614,8 @@ public class CompleteProfileActivity extends AppCompatActivity {
 	}
 
 	private void initializeLogic() {
+		imageUploadViewModel = new ViewModelProvider(this).get(ImageUploadViewModel.class);
+
 		email_verification_title.setTypeface(Typeface.DEFAULT, 1);
 		subtitle.setTypeface(Typeface.DEFAULT, 0);
 		title.setTypeface(Typeface.DEFAULT, 1);
@@ -633,6 +638,16 @@ public class CompleteProfileActivity extends AppCompatActivity {
 			nickname_input.setText(getIntent().getStringExtra("googleLoginName"));
 		}
 
+		imageUploadViewModel.getUploadStatus().observe(this, result -> {
+			if (result.isSuccess()) {
+				ImgbbResponse response = result.getOrNull();
+				if (response != null) {
+					thedpurl = response.getData().getUrl();
+				}
+			} else {
+				SketchwareUtil.showMessage(getApplicationContext(), "Something went wrong");
+			}
+		});
 
 		_font();
 	}
@@ -658,18 +673,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 				}
 				profile_image.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
-					@Override
-					public void onUploadComplete(String imageUrl) {
-						thedpurl = imageUrl;
-					}
-
-					@Override
-					public void onUploadError(String errorMessage) {
-						SketchwareUtil.showMessage(getApplicationContext(), "Something went wrong");
-					}
-				});
-
+				imageUploadViewModel.uploadImage(path);
 			}
 			else {
 

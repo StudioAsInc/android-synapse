@@ -74,7 +74,9 @@ import androidx.appcompat.widget.SwitchCompat;
 import com.google.firebase.database.Query;
 import java.net.URL;
 import java.net.MalformedURLException;
-import com.synapse.social.studioasinc.ImageUploader;
+import com.synapse.social.studioasinc.home.ImageUploadViewModel;
+import com.synapse.social.studioasinc.model.ImgbbResponse;
+import androidx.lifecycle.ViewModelProvider;
 
 public class ProfileEditActivity extends AppCompatActivity {
 
@@ -97,6 +99,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 	private String path = "";
 	private String IMG_BB_API_KEY = "";
 	private HashMap<String, Object> mAddProfilePhotoMap = new HashMap<>();
+	private ImageUploadViewModel imageUploadViewModel;
+	private String uploadType = "";
 
 	private LinearLayout body;
 	private LinearLayout top;
@@ -722,11 +726,28 @@ public class ProfileEditActivity extends AppCompatActivity {
 		mNicknameInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 		mBiographyInput.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
 		gender.setBackground(new GradientDrawable() { public GradientDrawable getIns(int a, int b, int c, int d) { this.setCornerRadius(a); this.setStroke(b, c); this.setColor(d); return this; } }.getIns((int)28, (int)3, 0xFFEEEEEE, 0xFFFFFFFF));
+		imageUploadViewModel = new ViewModelProvider(this).get(ImageUploadViewModel.class);
 		mTitle.setTypeface(Typeface.DEFAULT, 1);
 		gender_title.setTypeface(Typeface.DEFAULT, 1);
 		region_title.setTypeface(Typeface.DEFAULT, 1);
 		cover_image_history_stage_title.setTypeface(Typeface.DEFAULT, 1);
 		profile_image_history_stage_title.setTypeface(Typeface.DEFAULT, 1);
+		imageUploadViewModel.getUploadStatus().observe(this, result -> {
+			if (result.isSuccess()) {
+				ImgbbResponse response = result.getOrNull();
+				if (response != null) {
+					String imageUrl = response.getData().getUrl();
+					if (uploadType.equals("profile")) {
+						_updateProfilePhoto(imageUrl);
+					} else if (uploadType.equals("cover")) {
+						_updateCoverPhoto(imageUrl);
+					}
+				}
+			} else {
+				_LoadingDialog(false);
+				SketchwareUtil.showMessage(getApplicationContext(), "Failed to upload the image.");
+			}
+		});
 		// Logic coding
 		stage1RelativeUpProfileCard.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -764,46 +785,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				stage1RelativeUpProfileImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
-					@Override
-					public void onUploadComplete(String imageUrl) {
-						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("avatar", imageUrl);
-						ProfileEditSendMap.put("avatar_history_type", "local");
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
-							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
-								}
-							}
-						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
-					}
-
-					@Override
-					public void onUploadError(String errorMessage) {
-
-
-
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
-						_LoadingDialog(false);
-					}
-				});
+				uploadType = "profile";
+				imageUploadViewModel.uploadImage(path);
 
 			}
 			else {
@@ -828,45 +811,8 @@ public class ProfileEditActivity extends AppCompatActivity {
 				_LoadingDialog(true);
 				profileCoverImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(_filePath.get((int)(0)), 1024, 1024));
 				path = _filePath.get((int)(0));
-				ImageUploader.uploadImage(path, new ImageUploader.UploadCallback() {
-					@Override
-					public void onUploadComplete(String imageUrl) {
-						ProfileEditSendMap = new HashMap<>();
-						ProfileEditSendMap.put("profile_cover_image", imageUrl);
-						main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
-							@Override
-							public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
-								if (databaseError == null) {
-									_LoadingDialog(false);
-								} else {
-									SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
-									//	username_input.setEnabled(true);
-									_LoadingDialog(false);
-								}
-							}
-						});
-						try{
-							String ProfileHistoryKey = maindb.push().getKey();
-							mAddProfilePhotoMap = new HashMap<>();
-							mAddProfilePhotoMap.put("key", ProfileHistoryKey);
-							mAddProfilePhotoMap.put("image_url", imageUrl.trim());
-							mAddProfilePhotoMap.put("upload_date", String.valueOf((long)(cc.getTimeInMillis())));
-							mAddProfilePhotoMap.put("type", "url");
-							maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
-						}catch(Exception e){
-							
-						}
-					}
-
-					@Override
-					public void onUploadError(String errorMessage) {
-
-
-
-						SketchwareUtil.showMessage(getApplicationContext(), "Falied to upload the image.");
-						_LoadingDialog(false);
-					}
-				});
+				uploadType = "cover";
+				imageUploadViewModel.uploadImage(path);
 
 			}
 			else {
@@ -1008,5 +954,58 @@ public class ProfileEditActivity extends AppCompatActivity {
 		}
 
 	}
+	private void _updateProfilePhoto(String imageUrl) {
+		ProfileEditSendMap = new HashMap<>();
+		ProfileEditSendMap.put("avatar", imageUrl);
+		ProfileEditSendMap.put("avatar_history_type", "local");
+		main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
+			@Override
+			public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+				if (databaseError == null) {
+					_LoadingDialog(false);
+				} else {
+					SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
+					_LoadingDialog(false);
+				}
+			}
+		});
+		try {
+			String ProfileHistoryKey = maindb.push().getKey();
+			mAddProfilePhotoMap = new HashMap<>();
+			mAddProfilePhotoMap.put("key", ProfileHistoryKey);
+			mAddProfilePhotoMap.put("image_url", imageUrl.trim());
+			mAddProfilePhotoMap.put("upload_date", String.valueOf((long) (cc.getTimeInMillis())));
+			mAddProfilePhotoMap.put("type", "url");
+			maindb.child("skyline/profile-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
+		} catch (Exception e) {
 
+		}
+	}
+
+	private void _updateCoverPhoto(String imageUrl) {
+		ProfileEditSendMap = new HashMap<>();
+		ProfileEditSendMap.put("profile_cover_image", imageUrl);
+		main.child("users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).updateChildren(ProfileEditSendMap, new DatabaseReference.CompletionListener() {
+			@Override
+			public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+				if (databaseError == null) {
+					_LoadingDialog(false);
+				} else {
+					SketchwareUtil.showMessage(getApplicationContext(), databaseError.getMessage());
+					_LoadingDialog(false);
+				}
+			}
+		});
+		try {
+			String ProfileHistoryKey = maindb.push().getKey();
+			mAddProfilePhotoMap = new HashMap<>();
+			mAddProfilePhotoMap.put("key", ProfileHistoryKey);
+			mAddProfilePhotoMap.put("image_url", imageUrl.trim());
+			mAddProfilePhotoMap.put("upload_date", String.valueOf((long) (cc.getTimeInMillis())));
+			mAddProfilePhotoMap.put("type", "url");
+			maindb.child("skyline/cover-image-history/".concat(FirebaseAuth.getInstance().getCurrentUser().getUid().concat("/".concat(ProfileHistoryKey)))).updateChildren(mAddProfilePhotoMap);
+		} catch (Exception e) {
+
+		}
+	}
 }

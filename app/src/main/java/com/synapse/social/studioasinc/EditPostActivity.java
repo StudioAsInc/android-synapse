@@ -76,7 +76,9 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.appcompat.widget.SwitchCompat;
-import com.synapse.social.studioasinc.ImageUploader;
+import com.synapse.social.studioasinc.home.ImageUploadViewModel;
+import com.synapse.social.studioasinc.model.ImgbbResponse;
+import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import android.content.ClipData;
@@ -94,6 +96,7 @@ public class EditPostActivity extends AppCompatActivity {
 	private String selectedImagePath = "";
 	private boolean hasImage = false;
 	private boolean imageChanged = false;
+	private ImageUploadViewModel imageUploadViewModel;
 	
 	private LinearLayout main;
 	private LinearLayout top;
@@ -221,6 +224,8 @@ public class EditPostActivity extends AppCompatActivity {
 	}
 	
 	private void initializeLogic() {
+		imageUploadViewModel = new ViewModelProvider(this).get(ImageUploadViewModel.class);
+
 		_setStatusBarColor(true, 0xFFFFFFFF, 0xFFFFFFFF);
 		_viewGraphics(back, 0xFFFFFFFF, 0xFFE0E0E0, 300, 0, Color.TRANSPARENT);
 		_viewGraphics(settingsButton, 0xFFFFFFFF, 0xFFE0E0E0, 300, 0, Color.TRANSPARENT);
@@ -266,6 +271,18 @@ public class EditPostActivity extends AppCompatActivity {
 		if (getIntent().hasExtra("disableComments")) {
 			disableComments = getIntent().getBooleanExtra("disableComments", false);
 		}
+
+		imageUploadViewModel.getUploadStatus().observe(this, result -> {
+			if (result.isSuccess()) {
+				ImgbbResponse response = result.getOrNull();
+				if (response != null) {
+					_updatePostInDatabase(response.getData().getUrl());
+				}
+			} else {
+				_LoadingDialog(false);
+				Toast.makeText(getApplicationContext(), "Failed to upload image", Toast.LENGTH_SHORT).show();
+			}
+		});
 	}
 	
 	@Override
@@ -346,18 +363,7 @@ public class EditPostActivity extends AppCompatActivity {
 		
 		if (imageChanged && hasImage) {
 			// Upload new image first, then update post
-			ImageUploader.uploadImage(selectedImagePath, new ImageUploader.UploadCallback() {
-				@Override
-				public void onUploadComplete(String imageUrl) {
-					_updatePostInDatabase(imageUrl);
-				}
-				
-				@Override
-				public void onUploadError(String errorMessage) {
-					_LoadingDialog(false);
-					Toast.makeText(getApplicationContext(), "Failed to upload image: " + errorMessage, Toast.LENGTH_SHORT).show();
-				}
-			});
+			imageUploadViewModel.uploadImage(selectedImagePath);
 		} else {
 			// Update post without changing image
 			_updatePostInDatabase(originalPostImage);
