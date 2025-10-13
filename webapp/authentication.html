@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Authentication | Synapse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    .animate-slide-up {
+      animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    .card-container {
+      perspective: 1200px;
+    }
+    .card {
+      transform-style: preserve-3d;
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      height: auto;
+    }
+    .card-face {
+      backface-visibility: hidden;
+      position: absolute;
+      width: 100%;
+      transition: all 0.4s ease;
+      transform-origin: center center;
+    }
+    .card-front {
+      transform: rotateY(0deg);
+    }
+    .card-back {
+      transform: rotateY(180deg);
+    }
+    .flipped .card-front {
+      transform: rotateY(-180deg);
+    }
+    .flipped .card-back {
+      transform: rotateY(0deg);
+    }
+    .swipe-left {
+      transform: translateX(-100%) rotateY(-15deg);
+      opacity: 0;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .swipe-right {
+      transform: translateX(100%) rotateY(15deg);
+      opacity: 0;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .height-transition {
+      transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .form-container {
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center justify-center p-4 select-none touch-manipulation">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- Verification Dialog -->
+  <div id="verificationDialog" class="hidden fixed inset-0 z-[9999] bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full animate-slide-up">
+      <h3 class="text-xl font-bold text-gray-800 mb-2">Verify Your Email</h3>
+      <p class="text-gray-600 mb-4">
+        We've sent a verification email to
+        <span id="sentEmail" class="font-medium"></span>.
+        Please check your inbox and verify your email address.
+      </p>
+      <p class="text-gray-600 mb-4">
+        You'll be redirected to the sign in page in
+        <span id="countdown" class="font-medium">30</span> seconds...
+      </p>
+      <button
+        onclick="redirectToSignIn()"
+        class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors transform hover:scale-[1.02] active:scale-[0.98]"
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Authentication Container -->
+  <div class="relative w-full max-w-md">
+    <!-- Navigation Dots -->
+    <div class="absolute -bottom-8 left-0 right-0 flex justify-center space-x-2 z-10">
+      <button id="dot-signin" onclick="flipToSignIn()" class="w-3 h-3 rounded-full bg-emerald-500 transition-all duration-300 transform hover:scale-125"></button>
+      <button id="dot-signup" onclick="flipToSignUp()" class="w-3 h-3 rounded-full bg-gray-300 transition-all duration-300 transform hover:scale-125"></button>
+    </div>
+
+    <!-- Card Container -->
+    <div id="cardContainer" class="card-container w-full">
+      <div id="authCard" class="card relative w-full height-transition">
+        <!-- Sign In Face (Front) -->
+        <div id="signInFace" class="card-face card-front bg-white rounded-2xl shadow-xl p-8 form-container" style="height: auto;">
+          <div class="text-center mb-8 animate-slide-up">
+            <h2 class="text-2xl font-bold text-gray-800">Welcome back</h2>
+            <p class="text-gray-500 mt-2">Sign in to your account</p>
+          </div>
+
+          <button
+            id="google-btn"
+            class="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-all duration-300 mb-4 transform hover:scale-[1.01] active:scale-[0.99] animate-slide-up"
+            onclick="googleLogin()"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="20" alt="Google" />
+            Continue with Google
+          </button>
+
+          <div class="relative my-6 animate-slide-up">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-200"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+
+          <div class="space-y-4 animate-slide-up">
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="far fa-envelope text-gray-400"></i>
+              </div>
+              <input
+                type="email"
+                id="signin-email"
+                placeholder="you@example.com"
+                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300"
+                oninput="validateEmailInput(this)"
+              />
+            </div>
+
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-lock text-gray-400"></i>
+              </div>
+              <input
+                type="password"
+                id="signin-password"
+                placeholder="Password"
+                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300"
+              />
+            </div>
+
+            <div
+              class="text-right text-sm text-gray-500 hover:text-gray-700 hover:underline cursor-pointer mb-4 transition-colors duration-200"
+              onclick="alert('Reset Password flow goes here')"
+            >
+              Forgot Password?
+            </div>
+
+            <button
+              id="login-btn"
+              class="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all duration-300 hover:shadow-md flex items-center justify-center transform hover:scale-[1.01] active:scale-[0.99]"
+              onclick="login()"
+            >
+              <span id="login-btn-text">Sign In</span>
+              <svg id="login-spinner" class="hidden w-5 h-5 ml-2 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </button>
+
+            <div id="signin-error-message" class="text-red-500 text-sm text-center mt-2 min-h-4"></div>
+          </div>
+
+          <div class="text-center text-sm text-gray-500 mt-6 animate-slide-up">
+            Don't have an account?
+            <button onclick="flipToSignUp()" class="text-emerald-600 font-medium hover:underline focus:outline-none transition-colors duration-200">
+              Sign Up Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Sign Up Face (Back) -->
+        <div id="signUpFace" class="card-face card-back bg-white rounded-2xl shadow-xl p-8 form-container" style="height: auto;">
+          <h2 class="text-2xl font-bold text-gray-800 mb-2 animate-slide-up">Create an account</h2>
+          <p class="text-gray-600 mb-6 animate-slide-up">Get started with your free account</p>
+
+          <button
+            class="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-all duration-300 mb-4 transform hover:scale-[1.01] active:scale-[0.99] animate-slide-up"
+            onclick="googleLogin()"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="20" alt="Google" />
+            Continue with Google
+          </button>
+
+          <div class="relative flex items-center my-6 animate-slide-up">
+            <div class="flex-grow border-t border-gray-300"></div>
+            <span class="flex-shrink mx-4 text-gray-400">or</span>
+            <div class="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <form id="signupForm" class="space-y-4 animate-slide-up">
+            <div>
+              <label for="signup-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input
+                type="text"
+                id="signup-username"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300"
+                placeholder="Choose a username"
+                pattern="[a-z0-9]+"
+                title="Only lowercase letters (a-z) and numbers (0-9) are allowed"
+                required
+              />
+              <p class="text-xs text-gray-500 mt-1">Only lowercase letters and numbers, no spaces or special characters</p>
+            </div>
+
+            <div>
+              <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                id="signup-email"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300"
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+
+            <div class="relative">
+              <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div class="relative">
+                <input
+                  type="password"
+                  id="signup-password"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300 pr-10"
+                  placeholder="••••••••"
+                  minlength="6"
+                  required
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                  onclick="togglePasswordVisibility('signup')"
+                >
+                  <i id="signup-password-icon" class="fas fa-eye-slash"></i>
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99]"
+              id="signup-btn"
+            >
+              <span id="signup-btn-text">Sign Up</span>
+              <span id="signup-spinner" class="hidden">
+                <i class="fas fa-spinner fa-spin ml-2"></i>
+              </span>
+            </button>
+          </form>
+
+          <div id="signup-error-message" class="mt-4 text-sm text-red-600 text-center animate-fade-in"></div>
+          <div id="signup-success-message" class="mt-4 text-sm text-emerald-600 text-center animate-fade-in"></div>
+
+          <div class="mt-6 text-center text-sm text-gray-600 animate-slide-up">
+            Already have an account?
+            <button onclick="flipToSignIn()" class="text-emerald-600 font-medium hover:underline focus:outline-none transition-colors duration-200">
+              Sign In Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    sendEmailVerification,
+    signInWithEmailAndPassword
+  } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "https://sai-synapse-default-rtdb.firebaseio.com",
+    projectId: "sai-synapse",
+    storageBucket: "sai-synapse.firebasestorage.app",
+    messagingSenderId: "269633434355",
+    appId: "1:308269400761:android:91c2e7415671cc49ed9168",
+    databaseURL: "YOUR_DATABASE_URL"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const database = getDatabase(app);
+  const provider = new GoogleAuthProvider();
+
+  // Animation and Card Flip Logic
+  let isFlipped = false;
+  const card = document.getElementById('authCard');
+  const signInDot = document.getElementById('dot-signin');
+  const signUpDot = document.getElementById('dot-signup');
+  const signInFace = document.getElementById('signInFace');
+  const signUpFace = document.getElementById('signUpFace');
+
+  // Measure and set initial heights
+  function setCardHeights() {
+    const signInHeight = signInFace.scrollHeight;
+    const signUpHeight = signUpFace.scrollHeight;
+    signInFace.style.height = `${signInHeight}px`;
+    signUpFace.style.height = `${signUpHeight}px`;
+    card.style.height = `${isFlipped ? signUpHeight : signInHeight}px`;
+  }
+
+  // Initialize heights on load
+  document.addEventListener('DOMContentLoaded', () => {
+    setCardHeights();
+    // Add slight delay to ensure all elements are rendered
+    setTimeout(() => {
+      document.querySelectorAll('.animate-slide-up').forEach(el => {
+        el.style.opacity = '1';
+      });
+    }, 50);
+  });
+
+  window.flipToSignUp = () => {
+    if (isFlipped) return;
+    flipCard();
+  };
+
+  window.flipToSignIn = () => {
+    if (!isFlipped) return;
+    flipCard();
+  };
+
+  function flipCard() {
+    isFlipped = !isFlipped;
+
+    // Get current heights
+    const currentHeight = isFlipped ? signInFace.scrollHeight : signUpFace.scrollHeight;
+    const targetHeight = isFlipped ? signUpFace.scrollHeight : signInFace.scrollHeight;
+
+    // Animate height change
+    card.style.height = `${currentHeight}px`;
+    setTimeout(() => {
+      card.style.height = `${targetHeight}px`;
+    }, 10);
+
+    // Apply flip class after a slight delay to allow height measurement
+    setTimeout(() => {
+      card.classList.toggle('flipped');
+
+      // Update dot indicators
+      if (isFlipped) {
+        signInDot.classList.replace('bg-emerald-500', 'bg-gray-300');
+        signUpDot.classList.replace('bg-gray-300', 'bg-emerald-500');
+      } else {
+        signInDot.classList.replace('bg-gray-300', 'bg-emerald-500');
+        signUpDot.classList.replace('bg-emerald-500', 'bg-gray-300');
+      }
+    }, 50);
+  }
+
+  // Touch swipe handling with improved animation
+  let touchStartX = 0;
+  let touchEndX = 0;
+  let touchStartY = 0;
+  const cardContainer = document.getElementById('cardContainer');
+  const SWIPE_THRESHOLD = 50;
+  const VERTICAL_THRESHOLD = 30;
+
+  cardContainer.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, {passive: true});
+
+  cardContainer.addEventListener('touchmove', (e) => {
+    // Prevent scrolling if we're swiping horizontally
+    const xDiff = Math.abs(e.changedTouches[0].screenX - touchStartX);
+    const yDiff = Math.abs(e.changedTouches[0].screenY - touchStartY);
+
+    if (xDiff > yDiff && xDiff > 10) {
+      e.preventDefault();
+    }
+  }, {passive: false});
+
+  cardContainer.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+
+    // Check if it's mostly horizontal swipe
+    if (Math.abs(touchEndY - touchStartY) < VERTICAL_THRESHOLD) {
+      handleSwipe();
+    }
+  }, {passive: true});
+
+  function handleSwipe() {
+    const xDiff = touchEndX - touchStartX;
+
+    if (xDiff < -SWIPE_THRESHOLD && !isFlipped) {
+      // Swipe left to sign up
+      signInFace.classList.add('swipe-left');
+      setTimeout(() => {
+        signInFace.classList.remove('swipe-left');
+        flipToSignUp();
+      }, 300);
+    } else if (xDiff > SWIPE_THRESHOLD && isFlipped) {
+      // Swipe right to sign in
+      signUpFace.classList.add('swipe-right');
+      setTimeout(() => {
+        signUpFace.classList.remove('swipe-right');
+        flipToSignIn();
+      }, 300);
+    }
+  }
+
+  // Generate random username
+  function generateRandomUsername() {
+    const now = new Date();
+    const datePart = `${now.getDate()}${now.getMonth()+1}${now.getFullYear().toString().slice(-2)}`;
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    return `user${datePart}${randomPart}`;
+  }
+
+  // Set default username when page loads
+  document.getElementById('signup-username').value = generateRandomUsername();
+
+  // Toggle password visibility
+  window.togglePasswordVisibility = (type) => {
+    const passwordInput = document.getElementById(`${type}-password`);
+    const passwordIcon = document.getElementById(`${type}-password-icon`);
+
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      passwordIcon.classList.remove('fa-eye-slash');
+      passwordIcon.classList.add('fa-eye');
+    } else {
+      passwordInput.type = 'password';
+      passwordIcon.classList.remove('fa-eye');
+      passwordIcon.classList.add('fa-eye-slash');
+    }
+  }
+
+  // Add username input validation
+  document.getElementById('signup-username').addEventListener('input', function(e) {
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  });
+
+  // Verification Dialog Functions
+  let countdownTimer;
+  window.showVerificationDialog = (email) => {
+    const dialog = document.getElementById('verificationDialog');
+    const sentEmail = document.getElementById('sentEmail');
+    const countdownElement = document.getElementById('countdown');
+
+    sentEmail.textContent = email;
+    dialog.classList.remove('hidden');
+
+    let seconds = 30;
+    countdownTimer = setInterval(() => {
+      seconds--;
+      countdownElement.textContent = seconds;
+      if(seconds <= 0) redirectToSignIn();
+    }, 1000);
+  }
+
+  window.redirectToSignIn = () => {
+    clearInterval(countdownTimer);
+    document.getElementById('verificationDialog').classList.add('hidden');
+    flipToSignIn();
+  }
+
+  // Sign Up Form Submission
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById('signup-username').value;
+    const usernameRegex = /^[a-z0-9]+$/;
+    if (!usernameRegex.test(username)) {
+      document.getElementById('signup-error-message').textContent = 'Username can only contain lowercase letters and numbers';
+      return;
+    }
+
+    await signup();
+  });
+
+  window.signup = async () => {
+    const username = document.getElementById('signup-username').value;
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    const errorDiv = document.getElementById('signup-error-message');
+    const successDiv = document.getElementById('signup-success-message');
+    const signupBtn = document.getElementById('signup-btn');
+    const btnText = document.getElementById('signup-btn-text');
+    const btnSpinner = document.getElementById('signup-spinner');
+
+    errorDiv.textContent = '';
+    successDiv.textContent = '';
+
+    // Show loading state
+    signupBtn.disabled = true;
+    btnText.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await sendEmailVerification(user);
+      showVerificationDialog(email);
+
+      await set(ref(database, 'users/' + user.uid), {
+        username: username,
+        email: email,
+        createdAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      errorDiv.textContent = error.message;
+      signupBtn.disabled = false;
+      btnText.classList.remove('hidden');
+      btnSpinner.classList.add('hidden');
+    }
+  }
+
+  // Sign In Functions
+  window.validateEmailInput = (input) => {
+    input.value = input.value.toLowerCase().replace(/[^a-z0-9@.]/g, '');
+  }
+
+  window.login = async () => {
+    const email = document.getElementById('signin-email').value;
+    const password = document.getElementById('signin-password').value;
+    const errorDiv = document.getElementById('signin-error-message');
+    const btn = document.getElementById('login-btn');
+    const btnText = document.getElementById('login-btn-text');
+    const spinner = document.getElementById('login-spinner');
+
+    btn.disabled = true;
+    btnText.textContent = 'Signing in...';
+    spinner.classList.remove('hidden');
+    errorDiv.textContent = '';
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      window.location.href = "messages.html";
+    } catch (error) {
+      errorDiv.textContent = error.message;
+    } finally {
+      btn.disabled = false;
+      btnText.textContent = 'Sign In';
+      spinner.classList.add('hidden');
+    }
+  }
+
+  // Google Login
+  window.googleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userRef = ref(database, 'users/' + user.uid);
+      const snapshot = await get(userRef);
+      if (!snapshot.exists()) {
+        await set(userRef, {
+          username: user.displayName || generateRandomUsername(),
+          email: user.email,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      window.location.href = "messages.html";
+    } catch (error) {
+      const errorDiv = isFlipped
+        ? document.getElementById('signup-error-message')
+        : document.getElementById('signin-error-message');
+      errorDiv.textContent = error.message;
+    }
+  }
+  </script>
+</body>
+</html>

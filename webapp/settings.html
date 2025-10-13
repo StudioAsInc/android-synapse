@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #3B82F6;
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.1);
+            z-index: 1;
+            border-radius: 8px;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* Dark mode styles */
+        .dark {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+        .dark .text-gray-800 {
+            color: #e2e8f0;
+        }
+        .dark .text-gray-600 {
+            color: #cbd5e0;
+        }
+        .dark .border {
+            border-color: #4a5568;
+        }
+        .dark input, .dark select {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        .dark input:focus, .dark select:focus {
+            border-color: #4a5568;
+            box-shadow: none;
+        }
+        .dark .bg-gray-50 {
+            background-color: #2d3748;
+        }
+        .dark .bg-gray-100 {
+            background-color: #4a5568;
+        }
+        .dark .text-gray-700 {
+            color: #e2e8f0;
+        }
+        .dark .text-gray-500 {
+            color: #cbd5e0;
+        }
+        .dark .shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.12);
+        }
+        .dark .border-t {
+            border-color: #4a5568;
+        }
+        .dark .bg-black {
+            background-color: rgba(0,0,0,0.7);
+        }
+        .dark .bg-gray-200 {
+            background-color: #4a5568;
+        }
+        .dark .hover\\:bg-gray-300:hover {
+            background-color: #64748b;
+        }
+        .dark .hover\\:bg-gray-200:hover {
+            background-color: #64748b;
+        }
+        .dark .bg-blue-500 {
+            background-color: #60a5fa;
+        }
+        .dark .hover\\:bg-blue-600:hover {
+            background-color: #3b82f6;
+        }
+    </style>
+</head>
+<!--
+<body class="bg-gray-100">
+    <div id="auth-check" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+            <h2 class="text-xl font-bold mb-4">Session Expired</h2>
+            <p class="mb-4">Please sign in to continue.</p>
+            <button onclick="window.location.href='auth.html'"
+                    class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                Sign In
+            </button>
+        </div>
+    </div>
+    -->
+
+    <div class="max-w-2xl mx-auto p-4 pb-20">
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Settings</h1>
+            <p class="text-gray-600">Manage your Synapse account preferences</p>
+        </header>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">manage_accounts</span>
+                Account Settings
+            </h2>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Email Address</label>
+                <div class="flex">
+                    <input type="email" id="email"
+                           class="flex-1 p-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="updateEmail()"
+                            class="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600">
+                        Update
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Phone Number</label>
+                <div class="flex">
+                    <input type="tel" id="phone"
+                           class="flex-1 p-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="updatePhone()"
+                            class="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600">
+                        Update
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Password</label>
+                <div class="flex">
+                    <input type="password" id="new-password" placeholder="New Password"
+                           class="flex-1 p-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="updatePassword()"
+                            class="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600">
+                        Update
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-gray-700">Two-Factor Authentication</h3>
+                    <p class="text-sm text-gray-500">Add an extra layer of security</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="two-factor-auth">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="pt-4 border-t">
+                <button onclick="showDeactivateModal()"
+                        class="text-red-500 hover:text-red-700 mr-4">
+                    Deactivate Account
+                </button>
+                <button onclick="showDeleteModal()"
+                        class="text-red-500 hover:text-red-700">
+                    Delete Account
+                </button>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">privacy_tip</span>
+                Privacy Settings
+            </h2>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Who can see my posts</label>
+                <select class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option>Public</option>
+                    <option>Friends</option>
+                    <option>Only Me</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Who can message me</label>
+                <select class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option>Everyone</option>
+                    <option>Friends</option>
+                    <option>No one</option>
+                </select>
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-gray-700">Tagging & Mentions</h3>
+                    <p class="text-sm text-gray-500">Control who can tag you</p>
+                </div>
+                <button onclick="openTaggingSettings()"
+                        class="text-blue-500 hover:text-blue-700">
+                    Manage
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-gray-700">Blocked Users</h3>
+                    <p class="text-sm text-gray-500">Manage your block list</p>
+                </div>
+                <button onclick="openBlockedUsers()"
+                        class="text-blue-500 hover:text-blue-700">
+                    View List
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-gray-700">Profile Visibility</h3>
+                    <p class="text-sm text-gray-500">Include in search engines</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="search-visibility" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">notifications</span>
+                Notification Settings
+            </h2>
+
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-gray-700">Email Notifications</h3>
+                    <p class="text-sm text-gray-500">Receive emails for important updates</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="email-notifications" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-gray-700">Push Notifications</h3>
+                    <p class="text-sm text-gray-500">Get alerts on your device</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="push-notifications" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-gray-700 mb-2">Customize Notifications</h3>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span>Likes</span>
+                        <label class="switch">
+                            <input type="checkbox" id="notify-likes" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Comments</span>
+                        <label class="switch">
+                            <input type="checkbox" id="notify-comments" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Messages</span>
+                        <label class="switch">
+                            <input type="checkbox" id="notify-messages" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>New Followers</span>
+                        <label class="switch">
+                            <input type="checkbox" id="notify-follows" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-gray-700">Notification Sound</h3>
+                    <p class="text-sm text-gray-500">Play sound for new notifications</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="notification-sound" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">security</span>
+                Device & Security
+            </h2>
+
+            <div class="mb-4">
+                <h3 class="text-gray-700 mb-2">Active Sessions</h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <p class="font-medium">Chrome on Windows</p>
+                            <p class="text-sm text-gray-500">New York, USA • Just now</p>
+                        </div>
+                        <button class="text-red-500 hover:text-red-700">
+                            <span class="material-icons">logout</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium">Safari on iPhone</p>
+                            <p class="text-sm text-gray-500">London, UK • 2 hours ago</p>
+                        </div>
+                        <button class="text-red-500 hover:text-red-700">
+                            <span class="material-icons">logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="logoutAllDevices()"
+                    class="w-full bg-gray-100 text-gray-700 py-2 rounded hover:bg-gray-200 mb-4">
+                Log Out From All Devices
+            </button>
+
+            <div class="pt-4 border-t">
+                <h3 class="text-gray-700 mb-2">Recent Security Activity</h3>
+                <ul class="space-y-2 text-sm">
+                    <li class="flex items-center">
+                        <span class="material-icons text-green-500 mr-2 text-sm">check_circle</span>
+                        Password changed • 3 days ago
+                    </li>
+                    <li class="flex items-center">
+                        <span class="material-icons text-blue-500 mr-2 text-sm">email</span>
+                        Email updated • 1 week ago
+                    </li>
+                    <li class="flex items-center">
+                        <span class="material-icons text-gray-500 mr-2 text-sm">devices</span>
+                        New device logged in • 2 weeks ago
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">visibility</span>
+                Display & Accessibility
+            </h2>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Theme</label>
+                <div class="flex space-x-2">
+                    <button id="theme-light" onclick="setTheme('light')"
+                            class="flex-1 p-2 border rounded-lg hover:bg-gray-100">
+                        Light
+                    </button>
+                    <button id="theme-dark" onclick="setTheme('dark')"
+                            class="flex-1 p-2 border rounded-lg hover:bg-gray-100">
+                        Dark
+                    </button>
+                    <button id="theme-auto" onclick="setTheme('auto')"
+                            class="flex-1 p-2 border rounded-lg hover:bg-gray-100">
+                        Auto
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Font Size</label>
+                <input type="range" min="12" max="24" value="16"
+                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Language</label>
+                <select class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option>English</option>
+                    <option>Spanish</option>
+                    <option>French</option>
+                    <option>German</option>
+                </select>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-gray-700">High Contrast Mode</h3>
+                    <p class="text-sm text-gray-500">Increase text readability</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="high-contrast">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">data_usage</span>
+                Data & Permissions
+            </h2>
+
+            <button onclick="downloadData()"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Download Your Data</span>
+                <span class="material-icons">download</span>
+            </button>
+
+            <button onclick="manageApps()"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Manage Third-Party Apps</span>
+                <span class="material-icons">apps</span>
+            </button>
+
+            <button onclick="cookieSettings()"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Cookie Preferences</span>
+                <span class="material-icons">cookie</span>
+            </button>
+
+            <div class="flex items-center justify-between pt-3 border-t">
+                <div>
+                    <h3 class="text-gray-700">Personalized Ads</h3>
+                    <p class="text-sm text-gray-500">Allow ads tailored to your interests</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="personalized-ads">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <span class="material-icons mr-2">help_center</span>
+                Support & Information
+            </h2>
+
+            <button onclick="window.open('help.html', '_blank')"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Help Center</span>
+                <span class="material-icons">help_outline</span>
+            </button>
+
+            <button onclick="window.open('terms.html', '_blank')"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Terms of Service</span>
+                <span class="material-icons">description</span>
+            </button>
+
+            <button onclick="window.open('privacy.html', '_blank')"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Privacy Policy</span>
+                <span class="material-icons">policy</span>
+            </button>
+
+            <button onclick="reportBug()"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 mb-3 flex items-center justify-between">
+                <span>Report a Bug</span>
+                <span class="material-icons">bug_report</span>
+            </button>
+
+            <button onclick="contactSupport()"
+                    class="w-full text-left p-3 border rounded-lg hover:bg-gray-100 flex items-center justify-between">
+                <span>Contact Support</span>
+                <span class="material-icons">contact_support</span>
+            </button>
+        </section>
+
+        <nav class="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 flex justify-around items-center p-2 z-40">
+            <a href="home.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 p-2">
+                <span class="material-icons">home</span>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            <a href="messages.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 p-2">
+                <span class="material-icons">chat</span>
+                <span class="text-xs mt-1">Chat</span>
+            </a>
+            <a href="notifications.html" class="flex flex-col items-center text-gray-600 hover:text-blue-500 p-2">
+                <span class="material-icons">notifications</span>
+                <span class="text-xs mt-1">Notifications</span>
+            </a>
+            <a href="settings.html" class="flex flex-col items-center text-blue-500 p-2">
+                <span class="material-icons">settings</span>
+                <span class="text-xs mt-1">Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div id="deactivate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+            <h2 class="text-xl font-bold mb-4">Deactivate Account</h2>
+            <p class="mb-4">Your profile will be hidden but not permanently deleted. You can reactivate anytime by logging in.</p>
+            <div class="flex space-x-2">
+                <button onclick="hideDeactivateModal()"
+                        class="flex-1 bg-gray-200 text-gray-800 py-2 rounded hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button onclick="deactivateAccount()"
+                        class="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600">
+                    Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+            <h2 class="text-xl font-bold mb-4">Delete Account</h2>
+            <p class="mb-4 text-red-500">Warning: This action cannot be undone. All your data will be permanently deleted.</p>
+            <div class="flex space-x-2">
+                <button onclick="hideDeleteModal()"
+                        class="flex-1 bg-gray-200 text-gray-800 py-2 rounded hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button onclick="deleteAccount()"
+                        class="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Auth State Listener
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('auth-check').classList.remove('hidden');
+            } else {
+                document.getElementById('auth-check').classList.add('hidden');
+                loadUserSettings(user);
+            }
+        });
+
+        // Load User Settings
+        async function loadUserSettings(user) {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            const userData = userDoc.data();
+
+            if (userData) {
+                document.getElementById('email').value = user.email || '';
+                document.getElementById('phone').value = userData.phone || '';
+                document.getElementById('two-factor-auth').checked = userData.twoFactorEnabled || false;
+                document.getElementById('search-visibility').checked = userData.profileVisible || true;
+                document.getElementById('email-notifications').checked = userData.emailNotifications !== false;
+                document.getElementById('push-notifications').checked = userData.pushNotifications !== false;
+                document.getElementById('notify-likes').checked = userData.notifyLikes !== false;
+                document.getElementById('notify-comments').checked = userData.notifyComments !== false;
+                document.getElementById('notify-messages').checked = userData.notifyMessages !== false;
+                document.getElementById('notify-follows').checked = userData.notifyFollows !== false;
+                document.getElementById('notification-sound').checked = userData.notificationSound !== false;
+                document.getElementById('personalized-ads').checked = userData.personalizedAds || false;
+                document.getElementById('high-contrast').checked = userData.highContrast || false;
+
+                // Load and apply theme
+                const savedTheme = userData.theme || 'auto';
+                applyTheme(savedTheme);
+                highlightActiveThemeButton(savedTheme);
+            } else {
+                // If no user data, apply theme from localStorage or default
+                const savedTheme = localStorage.getItem('theme') || 'auto';
+                applyTheme(savedTheme);
+                highlightActiveThemeButton(savedTheme);
+            }
+        }
+
+        // Apply Theme to the document body
+        function applyTheme(theme) {
+            const htmlElement = document.documentElement;
+            htmlElement.classList.remove('dark', 'light'); // Remove existing themes
+
+            if (theme === 'dark') {
+                htmlElement.classList.add('dark');
+            } else if (theme === 'light') {
+                htmlElement.classList.add('light');
+            } else if (theme === 'auto') {
+                // Check user's system preference for dark mode
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    htmlElement.classList.add('dark');
+                }
+            }
+        }
+
+        // Highlight the active theme button
+        function highlightActiveThemeButton(activeTheme) {
+            document.querySelectorAll('#theme-light, #theme-dark, #theme-auto').forEach(button => {
+                button.classList.remove('bg-blue-500', 'text-white');
+                button.classList.add('bg-gray-100', 'text-gray-700');
+            });
+
+            const activeButton = document.getElementById(`theme-${activeTheme}`);
+            if (activeButton) {
+                activeButton.classList.remove('bg-gray-100', 'text-gray-700');
+                activeButton.classList.add('bg-blue-500', 'text-white');
+            }
+        }
+
+        // Update Theme in Firestore and apply
+        async function setTheme(theme) {
+            const user = auth.currentUser;
+            if (user) {
+                try {
+                    await db.collection('users').doc(user.uid).update({ theme: theme });
+                    showAlert(`Theme set to ${theme}!`, 'success');
+                } catch (error) {
+                    showAlert('Error saving theme preference: ' + error.message, 'error');
+                }
+            }
+            localStorage.setItem('theme', theme); // Also save to local storage for quick access
+            applyTheme(theme);
+            highlightActiveThemeButton(theme);
+        }
+
+        // Update Email
+        async function updateEmail() {
+            const newEmail = document.getElementById('email').value;
+            const user = auth.currentUser;
+
+            try {
+                await user.updateEmail(newEmail);
+                await db.collection('users').doc(user.uid).update({ email: newEmail });
+                showAlert('Email updated successfully!', 'success');
+            } catch (error) {
+                showAlert('Error updating email: ' + error.message, 'error');
+            }
+        }
+
+        // Update Phone
+        async function updatePhone() {
+            const newPhone = document.getElementById('phone').value;
+            const user = auth.currentUser;
+
+            try {
+                await db.collection('users').doc(user.uid).update({ phone: newPhone });
+                showAlert('Phone number updated successfully!', 'success');
+            } catch (error) {
+                showAlert('Error updating phone: ' + error.message, 'error');
+            }
+        }
+
+        // Update Password
+        async function updatePassword() {
+            const newPassword = document.getElementById('new-password').value;
+            const user = auth.currentUser;
+
+            try {
+                await user.updatePassword(newPassword);
+                showAlert('Password updated successfully!', 'success');
+            } catch (error) {
+                showAlert('Error updating password: ' + error.message, 'error');
+            }
+        }
+
+        // Toggle 2FA
+        async function toggleTwoFactor() {
+            const enabled = document.getElementById('two-factor-auth').checked;
+            const user = auth.currentUser;
+
+            try {
+                await db.collection('users').doc(user.uid).update({ twoFactorEnabled: enabled });
+                showAlert(`Two-factor authentication ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            } catch (error) {
+                showAlert('Error updating 2FA settings: ' + error.message, 'error');
+            }
+        }
+
+        // Deactivate Account
+        async function deactivateAccount() {
+            const user = auth.currentUser;
+
+            try {
+                await db.collection('users').doc(user.uid).update({ active: false });
+                hideDeactivateModal();
+                showAlert('Account deactivated. You can reactivate by logging in.', 'success');
+                setTimeout(() => auth.signOut(), 2000);
+            } catch (error) {
+                showAlert('Error deactivating account: ' + error.message, 'error');
+            }
+        }
+
+        // Delete Account
+        async function deleteAccount() {
+            const user = auth.currentUser;
+
+            try {
+                // Delete user data first
+                await db.collection('users').doc(user.uid).delete();
+                // Then delete the auth account
+                await user.delete();
+                hideDeleteModal();
+                window.location.href = 'auth.html';
+            } catch (error) {
+                showAlert('Error deleting account: ' + error.message, 'error');
+            }
+        }
+
+        // Logout from all devices
+        async function logoutAllDevices() {
+            try {
+                // This would typically involve revoking refresh tokens
+                // In a real implementation, you'd need a backend function
+                showAlert('All sessions have been logged out.', 'success');
+            } catch (error) {
+                showAlert('Error logging out devices: ' + error.message, 'error');
+            }
+        }
+
+        // Download Data
+        function downloadData() {
+            // In a real app, this would trigger a backend process to compile user data
+            showAlert('Your data export has started. You will receive an email when ready.', 'success');
+        }
+
+        // Show/Hide Modals
+        function showDeactivateModal() {
+            document.getElementById('deactivate-modal').classList.remove('hidden');
+        }
+        function hideDeactivateModal() {
+            document.getElementById('deactivate-modal').classList.add('hidden');
+        }
+        function showDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+        function hideDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+        }
+
+        // Show Alert
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `fixed top-4 right-4 p-4 rounded-lg text-white ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('two-factor-auth').addEventListener('change', toggleTwoFactor);
+
+            // Apply theme on initial load (before Firebase user data is loaded)
+            const initialTheme = localStorage.getItem('theme') || 'auto';
+            applyTheme(initialTheme);
+            highlightActiveThemeButton(initialTheme);
+        });
+
+        // Listen for system theme changes if 'auto' is selected
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            const currentThemeSetting = localStorage.getItem('theme');
+            if (currentThemeSetting === 'auto') {
+                applyTheme('auto');
+            }
+        });
+    </script>
+</body>
+</html>
