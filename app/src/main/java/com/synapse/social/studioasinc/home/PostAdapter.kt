@@ -16,6 +16,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
@@ -37,10 +38,11 @@ import java.util.*
 import java.util.concurrent.Executors
 
 class PostAdapter(
-    private val context: Context,
+    private val fragment: Fragment,
     private var posts: List<Post>
 ) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
+    private val context = fragment.requireContext()
     private val userInfoCache = mutableMapOf<String, User>()
     private val postLikeCountCache = mutableMapOf<String, Long>()
     private val firebaseDatabase = FirebaseDatabase.getInstance()
@@ -234,7 +236,7 @@ class PostAdapter(
                 }
                 PostCommentsBottomSheetDialog().apply {
                     arguments = sendPostKey
-                    show((context as AppCompatActivity).supportFragmentManager, tag)
+                    show(fragment.childFragmentManager, tag)
                 }
             }
 
@@ -267,7 +269,7 @@ class PostAdapter(
                 }
                 PostMoreBottomSheetDialog().apply {
                     arguments = sendPostKey
-                    show((context as AppCompatActivity).supportFragmentManager, tag)
+                    show(fragment.childFragmentManager, tag)
                 }
             }
         }

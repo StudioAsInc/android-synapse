@@ -67,7 +67,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        postAdapter = PostAdapter(requireContext(), emptyList())
+        postAdapter = PostAdapter(this, emptyList())
         storyAdapter = StoryAdapter(requireContext(), emptyList())
         headerAdapter = HeaderAdapter(requireContext(), storyAdapter)
 
