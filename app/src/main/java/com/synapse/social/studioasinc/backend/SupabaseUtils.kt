@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc.backend
 
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.gotrue.GoTrue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 import kotlinx.coroutines.CoroutineScope
@@ -41,8 +42,6 @@ fun createUserProfile(
     postgrest.from("users").insert(userData, upsert = true).execute()
     Unit
 }
-
-import io.github.jan.supabase.gotrue.GoTrue
 
 fun createUsernameMapping(
     postgrest: Postgrest,
