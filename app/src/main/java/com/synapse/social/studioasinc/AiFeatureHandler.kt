@@ -1,3 +1,13 @@
+// To-do: Migrate Firebase to Supabase
+// 1. Replace `FirebaseAuth` with Supabase authentication.
+//    - Remove the `FirebaseAuth` import.
+//    - Update the constructor to accept a Supabase user or session.
+//    - Modify the `handleSendButtonLongClick` method to use the Supabase user's ID.
+// 2. Review Gemini API usage.
+//    - Ensure that any user-specific data passed to the Gemini API is handled correctly after the migration.
+// 3. Test the AI features.
+//    - Verify that the grammar correction, message suggestions, and other AI-powered features work as expected with Supabase.
+
 package com.synapse.social.studioasinc
 
 import android.widget.EditText

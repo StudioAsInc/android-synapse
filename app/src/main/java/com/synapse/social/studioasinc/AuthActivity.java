@@ -1,3 +1,18 @@
+// To-do: Migrate Firebase to Supabase
+// 1. Replace FirebaseApp.initializeApp with Supabase initialization.
+//    - The `initializeBackend` method currently initializes Firebase. This needs to be replaced with the setup for the Supabase client.
+// 2. Replace custom backend services (`AuthenticationService`, `DatabaseService`) with Supabase implementations.
+//    - The existing `IAuthenticationService` and `IDatabaseService` interfaces and their Firebase-based implementations will need to be replaced.
+//    - Create new services that interact with the Supabase client for authentication and database operations.
+// 3. Refactor the user authentication flow.
+//    - `handleSignUpClick`: Replace `authService.signUp` with the Supabase equivalent for user registration.
+//    - `handleExistingAccount`: Replace `authService.signIn` with Supabase's sign-in method.
+//    - Update the callback listeners (`ICompletionListener<IAuthResult>`) to handle responses from Supabase.
+// 4. Refactor the database logic for fetching user data.
+//    - `fetchUsername`: This method retrieves the username from Firebase Realtime Database. It needs to be updated to query a 'users' or 'profiles' table in Supabase.
+// 5. Update the `updateOneSignalPlayerId` method.
+//    - This method saves the OneSignal Player ID to the Firebase Realtime Database. It should be modified to save this ID to the user's profile in the Supabase database.
+
 package com.synapse.social.studioasinc;
 
 import android.content.Context;

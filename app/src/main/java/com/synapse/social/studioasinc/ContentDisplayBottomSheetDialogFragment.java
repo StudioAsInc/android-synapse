@@ -1,3 +1,9 @@
+// To-do: Migrate Firebase to Supabase
+// 1. **No direct Firebase dependencies in this file.** This is a UI component for displaying text.
+// 2. **Review Data Source**: While this fragment is backend-agnostic, the source of the text content displayed in it will likely change during the migration.
+//    - For example, if this fragment is used to display user-generated content that was previously stored in Firebase, ensure that the calling code correctly fetches this data from Supabase before passing it to this fragment.
+//    - No changes are required in this file itself, but it's important to consider the data flow from the new backend.
+
 package com.synapse.social.studioasinc;
 
 import android.os.Bundle;

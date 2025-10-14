@@ -1,3 +1,35 @@
+// To-do: Migrate Firebase to Supabase
+// This activity is responsible for group chat functionality and is heavily dependent on Firebase.
+// 1. **Initialization**:
+//    - Remove `FirebaseDatabase.getInstance()` and `FirebaseAuth.getInstance()`. Replace them with a Supabase client instance, preferably injected or accessed via a singleton.
+//
+// 2. **Database Schema and References**:
+//    - The current implementation uses Firebase Realtime Database paths like `group-chats`, `groups`, and `inbox`.
+//    - This structure needs to be migrated to a relational schema in Supabase with tables such as `groups`, `group_members`, `messages`, and `user_profiles`.
+//    - Replace all `DatabaseReference` objects (`chatMessagesRef`, `groupRef`) with Supabase query builders.
+//
+// 3. **Authentication**:
+//    - Replace `auth.currentUser!!.uid` with the method for getting the current user's ID from the Supabase client.
+//
+// 4. **Real-time Functionality**:
+//    - The `_chat_child_listener` (`ChildEventListener`) for listening to new messages must be replaced with a Supabase Realtime subscription on the `messages` table, filtered by the `group_id`.
+//
+// 5. **Data Fetching Logic**:
+//    - `_getGroupReference()`: This method uses a `ValueEventListener` to fetch group details. It should be rewritten to perform a `select` query on the `groups` table in Supabase.
+//    - `_getChatMessagesRef()`: This method fetches and paginates messages. It needs to be refactored to use Supabase queries with `order`, `range`, and filters.
+//    - `fetchMemberUsernames()`: This logic iterates through member UIDs and fetches their usernames from Firebase. This should be replaced with a single Supabase query that joins the `group_members` and `user_profiles` tables.
+//
+// 6. **Data Writing Logic**:
+//    - `_send_btn()`: This method pushes a new message to Firebase. It should be updated to `insert` a new row into the `messages` table in Supabase.
+//    - `_updateInbox()`: This logic updates the inbox for each group member. It will need to be adapted to update a `user_inbox` or similar table in Supabase.
+//
+// 7. **Storage**:
+//    - The `uploadAudioFile()` method and the `_startUploadForItem()` logic for attachments use `AsyncUploadService`, which is tied to Firebase Storage.
+//    - This entire file upload mechanism needs to be migrated to use Supabase Storage.
+//
+// 8. **Data Model**:
+//    - Similar to `ChatActivity`, the use of `HashMap<String, Any>` should be replaced with structured data classes (e.g., `GroupMessage`, `Group`) that reflect the Supabase table schema.
+
 package com.synapse.social.studioasinc
 
 import android.Manifest

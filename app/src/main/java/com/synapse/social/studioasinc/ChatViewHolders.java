@@ -1,3 +1,9 @@
+// To-do: Migrate Firebase to Supabase
+// 1. **No direct Firebase dependencies in this file.** This file contains a collection of ViewHolder classes for the ChatAdapter.
+// 2. **Review Data Binding Logic**: The `ChatAdapter` is responsible for binding data to these ViewHolders.
+//    - The adapter's logic will need to be refactored to work with a new data model (e.g., `Message.kt`) that represents data from Supabase, instead of the current `HashMap<String, Object>` from Firebase.
+//    - Ensure that the adapter correctly populates the views in these ViewHolders with data from the new Supabase-backed data model.
+
 /**
  * CONFIDENTIAL AND PROPRIETARY
  * 

@@ -1,3 +1,18 @@
+// To-do: Migrate Firebase to Supabase
+// This class handles the logic for showing and hiding the typing indicator.
+// 1. **Remove Firebase Dependencies**:
+//    - Remove the `FirebaseAuth` and `FirebaseDatabase` imports.
+//    - The `auth` and `firebase` properties should be replaced with a Supabase client instance.
+//
+// 2. **Refactor Typing Indicator Logic**:
+//    - The current implementation writes to a specific path in the Firebase Realtime Database (`chats/{chatID}/typing-message`).
+//    - This should be replaced with Supabase's broadcast feature, which is designed for sending ephemeral messages to clients on the same channel.
+//    - When the user starts typing, broadcast a "typing" event on the chat channel.
+//    - When the user stops typing (text is empty), broadcast a "stopped-typing" event or a similar message.
+//
+// 3. **Authentication**:
+//    - Replace `auth.currentUser!!.uid` with the method for getting the current user's ID from the Supabase client, which should be passed into this class's constructor.
+
 package com.synapse.social.studioasinc
 
 import android.text.Editable

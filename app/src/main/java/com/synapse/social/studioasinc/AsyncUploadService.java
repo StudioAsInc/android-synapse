@@ -1,3 +1,12 @@
+// To-do: Migrate Firebase to Supabase
+// 1. Replace `UploadFiles.uploadFile` with a Supabase Storage implementation.
+//    - Create a new method that uploads files to Supabase Storage.
+//    - This service will likely need to be updated to call the new Supabase upload method.
+// 2. Update the `UploadProgressListener` interface.
+//    - Ensure the callbacks for progress, success, and failure are compatible with Supabase's upload events.
+// 3. Test the upload functionality.
+//    - Verify that file uploads, progress notifications, and success/failure handling work correctly with Supabase.
+
 package com.synapse.social.studioasinc;
 
 import android.app.Notification;
@@ -170,8 +179,8 @@ public class AsyncUploadService {
     }
     
     /**
-     * Show upload success notification
-     */
+    * Show upload success notification
+    */
     private static void showSuccessNotification(Context context, int notificationId, String fileName) {
         try {
             NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)

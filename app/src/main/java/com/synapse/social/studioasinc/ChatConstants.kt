@@ -1,3 +1,9 @@
+// To-do: Migrate Firebase to Supabase
+// 1. **Review and Refactor Constants**: This object contains constants that are tightly coupled to the Firebase Realtime Database schema.
+//    - The `*_REF` constants (e.g., `SKYLINE_REF`, `USERS_REF`, `CHATS_REF`) represent paths in the Firebase JSON tree. These will need to be replaced with constants representing table names in the Supabase PostgreSQL database (e.g., `TABLE_USERS`, `TABLE_MESSAGES`).
+//    - The `*_KEY` constants (e.g., `UID_KEY`, `MESSAGE_TEXT_KEY`) represent keys in the Firebase HashMaps. These should be replaced with constants representing column names in the Supabase tables (e.g., `COLUMN_USER_ID`, `COLUMN_CONTENT`).
+// 2. **Data Model Alignment**: Ensure the new constants align with the new data classes (e.g., `Message.kt`, `User.kt`) that will be created to represent the data from Supabase.
+
 package com.synapse.social.studioasinc
 
 object ChatConstants {

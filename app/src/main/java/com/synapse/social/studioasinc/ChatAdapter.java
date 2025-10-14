@@ -1,3 +1,25 @@
+// To-do: Migrate Firebase to Supabase
+// This adapter is critical for displaying chat messages and has several Firebase dependencies.
+// 1. **Authentication**:
+//    - Replace all calls to `FirebaseAuth.getInstance().getCurrentUser().getUid()` with a method that retrieves the current user's ID from the Supabase client. This should be passed down from the `ChatActivity` or a ViewModel.
+//
+// 2. **Data Model**:
+//    - The adapter currently consumes an `ArrayList<HashMap<String, Object>>` which mirrors the structure of the Firebase Realtime Database.
+//    - When migrating to Supabase, this should be replaced with a proper data class (e.g., `Message.kt`) that represents a row from the `messages` table in PostgreSQL.
+//    - All `data.get("key")` calls should be replaced with `message.getKey()` or similar property access.
+//
+// 3. **Real-time Database Writes**:
+//    - The `bindCommonMessageProperties` method contains logic that directly writes to `FirebaseDatabase` to update the `message_state` to "seen".
+//    - This logic should be removed from the adapter. The responsibility for updating message states should be moved to the `ChatActivity` or a `ChatViewModel`, which will then call the Supabase API. The adapter's role should be limited to displaying data.
+//
+// 4. **Replied Messages Cache**:
+//    - The logic for handling replied messages relies on fetching data from Firebase to populate the `repliedMessagesCache`.
+//    - This will need to be adapted to fetch the replied message data from the Supabase `messages` table, likely via a query in the `ChatActivity` or ViewModel.
+//
+// 5. **User Information**:
+//    - The adapter currently receives user information (like `firstUserName`, `secondUserName`, `secondUserAvatarUrl`) from the `ChatActivity`.
+//    - Ensure that the data passed to the adapter is sourced from the Supabase `profiles` table.
+
 package com.synapse.social.studioasinc;
 
 import android.content.Context;

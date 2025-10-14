@@ -1,3 +1,22 @@
+// To-do: Migrate Firebase to Supabase
+// This class is responsible for updating the UI and is tightly coupled to Firebase data structures.
+// 1. **Remove Firebase Dependencies**:
+//    - Remove the `FirebaseAuth` and `DataSnapshot` imports.
+//
+// 2. **Refactor `updateUserProfile`**:
+//    - The `updateUserProfile` method currently accepts a Firebase `DataSnapshot`.
+//    - This method should be updated to accept a type-safe data class (e.g., `UserProfile.kt`) that represents a user's profile data from Supabase.
+//    - The logic for extracting data (e.g., `dataSnapshot.child("nickname").getValue(String::class.java)`) will be replaced with property access on the new data class (e.g., `userProfile.nickname`).
+//
+// 3. **Refactor `showReplyUI`**:
+//    - This method uses `auth.currentUser!!.uid` to determine if a message is from the current user.
+//    - The `auth` dependency should be removed. The current user's ID should be passed into this method or the class's constructor from the `ChatActivity` or a ViewModel.
+//    - The `messageData` parameter, which is a `HashMap`, should be replaced with a `Message` data class.
+//
+// 4. **Decouple from `ChatActivity`**:
+//    - The calls to `activity._showLoadMoreIndicator()` and `activity._hideLoadMoreIndicator()` create a tight coupling with `ChatActivity`.
+//    - Consider using an interface to communicate these events back to the activity or, preferably, manage this state in a shared ViewModel.
+
 package com.synapse.social.studioasinc
 
 import android.view.View

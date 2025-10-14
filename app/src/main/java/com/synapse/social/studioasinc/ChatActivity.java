@@ -1,3 +1,41 @@
+// To-do: Migrate Firebase to Supabase
+// This activity is heavily dependent on Firebase. A full migration will require significant refactoring.
+// 1. **Initialization**:
+//    - Remove `FirebaseApp.initializeApp(this)`.
+//    - Replace `FirebaseDatabase.getInstance()` with a Supabase client instance. This should be managed as a singleton in the `SynapseApp` class.
+//
+// 2. **Authentication**:
+//    - Replace `FirebaseAuth.getInstance()` with the Supabase client.
+//    - All calls to `auth.getCurrentUser().getUid()` must be replaced with the Supabase equivalent for getting the current user's ID.
+//
+// 3. **Database References and Listeners**:
+//    - **Chat Messages**:
+//      - The `chatMessagesRef` (`DatabaseReference`) and its `_chat_child_listener` (`ChildEventListener`) must be replaced with a Supabase Realtime subscription.
+//      - Subscribe to the `messages` table for the current chat channel and listen for new inserts and updates.
+//    - **User Status**:
+//      - The `userRef` (`DatabaseReference`) and its `_userStatusListener` (`ValueEventListener`) for tracking the other user's presence and profile updates need to be replaced.
+//      - This can be achieved with a Supabase Realtime subscription to the specific user's row in the `profiles` table.
+//    - **Block List**:
+//      - The `blocklist` (`DatabaseReference`) and its `_blocklist_child_listener` (`ChildEventListener`) must be migrated.
+//      - This will require a subscription to a `blocked_users` table in Supabase.
+//
+// 4. **Data Fetching Logic**:
+//    - `_getChatMessagesRef()` and `_getOldChatMessagesRef()`: The logic for fetching and paginating messages needs to be rewritten using Supabase queries (`select`, `order`, `range`).
+//    - `_getUserReference()`: Fetching user profile data should be done with a `select` query on the `profiles` table.
+//
+// 5. **Data Writing Logic**:
+//    - **Sending Messages**: The `MessageSendingHandler` class, which currently writes to Firebase, must be refactored to `insert` new messages into the Supabase `messages` table. The logic for updating the inbox also needs to be adapted.
+//    - **Deleting Messages**: `_DeleteMessageDialog()` needs to be updated to `delete` a message from the Supabase table.
+//    - **Typing Indicator**: The logic for setting and removing the typing indicator should be replaced with Supabase's broadcast feature.
+//    - **Presence Management**: The `PresenceManager` calls need to be replaced with a Supabase Realtime channel for presence tracking.
+//
+// 6. **Helper Classes**:
+//    - Many helper classes are initialized and used here (`DatabaseHelper`, `MessageSendingHandler`, `ItemUploadHandler`, `GroupDetailsLoader`, etc.).
+//    - Each of these classes contains Firebase-specific logic and must be refactored to work with Supabase.
+//
+// 7. **Storage**:
+//    - The `ItemUploadHandler` and any other file upload mechanisms (e.g., for voice messages) need to be migrated from Firebase Storage to Supabase Storage.
+
 package com.synapse.social.studioasinc;
 
 import android.Manifest;

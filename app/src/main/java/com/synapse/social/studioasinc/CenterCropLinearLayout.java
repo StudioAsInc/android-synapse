@@ -1,3 +1,9 @@
+// To-do: Migrate Firebase to Supabase
+// 1. No direct Firebase dependencies in this file.
+// 2. This is a custom UI component for displaying a center-cropped background with a fade effect.
+// 3. While this view itself doesn't have backend logic, review how it's used in the application.
+//    - If the background drawable is loaded from a URL (e.g., using Glide), ensure the URL source is updated from Firebase Storage to Supabase Storage.
+
 package com.synapse.social.studioasinc;
 
 import android.content.Context;

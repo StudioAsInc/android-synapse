@@ -1,3 +1,8 @@
+// To-do: Migrate Firebase to Supabase
+// 1. No direct Firebase dependencies in this file.
+// 2. This is a ViewHolder class. The adapter that uses this ViewHolder will need to be refactored to work with data from Supabase.
+// 3. Review the data binding logic in the corresponding RecyclerView adapter to ensure it correctly handles the data model from Supabase.
+
 package com.synapse.social.studioasinc;
 
 import android.view.View;

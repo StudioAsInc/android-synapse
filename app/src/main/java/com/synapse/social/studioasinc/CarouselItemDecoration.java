@@ -1,3 +1,8 @@
+// To-do: Migrate Firebase to Supabase
+// 1. No direct Firebase dependencies in this file.
+// 2. This is a UI utility class for RecyclerView item decoration.
+// 3. The RecyclerView and its adapter that use this decoration will need to be reviewed to ensure they work with data from Supabase.
+
 /**
  * CONFIDENTIAL AND PROPRIETARY
  * 
