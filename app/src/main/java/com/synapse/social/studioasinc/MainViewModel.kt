@@ -9,9 +9,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.GoTrue
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.FilterOperator
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -87,13 +94,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkUserAuthentication() {
         viewModelScope.launch {
             try {
-                val user = FirebaseAuth.getInstance().currentUser
-                if (user != null) {
-                    val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(user.uid)
-                    val snapshot = userRef.get().await()
-
-                    if (snapshot.exists()) {
-                        val banned = snapshot.child("banned").getValue(String::class.java)
+                val supabase = createSupabaseClient(
+                    supabaseUrl = BuildConfig.SUPABASE_URL,
+                    supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+                ) {
+                    install(GoTrue)
+                    install(Postgrest)
+                }
+                val session = supabase.auth.currentSessionOrNull()
+                if (session != null) {
+                    val result = supabase.postgrest["users"].select {
+                        filter("uid", FilterOperator.EQ, session.user!!.id)
+                    }
+                    val userJson = result.body!!.jsonArray.firstOrNull()?.jsonObject
+                    if (userJson != null) {
+                        val banned = userJson["banned"]?.jsonPrimitive?.content
                         if ("false" == banned) {
                             _authState.value = AuthState.Authenticated
                         } else {

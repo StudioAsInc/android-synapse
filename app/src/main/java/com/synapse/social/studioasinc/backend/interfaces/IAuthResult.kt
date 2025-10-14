@@ -15,4 +15,5 @@ interface IAuthResult {
  */
 interface IUser {
     fun getUid(): String
+    fun getEmail(): String?
 }

@@ -4,9 +4,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.backend.SupabaseAuthService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.repository.UserRepository
 import kotlinx.coroutines.async
@@ -47,32 +52,29 @@ class ProfileViewModel : ViewModel() {
     private val _isProfileLiked = MutableLiveData<Boolean>()
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
-    private var postsListener: ValueEventListener? = null
-    private var postsRef: Query? = null
+    private val authService: IAuthenticationService = SupabaseAuthService()
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
 
     fun getUserPosts(userId: String) {
         _userPosts.postValue(State.Loading)
-        postsRef = FirebaseDatabase.getInstance().getReference("skyline/posts")
-            .orderByChild("uid").equalTo(userId)
-
-        postsListener = postsRef?.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val posts = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+        dbService.getData(dbService.getReference("posts").orderByChild("uid").equalTo(userId), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    val posts = dataSnapshot.children.mapNotNull { it.getValue(Post::class.java) }
                     enrichPostsWithState(posts)
                 } else {
                     _userPosts.postValue(State.Success(emptyList()))
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 _userPosts.postValue(State.Error)
             }
         })
     }
 
     private fun enrichPostsWithState(posts: List<Post>) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val currentUid = authService.getCurrentUser()?.getUid() ?: ""
         if (posts.isEmpty()) {
             _userPosts.postValue(State.Success(emptyList()))
             return
@@ -99,118 +101,135 @@ class ProfileViewModel : ViewModel() {
     }
 
     private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(postKey)
-        val snapshot = ref.get().await()
-        return Pair(snapshot.childrenCount, snapshot.hasChild(currentUid))
+        val deferred = CompletableDeferred<Pair<Long, Boolean>>()
+        dbService.getData(dbService.getReference("posts-likes").orderByChild("post_id").equalTo(postKey), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                val isLiked = dataSnapshot.children.any { it.jsonObject["user_id"]?.jsonPrimitive?.content == currentUid }
+                deferred.complete(Pair(dataSnapshot.children.count().toLong(), isLiked))
+            }
+            override fun onCancelled(databaseError: IDatabaseError) {
+                deferred.complete(Pair(0L, false))
+            }
+        })
+        return deferred.await()
     }
 
     private suspend fun getCommentCount(postKey: String): Long {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.childrenCount
+        val deferred = CompletableDeferred<Long>()
+        dbService.getData(dbService.getReference("posts-comments").orderByChild("post_id").equalTo(postKey), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                deferred.complete(dataSnapshot.children.count().toLong())
+            }
+            override fun onCancelled(databaseError: IDatabaseError) {
+                deferred.complete(0L)
+            }
+        })
+        return deferred.await()
     }
 
     private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.exists()
+        val deferred = CompletableDeferred<Boolean>()
+        dbService.getData(dbService.getReference("favorite-posts").orderByChild("post_id").equalTo(postKey).orderByChild("user_id").equalTo(currentUid), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                deferred.complete(dataSnapshot.exists())
+            }
+            override fun onCancelled(databaseError: IDatabaseError) {
+                deferred.complete(false)
+            }
+        })
+        return deferred.await()
     }
 
 
     fun fetchInitialFollowState(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isFollowing.postValue(snapshot.exists())
+        dbService.getData(dbService.getReference("followers").orderByChild("follower_uid").equalTo(currentUid).orderByChild("following_uid").equalTo(userId), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                _isFollowing.postValue(dataSnapshot.exists())
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isProfileLiked.postValue(snapshot.exists())
+        dbService.getData(dbService.getReference("profile-likes").orderByChild("user_id").equalTo(userId).orderByChild("liker_id").equalTo(currentUid), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                _isProfileLiked.postValue(dataSnapshot.exists())
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
 
     fun toggleFollow(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        val followingRef = FirebaseDatabase.getInstance().getReference("skyline/following").child(currentUid).child(userId)
-
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    followersRef.removeValue()
-                    followingRef.removeValue()
+        val followersRef = dbService.getReference("followers").orderByChild("follower_uid").equalTo(currentUid).orderByChild("following_uid").equalTo(userId)
+        dbService.getData(followersRef, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    dbService.delete(followersRef, (success, error) -> {})
                     _isFollowing.postValue(false)
                 } else {
-                    followersRef.setValue(true)
-                    followingRef.setValue(true)
+                    val followMap = mapOf("follower_uid" to currentUid, "following_uid" to userId)
+                    dbService.setValue(dbService.getReference("followers"), followMap, (success, error) -> {})
                     _isFollowing.postValue(true)
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     fun toggleProfileLike(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    profileLikesRef.removeValue()
+        val profileLikesRef = dbService.getReference("profile-likes").orderByChild("user_id").equalTo(userId).orderByChild("liker_id").equalTo(currentUid)
+        dbService.getData(profileLikesRef, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    dbService.delete(profileLikesRef, (success, error) -> {})
                     _isProfileLiked.postValue(false)
                 } else {
-                    profileLikesRef.setValue(true)
+                    val likeMap = mapOf("user_id" to userId, "liker_id" to currentUid)
+                    dbService.setValue(dbService.getReference("profile-likes"), likeMap, (success, error) -> {})
                     _isProfileLiked.postValue(true)
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     fun togglePostLike(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val postLikesRef = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(post.key).child(currentUid)
-
-        postLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    postLikesRef.removeValue()
+        val currentUid = authService.getCurrentUser()?.getUid() ?: return
+        val postLikesRef = dbService.getReference("posts-likes").orderByChild("post_id").equalTo(post.key).orderByChild("user_id").equalTo(currentUid)
+        dbService.getData(postLikesRef, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    dbService.delete(postLikesRef, (success, error) -> {})
                 } else {
-                    postLikesRef.setValue(true)
+                    val likeMap = mapOf("post_id" to post.key, "user_id" to currentUid)
+                    dbService.setValue(dbService.getReference("posts-likes"), likeMap, (success, error) -> {})
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     fun toggleFavorite(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val favoriteRef = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(post.key)
-
-        favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    favoriteRef.removeValue()
+        val currentUid = authService.getCurrentUser()?.getUid() ?: return
+        val favoriteRef = dbService.getReference("favorite-posts").orderByChild("post_id").equalTo(post.key).orderByChild("user_id").equalTo(currentUid)
+        dbService.getData(favoriteRef, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    dbService.delete(favoriteRef, (success, error) -> {})
                 } else {
-                    favoriteRef.setValue(true)
+                    val favoriteMap = mapOf("post_id" to post.key, "user_id" to currentUid)
+                    dbService.setValue(dbService.getReference("favorite-posts"), favoriteMap, (success, error) -> {})
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     override fun onCleared() {
         super.onCleared()
-        postsListener?.let { postsRef?.removeEventListener(it) }
+        // No-op for now
     }
 }

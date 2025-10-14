@@ -31,7 +31,7 @@ import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
 import com.synapse.social.studioasinc.backend.AuthenticationService;
-import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult;
@@ -152,9 +152,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        FirebaseApp.initializeApp(this);
-        authService = new AuthenticationService();
-        dbService = new DatabaseService();
+        authService = new SupabaseAuthService();
+        dbService = new SupabaseDatabaseService();
     }
 
     private void setupListeners() {

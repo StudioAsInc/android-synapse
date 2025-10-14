@@ -24,22 +24,43 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.auth.FirebaseAuth
 import androidx.activity.OnBackPressedCallback
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import java.util.ArrayList
+import com.synapse.social.studioasinc.backend.SupabaseAuthService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.interfaces.IDataListener
+import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import java.util.Calendar
 import java.util.HashMap
+import androidx.lifecycle.lifecycleScope
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.GoTrue
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.PostgresAction
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
-    private var chatMessagesRef: DatabaseReference? = null
+    private lateinit var supabase: SupabaseClient
+
     private var oldestMessageKey: String? = null
     private var isLoading = false
     private val CHAT_PAGE_SIZE = 80
     private var chatAdapter: ChatAdapter? = null
-    private var _chat_child_listener: ChildEventListener? = null
     private val messageKeys: MutableSet<String> = HashSet()
     private val ChatMessagesList: ArrayList<HashMap<String, Any>> = ArrayList()
     private val repliedMessagesCache: HashMap<String, HashMap<String, Any>> = HashMap()
@@ -73,8 +94,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private val _timer = java.util.Timer()
 
 
-    private val _firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private val dbService: IDatabaseService = SupabaseDatabaseService()
+    private val authService: IAuthenticationService = SupabaseAuthService()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,8 +157,14 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         chatAdapter?.setGroupChat(true) // This is a group chat
         ChatMessagesListRecycler.adapter = chatAdapter
 
-        val groupId = intent.getStringExtra("uid")
-        chatMessagesRef = _firebase.getReference("group-chats").child(groupId!!)
+        supabase = createSupabaseClient(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+        ) {
+            install(GoTrue)
+            install(Postgrest)
+            install(Realtime)
+        }
 
         _getGroupReference()
         _getChatMessagesRef()
@@ -213,35 +240,36 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private fun _getGroupReference() {
         val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(dbService.getReference("groups").orderByChild("uid").equalTo(groupId), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-                    
-                    // Fetch member usernames for displaying in chat bubbles
-                    fetchMemberUsernames(dataSnapshot)
+                    val group = dataSnapshot.children.first()
+                    topProfileLayoutUsername.text = group.jsonObject["name"]?.jsonPrimitive?.content
+                    fetchMemberUsernames(group)
                     Glide.with(applicationContext)
-                        .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
+                        .load(Uri.parse(group.jsonObject["icon"]?.jsonPrimitive?.content))
                         .into(topProfileLayoutProfileImage)
                     topProfileLayoutStatus.text = "Group"
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 
     private fun _getChatMessagesRef() {
         isLoading = true
-        val getChatsMessages = chatMessagesRef!!.limitToLast(CHAT_PAGE_SIZE)
-        getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        val groupId = intent.getStringExtra("uid")
+        val chatMessagesQuery = dbService.getReference("group-chats")
+            .orderByChild("group_id").equalTo(groupId)
+            .limitToLast(CHAT_PAGE_SIZE)
+
+        dbService.getData(chatMessagesQuery, object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
                     val initialMessages = ArrayList<HashMap<String, Any>>()
                     for (_data in dataSnapshot.children) {
-                        val messageData =
-                            _data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+                        val messageData = _data.getValue(HashMap::class.java) as HashMap<String, Any>?
                         if (messageData != null && messageData.containsKey("key")) {
                             initialMessages.add(messageData)
                             messageKeys.add(messageData["key"].toString())
@@ -262,102 +290,107 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
                 isLoading = false
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
+            override fun onCancelled(databaseError: IDatabaseError) {
                 isLoading = false
             }
         })
     }
 
     private fun _attachChatListener() {
-        if (chatMessagesRef == null) return
-        _chat_child_listener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                val newMessage =
-                    dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                if (newMessage != null && newMessage.containsKey("key")) {
+        val groupId = intent.getStringExtra("uid")
+        lifecycleScope.launch {
+            val channel = supabase.realtime.channel("group-chats")
+            val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "group-chats"
+                filter = "group_id=eq.$groupId"
+            }
+
+            changeFlow.collect {
+                val newMessage = it.record.jsonObject.toHashMap()
+                if (newMessage.containsKey("key")) {
                     val messageKey = newMessage["key"].toString()
                     if (!messageKeys.contains(messageKey)) {
                         messageKeys.add(messageKey)
                         val insertPosition = _findCorrectInsertPosition(newMessage)
-                        ChatMessagesList.add(insertPosition, newMessage)
-                        chatAdapter?.notifyItemInserted(insertPosition)
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
+                        runOnUiThread {
+                            ChatMessagesList.add(insertPosition, newMessage)
+                            chatAdapter?.notifyItemInserted(insertPosition)
+                            ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
+                        }
                     }
                 }
             }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            channel.subscribe()
         }
-        chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
     }
-    
-    private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
-        val membersSnapshot = groupSnapshot.child("members")
-        if (membersSnapshot.exists()) {
-            val memberUids = mutableListOf<String>()
-            for (memberSnapshot in membersSnapshot.children) {
-                memberSnapshot.key?.let { memberUids.add(it) }
-            }
 
-            auth.currentUser?.uid?.let {
-                if (!memberUids.contains(it)) {
-                    memberUids.add(it)
-                }
+    fun JsonElement.toHashMap(): HashMap<String, Any> {
+        val map = HashMap<String, Any>()
+        this.jsonObject.forEach { (key, value) ->
+            val primitive = value.jsonPrimitive
+            val valueToAdd = when {
+                primitive.isString -> primitive.content
+                primitive.booleanOrNull != null -> primitive.booleanOrNull!!
+                primitive.longOrNull != null -> primitive.longOrNull!!
+                primitive.doubleOrNull != null -> primitive.doubleOrNull!!
+                else -> value.toString()
             }
+            map[key] = valueToAdd
+        }
+        return map
+    }
 
+    private fun fetchMemberUsernames(groupSnapshot: IDataSnapshot) {
+        val members = groupSnapshot.jsonObject["members"]?.jsonArray
+        if (members != null) {
+            val memberUids = members.map { it.jsonPrimitive.content }
             val totalMembers = memberUids.size
             var membersProcessed = 0
-
             for (memberUid in memberUids) {
-                _firebase.getReference("skyline/users").child(memberUid).child("username")
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(userSnapshot: DataSnapshot) {
-                            val username = userSnapshot.getValue(String::class.java)
-                            if (username != null) {
-                                memberNamesMap[memberUid] = username
-                                if (memberUid == auth.currentUser?.uid) {
-                                    FirstUserName = username
-                                    chatAdapter?.setFirstUserName(username)
-                                }
-                            }
-
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
+                dbService.getData(dbService.getReference("users").orderByChild("uid").equalTo(memberUid), object : IDataListener {
+                    override fun onDataChange(userSnapshot: IDataSnapshot) {
+                        val user = userSnapshot.children.first()
+                        val username = user.jsonObject["username"]?.jsonPrimitive?.content
+                        if (username != null) {
+                            memberNamesMap[memberUid] = username
+                            if (memberUid == authService.getCurrentUser()?.getUid()) {
+                                FirstUserName = username
+                                chatAdapter?.setFirstUserName(username)
                             }
                         }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
+                        membersProcessed++
+                        if (membersProcessed == totalMembers) {
+                            chatAdapter?.setUserNamesMap(memberNamesMap)
+                            chatAdapter?.notifyDataSetChanged()
                         }
-                    })
+                    }
+
+                    override fun onCancelled(databaseError: IDatabaseError) {
+                        membersProcessed++
+                        if (membersProcessed == totalMembers) {
+                            chatAdapter?.setUserNamesMap(memberNamesMap)
+                            chatAdapter?.notifyDataSetChanged()
+                        }
+                    }
+                })
             }
         }
     }
 
     private fun _send_btn() {
         val messageText = message_et.text.toString().trim()
-        val senderUid = auth.currentUser!!.uid
+        val senderUid = authService.getCurrentUser()!!.getUid()
         val groupId = intent.getStringExtra("uid")
 
         if (messageText.isNotEmpty()) {
-            val uniqueMessageKey = chatMessagesRef!!.push().key
             val chatSendMap = HashMap<String, Any>()
             chatSendMap["uid"] = senderUid
+            chatSendMap["group_id"] = groupId!!
             chatSendMap["message_text"] = messageText
             chatSendMap["message_state"] = "sended"
-            chatSendMap["key"] = uniqueMessageKey!!
-            chatSendMap["push_date"] = ServerValue.TIMESTAMP
+            chatSendMap["push_date"] = System.currentTimeMillis()
 
-            chatMessagesRef!!.child(uniqueMessageKey).setValue(chatSendMap)
+            dbService.setValue(dbService.getReference("group-chats"), chatSendMap, (success, error) -> {})
             message_et.setText("")
             _updateInbox(messageText)
         }
@@ -365,29 +398,30 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
 
     private fun _updateInbox(lastMessage: String) {
         val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.child("members").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        dbService.getData(dbService.getReference("groups").orderByChild("uid").equalTo(groupId), object : IDataListener {
+            override fun onDataChange(dataSnapshot: IDataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
+                    val group = dataSnapshot.children.first()
+                    val members = group.jsonObject["members"]?.jsonArray
+                    if (members != null) {
+                        val memberUids = members.map { it.jsonPrimitive.content }
+                        for (memberUid in memberUids) {
                             val cc = Calendar.getInstance()
                             val chatInboxSend = HashMap<String, Any>()
-                            chatInboxSend["chatID"] = groupId
+                            chatInboxSend["chatID"] = groupId!!
                             chatInboxSend["uid"] = groupId
-                            chatInboxSend["last_message_uid"] = auth.currentUser!!.uid
+                            chatInboxSend["last_message_uid"] = authService.getCurrentUser()!!.getUid()
                             chatInboxSend["last_message_text"] = lastMessage
                             chatInboxSend["last_message_state"] = "sended"
                             chatInboxSend["push_date"] = cc.timeInMillis.toString()
                             chatInboxSend["chat_type"] = "group"
-                            _firebase.getReference("inbox").child(memberUid).child(groupId).setValue(chatInboxSend)
+                            dbService.setValue(dbService.getReference("inbox").orderByChild("uid").equalTo(memberUid), chatInboxSend, (success, error) -> {})
                         }
                     }
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {}
+            override fun onCancelled(databaseError: IDatabaseError) {}
         })
     }
 

@@ -87,4 +87,9 @@ interface IDatabaseService {
      * Updates specific children of a database reference without overwriting other data.
      */
     fun updateChildren(ref: IDatabaseReference, updates: Map<String, Any?>, listener: ICompletionListener<Unit>)
+
+    /**
+     * Deletes data from a database reference.
+     */
+    fun delete(ref: IDatabaseReference, listener: ICompletionListener<Unit>)
 }
