@@ -248,6 +248,16 @@
 		<activity
             android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
             android:theme="@style/Base.Theme.AppCompat" />
+
+        <receiver
+            android:name=".DisconnectReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="disconnect" />
+            </intent-filter>
+        </receiver>
+
 		<provider
 			android:name="androidx.startup.InitializationProvider"
 			android:authorities="com.synapse.social.studioasinc.androidx-startup"

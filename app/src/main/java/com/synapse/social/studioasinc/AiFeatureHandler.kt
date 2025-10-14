@@ -14,11 +14,11 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
 import com.service.studioasinc.AI.Gemini
 import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
 import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
 import com.synapse.social.studioasinc.ChatConstants.UID_KEY
+import io.github.jan.supabase.auth.auth
 import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
@@ -28,7 +28,6 @@ class AiFeatureHandler(
     private val gemini: Gemini,
     private val message_et: EditText,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
-    private val auth: FirebaseAuth,
     private var secondUserName: String,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
     private val mMessageReplyLayoutBodyRightMessage: TextView
@@ -71,7 +70,7 @@ class AiFeatureHandler(
 
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
-                        val sender = if (message[UID_KEY].toString() == auth.currentUser?.uid) "Me" else secondUserName
+                        val sender = if (message[UID_KEY].toString() == Supabase.client.auth.currentUserOrNull()?.id) "Me" else secondUserName
                         contextBuilder.append("$sender: ${message[MESSAGE_TEXT_KEY]}\n")
                     }
 

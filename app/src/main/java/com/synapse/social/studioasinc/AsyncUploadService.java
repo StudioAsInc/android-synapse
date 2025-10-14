@@ -67,7 +67,7 @@ public class AsyncUploadService {
         // Start upload in background thread
         executor.execute(() -> {
             try {
-                UploadFiles.uploadFile(filePath, fileName, new UploadFiles.UploadCallback() {
+                ImageUploader.uploadImage(filePath, new ImageUploader.UploadCallback() {
                     @Override
                     public void onProgress(int percent) {
                         // Update notification and notify listener
@@ -78,7 +78,7 @@ public class AsyncUploadService {
                     }
                     
                     @Override
-                    public void onSuccess(String url, String publicId) {
+                    public void onUploadComplete(String imageUrl) {
                         // Show success notification
                         showSuccessNotification(context, notificationId, fileName);
                         
@@ -88,14 +88,14 @@ public class AsyncUploadService {
                         
                         // Notify listener
                         if (listener != null) {
-                            listener.onSuccess(filePath, url, publicId);
+                            listener.onSuccess(filePath, imageUrl, "");
                         }
                     }
                     
                     @Override
-                    public void onFailure(String error) {
+                    public void onUploadError(String errorMessage) {
                         // Show failure notification
-                        showFailureNotification(context, notificationId, fileName, error);
+                        showFailureNotification(context, notificationId, fileName, errorMessage);
                         
                         // Clean up
                         uploadNotificationIds.remove(filePath);
@@ -103,7 +103,7 @@ public class AsyncUploadService {
                         
                         // Notify listener
                         if (listener != null) {
-                            listener.onFailure(filePath, error);
+                            listener.onFailure(filePath, errorMessage);
                         }
                     }
                 });
@@ -124,9 +124,6 @@ public class AsyncUploadService {
      */
     public static void cancelUpload(Context context, String filePath) {
         if (context == null || filePath == null) return;
-        
-        // Cancel the upload
-        UploadFiles.cancelUpload(filePath);
         
         // Remove notification
         Integer notificationId = uploadNotificationIds.remove(filePath);
