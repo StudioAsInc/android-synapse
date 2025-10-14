@@ -25,7 +25,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.FirebaseApp;
+import com.synapse.social.studioasinc.util.SupabaseClient;
+import io.supabase.gotrue.http.AuthenticatedUser;
+import io.supabase.postgrest.data.PostgrestObject;
+import io.supabase.postgrest.http.PostgrestHttpException;
+import io.supabase.postgrest.query.PostgrestQuery;
+
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
@@ -79,11 +84,6 @@ public class AuthActivity extends AppCompatActivity {
     private int sfxUserInputEndId;
     private int sfxErrorId;
 
-    // Backend Services
-    private IAuthenticationService authService;
-    private IDatabaseService dbService;
-
-    private final ICompletionListener<IAuthResult> authCreateUserListener = createAuthCreateUserListener();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,9 +152,7 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        FirebaseApp.initializeApp(this);
-        authService = new AuthenticationService();
-        dbService = new DatabaseService();
+        // Supabase is initialized in SupabaseClient singleton
     }
 
     private void setupListeners() {
@@ -270,18 +268,15 @@ public class AuthActivity extends AppCompatActivity {
         }
 
         if (isValid) {
-            authService.signUp(email, pass, authCreateUserListener);
+            new Thread(() -> {
+                try {
+                    AuthenticatedUser user = SupabaseClient.getClient().getAuth().signUp(email, pass);
+                    runOnUiThread(this::handleSuccessfulRegistration);
+                } catch (Exception e) {
+                    runOnUiThread(() -> handleRegistrationError(e));
+                }
+            }).start();
         }
-    }
-
-    private ICompletionListener<IAuthResult> createAuthCreateUserListener() {
-        return (result, error) -> {
-            if (result != null && result.isSuccessful()) {
-                handleSuccessfulRegistration();
-            } else {
-                handleRegistrationError(error);
-            }
-        };
     }
 
     private void handleSuccessfulRegistration() {
@@ -298,8 +293,14 @@ public class AuthActivity extends AppCompatActivity {
         if (exception == null) return;
 
         String errorMessage = exception.getMessage();
-        if ("The email address is already in use by another account.".equals(errorMessage)) {
+        // Check for GoTrue error message for existing user
+        if (errorMessage != null && errorMessage.contains("User already registered")) {
             handleExistingAccount();
+        } else {
+            // Handle other sign-up errors
+            aiResponseTextView_1.setTotalDuration(1300L);
+            aiResponseTextView_1.setFadeDuration(150L);
+            aiResponseTextView_1.startTyping("Oops! Something went wrong. " + errorMessage);
         }
     }
 
@@ -311,41 +312,64 @@ public class AuthActivity extends AppCompatActivity {
         String email = email_et.getText().toString();
         String pass = pass_et.getText().toString();
 
-        authService.signIn(email, pass, (result, error) -> {
-            if (result != null && result.isSuccessful()) {
-                IUser user = authService.getCurrentUser();
-                if (user != null) {
-                    fetchUsername(user.getUid());
-                }
-            } else {
-                showSignInError();
+        new Thread(() -> {
+            try {
+                AuthenticatedUser user = SupabaseClient.getClient().getAuth().signIn(email, pass);
+                runOnUiThread(() -> {
+                    if (user != null) {
+                        fetchUsername(user.getId());
+                    } else {
+                        showSignInError();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(this::showSignInError);
             }
-        });
+        }).start();
     }
 
     private void fetchUsername(String uid) {
         // Update OneSignal Player ID on sign-in
         updateOneSignalPlayerId(uid);
 
-        String path = "skyline/users/" + uid + "/username";
-        dbService.getData(dbService.getReference(path), new IDataListener() {
-            @Override
-            public void onDataChange(IDataSnapshot dataSnapshot) {
-                String username = dataSnapshot.getValue(String.class);
-                if (username != null) {
-                    showWelcomeMessage("You are @" + username + " right? No further steps, Let's go...");
-                } else {
-                    showWelcomeMessage("I recognize you! Let's go...");
-                }
-                navigateToHomeAfterDelay();
-            }
+        new Thread(() -> {
+            try {
+                var response = SupabaseClient.getClient().getDatabase()
+                        .from("users")
+                        .select("username")
+                        .eq("uid", uid)
+                        .limit(1)
+                        .execute()
+                        .getBody();
 
-            @Override
-            public void onCancelled(IDatabaseError databaseError) {
-                showWelcomeMessage("I recognize you! Let's go...");
-                navigateToHomeAfterDelay();
+                String username = null;
+                if (response != null && !response.isEmpty()) {
+                    PostgrestObject userObject = response.get(0);
+                    if (userObject.containsKey("username")) {
+                        Object usernameObj = userObject.get("username");
+                        if (usernameObj != null) {
+                            username = usernameObj.toString();
+                        }
+                    }
+                }
+
+                final String finalUsername = username;
+                runOnUiThread(() -> {
+                    if (finalUsername != null) {
+                        showWelcomeMessage("You are @" + finalUsername + " right? No further steps, Let's go...");
+                    } else {
+                        showWelcomeMessage("I recognize you! Let's go...");
+                    }
+                    navigateToHomeAfterDelay();
+                });
+
+            } catch (PostgrestHttpException e) {
+                runOnUiThread(() -> {
+                    showWelcomeMessage("I recognize you! Let's go...");
+                    navigateToHomeAfterDelay();
+                });
             }
-        });
+        }).start();
     }
 
     private void showWelcomeMessage(String message) {

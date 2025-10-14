@@ -4,11 +4,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.repository.UserRepository
+import com.synapse.social.studioasinc.util.SupabaseClient
+import io.supabase.postgrest.http.PostgrestHttpException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -47,32 +49,35 @@ class ProfileViewModel : ViewModel() {
     private val _isProfileLiked = MutableLiveData<Boolean>()
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
-    private var postsListener: ValueEventListener? = null
-    private var postsRef: Query? = null
+    private val supabase = SupabaseClient.getClient()
 
     fun getUserPosts(userId: String) {
         _userPosts.postValue(State.Loading)
-        postsRef = FirebaseDatabase.getInstance().getReference("skyline/posts")
-            .orderByChild("uid").equalTo(userId)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val response = supabase.getDatabase()
+                    .from("posts")
+                    .select()
+                    .eq("uid", userId)
+                    .execute()
+                    .getBody()
 
-        postsListener = postsRef?.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val posts = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                if (response != null) {
+                    // Assuming the response can be mapped to a List<Post>
+                    // This will require a custom serializer or manual mapping
+                    val posts = response.map { Post.fromMap(it as Map<String, Any>) }
                     enrichPostsWithState(posts)
                 } else {
                     _userPosts.postValue(State.Success(emptyList()))
                 }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
+            } catch (e: PostgrestHttpException) {
                 _userPosts.postValue(State.Error)
             }
-        })
+        }
     }
 
     private fun enrichPostsWithState(posts: List<Post>) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val currentUid = supabase.getAuth().getUser()?.id ?: ""
         if (posts.isEmpty()) {
             _userPosts.postValue(State.Success(emptyList()))
             return
@@ -99,118 +104,210 @@ class ProfileViewModel : ViewModel() {
     }
 
     private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(postKey)
-        val snapshot = ref.get().await()
-        return Pair(snapshot.childrenCount, snapshot.hasChild(currentUid))
+        val countDeferred = viewModelScope.async(Dispatchers.IO) {
+            try {
+                supabase.getDatabase().from("posts_likes")
+                    .select(count = io.supabase.postgrest.query.Count.EXACT)
+                    .eq("post_key", postKey)
+                    .execute()
+                    .count ?: 0L
+            } catch (e: PostgrestHttpException) { 0L }
+        }
+
+        val isLikedDeferred = viewModelScope.async(Dispatchers.IO) {
+            try {
+                supabase.getDatabase().from("posts_likes")
+                    .select()
+                    .eq("post_key", postKey)
+                    .eq("user_id", currentUid)
+                    .limit(1)
+                    .execute()
+                    .getBody()?.isNotEmpty() == true
+            } catch (e: PostgrestHttpException) { false }
+        }
+
+        return Pair(countDeferred.await(), isLikedDeferred.await())
     }
 
     private suspend fun getCommentCount(postKey: String): Long {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.childrenCount
+        return viewModelScope.async(Dispatchers.IO) {
+            try {
+                supabase.getDatabase().from("posts_comments")
+                    .select(count = io.supabase.postgrest.query.Count.EXACT)
+                    .eq("post_key", postKey)
+                    .execute()
+                    .count ?: 0L
+            } catch (e: PostgrestHttpException) { 0L }
+        }.await()
     }
 
     private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.exists()
+        return viewModelScope.async(Dispatchers.IO) {
+             try {
+                 supabase.getDatabase().from("favorite_posts")
+                    .select()
+                    .eq("user_id", currentUid)
+                    .eq("post_key", postKey)
+                    .limit(1)
+                    .execute()
+                    .getBody()?.isNotEmpty() == true
+             } catch (e: PostgrestHttpException) { false }
+        }.await()
     }
 
 
     fun fetchInitialFollowState(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isFollowing.postValue(snapshot.exists())
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val response = supabase.getDatabase().from("followers")
+                    .select()
+                    .eq("user_id", userId)
+                    .eq("follower_id", currentUid)
+                    .limit(1)
+                    .execute()
+                _isFollowing.postValue(response.getBody()?.isNotEmpty() == true)
+            } catch (e: PostgrestHttpException) {
+                _isFollowing.postValue(false)
             }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
     fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isProfileLiked.postValue(snapshot.exists())
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val response = supabase.getDatabase().from("profile_likes")
+                    .select()
+                    .eq("profile_id", userId)
+                    .eq("user_id", currentUid)
+                    .limit(1)
+                    .execute()
+                _isProfileLiked.postValue(response.getBody()?.isNotEmpty() == true)
+            } catch (e: PostgrestHttpException) {
+                _isProfileLiked.postValue(false)
             }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
 
     fun toggleFollow(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        val followingRef = FirebaseDatabase.getInstance().getReference("skyline/following").child(currentUid).child(userId)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val isFollowingResponse = supabase.getDatabase().from("followers")
+                    .select()
+                    .eq("user_id", userId)
+                    .eq("follower_id", currentUid)
+                    .limit(1)
+                    .execute()
 
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    followersRef.removeValue()
-                    followingRef.removeValue()
+                if (isFollowingResponse.getBody()?.isNotEmpty() == true) {
+                    supabase.getDatabase().from("followers")
+                        .delete()
+                        .eq("user_id", userId)
+                        .eq("follower_id", currentUid)
+                        .execute()
+                    supabase.getDatabase().from("following")
+                        .delete()
+                        .eq("user_id", currentUid)
+                        .eq("following_id", userId)
+                        .execute()
                     _isFollowing.postValue(false)
                 } else {
-                    followersRef.setValue(true)
-                    followingRef.setValue(true)
+                    supabase.getDatabase().from("followers")
+                        .insert(mapOf("user_id" to userId, "follower_id" to currentUid))
+                        .execute()
+                    supabase.getDatabase().from("following")
+                        .insert(mapOf("user_id" to currentUid, "following_id" to userId))
+                        .execute()
                     _isFollowing.postValue(true)
                 }
+            } catch (e: PostgrestHttpException) {
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
     fun toggleProfileLike(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                 val isLikedResponse = supabase.getDatabase().from("profile_likes")
+                    .select()
+                    .eq("profile_id", userId)
+                    .eq("user_id", currentUid)
+                    .limit(1)
+                    .execute()
 
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    profileLikesRef.removeValue()
+                if (isLikedResponse.getBody()?.isNotEmpty() == true) {
+                    supabase.getDatabase().from("profile_likes")
+                        .delete()
+                        .eq("profile_id", userId)
+                        .eq("user_id", currentUid)
+                        .execute()
                     _isProfileLiked.postValue(false)
                 } else {
-                    profileLikesRef.setValue(true)
+                    supabase.getDatabase().from("profile_likes")
+                        .insert(mapOf("profile_id" to userId, "user_id" to currentUid))
+                        .execute()
                     _isProfileLiked.postValue(true)
                 }
+            } catch (e: PostgrestHttpException) {
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
     fun togglePostLike(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val postLikesRef = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(post.key).child(currentUid)
+        val currentUid = supabase.getAuth().getUser()?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val isLikedResponse = supabase.getDatabase().from("posts_likes")
+                    .select()
+                    .eq("post_key", post.key)
+                    .eq("user_id", currentUid)
+                    .limit(1)
+                    .execute()
 
-        postLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    postLikesRef.removeValue()
+                if (isLikedResponse.getBody()?.isNotEmpty() == true) {
+                    supabase.getDatabase().from("posts_likes")
+                        .delete()
+                        .eq("post_key", post.key)
+                        .eq("user_id", currentUid)
+                        .execute()
                 } else {
-                    postLikesRef.setValue(true)
+                    supabase.getDatabase().from("posts_likes")
+                        .insert(mapOf("post_key" to post.key, "user_id" to currentUid))
+                        .execute()
                 }
+            } catch (e: PostgrestHttpException) {
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
     fun toggleFavorite(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val favoriteRef = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(post.key)
+        val currentUid = supabase.getAuth().getUser()?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val isFavoriteResponse = supabase.getDatabase().from("favorite_posts")
+                    .select()
+                    .eq("user_id", currentUid)
+                    .eq("post_key", post.key)
+                    .limit(1)
+                    .execute()
 
-        favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    favoriteRef.removeValue()
+                if (isFavoriteResponse.getBody()?.isNotEmpty() == true) {
+                    supabase.getDatabase().from("favorite_posts")
+                        .delete()
+                        .eq("user_id", currentUid)
+                        .eq("post_key", post.key)
+                        .execute()
                 } else {
-                    favoriteRef.setValue(true)
+                    supabase.getDatabase().from("favorite_posts")
+                        .insert(mapOf("user_id" to currentUid, "post_key" to post.key))
+                        .execute()
                 }
+            } catch (e: PostgrestHttpException) {
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
-        postsListener?.let { postsRef?.removeEventListener(it) }
     }
 }

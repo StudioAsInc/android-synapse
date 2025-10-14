@@ -18,8 +18,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.util.SupabaseClient
+import io.supabase.postgrest.http.PostgrestHttpException
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
@@ -53,10 +53,8 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressBar: ProgressBar? = null
     private var progressPercentage: TextView? = null
     
-    // Firebase
-    private val firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    private val postsRef = firebase.getReference("skyline/posts")
+    // Supabase
+    private val supabase = SupabaseClient.getClient()
     
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -251,25 +249,25 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun createPost() {
         val postText = postDescriptionEditText.text.toString().trim()
-        
+
         if (postText.isEmpty() && selectedMediaItems.isEmpty()) {
             Toast.makeText(this, "Please add some text or media to your post", Toast.LENGTH_SHORT).show()
             return
         }
-        
-        val currentUser = auth.currentUser
+
+        val currentUser = supabase.getAuth().getUser()
         if (currentUser == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
         }
-        
+
         showLoading(true)
-        
+
         // Create post object
-        val postKey = postsRef.push().key ?: return
+        val postKey = UUID.randomUUID().toString()
         val post = Post(
             key = postKey,
-            uid = currentUser.uid,
+            uid = currentUser.getId(),
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
@@ -278,7 +276,7 @@ class CreatePostActivity : AppCompatActivity() {
             postVisibility = if (postVisibilitySpinner.selectedItemPosition == 0) "public" else "private",
             publishDate = System.currentTimeMillis().toString()
         )
-        
+
         if (selectedMediaItems.isEmpty()) {
             // Text-only post
             post.postType = "TEXT"
@@ -302,12 +300,12 @@ class CreatePostActivity : AppCompatActivity() {
             onComplete = { uploadedItems ->
                 post.mediaItems = uploadedItems.toMutableList()
                 post.determinePostType()
-                
+
                 // Set legacy image field for backward compatibility
                 uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
                     post.postImage = it.url
                 }
-                
+
                 savePostToDatabase(post)
             },
             onError = { error ->
@@ -320,21 +318,22 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun savePostToDatabase(post: Post) {
-        postsRef.child(post.key).setValue(post.toHashMap())
-            .addOnSuccessListener {
+        Thread {
+            try {
+                supabase.getDatabase().from("posts").insert(post.toHashMap()).execute()
                 runOnUiThread {
                     showLoading(false)
                     Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
                     handleMentions(post.postText, post.key)
                     finish()
                 }
-            }
-            .addOnFailureListener { exception ->
+            } catch (e: PostgrestHttpException) {
                 runOnUiThread {
                     showLoading(false)
-                    Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Failed to create post: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
+        }.start()
     }
 
     private fun handleMentions(text: String?, postKey: String) {

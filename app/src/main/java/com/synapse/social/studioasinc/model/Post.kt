@@ -20,6 +20,49 @@ data class Post(
     // Legacy single image field for backward compatibility
     var postImage: String? = null
 ) : Serializable {
+    companion object {
+        fun fromMap(map: Map<String, Any>): Post {
+            val post = Post()
+            post.key = map["key"] as? String ?: ""
+            post.uid = map["uid"] as? String ?: ""
+            post.postText = map["post_text"] as? String
+            post.postType = map["post_type"] as? String ?: "TEXT"
+            post.postHideViewsCount = map["post_hide_views_count"] as? String ?: "false"
+            post.postRegion = map["post_region"] as? String ?: "none"
+            post.postHideLikeCount = map["post_hide_like_count"] as? String ?: "false"
+            post.postHideCommentsCount = map["post_hide_comments_count"] as? String ?: "false"
+            post.postVisibility = map["post_visibility"] as? String ?: "public"
+            post.postDisableFavorite = map["post_disable_favorite"] as? String ?: "false"
+            post.postDisableComments = map["post_disable_comments"] as? String ?: "false"
+            post.publishDate = map["publish_date"] as? String ?: ""
+            post.postImage = map["post_image"] as? String
+
+            val mediaItemsList = map["media_items"] as? List<*>
+            if (mediaItemsList != null) {
+                post.mediaItems = mediaItemsList.mapNotNull { item ->
+                    when (item) {
+                        is Map<*, *> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val mediaMap = item as Map<String, Any>
+                            MediaItem(
+                                url = mediaMap["url"] as? String ?: "",
+                                type = MediaType.valueOf(mediaMap["type"] as? String ?: "IMAGE"),
+                                thumbnailUrl = mediaMap["thumbnailUrl"] as? String,
+                                width = (mediaMap["width"] as? Number)?.toInt() ?: 0,
+                                height = (mediaMap["height"] as? Number)?.toInt() ?: 0,
+                                duration = (mediaMap["duration"] as? Number)?.toLong() ?: 0L
+                            )
+                        }
+                        else -> null
+                    }
+                }.toMutableList()
+            } else {
+                post.convertLegacyImage()
+            }
+
+            return post
+        }
+    }
     
     // Helper methods
     fun addMediaItem(item: MediaItem) {
