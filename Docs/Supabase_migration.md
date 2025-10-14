@@ -6,6 +6,8 @@ This document tracks the progress of migrating the application from Firebase to 
 
 - [x] `app/src/main/java/com/synapse/social/studioasinc/MainActivity.kt`
 - [x] `app/src/main/java/com/synapse/social/studioasinc/MainViewModel.kt`
+- [x] `app/src/main/java/com/synapse/social/studioasinc/AuthActivity.java`
+- [x] `app/src/main/java/com/synapse/social/studioasinc/CreatePostActivity.kt`
 
 ## To Do
 
