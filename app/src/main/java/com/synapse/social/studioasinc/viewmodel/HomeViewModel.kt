@@ -10,6 +10,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -26,9 +27,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }.data
 
                 if (response.isNotBlank()) {
-                    val user = response.trim()
-                    // Further parsing might be needed depending on the exact response format
-                    _avatarUrl.postValue(user)
+                    val jsonArray = JSONArray(response)
+                    if (jsonArray.length() > 0) {
+                        val userObject = jsonArray.getJSONObject(0)
+                        if (userObject.has("avatar")) {
+                            val url = userObject.getString("avatar")
+                            _avatarUrl.postValue(url)
+                        } else {
+                            _avatarUrl.postValue(null)
+                        }
+                    } else {
+                        _avatarUrl.postValue(null)
+                    }
                 } else {
                     _avatarUrl.postValue(null)
                 }
