@@ -1,45 +1,38 @@
 package com.synapse.social.studioasinc;
 
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.synapse.social.studioasinc.adapter.ViewPagerAdapter;
+import com.synapse.social.studioasinc.viewmodel.HomeViewModel;
 
+// To-do: Migrate this class to Kotlin.
+// To-do: Use view binding instead of findViewById.
 public class HomeActivity extends AppCompatActivity {
 
     private static final int REELS_TAB_POSITION = 1;
     private FirebaseAuth auth;
-    private FirebaseDatabase _firebase;
-    private DatabaseReference udb;
+    private HomeViewModel homeViewModel;
     private ImageView settings_button;
     private ImageView nav_search_ic;
     private ImageView nav_inbox_ic;
     private ImageView nav_profile_ic;
     private TabLayout tabLayout;
     private ViewPager2 viewPager;
-    private AppBarLayout app_bar_layout;
     private View topBar;
 
     @Override
@@ -54,6 +47,7 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        // To-do: Replace with Supabase presence.
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
             PresenceManager.setActivity(FirebaseAuth.getInstance().getCurrentUser().getUid(), "In Home");
         }
@@ -66,8 +60,7 @@ public class HomeActivity extends AppCompatActivity {
 
     private void initialize() {
         auth = FirebaseAuth.getInstance();
-        _firebase = FirebaseDatabase.getInstance();
-        udb = _firebase.getReference("skyline/users");
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
         tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
@@ -75,7 +68,6 @@ public class HomeActivity extends AppCompatActivity {
         nav_search_ic = findViewById(R.id.nav_search_ic);
         nav_inbox_ic = findViewById(R.id.nav_inbox_ic);
         nav_profile_ic = findViewById(R.id.nav_profile_ic);
-        app_bar_layout = findViewById(R.id.app_bar_layout);
         topBar = findViewById(R.id.topBar);
     }
 
@@ -144,25 +136,38 @@ public class HomeActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        DatabaseReference getReference = udb.child(FirebaseAuth.getInstance().getCurrentUser().getUid());
-        getReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if(dataSnapshot.exists()) {
-                    if (dataSnapshot.child("avatar").getValue(String.class) != null && !dataSnapshot.child("avatar").getValue(String.class).equals("null")) {
-                        Glide.with(getApplicationContext()).load(Uri.parse(dataSnapshot.child("avatar").getValue(String.class))).into(nav_profile_ic);
+        // To-do: Move UI update logic into a separate method.
+        homeViewModel.getAvatarUrl().observe(this, avatarUrl -> {
+            if (avatarUrl != null && !avatarUrl.equals("null") && !avatarUrl.isEmpty()) {
+                try {
+                    // Supabase returns a JSON array string like "[{\"avatar\":\"URL\"}]"
+                    org.json.JSONArray jsonArray = new org.json.JSONArray(avatarUrl);
+                    if (jsonArray.length() > 0) {
+                        org.json.JSONObject userObject = jsonArray.getJSONObject(0);
+                        if (userObject.has("avatar")) {
+                            String url = userObject.getString("avatar");
+                             if (url != null && !url.equals("null")) {
+                                Glide.with(getApplicationContext()).load(Uri.parse(url)).into(nav_profile_ic);
+                             } else {
+                                nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
+                             }
+                        } else {
+                            nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
+                        }
                     } else {
                         nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
                     }
-                } else {
+                } catch (org.json.JSONException e) {
                     nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
                 }
-            }
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+            } else {
                 nav_profile_ic.setImageResource(R.drawable.ic_account_circle_48px);
             }
         });
+
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            homeViewModel.fetchUserAvatar(FirebaseAuth.getInstance().getCurrentUser().getUid());
+        }
     }
 
     @Override
