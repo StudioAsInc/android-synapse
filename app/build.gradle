@@ -84,6 +84,8 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
+            buildConfigField "String", "SUPABASE_URL", "\"https://apqvyyphlrtmuyjnzmuq.supabase.co\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwcXZ5eXBobHJ0bXV5am56bXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MDUwODcsImV4cCI6MjA3NDI4MTA4N30.On7kjijj7bUg_xzr2HwCTYvLaV-f_1aDYqVTfKai7gc\""
         }
     }
 
@@ -185,6 +187,11 @@ dependencies {
     implementation 'androidx.collection:collection-jvm:1.5.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.0"
     implementation 'androidx.browser:browser:1.9.0'
+
+    // Supabase
+    implementation("io.supabase.kt:postgrest-kt:2.5.0")
+    implementation("io.supabase.kt:realtime-kt:2.5.0")
+    implementation("io.supabase.kt:gotrue-kt:2.5.0")
     
     implementation 'com.google.genai:google-genai:1.12.0'
 	implementation 'androidx.gridlayout:gridlayout:1.0.0'

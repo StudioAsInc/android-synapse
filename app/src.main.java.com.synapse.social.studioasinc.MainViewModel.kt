@@ -118,11 +118,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun isDeveloper(): Boolean {
-        val user = SupabaseClient.client.auth.currentUserOrNull()
-        return user?.email == BuildConfig.DEVELOPER_EMAIL
-    }
-
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false

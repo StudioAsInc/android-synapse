@@ -14,7 +14,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.backend.SupabaseClient
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
 import com.synapse.social.studioasinc.databinding.DialogErrorBinding
 import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.appLogo.setOnLongClickListener {
-            if (FirebaseAuth.getInstance().currentUser?.email == BuildConfig.DEVELOPER_EMAIL) {
+            if (viewModel.isDeveloper()) {
                 finish()
             }
             true
@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 is AuthState.Banned -> {
                     Toast.makeText(this, "You are banned & Signed Out.", Toast.LENGTH_LONG).show()
-                    FirebaseAuth.getInstance().signOut()
+                    viewModel.signOut()
                     finish()
                 }
                 is AuthState.NeedsProfileCompletion -> {
