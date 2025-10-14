@@ -52,4 +52,21 @@ public class User {
     public void setAvatar(String avatar) {
         this.avatar = avatar;
     }
+
+    public static User fromMap(java.util.Map<String, Object> map) {
+        User user = new User();
+        user.uid = (String) map.get("uid");
+        user.username = (String) map.get("username");
+        user.nickname = (String) map.get("nickname");
+        user.avatar = (String) map.get("avatar");
+        user.banned = (String) map.get("banned");
+        user.profile_cover_image = (String) map.get("profile_cover_image");
+        user.biography = (String) map.get("biography");
+        user.join_date = (String) map.get("join_date");
+        user.status = (String) map.get("status");
+        user.account_type = (String) map.get("account_type");
+        user.gender = (String) map.get("gender");
+        user.verify = (String) map.get("verify");
+        return user;
+    }
 }
