@@ -15,6 +15,11 @@ This document lists all Java classes that have been migrated to Kotlin.
 - **Status:** Migrated to multiple Kotlin files
 - **Line Count:** 550
 
+### HomeActivity.java
+- **Path:** `app/src/main/java/com/synapse/social/studioasinc/HomeActivity.kt`
+- **Status:** Migrated to `HomeActivity.kt`
+- **Line Count:** 178
+
 ## Unmigrated Classes
 
 ### ProfileCoverPhotoHistoryActivity.java
@@ -292,11 +297,6 @@ This document lists all Java classes that have been migrated to Kotlin.
 - **Path:** `./app/src/main/java/com/synapse/social/studioasinc/ProfilePhotoHistoryActivity.java`
 - **Status:** Not Migrated
 - **Line Count:** 622
-
-### HomeActivity.java
-- **Path:** `./app/src/main/java/com/synapse/social/studioasinc/HomeActivity.java`
-- **Status:** Not Migrated
-- **Line Count:** 178
 
 ### SelectRegionActivity.java
 - **Path:** `./app/src/main/java/com/synapse/social/studioasinc/SelectRegionActivity.java`
