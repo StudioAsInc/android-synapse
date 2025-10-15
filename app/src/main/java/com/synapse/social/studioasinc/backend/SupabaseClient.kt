@@ -1,11 +1,11 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.BuildConfig
-import io.supabase.kt.SupabaseClient
-import io.supabase.kt.createSupabaseClient
-import io.supabase.kt.gotrue.GoTrue
-import io.supabase.kt.postgrest.Postgrest
-import io.supabase.kt.realtime.Realtime
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.GoTrue
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 
 object SupabaseClient {
 

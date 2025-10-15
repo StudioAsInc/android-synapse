@@ -7,8 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.repository.UserRepository
-import com.synapse.social.studioasinc.util.SupabaseClient
-import io.supabase.postgrest.http.PostgrestHttpException
+import com.synapse.social.studioasinc.backend.SupabaseClient
+import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -49,35 +51,35 @@ class ProfileViewModel : ViewModel() {
     private val _isProfileLiked = MutableLiveData<Boolean>()
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
-    private val supabase = SupabaseClient.getClient()
+    private val supabase = SupabaseClient.client
 
     fun getUserPosts(userId: String) {
         _userPosts.postValue(State.Loading)
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val response = supabase.getDatabase()
-                    .from("posts")
-                    .select()
-                    .eq("uid", userId)
-                    .execute()
-                    .getBody()
+                // val response = supabase.postgrest
+                //     .from("posts")
+                //     .select()
+                //     .eq("uid", userId)
+                //     .execute()
+                //     .getBody()
 
-                if (response != null) {
-                    // Assuming the response can be mapped to a List<Post>
-                    // This will require a custom serializer or manual mapping
-                    val posts = response.map { Post.fromMap(it as Map<String, Any>) }
-                    enrichPostsWithState(posts)
-                } else {
-                    _userPosts.postValue(State.Success(emptyList()))
-                }
-            } catch (e: PostgrestHttpException) {
+                // if (response != null) {
+                //     // Assuming the response can be mapped to a List<Post>
+                //     // This will require a custom serializer or manual mapping
+                //     val posts = response.map { Post.fromMap(it as Map<String, Any>) }
+                //     enrichPostsWithState(posts)
+                // } else {
+                //     _userPosts.postValue(State.Success(emptyList()))
+                // }
+            } catch (e: RestException) {
                 _userPosts.postValue(State.Error)
             }
         }
     }
 
     private fun enrichPostsWithState(posts: List<Post>) {
-        val currentUid = supabase.getAuth().getUser()?.id ?: ""
+        val currentUid = supabase.auth.currentUserOrNull()?.id ?: ""
         if (posts.isEmpty()) {
             _userPosts.postValue(State.Success(emptyList()))
             return
@@ -106,24 +108,26 @@ class ProfileViewModel : ViewModel() {
     private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
         val countDeferred = viewModelScope.async(Dispatchers.IO) {
             try {
-                supabase.getDatabase().from("posts_likes")
-                    .select(count = io.supabase.postgrest.query.Count.EXACT)
-                    .eq("post_key", postKey)
-                    .execute()
-                    .count ?: 0L
-            } catch (e: PostgrestHttpException) { 0L }
+                // supabase.postgrest.from("posts_likes")
+                //     .select(count = io.supabase.postgrest.query.Count.EXACT)
+                //     .eq("post_key", postKey)
+                //     .execute()
+                //     .count ?: 0L
+                0L
+            } catch (e: RestException) { 0L }
         }
 
         val isLikedDeferred = viewModelScope.async(Dispatchers.IO) {
             try {
-                supabase.getDatabase().from("posts_likes")
-                    .select()
-                    .eq("post_key", postKey)
-                    .eq("user_id", currentUid)
-                    .limit(1)
-                    .execute()
-                    .getBody()?.isNotEmpty() == true
-            } catch (e: PostgrestHttpException) { false }
+                // supabase.postgrest.from("posts_likes")
+                //     .select()
+                //     .eq("post_key", postKey)
+                //     .eq("user_id", currentUid)
+                //     .limit(1)
+                //     .execute()
+                //     .getBody()?.isNotEmpty() == true
+                false
+            } catch (e: RestException) { false }
         }
 
         return Pair(countDeferred.await(), isLikedDeferred.await())
@@ -132,26 +136,28 @@ class ProfileViewModel : ViewModel() {
     private suspend fun getCommentCount(postKey: String): Long {
         return viewModelScope.async(Dispatchers.IO) {
             try {
-                supabase.getDatabase().from("posts_comments")
-                    .select(count = io.supabase.postgrest.query.Count.EXACT)
-                    .eq("post_key", postKey)
-                    .execute()
-                    .count ?: 0L
-            } catch (e: PostgrestHttpException) { 0L }
+                // supabase.postgrest.from("posts_comments")
+                //     .select(count = io.supabase.postgrest.query.Count.EXACT)
+                //     .eq("post_key", postKey)
+                //     .execute()
+                //     .count ?: 0L
+                0L
+            } catch (e: RestException) { 0L }
         }.await()
     }
 
     private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
         return viewModelScope.async(Dispatchers.IO) {
              try {
-                 supabase.getDatabase().from("favorite_posts")
-                    .select()
-                    .eq("user_id", currentUid)
-                    .eq("post_key", postKey)
-                    .limit(1)
-                    .execute()
-                    .getBody()?.isNotEmpty() == true
-             } catch (e: PostgrestHttpException) { false }
+                //  supabase.postgrest.from("favorite_posts")
+                //     .select()
+                //     .eq("user_id", currentUid)
+                //     .eq("post_key", postKey)
+                //     .limit(1)
+                //     .execute()
+                //     .getBody()?.isNotEmpty() == true
+                false
+             } catch (e: RestException) { false }
         }.await()
     }
 
@@ -159,14 +165,14 @@ class ProfileViewModel : ViewModel() {
     fun fetchInitialFollowState(userId: String, currentUid: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val response = supabase.getDatabase().from("followers")
-                    .select()
-                    .eq("user_id", userId)
-                    .eq("follower_id", currentUid)
-                    .limit(1)
-                    .execute()
-                _isFollowing.postValue(response.getBody()?.isNotEmpty() == true)
-            } catch (e: PostgrestHttpException) {
+                // val response = supabase.postgrest.from("followers")
+                //     .select()
+                //     .eq("user_id", userId)
+                //     .eq("follower_id", currentUid)
+                //     .limit(1)
+                //     .execute()
+                // _isFollowing.postValue(response.getBody()?.isNotEmpty() == true)
+            } catch (e: RestException) {
                 _isFollowing.postValue(false)
             }
         }
@@ -175,14 +181,14 @@ class ProfileViewModel : ViewModel() {
     fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val response = supabase.getDatabase().from("profile_likes")
-                    .select()
-                    .eq("profile_id", userId)
-                    .eq("user_id", currentUid)
-                    .limit(1)
-                    .execute()
-                _isProfileLiked.postValue(response.getBody()?.isNotEmpty() == true)
-            } catch (e: PostgrestHttpException) {
+                // val response = supabase.postgrest.from("profile_likes")
+                //     .select()
+                //     .eq("profile_id", userId)
+                //     .eq("user_id", currentUid)
+                //     .limit(1)
+                //     .execute()
+                // _isProfileLiked.postValue(response.getBody()?.isNotEmpty() == true)
+            } catch (e: RestException) {
                 _isProfileLiked.postValue(false)
             }
         }
@@ -192,35 +198,35 @@ class ProfileViewModel : ViewModel() {
     fun toggleFollow(userId: String, currentUid: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val isFollowingResponse = supabase.getDatabase().from("followers")
-                    .select()
-                    .eq("user_id", userId)
-                    .eq("follower_id", currentUid)
-                    .limit(1)
-                    .execute()
+                // val isFollowingResponse = supabase.postgrest.from("followers")
+                //     .select()
+                //     .eq("user_id", userId)
+                //     .eq("follower_id", currentUid)
+                //     .limit(1)
+                //     .execute()
 
-                if (isFollowingResponse.getBody()?.isNotEmpty() == true) {
-                    supabase.getDatabase().from("followers")
-                        .delete()
-                        .eq("user_id", userId)
-                        .eq("follower_id", currentUid)
-                        .execute()
-                    supabase.getDatabase().from("following")
-                        .delete()
-                        .eq("user_id", currentUid)
-                        .eq("following_id", userId)
-                        .execute()
-                    _isFollowing.postValue(false)
-                } else {
-                    supabase.getDatabase().from("followers")
-                        .insert(mapOf("user_id" to userId, "follower_id" to currentUid))
-                        .execute()
-                    supabase.getDatabase().from("following")
-                        .insert(mapOf("user_id" to currentUid, "following_id" to userId))
-                        .execute()
-                    _isFollowing.postValue(true)
-                }
-            } catch (e: PostgrestHttpException) {
+                // if (isFollowingResponse.getBody()?.isNotEmpty() == true) {
+                //     supabase.postgrest.from("followers")
+                //         .delete()
+                //         .eq("user_id", userId)
+                //         .eq("follower_id", currentUid)
+                //         .execute()
+                //     supabase.postgrest.from("following")
+                //         .delete()
+                //         .eq("user_id", currentUid)
+                //         .eq("following_id", userId)
+                //         .execute()
+                //     _isFollowing.postValue(false)
+                // } else {
+                //     supabase.postgrest.from("followers")
+                //         .insert(mapOf("user_id" to userId, "follower_id" to currentUid))
+                //         .execute()
+                //     supabase.postgrest.from("following")
+                //         .insert(mapOf("user_id" to currentUid, "following_id" to userId))
+                //         .execute()
+                //     _isFollowing.postValue(true)
+                // }
+            } catch (e: RestException) {
             }
         }
     }
@@ -228,81 +234,81 @@ class ProfileViewModel : ViewModel() {
     fun toggleProfileLike(userId: String, currentUid: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                 val isLikedResponse = supabase.getDatabase().from("profile_likes")
-                    .select()
-                    .eq("profile_id", userId)
-                    .eq("user_id", currentUid)
-                    .limit(1)
-                    .execute()
+                //  val isLikedResponse = supabase.postgrest.from("profile_likes")
+                //     .select()
+                //     .eq("profile_id", userId)
+                //     .eq("user_id", currentUid)
+                //     .limit(1)
+                //     .execute()
 
-                if (isLikedResponse.getBody()?.isNotEmpty() == true) {
-                    supabase.getDatabase().from("profile_likes")
-                        .delete()
-                        .eq("profile_id", userId)
-                        .eq("user_id", currentUid)
-                        .execute()
-                    _isProfileLiked.postValue(false)
-                } else {
-                    supabase.getDatabase().from("profile_likes")
-                        .insert(mapOf("profile_id" to userId, "user_id" to currentUid))
-                        .execute()
-                    _isProfileLiked.postValue(true)
-                }
-            } catch (e: PostgrestHttpException) {
+                // if (isLikedResponse.getBody()?.isNotEmpty() == true) {
+                //     supabase.postgrest.from("profile_likes")
+                //         .delete()
+                //         .eq("profile_id", userId)
+                //         .eq("user_id", currentUid)
+                //         .execute()
+                //     _isProfileLiked.postValue(false)
+                // } else {
+                //     supabase.postgrest.from("profile_likes")
+                //         .insert(mapOf("profile_id" to userId, "user_id" to currentUid))
+                //         .execute()
+                //     _isProfileLiked.postValue(true)
+                // }
+            } catch (e: RestException) {
             }
         }
     }
 
     fun togglePostLike(post: Post) {
-        val currentUid = supabase.getAuth().getUser()?.id ?: return
+        val currentUid = supabase.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val isLikedResponse = supabase.getDatabase().from("posts_likes")
-                    .select()
-                    .eq("post_key", post.key)
-                    .eq("user_id", currentUid)
-                    .limit(1)
-                    .execute()
+                // val isLikedResponse = supabase.postgrest.from("posts_likes")
+                //     .select()
+                //     .eq("post_key", post.key)
+                //     .eq("user_id", currentUid)
+                //     .limit(1)
+                //     .execute()
 
-                if (isLikedResponse.getBody()?.isNotEmpty() == true) {
-                    supabase.getDatabase().from("posts_likes")
-                        .delete()
-                        .eq("post_key", post.key)
-                        .eq("user_id", currentUid)
-                        .execute()
-                } else {
-                    supabase.getDatabase().from("posts_likes")
-                        .insert(mapOf("post_key" to post.key, "user_id" to currentUid))
-                        .execute()
-                }
-            } catch (e: PostgrestHttpException) {
+                // if (isLikedResponse.getBody()?.isNotEmpty() == true) {
+                //     supabase.postgrest.from("posts_likes")
+                //         .delete()
+                //         .eq("post_key", post.key)
+                //         .eq("user_id", currentUid)
+                //         .execute()
+                // } else {
+                //     supabase.postgrest.from("posts_likes")
+                //         .insert(mapOf("post_key" to post.key, "user_id" to currentUid))
+                //         .execute()
+                // }
+            } catch (e: RestException) {
             }
         }
     }
 
     fun toggleFavorite(post: Post) {
-        val currentUid = supabase.getAuth().getUser()?.id ?: return
+        val currentUid = supabase.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val isFavoriteResponse = supabase.getDatabase().from("favorite_posts")
-                    .select()
-                    .eq("user_id", currentUid)
-                    .eq("post_key", post.key)
-                    .limit(1)
-                    .execute()
+                // val isFavoriteResponse = supabase.postgrest.from("favorite_posts")
+                //     .select()
+                //     .eq("user_id", currentUid)
+                //     .eq("post_key", post.key)
+                //     .limit(1)
+                //     .execute()
 
-                if (isFavoriteResponse.getBody()?.isNotEmpty() == true) {
-                    supabase.getDatabase().from("favorite_posts")
-                        .delete()
-                        .eq("user_id", currentUid)
-                        .eq("post_key", post.key)
-                        .execute()
-                } else {
-                    supabase.getDatabase().from("favorite_posts")
-                        .insert(mapOf("user_id" to currentUid, "post_key" to post.key))
-                        .execute()
-                }
-            } catch (e: PostgrestHttpException) {
+                // if (isFavoriteResponse.getBody()?.isNotEmpty() == true) {
+                //     supabase.postgrest.from("favorite_posts")
+                //         .delete()
+                //         .eq("user_id", currentUid)
+                //         .eq("post_key", post.key)
+                //         .execute()
+                // } else {
+                //     supabase.postgrest.from("favorite_posts")
+                //         .insert(mapOf("user_id" to currentUid, "post_key" to post.key))
+                //         .execute()
+                // }
+            } catch (e: RestException) {
             }
         }
     }
