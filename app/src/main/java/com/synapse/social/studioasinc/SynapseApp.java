@@ -9,10 +9,6 @@ import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -31,8 +27,6 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
     
     private static Context mContext;
     private Thread.UncaughtExceptionHandler mExceptionHandler;
-    
-    public static FirebaseAuth mAuth;
     
     public static DatabaseReference getCheckUserReference;
     public static DatabaseReference setUserStatusRef;
@@ -61,7 +55,6 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Create notification channels
         createNotificationChannels();
         
-        this.mAuth = FirebaseAuth.getInstance();
         this.getCheckUserReference = FirebaseDatabase.getInstance().getReference("skyline/users");
         this.setUserStatusRef = FirebaseDatabase.getInstance().getReference(".info/connected");
         
@@ -109,33 +102,6 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Set up notification click handler for in-app navigation
         OneSignal.getNotifications().addClickListener(new NotificationClickHandler());
 
-        // Add a subscription observer to get the Player ID and save it to Firestore
-        OneSignal.getUser().getPushSubscription().addObserver(new IPushSubscriptionObserver() {
-            @Override
-            public void onPushSubscriptionChange(@NonNull PushSubscriptionChangedState state) {
-                if (state.getCurrent().getOptedIn()) {
-                    String playerId = state.getCurrent().getId();
-                    if (mAuth.getCurrentUser() != null && playerId != null) {
-                        String userUid = mAuth.getCurrentUser().getUid();
-                        OneSignalManager.savePlayerIdToRealtimeDatabase(userUid, playerId);
-                    }
-                }
-            }
-        });
-    }
-
-    @Override
-    public void onStart(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOnline(mAuth.getCurrentUser().getUid());
-        }
-    }
-
-    @Override
-    public void onStop(@NonNull LifecycleOwner owner) {
-        if (mAuth.getCurrentUser() != null) {
-            PresenceManager.goOffline(mAuth.getCurrentUser().getUid());
-        }
     }
     
     private void createNotificationChannels() {

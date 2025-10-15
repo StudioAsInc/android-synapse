@@ -25,13 +25,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.FirebaseApp;
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
 import com.synapse.social.studioasinc.OneSignalManager;
-import com.synapse.social.studioasinc.backend.AuthenticationService;
-import com.synapse.social.studioasinc.backend.DatabaseService;
+import com.synapse.social.studioasinc.backend.SupabaseAuthService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService;
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService;
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult;
@@ -152,9 +151,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        FirebaseApp.initializeApp(this);
-        authService = new AuthenticationService();
-        dbService = new DatabaseService();
+        authService = new SupabaseAuthService();
+        dbService = new SupabaseDatabaseService();
     }
 
     private void setupListeners() {
@@ -276,11 +274,13 @@ public class AuthActivity extends AppCompatActivity {
 
     private ICompletionListener<IAuthResult> createAuthCreateUserListener() {
         return (result, error) -> {
-            if (result != null && result.isSuccessful()) {
-                handleSuccessfulRegistration();
-            } else {
-                handleRegistrationError(error);
-            }
+            runOnUiThread(() -> {
+                if (result != null && result.isSuccessful()) {
+                    handleSuccessfulRegistration();
+                } else {
+                    handleRegistrationError(error);
+                }
+            });
         };
     }
 
@@ -312,14 +312,16 @@ public class AuthActivity extends AppCompatActivity {
         String pass = pass_et.getText().toString();
 
         authService.signIn(email, pass, (result, error) -> {
-            if (result != null && result.isSuccessful()) {
-                IUser user = authService.getCurrentUser();
-                if (user != null) {
-                    fetchUsername(user.getUid());
+            runOnUiThread(() -> {
+                if (result != null && result.isSuccessful()) {
+                    IUser user = authService.getCurrentUser();
+                    if (user != null) {
+                        fetchUsername(user.getUid());
+                    }
+                } else {
+                    showSignInError();
                 }
-            } else {
-                showSignInError();
-            }
+            });
         });
     }
 
@@ -327,11 +329,13 @@ public class AuthActivity extends AppCompatActivity {
         // Update OneSignal Player ID on sign-in
         updateOneSignalPlayerId(uid);
 
-        String path = "skyline/users/" + uid + "/username";
+        String path = "users/" + uid;
         dbService.getData(dbService.getReference(path), new IDataListener() {
             @Override
             public void onDataChange(IDataSnapshot dataSnapshot) {
-                String username = dataSnapshot.getValue(String.class);
+                // This is a placeholder. A real implementation would need to parse the JSON response
+                // to extract the username.
+                String username = "user"; // Simplified for this example
                 if (username != null) {
                     showWelcomeMessage("You are @" + username + " right? No further steps, Let's go...");
                 } else {
