@@ -8,12 +8,12 @@ import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IDataSnapshot
 import com.synapse.social.studioasinc.backend.interfaces.IDatabaseError
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.PostgrestResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import java.util.UUID
 
 class SupabaseDatabaseService : IDatabaseService {
 
@@ -34,7 +34,7 @@ class SupabaseDatabaseService : IDatabaseService {
                         filter(key, io.github.jan.supabase.postgrest.query.FilterOperator.EQ, value)
                     }
                 }
-                val data = result.body?.let { Json.parseToJsonElement(it.toString()).jsonObject }
+                val data = result.dataOrNull()?.let { Json.parseToJsonElement(it).jsonObject }
                 val snapshot = SupabaseDataSnapshot(data)
                 listener.onDataChange(snapshot)
             } catch (e: Exception) {

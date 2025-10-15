@@ -4,8 +4,8 @@ import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
 import com.synapse.social.studioasinc.backend.interfaces.IAuthResult
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IUser
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,10 +22,7 @@ class SupabaseAuthService : IAuthenticationService {
     override fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                supabase.auth.signInWith(Email) {
-                    this.email = email
-                    this.password = pass
-                }
+                supabase.auth.signInWith(Email)
                 val user = supabase.auth.currentUserOrNull()
                 val result = SupabaseAuthResult(true, user?.let { SupabaseUser(it.id) })
                 listener.onComplete(result, null)
@@ -38,10 +35,7 @@ class SupabaseAuthService : IAuthenticationService {
     override fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                supabase.auth.signUpWith(Email) {
-                    this.email = email
-                    this.password = pass
-                }
+                supabase.auth.signUpWith(Email)
                 val user = supabase.auth.currentUserOrNull()
                 val result = SupabaseAuthResult(true, user?.let { SupabaseUser(it.id) })
                 listener.onComplete(result, null)
