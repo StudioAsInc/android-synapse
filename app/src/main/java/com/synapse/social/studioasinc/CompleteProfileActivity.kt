@@ -31,10 +31,13 @@ import com.synapse.social.studioasinc.backend.createUserProfile
 import com.synapse.social.studioasinc.backend.createUsernameMapping
 import com.synapse.social.studioasinc.backend.signOut
 import com.synapse.social.studioasinc.databinding.ActivityCompleteProfileBinding
-import com.synapse.social.studioasinc.util.ViewUtilsKt
 import com.onesignal.OneSignal
 import java.util.Calendar
 import java.util.concurrent.Executors
+import  com.synapse.social.studioasinc.util.ViewUtils.setImageColor
+import  com.synapse.social.studioasinc.util.ViewUtils.setGradientDrawable
+import  com.synapse.social.studioasinc.util.ViewUtils.setStateColor
+import  com.synapse.social.studioasinc.util.ViewUtils.setViewGraphics
 
 class CompleteProfileActivity : AppCompatActivity() {
 
@@ -205,8 +208,8 @@ class CompleteProfileActivity : AppCompatActivity() {
                 val biography = binding.biographyInput.text.toString().trim()
                 val googleAvatar = intent.getStringExtra("googleLoginAvatarUri")
                 val userData: HashMap<String, Any> = hashMapOf(
-                    "uid" to (SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""),
-                    "email" to (SupabaseClient.client.auth.currentUserOrNull()?.email ?: ""),
+                    "uid" to (SupabaseClient.client.gotrue.currentUserOrNull()?.id ?: ""),
+                    "email" to (SupabaseClient.client.gotrue.currentUserOrNull()?.email ?: ""),
                     "profile_cover_image" to "null",
                     "avatar" to (googleAvatar ?: thedpurl),
                     "avatar_history_type" to "local",
@@ -225,8 +228,8 @@ class CompleteProfileActivity : AppCompatActivity() {
                 createUserProfile(SupabaseClient.client.postgrest, userData, executor)
                     .thenCompose {
                         val usernameData: HashMap<String, Any> = hashMapOf(
-                            "uid" to (SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""),
-                            "email" to (SupabaseClient.client.auth.currentUserOrNull()?.email ?: ""),
+                            "uid" to (SupabaseClient.client.gotrue.currentUserOrNull()?.id ?: ""),
+                            "email" to (SupabaseClient.client.gotrue.currentUserOrNull()?.email ?: ""),
                             "username" to username
                         )
                         createUsernameMapping(SupabaseClient.client.postgrest, usernameData, executor)
@@ -257,15 +260,15 @@ class CompleteProfileActivity : AppCompatActivity() {
         binding.emailVerificationTitle.typeface = Typeface.DEFAULT_BOLD
         binding.subtitle.typeface = Typeface.DEFAULT
         binding.title.typeface = Typeface.DEFAULT_BOLD
-        ViewUtilsKt.setStateColor(this, -0x1, -0x1)
+        setStateColor(this, -0x1, -0x1)
         avatarUri = "null"
         thedpurl = "null"
         userNameErr = true
-        ViewUtilsKt.setImageColor(binding.emailVerificationErrorIc, -0xbbbc)
-        ViewUtilsKt.setImageColor(binding.emailVerificationVerifiedIc, -0xbfa510)
-        ViewUtilsKt.setGradientDrawable(binding.profileImageCard, Color.TRANSPARENT, 300f, 0, Color.TRANSPARENT)
-        ViewUtilsKt.setGradientDrawable(binding.emailVerification, -0x1, 28f, 3, -0x111112)
-        ViewUtilsKt.setViewGraphics(binding.emailVerificationSend, -0xbbac6f, -0xbbac6f, 300, 0, Color.TRANSPARENT)
+        setImageColor(binding.emailVerificationErrorIc, -0xbbbc)
+        setImageColor(binding.emailVerificationVerifiedIc, -0xbfa510)
+        setGradientDrawable(binding.profileImageCard, Color.TRANSPARENT, 300f, 0, Color.TRANSPARENT)
+        setGradientDrawable(binding.emailVerification, -0x1, 28f, 3, -0x111112)
+        setViewGraphics(binding.emailVerificationSend, -0xbbac6f, -0xbbac6f, 300, 0, Color.TRANSPARENT)
 
         if (intent.hasExtra("findedUsername")) {
             binding.usernameInput.setText(intent.getStringExtra("findedUsername"))
@@ -320,15 +323,15 @@ class CompleteProfileActivity : AppCompatActivity() {
         val dialogNoButton = newCustomDialogCV.findViewById<TextView>(R.id.dialog_no_button)
         val dialogYesButton = newCustomDialogCV.findViewById<TextView>(R.id.dialog_yes_button)
         dialogYesButton.setTextColor(-0xbbbc)
-        ViewUtilsKt.setViewGraphics(dialogYesButton, -0x1, -0x322d, 28, 0, Color.TRANSPARENT)
+        setViewGraphics(dialogYesButton, -0x1, -0x322d, 28, 0, Color.TRANSPARENT)
         dialogNoButton.setTextColor(-0xde6a0d)
-        ViewUtilsKt.setViewGraphics(dialogNoButton, -0x1, -0x442205, 28, 0, Color.TRANSPARENT)
+        setViewGraphics(dialogNoButton, -0x1, -0x442205, 28, 0, Color.TRANSPARENT)
         dialogTitle.text = getString(R.string.info)
         dialogMessage.text = getString(R.string.cancel_complete_profile_warn).plus("\n\n").plus(getString(R.string.cancel_complete_profile_warn2))
         dialogYesButton.text = getString(R.string.yes)
         dialogNoButton.text = getString(R.string.no)
         dialogYesButton.setOnClickListener {
-            signOut(SupabaseClient.client.auth, executor).thenRun {
+            signOut(SupabaseClient.client.gotrue, executor).thenRun {
                 finish()
             }
         }
@@ -355,16 +358,16 @@ class CompleteProfileActivity : AppCompatActivity() {
             val dialogNoButton = newCustomDialogCV.findViewById<TextView>(R.id.dialog_no_button)
             val dialogYesButton = newCustomDialogCV.findViewById<TextView>(R.id.dialog_yes_button)
             dialogYesButton.setTextColor(-0xbbbc)
-            ViewUtilsKt.setViewGraphics(dialogYesButton, -0x1, -0x322d, 28, 0, Color.TRANSPARENT)
+            setViewGraphics(dialogYesButton, -0x1, -0x322d, 28, 0, Color.TRANSPARENT)
             dialogNoButton.setTextColor(-0xde6a0d)
-            ViewUtilsKt.setViewGraphics(dialogNoButton, -0x1, -0x442205, 28, 0, Color.TRANSPARENT)
+            setViewGraphics(dialogNoButton, -0x1, -0x442205, 28, 0, Color.TRANSPARENT)
             dialogTitle.text = getString(R.string.info)
             dialogMessage.text = getString(R.string.cancel_create_account_warn).plus("\n\n").plus(getString(R.string.cancel_create_account_warn2))
             dialogYesButton.text = getString(R.string.yes)
             dialogNoButton.text = getString(R.string.no)
             dialogYesButton.setOnClickListener {
                 item.isEnabled = false
-                signOut(SupabaseClient.client.auth, executor).thenRun {
+                signOut(SupabaseClient.client.gotrue, executor).thenRun {
                     val intent = Intent(applicationContext, MainActivity::class.java)
                     startActivity(intent)
                     finish()

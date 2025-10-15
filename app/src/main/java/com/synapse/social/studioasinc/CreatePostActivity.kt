@@ -18,8 +18,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.synapse.social.studioasinc.util.SupabaseClient
-import io.supabase.postgrest.http.PostgrestHttpException
+import com.synapse.social.studioasinc.backend.SupabaseClient
+import io.github.jan.supabase.exceptions.RestException
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
@@ -52,23 +52,23 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressDialog: androidx.appcompat.app.AlertDialog? = null
     private var progressBar: ProgressBar? = null
     private var progressPercentage: TextView? = null
-    
+
     // Supabase
-    private val supabase = SupabaseClient.getClient()
-    
+    private val supabase = SupabaseClient.client
+
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         handleSelectedImages(uris)
     }
-    
+
     private val selectVideoLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { handleSelectedVideo(it) }
     }
-    
+
     companion object {
         private const val MAX_IMAGES = 10
         private const val MAX_VIDEOS = 1
@@ -78,7 +78,7 @@ class CreatePostActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_post_multi)
-        
+
         initialize()
         initializeLogic()
     }
@@ -99,11 +99,11 @@ class CreatePostActivity : AppCompatActivity() {
         hideCommentsCountSwitch = findViewById(R.id.hideCommentsCountSwitch)
         disableCommentsSwitch = findViewById(R.id.disableCommentsSwitch)
         postVisibilitySpinner = findViewById(R.id.postVisibilitySpinner)
-        
+
         // Setup toolbar
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
-        
+
         // Setup RecyclerView
         selectedMediaAdapter = SelectedMediaAdapter(selectedMediaItems) { position ->
             removeMedia(position)
@@ -112,7 +112,7 @@ class CreatePostActivity : AppCompatActivity() {
             layoutManager = GridLayoutManager(this@CreatePostActivity, 3)
             adapter = selectedMediaAdapter
         }
-        
+
         // Setup visibility spinner
         val visibilityOptions = arrayOf("Public", "Private")
         postVisibilitySpinner.adapter = ArrayAdapter(
@@ -120,7 +120,7 @@ class CreatePostActivity : AppCompatActivity() {
             android.R.layout.simple_spinner_dropdown_item,
             visibilityOptions
         )
-        
+
         // Setup click listeners
         backButton.setOnClickListener { finish() }
         publishButton.setOnClickListener { createPost() }
@@ -129,7 +129,7 @@ class CreatePostActivity : AppCompatActivity() {
 
         val userMention = UserMention(postDescriptionEditText)
         postDescriptionEditText.addTextChangedListener(userMention)
-        
+
         // Initially hide media recycler if empty
         updateMediaVisibility()
     }
@@ -172,8 +172,8 @@ class CreatePostActivity : AppCompatActivity() {
             // Android 13+ uses READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
             val imagePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
             val videoPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
-            
-            if (imagePermission != PackageManager.PERMISSION_GRANTED || 
+
+            if (imagePermission != PackageManager.PERMISSION_GRANTED ||
                 videoPermission != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(
                     this,
@@ -203,20 +203,20 @@ class CreatePostActivity : AppCompatActivity() {
     private fun handleSelectedImages(uris: List<Uri>) {
         val remainingSlots = MAX_IMAGES - selectedMediaItems.count { it.type == MediaType.IMAGE }
         val itemsToAdd = minOf(uris.size, remainingSlots)
-        
+
         for (i in 0 until itemsToAdd) {
             val path = FileUtil.convertUriToFilePath(this, uris[i])
             if (path != null) {
                 selectedMediaItems.add(MediaItem(url = path, type = MediaType.IMAGE))
             }
         }
-        
+
         updateMediaVisibility()
-        
+
         if (uris.size > itemsToAdd) {
             Toast.makeText(
-                this, 
-                "Only $itemsToAdd images added. Maximum $MAX_IMAGES images allowed", 
+                this,
+                "Only $itemsToAdd images added. Maximum $MAX_IMAGES images allowed",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -238,11 +238,11 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun updateMediaVisibility() {
         selectedMediaRecyclerView.visibility = if (selectedMediaItems.isEmpty()) View.GONE else View.VISIBLE
-        
+
         // Update add buttons based on limits
         val imageCount = selectedMediaItems.count { it.type == MediaType.IMAGE }
         val videoCount = selectedMediaItems.count { it.type == MediaType.VIDEO }
-        
+
         addPhotoIcon.alpha = if (imageCount >= MAX_IMAGES) 0.5f else 1f
         addVideoIcon.alpha = if (videoCount >= MAX_VIDEOS) 0.5f else 1f
     }
@@ -255,7 +255,7 @@ class CreatePostActivity : AppCompatActivity() {
             return
         }
 
-        val currentUser = supabase.getAuth().getUser()
+        val currentUser = supabase.gotrue.currentUserOrNull()
         if (currentUser == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
@@ -267,7 +267,7 @@ class CreatePostActivity : AppCompatActivity() {
         val postKey = UUID.randomUUID().toString()
         val post = Post(
             key = postKey,
-            uid = currentUser.getId(),
+            uid = currentUser.id,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
@@ -320,14 +320,14 @@ class CreatePostActivity : AppCompatActivity() {
     private fun savePostToDatabase(post: Post) {
         Thread {
             try {
-                supabase.getDatabase().from("posts").insert(post.toHashMap()).execute()
+                supabase.postgrest.from("posts").insert(post.toHashMap())
                 runOnUiThread {
                     showLoading(false)
                     Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
                     handleMentions(post.postText, post.key)
                     finish()
                 }
-            } catch (e: PostgrestHttpException) {
+            } catch (e: RestException) {
                 runOnUiThread {
                     showLoading(false)
                     Toast.makeText(this, "Failed to create post: ${e.message}", Toast.LENGTH_LONG).show()
@@ -375,4 +375,3 @@ class CreatePostActivity : AppCompatActivity() {
         }
     }
 }
-

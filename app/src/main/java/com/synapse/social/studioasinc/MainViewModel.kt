@@ -13,8 +13,8 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import com.synapse.social.studioasinc.backend.SupabaseClient
-import io.supabase.kt.gotrue.auth
-import io.supabase.kt.postgrest.postgrest
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,7 +89,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val user = SupabaseClient.client.auth.currentUserOrNull()
                 if (user != null) {
-                    val userProfile = SupabaseClient.client.postgrest.from("users").select().eq("id", user.id).execute().body?.let {
+                    val userProfile = SupabaseClient.client.postgrest.from("users").select {
+                        filter {
+                            eq("id", user.id)
+                        }
+                    }.body?.let {
                         Gson().fromJson(it.toString(), List::class.java).firstOrNull() as? Map<String, Any>
                     }
 

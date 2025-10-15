@@ -8,6 +8,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.postgrest.query.Count
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 fun <T> suspendToFuture(
     executor: Executor,
@@ -30,8 +35,13 @@ fun isUsernameTaken(
     username: String,
     executor: Executor
 ): CompletableFuture<Boolean> = suspendToFuture(executor) {
-    val result = postgrest.from("users").select().eq("username", username).execute()
-    !result.data.isEmpty()
+    val result = postgrest.from("users").select {
+        count(Count.EXACT)
+        filter {
+            eq("username", username)
+        }
+    }
+    result.countOrNull()?.let { it > 0 } ?: false
 }
 
 fun createUserProfile(
@@ -39,7 +49,13 @@ fun createUserProfile(
     userData: Map<String, Any>,
     executor: Executor
 ): CompletableFuture<Unit> = suspendToFuture(executor) {
-    postgrest.from("users").insert(userData, upsert = true).execute()
+    postgrest.from("users").insert(
+        buildJsonObject {
+            userData.forEach { (key, value) ->
+                put(key, Json.parseToJsonElement(value.toString()))
+            }
+        }
+    )
     Unit
 }
 
@@ -48,7 +64,13 @@ fun createUsernameMapping(
     usernameData: Map<String, Any>,
     executor: Executor
 ): CompletableFuture<Unit> = suspendToFuture(executor) {
-    postgrest.from("usernames").insert(usernameData, upsert = true).execute()
+    postgrest.from("usernames").insert(
+        buildJsonObject {
+            usernameData.forEach { (key, value) ->
+                put(key, Json.parseToJsonElement(value.toString()))
+            }
+        }
+    )
     Unit
 }
 
