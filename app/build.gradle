@@ -79,11 +79,15 @@ android {
                 signingConfig = signingConfigs.debug
             }
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
+            buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty("SUPABASE_ANON_KEY")}\""
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
+            buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty("SUPABASE_ANON_KEY")}\""
         }
     }
 
@@ -205,6 +209,10 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.3.1'
 
     // Testing
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.5.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
 }
 
 // Apply Google Services plugin only if credentials file exists

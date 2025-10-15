@@ -54,6 +54,9 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Initialize Firebase with disk persistence
         FirebaseApp.initializeApp(this);
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
+        // Initialize Supabase
+        com.synapse.social.studioasinc.backend.SupabaseClient.INSTANCE.getClient();
         
         // Create notification channels
         createNotificationChannels();
