@@ -8,15 +8,17 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.backend.AuthenticationService
-import com.synapse.social.studioasinc.backend.DatabaseService
-import com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService
-import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import com.synapse.social.studioasinc.backend.SupabaseClient.supabase
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.launch
 import java.io.File
+import java.util.UUID
 
 class CreateGroupActivity : AppCompatActivity() {
 
@@ -27,15 +29,9 @@ class CreateGroupActivity : AppCompatActivity() {
     private var selectedUsers: ArrayList<String>? = null
     private var imageUri: Uri? = null
 
-    private lateinit var dbService: IDatabaseService
-    private lateinit var authService: IAuthenticationService
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_group)
-
-        dbService = DatabaseService()
-        authService = AuthenticationService()
 
         groupIcon = findViewById(R.id.group_icon)
         groupName = findViewById(R.id.group_name)
@@ -79,41 +75,34 @@ class CreateGroupActivity : AppCompatActivity() {
             return
         }
 
-        val currentUserUid = authService.getCurrentUser()?.getUid()
+        val currentUserUid = supabase.auth.currentUserOrNull()?.id
         if (currentUserUid == null) {
             Toast.makeText(this, "Authentication error", Toast.LENGTH_SHORT).show()
             return
         }
+        val groupId = UUID.randomUUID().toString()
 
-        val groupRef = dbService.getReference("groups")
-        val groupId = groupRef.push().key ?: ""
-        if (groupId.isEmpty()) {
-            Toast.makeText(this, "Failed to create group", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (imageUri != null) {
-            val imagePath = StorageUtil.getPathFromUri(this, imageUri)
-            if (imagePath != null) {
-                val file = File(imagePath)
-                UploadFiles.uploadFile(imagePath, file.name, object : UploadFiles.UploadCallback {
-                    override fun onProgress(percent: Int) {
-                        // Handle progress if needed
+        // To-do: Implement a loading indicator here
+        lifecycleScope.launch {
+            try {
+                var iconUrl = ""
+                if (imageUri != null) {
+                    val imagePath = StorageUtil.getPathFromUri(this@CreateGroupActivity, imageUri)
+                    if (imagePath != null) {
+                        val file = File(imagePath)
+                        val bucket = supabase.storage["group_icons"]
+                        val uploadPath = "public/$groupId/${file.name}"
+                        bucket.upload(uploadPath, file.readBytes())
+                        iconUrl = bucket.publicUrl(uploadPath)
+                    } else {
+                        Toast.makeText(this@CreateGroupActivity, "Failed to get image path", Toast.LENGTH_SHORT).show()
+                        return@launch
                     }
-
-                    override fun onSuccess(url: String, publicId: String) {
-                        saveGroupInfo(groupId, name, url, currentUserUid)
-                    }
-
-                    override fun onFailure(error: String) {
-                        Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon: $error", Toast.LENGTH_SHORT).show()
-                    }
-                })
-            } else {
-                Toast.makeText(this, "Failed to get image path", Toast.LENGTH_SHORT).show()
+                }
+                saveGroupInfo(groupId, name, iconUrl, currentUserUid)
+            } catch (e: Exception) {
+                Toast.makeText(this@CreateGroupActivity, "Failed to upload group icon: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            saveGroupInfo(groupId, name, "", currentUserUid)
         }
     }
 
@@ -131,20 +120,19 @@ class CreateGroupActivity : AppCompatActivity() {
             "members" to members.associateWith { true }
         )
 
-        val groupRef = dbService.getReference("groups").child(groupId)
-        dbService.setValue(groupRef, group, object : com.synapse.social.studioasinc.backend.interfaces.ICompletionListener<Unit> {
-            override fun onComplete(result: Unit?, error: Exception?) {
-                if (error == null) {
-                    Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
-                    val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
-                    intent.putExtra("uid", groupId)
-                    startActivity(intent)
-                    finish()
-                } else {
-                    Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${error.message}", Toast.LENGTH_SHORT).show()
-                }
+        lifecycleScope.launch {
+            try {
+                // To-do: Create a proper data class for the group
+                supabase.postgrest["groups"].insert(group)
+                Toast.makeText(this@CreateGroupActivity, "Group created successfully", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this@CreateGroupActivity, ChatGroupActivity::class.java)
+                intent.putExtra("uid", groupId)
+                startActivity(intent)
+                finish()
+            } catch (e: Exception) {
+                Toast.makeText(this@CreateGroupActivity, "Failed to create group: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-        })
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
