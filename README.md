@@ -39,6 +39,22 @@ All project documentation is organized in the `Docs/` folder:
 
 ---
 
+## 🚀 Getting Started
+
+To build and run the project, you will need to add your Supabase credentials to the `gradle.properties` file.
+
+1.  **Copy the example file:**
+    ```bash
+    cp gradle.properties.example gradle.properties
+    ```
+2.  **Add your credentials to `gradle.properties`:**
+    ```properties
+    SUPABASE_URL="YOUR_SUPABASE_URL"
+    SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+    ```
+
+---
+
 ## 📜 License  
 Synapse uses a [custom open-source license](Docs/LICENSE.md) designed to:  
 - Protect project integrity  

@@ -85,6 +85,12 @@ android {
             versionNameSuffix = "-debug"
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
         }
+        release {
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "SUPABASE_URL", "\"${rootProject.ext.get("SUPABASE_URL")}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${rootProject.ext.get("SUPABASE_ANON_KEY")}\""
+        }
     }
 
     compileOptions {
@@ -207,9 +213,11 @@ dependencies {
     // Testing
 
     // Supabase
-    implementation "io.github.jan-tennert.supabase:postgrest-kt:2.0.0"
-    implementation "io.github.jan-tennert.supabase:gotrue-kt:2.0.0"
-    implementation "io.github.jan-tennert.supabase:storage-kt:2.0.0"
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.0.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
 
     // Ktor client
     implementation "io.ktor:ktor-client-android:2.3.4"

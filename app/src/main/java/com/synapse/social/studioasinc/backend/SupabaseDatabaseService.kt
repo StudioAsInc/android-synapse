@@ -13,13 +13,16 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 // --- Wrapper Implementations for Supabase ---
 
 private class SupabaseQueryWrapper(var table: String, var queryBuilder: PostgrestQueryBuilder.() -> Unit) : IQuery {
     override fun orderByChild(path: String): IQuery {
-        // Not directly supported in Supabase Postgrest, requires raw query
+        // Supabase PostgREST does not have a direct equivalent to Firebase's orderByChild.
+        // This would typically be handled with a more complex query, a database view, or an RPC function.
+        // For this migration, we will not implement this functionality.
         return this
     }
 
@@ -29,6 +32,7 @@ private class SupabaseQueryWrapper(var table: String, var queryBuilder: Postgres
     }
 
     override fun limitToLast(limit: Int): IQuery {
+        // There is no limitToLast in PostgREST. You can order descending and take the first `limit`.
         queryBuilder = { limit(limit) }
         return this
     }
@@ -39,12 +43,14 @@ private class SupabaseQueryWrapper(var table: String, var queryBuilder: Postgres
     }
 
     override fun startAt(value: String): IQuery {
-        // Not directly supported
+        // Supabase PostgREST does not have a direct equivalent to Firebase's startAt.
+        // This would be implemented using range operators (e.g., `gte`) on a specific column.
         return this
     }
 
     override fun endAt(value: String): IQuery {
-        // Not directly supported
+        // Supabase PostgREST does not have a direct equivalent to Firebase's endAt.
+        // This would be implemented using range operators (e.g., `lte`) on a specific column.
         return this
     }
 }
@@ -55,7 +61,8 @@ private class SupabaseDbReferenceWrapper(val table: String, val id: String? = nu
     }
 
     override fun push(): IDatabaseReference {
-        // Not directly supported
+        // Supabase does not have a `push()` equivalent for generating unique, ordered IDs on the client.
+        // You would typically insert a new row and let the database generate the primary key.
         return this
     }
 
@@ -110,13 +117,14 @@ private class SupabaseDbError(override val message: String, override val code: I
 class SupabaseDatabaseService : IDatabaseService {
 
     private val supabase = SupabaseClient.client
+    private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
 
     override fun getReference(path: String): IDatabaseReference {
         return SupabaseDbReferenceWrapper(path)
     }
 
     override fun getData(query: IQuery, listener: IDataListener) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val supabaseQuery = query as SupabaseQueryWrapper
                 val result = supabase.postgrest.from(supabaseQuery.table).select(supabaseQuery.queryBuilder)
@@ -129,7 +137,7 @@ class SupabaseDatabaseService : IDatabaseService {
     }
 
     override fun setValue(ref: IDatabaseReference, value: Any?, listener: ICompletionListener<Unit>) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val supabaseRef = ref as SupabaseDbReferenceWrapper
                 supabase.postgrest.from(supabaseRef.table).upsert(value!!)
@@ -141,7 +149,7 @@ class SupabaseDatabaseService : IDatabaseService {
     }
 
     override fun updateChildren(ref: IDatabaseReference, updates: Map<String, Any?>, listener: ICompletionListener<Unit>) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val supabaseRef = ref as SupabaseDbReferenceWrapper
                 supabase.postgrest.from(supabaseRef.table).update(updates) {

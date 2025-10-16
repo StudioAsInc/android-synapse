@@ -1,24 +1,34 @@
 package com.synapse.social.studioasinc.backend
 
+import android.content.Context
 import android.net.Uri
+import com.synapse.social.studioasinc.SynapseApp
 import com.synapse.social.studioasinc.backend.interfaces.ICompletionListener
 import com.synapse.social.studioasinc.backend.interfaces.IStorageService
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.File
+import java.io.ByteArrayOutputStream
 
 class SupabaseStorageService : IStorageService {
 
     private val supabase = SupabaseClient.client
+    private val context = SynapseApp.getContext()
 
     override fun uploadFile(uri: Uri, path: String, listener: ICompletionListener<String>) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val file = File(uri.path!!)
-                val result = supabase.storage.from("public").upload(path, file.readBytes())
-                listener.onComplete(result, null)
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+
+                if (bytes != null) {
+                    val result = supabase.storage.from("public").upload(path, bytes)
+                    listener.onComplete(result, null)
+                } else {
+                    listener.onComplete(null, Exception("Failed to read file"))
+                }
             } catch (e: Exception) {
                 listener.onComplete(null, e)
             }
