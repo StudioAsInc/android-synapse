@@ -1,9 +1,0 @@
-{
-  "apiKey": "YOUR_API_KEY",
-  "authDomain": "sai-synapse.firebaseapp.com",
-  "projectId": "sai-synapse",
-  "storageBucket": "sai-synapse.appspot.com",
-  "messagingSenderId": "269633434355",
-  "appId": "1:308269400761:android:91c2e7415671cc49ed9168",
-  "databaseURL": "YOUR_DATABASE_URL"
-}
