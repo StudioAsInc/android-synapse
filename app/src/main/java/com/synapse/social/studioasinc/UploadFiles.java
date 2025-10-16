@@ -13,7 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.synapse.social.studioasinc.backend.interfaces.IStorageService;
 public class UploadFiles {
+
+    private static IStorageService storageService;
+
+    public static void setStorageService(IStorageService service) {
+        storageService = service;
+    }
 
 	// --- CALLBACKS ---
 	public interface UploadCallback {
@@ -84,15 +91,28 @@ public class UploadFiles {
 	 * Main upload method. Determines the service based on file extension and starts the upload.
 	 */
 	public static void uploadFile(String filePath, String fileName, UploadCallback callback) {
-		new Thread(() -> {
-			String extension = getFileExtension(fileName).toLowerCase();
-			if (IMAGE_EXTENSIONS.contains(extension)) {
-				uploadToImgBB(filePath, fileName, callback);
-			} else {
-				uploadToCloudinary(filePath, fileName, callback);
-			}
-		}).start();
-	}
+        if (storageService != null) {
+            storageService.uploadFile(android.net.Uri.parse(filePath), fileName, new com.synapse.social.studioasinc.backend.interfaces.ICompletionListener<String>() {
+                @Override
+                public void onComplete(String result, Exception error) {
+                    if (error == null) {
+                        callback.onSuccess(result, null);
+                    } else {
+                        callback.onFailure(error.getMessage());
+                    }
+                }
+            });
+        } else {
+            new Thread(() -> {
+                String extension = getFileExtension(fileName).toLowerCase();
+                if (IMAGE_EXTENSIONS.contains(extension)) {
+                    uploadToImgBB(filePath, fileName, callback);
+                } else {
+                    uploadToCloudinary(filePath, fileName, callback);
+                }
+            }).start();
+        }
+    }
 
 	/**
 	 * Handles uploading image files to ImgBB.

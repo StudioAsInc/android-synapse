@@ -153,8 +153,10 @@ public class AuthActivity extends AppCompatActivity {
 
     private void initializeBackend() {
         FirebaseApp.initializeApp(this);
-        authService = new AuthenticationService();
-        dbService = new DatabaseService();
+        // authService = new AuthenticationService();
+        authService = new com.synapse.social.studioasinc.backend.SupabaseAuthService();
+        // dbService = new DatabaseService();
+        dbService = new com.synapse.social.studioasinc.backend.SupabaseDatabaseService();
     }
 
     private void setupListeners() {

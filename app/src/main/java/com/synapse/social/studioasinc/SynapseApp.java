@@ -26,6 +26,8 @@ import java.util.Calendar;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.lifecycle.LifecycleOwner;
+import com.synapse.social.studioasinc.backend.SupabaseStorageService;
+import com.synapse.social.studioasinc.UploadFiles;
 
 public class SynapseApp extends Application implements DefaultLifecycleObserver {
     
@@ -54,6 +56,9 @@ public class SynapseApp extends Application implements DefaultLifecycleObserver 
         // Initialize Firebase with disk persistence
         FirebaseApp.initializeApp(this);
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
+        // Set the storage service to Supabase
+        UploadFiles.setStorageService(new SupabaseStorageService());
         
         // Create notification channels
         createNotificationChannels();
