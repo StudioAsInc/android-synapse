@@ -20,22 +20,6 @@ Each Supabase project will have its own unique API URL and keys. You can manage 
 
 Add the Supabase Bill of Materials (BOM) and the required Supabase libraries to your `app/build.gradle` file.
 
-```groovy
-// app/build.gradle
-
-dependencies {
-    // Supabase
-    implementation(platform("io.github.jan-tennert.supabase:bom:1.0.0"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt")
-    implementation("io.github.jan-tennert.supabase:storage-kt")
-    implementation("io.github.jan-tennert.supabase:realtime-kt")
-
-    // Ktor client for Supabase
-    implementation("io.ktor:ktor-client-android:2.3.4")
-}
-```
-
 ### 1.3. Configure API Keys
 
 It's crucial to handle your Supabase API keys securely.
@@ -43,43 +27,11 @@ It's crucial to handle your Supabase API keys securely.
 1.  **Create `gradle.properties`:**
     In your project's root directory, create a file named `gradle.properties` (if it doesn't exist) and add your Supabase URL and public API key. For a multi-environment setup, you can create separate files like `debug.properties` and `release.properties` and load them in `build.gradle`.
 
-    ```properties
-    # gradle.properties
-    SUPABASE_URL="YOUR_SUPABASE_URL"
-    SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
-    ```
-
 2.  **Add to `.gitignore`:**
     Ensure that `gradle.properties` is included in your `.gitignore` file to prevent your keys from being committed to version control.
 
-    ```
-    gradle.properties
-    ```
-
 3.  **Expose Keys in `build.gradle`:**
     In your `app/build.gradle` file, expose the keys as `buildConfigField` values:
-
-    ```groovy
-    // app/build.gradle
-
-    android {
-        defaultConfig {
-            ...
-        }
-        buildTypes {
-            release {
-                ...
-                buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
-                buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
-            }
-            debug {
-                ...
-                buildConfigField "String", "SUPABASE_URL", "\"${project.properties['SUPABASE_URL']}\""
-                buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.properties['SUPABASE_ANON_KEY']}\""
-            }
-        }
-    }
-    ```
 
 ### 1.4. Initialize Supabase Client
 
@@ -89,71 +41,12 @@ Create a singleton object to initialize and provide a global instance of the Sup
 
 Here's a basic initialization of the Supabase client with the essential plugins (`GoTrue` for authentication, `Postgrest` for database operations, and `Storage` for file storage):
 
-```kotlin
-// In a suitable location, e.g., your.package.name.backend/SupabaseClient.kt
-
-package your.package.name.backend
-
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.gotrue.GoTrue
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.storage.Storage
-import your.package.name.BuildConfig
-
-object SupabaseClient {
-
-    val client: SupabaseClient = createSupabaseClient(
-        supabaseUrl = BuildConfig.SUPABASE_URL,
-        supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-    ) {
-        install(GoTrue)
-        install(Postgrest)
-        install(Storage)
-    }
-}
-```
-
 #### 1.4.2. Advanced Configuration
 
 For more advanced use cases, you can customize the configuration of each plugin. For example, you can enable auto-refreshing of the session token, specify a custom schema for your database, or set a custom encoder for your Postgrest client:
 
-```kotlin
-val client: SupabaseClient = createSupabaseClient(
-    supabaseUrl = BuildConfig.SUPABASE_URL,
-    supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-) {
-    install(GoTrue) {
-        // Enable auto-refreshing of the session token
-        autoRefreshToken = true
-    }
-    install(Postgrest) {
-        // Specify a custom schema for your database
-        defaultSchema = "my_schema"
-        // Set a custom encoder for your Postgrest client
-        encoder = CustomEncoder()
-    }
-    install(Storage) {
-        // Set a custom transfer speed for file uploads
-        transferSpeed = 1024 * 1024 // 1 MB/s
-    }
-}
-```
-
 ### 1.5. Client Lifecycle Management
 In Android, it's important to manage asynchronous operations within the lifecycle of UI components. Use `viewModelScope` from a ViewModel or `lifecycleScope` from an Activity/Fragment to launch coroutines. This ensures that operations are automatically canceled when the UI component is destroyed, preventing memory leaks.
-
-```kotlin
-// Inside a ViewModel
-viewModelScope.launch {
-    // Your Supabase calls here
-}
-
-// Inside an Activity/Fragment
-lifecycleScope.launch {
-    // Your Supabase calls here
-}
-```
 
 ## 2. Authentication Migration
 
@@ -163,107 +56,11 @@ Migrate user authentication from Firebase to Supabase.
 
 It's essential to handle different authentication states in your application to provide a seamless user experience. The Supabase `GoTrue` client provides an easy way to listen for changes in the authentication state.
 
-```kotlin
-// Listen for authentication state changes
-val authStateJob = lifecycleScope.launch {
-    SupabaseClient.client.auth.sessionStatus.collect {
-        when (it) {
-            is SessionStatus.Authenticated -> {
-                // User is signed in, navigate to the main screen
-            }
-            is SessionStatus.NotAuthenticated -> {
-                // User is signed out, navigate to the login screen
-            }
-        }
-    }
-}
-
-// Don't forget to cancel the job when the component is destroyed
-override fun onDestroy() {
-    super.onDestroy()
-    authStateJob.cancel()
-}
-```
-
 ### 2.2. Email/Password Authentication
 
 **Sign-Up:**
 
-**Kotlin:**
-```kotlin
-// Supabase Sign-Up
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
-
-viewModelScope.launch {
-    try {
-        val user = SupabaseClient.client.auth.signUpWith(Email) {
-            email = "user@example.com"
-            password = "password"
-        }
-        // Handle successful sign-up
-    } catch (e: Exception) {
-        // Handle error
-    }
-}
-```
-
-**Java:**
-```java
-// Supabase Sign-Up
-import io.github.jan.supabase.gotrue.GoTrue;
-import io.github.jan.supabase.gotrue.providers.builtin.Email;
-
-// In a method
-GoTrue auth = SupabaseClient.INSTANCE.getClient().getAuth();
-auth.signUpWith(new Email.Provider("user@example.com", "password"), (result) -> {
-    if (result.isSuccess()) {
-        // Handle successful sign-up
-    } else {
-        // Handle error
-    }
-    return null;
-});
-```
-
 **Sign-In:**
-
-**Kotlin:**
-```kotlin
-// Supabase Sign-In
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
-
-viewModelScope.launch {
-    try {
-        val result = SupabaseClient.client.auth.signInWith(Email) {
-            email = "user@example.com"
-            password = "password"
-        }
-        // Handle successful sign-in
-    } catch (e: Exception) {
-        // Handle error
-    }
-}
-```
-
-**Java:**
-```java
-// Supabase Sign-In
-import io.github.jan.supabase.gotrue.GoTrue;
-import io.github.jan.supabase.gotrue.providers.builtin.Email;
-
-// In a method
-GoTrue auth = SupabaseClient.INSTANCE.getClient().getAuth();
-auth.signInWith(new Email.Provider("user@example.com", "password"), (result) -> {
-    if (result.isSuccess()) {
-        // Handle successful sign-in
-    } else {
-        // Handle error
-    }
-    return null;
-});
-```
 
 ### 2.3. Migrating Existing Users
 
@@ -273,10 +70,6 @@ Migrating your existing user base from Firebase to Supabase requires careful han
 
 First, export your user data from Firebase using the Firebase CLI:
 
-```bash
-firebase auth:export users.json --format=json
-```
-
 This will generate a JSON file containing all your Firebase users.
 
 #### 2.3.2. Transforming User Data
@@ -285,43 +78,11 @@ Next, you'll need to transform the exported JSON data into a format that Supabas
 
 Here's an example of a Python script that transforms the Firebase user data into a CSV file that can be imported into Supabase:
 
-```python
-import json
-
-def transform_firebase_users(input_file, output_file):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-
-    with open(output_file, 'w') as f:
-        f.write('email,password_hash\n')
-        for user in data['users']:
-            email = user['email']
-            password_hash = user['passwordHash']
-            f.write(f'{email},{password_hash}\n')
-
-# Usage
-transform_firebase_users('users.json', 'supabase_users.csv')
-```
-
 #### 2.3.3. Importing Users into Supabase
 
 Once you have the transformed CSV file, you can import it into Supabase using the Supabase dashboard's "User Import" feature. This will create the users in your Supabase project with their existing email and a hashed password, allowing them to sign in with their old credentials.
 
 ### 2.4. Social Logins (Google)
-
-```kotlin
-// AuthActivity.kt (migrated)
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.Google
-
-// Note: The idToken must be obtained from the Google Sign-In for Android library first.
-// This typically involves configuring Google Sign-In and handling the result.
-suspend fun signInWithGoogle(idToken: String) {
-    SupabaseClient.client.auth.signInWith(Google) {
-        this.idToken = idToken
-    }
-}
-```
 
 ## 3. Data Migration
 
@@ -338,24 +99,6 @@ In Firebase, you might have a denormalized data structure where related data is 
 **Example:**
 
 Consider a simple blogging application where you have users and posts. In Firebase, you might have a data structure like this:
-
-```json
-{
-  "users": {
-    "user1": {
-      "name": "Alice",
-      "email": "alice@example.com"
-    }
-  },
-  "posts": {
-    "post1": {
-      "title": "My First Post",
-      "content": "Hello, world!",
-      "author": "user1"
-    }
-  }
-}
-```
 
 In Supabase, you would create two tables: `users` and `posts`.
 
@@ -387,157 +130,23 @@ Once you have the exported JSON file, you'll need to write a script to transform
 
 Here's an example of a Python script that transforms a Firebase JSON export into two CSV files (`users.csv` and `posts.csv`):
 
-```python
-import json
-
-def transform_firebase_data(input_file):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-
-    # Transform users
-    with open('users.csv', 'w') as f:
-        f.write('id,name,email\n')
-        for user_id, user_data in data['users'].items():
-            f.write(f'{user_id},{user_data["name"]},{user_data["email"]}\n')
-
-    # Transform posts
-    with open('posts.csv', 'w') as f:
-        f.write('title,content,author_id\n')
-        for post_id, post_data in data['posts'].items():
-            f.write(f'{post_data["title"]},{post_data["content"]},{post_data["author"]}\n')
-
-# Usage
-transform_firebase_data('firebase_export.json')
-```
-
 #### 3.2.3. Importing into Supabase
 
 After transforming your data, you can import the resulting CSV files into your Supabase project using the Supabase dashboard. You'll need to import the `users.csv` file first, as the `posts` table has a foreign key that depends on the `users` table.
 
 ### 3.3. CRUD Operations
 
-**Firebase (Existing Code):**
-
-```java
-// Example: Creating a post in Firebase
-DatabaseReference postsRef = FirebaseDatabase.getInstance().getReference("posts");
-String postId = postsRef.push().getKey();
-Post post = new Post("User123", "Hello, World!");
-postsRef.child(postId).setValue(post);
-```
-
-**Supabase (New Code):**
-
-```kotlin
-// Example: Creating a post in Supabase
-import io.github.jan.supabase.postgrest.postgrest
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class Post(val userId: String, val content: String)
-
-suspend fun createPost(post: Post) {
-    SupabaseClient.client.postgrest["posts"].insert(post)
-}
-```
-
 ### 3.4. Handling Complex Queries
 
 Supabase's Postgrest client provides a powerful and flexible API for querying your data. You can perform complex queries, including joins, filters, and ordering, with just a few lines of code.
-
-**Example:**
-
-To fetch a post and its author's name, you can use a `select` query with a join:
-
-```kotlin
-// Fetch a post and its author's name
-val post = SupabaseClient.client.postgrest["posts"]
-    .select("*, author:users(name)") {
-        eq("id", postId)
-    }
-    .single()
-```
 
 ## 4. File Storage Migration
 
 Migrate files from Firebase Storage to Supabase Storage.
 
-**Firebase (Existing Code):**
-
-```java
-// Example: Uploading a file to Firebase Storage
-StorageReference storageRef = FirebaseStorage.getInstance().getReference();
-StorageReference imageRef = storageRef.child("images/" + file.getName());
-UploadTask uploadTask = imageRef.putFile(fileUri);
-```
-
-**Supabase (New Code):**
-
-```kotlin
-// Example: Uploading a file to Supabase Storage
-import io.github.jan.supabase.storage.storage
-
-suspend fun uploadFile(bucketName: String, path: String, fileBytes: ByteArray) {
-    SupabaseClient.client.storage[bucketName].upload(path, fileBytes)
-}
-```
-
 ## 5. Realtime Data Synchronization
 
 Replace Firebase's realtime listeners with Supabase's realtime capabilities.
-
-**Firebase (Existing Code):**
-
-```java
-// Example: Listening for changes in Firebase
-DatabaseReference postRef = FirebaseDatabase.getInstance().getReference("posts").child(postId);
-postRef.addValueEventListener(new ValueEventListener() {
-    @Override
-    public void onDataChange(DataSnapshot dataSnapshot) {
-        Post post = dataSnapshot.getValue(Post.class);
-        // Update UI
-    }
-
-    @Override
-    public void onCancelled(DatabaseError databaseError) {
-        // Handle error
-    }
-});
-```
-
-**Supabase (New Code):**
-
-```kotlin
-// Example: Listening for changes in Supabase
-import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.Realtime
-import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.postgresChangeFlow
-
-suspend fun listenToPostChanges(postId: String) {
-    val channel = SupabaseClient.client.channel("posts_channel")
-    val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
-        table = "posts"
-    }
-
-    changeFlow.collect {
-        when (it) {
-            is PostgresAction.Insert -> {
-                // Handle new post
-            }
-            is PostgresAction.Update -> {
-                // Handle updated post
-            }
-            is PostgresAction.Delete -> {
-                // Handle deleted post
-            }
-            else -> {}
-        }
-    }
-
-    channel.join()
-}
-```
 
 ## 6. Testing and Verification
 
@@ -596,38 +205,6 @@ You can use a variety of CI/CD tools, such as GitHub Actions, GitLab CI/CD, or J
 
 ### 7.2. Example: GitHub Actions
 
-Here's an example of a simple GitHub Actions workflow that builds and tests an Android application:
-
-```yaml
-name: Android CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: set up JDK 11
-      uses: actions/setup-java@v2
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: gradle
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
-    - name: Run tests
-      run: ./gradlew test
-```
-
 ## 8. Rollback Strategy
 
 A rollback strategy is a critical component of any migration plan. It provides a safety net in case you encounter critical issues after deploying the migrated application.
@@ -666,3 +243,117 @@ This section provides a checklist of performance and security best practices to 
 -   **Two-Factor Authentication (2FA):** Enable 2FA for your Supabase project to add an extra layer of security to your user accounts.
 -   **Secure API keys:** Store your Supabase API keys securely and avoid exposing them in your client-side code.
 -   **Regular security audits:** Conduct regular security audits to identify and address any potential vulnerabilities.
+
+## 10. Class-by-Class Migration
+
+This section provides a detailed, class-by-class migration plan for key components of the application.
+
+### 10.1. AuthActivity.java
+
+This activity handles user authentication, including sign-up and sign-in.
+
+**10.1.1. Step 1: Remove Firebase Dependencies**
+
+The first step is to remove all Firebase-related imports from the `AuthActivity.java` file. This includes:
+
+-   `com.google.firebase.FirebaseApp`
+-   Classes from `com.google.firebase.auth`
+-   Classes from `com.google.firebase.database`
+
+**10.1.2. Step 2: Integrate Supabase Client**
+
+Next, you'll need to initialize and use the Supabase client. Since `AuthActivity.java` is a Java class, you'll need to access the Supabase client through the `SupabaseClient.INSTANCE` singleton.
+
+**10.1.3. Step 3: Replace Authentication Calls**
+
+The core of the migration involves replacing the Firebase authentication calls with their Supabase equivalents.
+
+**Sign-Up:**
+
+-   **Firebase (Existing):** The existing code uses an `IAuthenticationService` interface, which abstracts the Firebase `createUserWithEmailAndPassword` method.
+-   **Supabase (New):** The new implementation will directly use the Supabase `signUpWith` method. Since this is a suspend function in Kotlin, you'll need a wrapper to call it from Java.
+
+**Sign-In:**
+
+-   **Firebase (Existing):** The existing code uses an `IAuthenticationService` interface for `signInWithEmailAndPassword`.
+-   **Supabase (New):** The new implementation will use the Supabase `signInWith` method, again with a Kotlin wrapper.
+
+**10.1.4. Step 4: Replace Database Calls**
+
+The `AuthActivity` also fetches the user's username from the database after a successful sign-in. This needs to be migrated to use Supabase PostgREST.
+
+-   **Firebase (Existing):** The existing code uses `dbService.getData` to fetch the username from the Firebase Realtime Database.
+-   **Supabase (New):** The new implementation will use the Supabase `select` method to query the `users` table.
+
+**10.1.5. Step 5: Update OneSignal Integration**
+
+The `updateOneSignalPlayerId` method needs to be updated to save the Player ID to Supabase instead of Firebase.
+
+-   **Firebase (Existing):** The existing code uses `OneSignalManager.savePlayerIdToRealtimeDatabase`.
+-   **Supabase (New):** The new implementation will use a Supabase `upsert` operation to save the Player ID to the `users` table.
+
+This completes the migration of `AuthActivity.java` from Firebase to Supabase. By following these steps, you can successfully replace all Firebase dependencies and implement a robust, Supabase-powered authentication and data management system.
+
+### 10.2. CompleteProfileActivity.java
+
+This activity allows users to complete their profile by providing a username, nickname, biography, and profile picture.
+
+**10.2.1. Step 1: Remove Firebase Dependencies**
+
+-   Remove all Firebase-related imports, including `FirebaseAuth`, `FirebaseDatabase`, and `FirebaseStorage`.
+
+**10.2.2. Step 2: Replace Username Availability Check**
+
+The activity checks if a username is already taken. This logic needs to be migrated to use Supabase.
+
+-   **Firebase (Existing):** The existing code uses a Firebase Realtime Database query to check for the existence of a username.
+-   **Supabase (New):** The new implementation will use a Supabase `select` query with a `count` aggregation.
+
+**10.2.3. Step 3: Replace Profile Data Submission**
+
+The "complete" button pushes the user's profile data to the database. This needs to be migrated to use Supabase.
+
+-   **Firebase (Existing):** The existing code uses a `UserDataPusher` class to push data to the Firebase Realtime Database.
+-   **Supabase (New):** The new implementation will use a Supabase `upsert` operation to save the profile data.
+
+**10.2.4. Step 4: Replace Image Upload**
+
+The activity uses an `ImageUploader` class to upload the user's profile picture. This needs to be migrated to use Supabase Storage.
+
+-   **Firebase (Existing):** The existing code uses a custom `ImageUploader` that likely uploads to Firebase Storage or another service.
+-   **Supabase (New):** The new implementation will use the Supabase `upload` method.
+
+**10.2.5. Step 5: Replace User Cancellation**
+
+The activity allows the user to cancel the profile completion process, which should sign them out.
+
+-   **Firebase (Existing):** The existing code signs the user out using `FirebaseAuth.getInstance().signOut()`.
+-   **Supabase (New):** The new implementation will use the Supabase `signOut` method.
+
+### 10.3. ChatActivity.java
+
+This activity is the core of the real-time chat functionality. Migrating this class involves replacing Firebase Realtime Database listeners with Supabase Realtime channels.
+
+**10.3.1. Step 1: Remove Firebase Dependencies**
+
+-   Remove all Firebase-related imports, including `FirebaseAuth` and `FirebaseDatabase`.
+
+**10.3.2. Step 2: Replace Message Sending**
+
+-   **Firebase (Existing):** Messages are sent by pushing data to a Firebase Realtime Database reference.
+-   **Supabase (New):** Messages will be sent by inserting data into a Supabase table.
+
+**10.3.3. Step 3: Replace Real-time Message Listening**
+
+-   **Firebase (Existing):** A `ChildEventListener` is used to listen for new messages.
+-   **Supabase (New):** A Supabase Realtime channel will be used to listen for inserts on the `messages` table.
+
+**10.3.4. Step 4: Replace User Status Listening**
+
+-   **Firebase (Existing):** A `ValueEventListener` is used to listen for changes in the user's status.
+-   **Supabase (New):** A Supabase Realtime channel can be used to listen for updates on the `users` table.
+
+**10.3.5. Step 5: Replace Message History Fetching**
+
+-   **Firebase (Existing):** `limitToLast` and `endBefore` are used to paginate through message history.
+-   **Supabase (New):** `limit` and `order` will be used to fetch message history.
