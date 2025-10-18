@@ -83,7 +83,7 @@ class AskPermission(private val activity: Activity) {
     }
 
     private fun startMainActivity() {
-        val intent = Intent(activity, Class.forName("com.synapse.social.studioasinc.MainActivity"))
+        val intent = Intent(activity, com.synapse.social.studioasinc.MainActivity::class.java)
         activity.startActivity(intent)
         activity.finish()
     }
