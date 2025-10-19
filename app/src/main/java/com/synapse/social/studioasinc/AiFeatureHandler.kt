@@ -59,7 +59,7 @@ class AiFeatureHandler(
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
                         val sender = if (message.uid == auth.currentUser?.uid) "Me" else secondUserName
-                        contextBuilder.append("$sender: ${message.message}\n")
+                        contextBuilder.append("$sender: ${message.messageText}\n")
                     }
 
                     contextBuilder.append("---\n")

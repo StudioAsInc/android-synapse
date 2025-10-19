@@ -73,7 +73,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private HashMap<String, String> userNamesMap = new HashMap<>();
 
     public ChatAdapter(List<ChatMessage> _arr, HashMap<String, ChatMessage> repliedCache, ChatAdapterListener listener) {
-        _data = _arr;
+        _data = new ArrayList<>(_arr);
         this.repliedMessagesCache = repliedCache;
         this.listener = listener;
     }

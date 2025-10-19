@@ -46,7 +46,7 @@ class ChatViewModel : ViewModel() {
                 firebaseDatabase.getReference("skyline/group-chats").child(otherId).child("messages")
             } else {
                 val myUid = auth.currentUser!!.uid
-                val chatId = ChatMessageManager.INSTANCE.getChatId(myUid, otherId)
+                val chatId = ChatMessageManager.getChatId(myUid, otherId)
                 firebaseDatabase.getReference("chats").child(chatId)
             }
 
@@ -78,7 +78,7 @@ class ChatViewModel : ViewModel() {
                 firebaseDatabase.getReference("skyline/group-chats").child(otherId).child("messages")
             } else {
                 val myUid = auth.currentUser!!.uid
-                val chatId = ChatMessageManager.INSTANCE.getChatId(myUid, otherId)
+                val chatId = ChatMessageManager.getChatId(myUid, otherId)
                 firebaseDatabase.getReference("chats").child(chatId)
             }
 

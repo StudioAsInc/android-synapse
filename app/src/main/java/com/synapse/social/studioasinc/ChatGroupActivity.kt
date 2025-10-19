@@ -28,6 +28,7 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.activity.OnBackPressedCallback
 import com.google.firebase.database.*
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
+import com.synapse.social.studioasinc.chat.model.ChatMessage
 import java.util.ArrayList
 import java.util.Calendar
 import java.util.HashMap
@@ -41,8 +42,8 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private var chatAdapter: ChatAdapter? = null
     private var _chat_child_listener: ChildEventListener? = null
     private val messageKeys: MutableSet<String> = HashSet()
-    private val ChatMessagesList: ArrayList<HashMap<String, Any>> = ArrayList()
-    private val repliedMessagesCache: HashMap<String, HashMap<String, Any>> = HashMap()
+    private val ChatMessagesList: ArrayList<ChatMessage> = ArrayList()
+    private val repliedMessagesCache: HashMap<String, ChatMessage> = HashMap()
     private val memberNamesMap: HashMap<String, String> = HashMap()
 
     private lateinit var back: ImageView
@@ -238,22 +239,17 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.exists()) {
-                    val initialMessages = ArrayList<HashMap<String, Any>>()
+                    val initialMessages = ArrayList<ChatMessage>()
                     for (_data in dataSnapshot.children) {
-                        val messageData =
-                            _data.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                        if (messageData != null && messageData.containsKey("key")) {
+                        val messageData = _data.getValue(ChatMessage::class.java)
+                        if (messageData != null) {
                             initialMessages.add(messageData)
-                            messageKeys.add(messageData["key"].toString())
+                            messageKeys.add(messageData.key)
                         }
                     }
                     if (initialMessages.isNotEmpty()) {
-                        initialMessages.sortWith { msg1, msg2 ->
-                            val time1 = _getMessageTimestamp(msg1)
-                            val time2 = _getMessageTimestamp(msg2)
-                            time1.compareTo(time2)
-                        }
-                        oldestMessageKey = initialMessages[0]["key"].toString()
+                        initialMessages.sortBy { it.pushDate }
+                        oldestMessageKey = initialMessages[0].key
                         ChatMessagesList.addAll(initialMessages)
                         chatAdapter?.notifyDataSetChanged()
                         ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
@@ -271,11 +267,10 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private fun _attachChatListener() {
         if (chatMessagesRef == null) return
         _chat_child_listener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, previousChildName: String?) {
-                val newMessage =
-                    dataSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                if (newMessage != null && newMessage.containsKey("key")) {
-                    val messageKey = newMessage["key"].toString()
+            override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
+                val newMessage = dataSnapshot.getValue(ChatMessage::class.java)
+                if (newMessage != null) {
+                    val messageKey = newMessage.key
                     if (!messageKeys.contains(messageKey)) {
                         messageKeys.add(messageKey)
                         val insertPosition = _findCorrectInsertPosition(newMessage)
@@ -391,31 +386,18 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         })
     }
 
-    private fun _findCorrectInsertPosition(newMessage: HashMap<String, Any>): Int {
+    private fun _findCorrectInsertPosition(newMessage: ChatMessage): Int {
         if (ChatMessagesList.isEmpty()) {
             return 0
         }
-        val newMessageTime = _getMessageTimestamp(newMessage)
+        val newMessageTime = newMessage.pushDate
         for (i in ChatMessagesList.indices) {
-            val existingMessageTime = _getMessageTimestamp(ChatMessagesList[i])
+            val existingMessageTime = ChatMessagesList[i].pushDate
             if (newMessageTime <= existingMessageTime) {
                 return i
             }
         }
         return ChatMessagesList.size
-    }
-
-    private fun _getMessageTimestamp(message: HashMap<String, Any>): Long {
-        return try {
-            val pushDateObj = message["push_date"]
-            if (pushDateObj is Long) {
-                pushDateObj
-            } else {
-                (pushDateObj as Double).toLong()
-            }
-        } catch (e: Exception) {
-            System.currentTimeMillis()
-        }
     }
 
     override fun scrollToMessage(messageId: String) {
@@ -426,7 +408,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         // Not implemented for group chat
     }
 
-    override fun showMessageOverviewPopup(anchor: View, position: Int, data: ArrayList<HashMap<String, Any>>) {
+    override fun showMessageOverviewPopup(anchor: View, position: Int, data: ArrayList<ChatMessage>) {
         // Not implemented for group chat
     }
 

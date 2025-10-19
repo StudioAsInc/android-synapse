@@ -385,7 +385,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 this,
                 auth,
                 _firebase,
-                null,
+                ChatMessagesList,
                 attactmentmap,
                 chatAdapter,
                 ChatMessagesListRecycler,
@@ -413,6 +413,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         aiFeatureHandler = new AiFeatureHandler(
                 this,
                 gemini,
+                message_et,
                 ChatMessagesList,
                 auth,
                 SecondUserName,
