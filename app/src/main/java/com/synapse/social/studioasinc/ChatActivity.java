@@ -689,7 +689,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
     private MessageInteractionHandler messageInteractionHandler;
 	@Override
-	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
+	public void showMessageOverviewPopup(View _view, int _position, ArrayList<ChatMessage> _data) {
 		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
 	}
 
