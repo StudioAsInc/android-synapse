@@ -59,6 +59,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int VIEW_TYPE_VIDEO = 4;
     private static final int VIEW_TYPE_LINK_PREVIEW = 5;
     private static final int VIEW_TYPE_VOICE_MESSAGE = 6;
+    private static final int VIEW_TYPE_TYPING = 7;
     private static final int VIEW_TYPE_LOADING_MORE = 99;
 
     private List<ChatMessage> _data;
@@ -87,6 +88,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public int getItemViewType(int position) {
         ChatMessage message = _data.get(position);
         
+        if (message.getKey().equals("loading")) {
+            return VIEW_TYPE_LOADING_MORE;
+        }
+
+        if (message.getKey().equals("typing")) {
+            return VIEW_TYPE_TYPING;
+        }
+
         String type = message.getType();
         Log.d(TAG, "Message at position " + position + " has type: " + type);
 
@@ -133,10 +142,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         switch (viewType) {
             case VIEW_TYPE_MEDIA_GRID: return new MediaViewHolder(inflater.inflate(R.layout.chat_bubble_media, parent, false));
             case VIEW_TYPE_VIDEO: return new VideoViewHolder(inflater.inflate(R.layout.chat_bubble_video, parent, false));
-            case VIEW_TYPE_TYPING: return new TypingViewHolder(inflater.inflate(R.layout.chat_bubble_typing, parent, false));
             case VIEW_TYPE_LINK_PREVIEW: return new LinkPreviewViewHolder(inflater.inflate(R.layout.chat_bubble_link_preview, parent, false));
             case VIEW_TYPE_VOICE_MESSAGE: return new VoiceMessageViewHolder(inflater.inflate(R.layout.chat_bubble_voice, parent, false));
             case VIEW_TYPE_LOADING_MORE: return new LoadingViewHolder(inflater.inflate(R.layout.chat_bubble_loading_more, parent, false));
+            case VIEW_TYPE_TYPING: return new TypingViewHolder(inflater.inflate(R.layout.chat_bubble_typing, parent, false));
             default: return new TextViewHolder(inflater.inflate(R.layout.chat_bubble_text, parent, false));
         }
     }
@@ -147,10 +156,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             case VIEW_TYPE_TEXT: bindTextViewHolder((TextViewHolder) holder, position); break;
             case VIEW_TYPE_MEDIA_GRID: bindMediaViewHolder((MediaViewHolder) holder, position); break;
             case VIEW_TYPE_VIDEO: bindVideoViewHolder((VideoViewHolder) holder, position); break;
-            case VIEW_TYPE_TYPING: bindTypingViewHolder((TypingViewHolder) holder, position); break;
             case VIEW_TYPE_LINK_PREVIEW: bindLinkPreviewViewHolder((LinkPreviewViewHolder) holder, position); break;
             case VIEW_TYPE_VOICE_MESSAGE: bindVoiceMessageViewHolder((VoiceMessageViewHolder) holder, position); break;
-            case VIEW_TYPE_LOADING_MORE: bindLoadingViewHolder((LoadingViewHolder) holder, position); break;
+            case VIEW_TYPE_LOADING_MORE: break;
+            case VIEW_TYPE_TYPING: break;
         }
     }
 
@@ -488,13 +497,13 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             holder.mediaCarouselContainer.setVisibility(View.VISIBLE);
 
             try {
-                setupCarouselLayout(holder, (ArrayList) attachments);
+                setupCarouselLayout(holder, new ArrayList<>(attachments));
             } catch (Exception e) {
                 Log.e(TAG, "Error setting up carousel, falling back to grid: " + e.getMessage());
                 if (holder.mediaCarouselContainer != null) holder.mediaCarouselContainer.setVisibility(View.GONE);
                 if (holder.mediaGridLayout != null) {
                     holder.mediaGridLayout.setVisibility(View.VISIBLE);
-                    setupGridLayout(holder, (ArrayList) attachments);
+                    setupGridLayout(holder, new ArrayList<>(attachments));
                 }
             }
         } else {
@@ -503,7 +512,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (holder.mediaGridLayout != null) {
                 holder.mediaGridLayout.setVisibility(View.VISIBLE);
                 try {
-                    setupGridLayout(holder, (ArrayList) attachments);
+                    setupGridLayout(holder, new ArrayList<>(attachments));
                     Log.d(TAG, "Grid layout setup completed successfully");
                 } catch (Exception e) {
                     Log.e(TAG, "Error setting up grid layout: " + e.getMessage());
@@ -522,7 +531,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
-    private void setupCarouselLayout(MediaViewHolder holder, ArrayList<Attachment> attachments) {
+    private void setupCarouselLayout(MediaViewHolder holder, List<Attachment> attachments) {
         Log.d(TAG, "Setting up carousel layout for " + attachments.size() + " images");
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(_context, LinearLayoutManager.HORIZONTAL, false);
@@ -533,19 +542,19 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 CarouselItemDecoration.createWithStandardSpacing(holder.mediaCarouselRecyclerView));
         }
 
-        ArrayList<Attachment> typedAttachments = attachments;
+        ArrayList<Attachment> typedAttachments = new ArrayList<>(attachments);
         if (typedAttachments == null || typedAttachments.isEmpty()) {
             return;
         }
         MessageImageCarouselAdapter adapter = new MessageImageCarouselAdapter(_context, typedAttachments,
-            (position, attachmentList) -> openImageGalleryTyped(attachmentList, position));
+            (position, attachmentList) -> openImageGalleryTyped(new ArrayList<>(attachmentList), position));
         holder.mediaCarouselRecyclerView.setAdapter(adapter);
 
         if (holder.viewAllImagesButton != null) {
             if (attachments.size() > 3) {
                 holder.viewAllImagesButton.setVisibility(View.VISIBLE);
                 holder.viewAllImagesButton.setText("View all " + attachments.size() + " images");
-                holder.viewAllImagesButton.setOnClickListener(v -> openImageGalleryTyped(typedAttachments, 0));
+                holder.viewAllImagesButton.setOnClickListener(v -> openImageGalleryTyped(new ArrayList<>(attachments), 0));
             } else {
                 holder.viewAllImagesButton.setVisibility(View.GONE);
             }
@@ -556,7 +565,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         holder.mediaContainerCard.setLayoutParams(cardParams);
     }
 
-    private void setupGridLayout(MediaViewHolder holder, ArrayList<Attachment> attachments) {
+    private void setupGridLayout(MediaViewHolder holder, List<Attachment> attachments) {
         Log.d(TAG, "Setting up grid layout for " + attachments.size() + " images");
 
         GridLayout gridLayout = holder.mediaGridLayout;
@@ -584,7 +593,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (count == 1) {
             gridLayout.setColumnCount(1);
             Attachment attachment = attachments.get(0);
-            ImageView iv = createImageView(attachment, totalGridWidth, true, 0, attachments);
+            ImageView iv = createImageView(attachment, totalGridWidth, true, 0, new ArrayList<>(attachments));
             gridLayout.addView(iv);
 
         } else if (count == 3) {
@@ -603,7 +612,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
 
             if(portraitIndex != -1){
-                ImageView iv1 = createImageView(attachments.get(portraitIndex), imageSize, false, portraitIndex, attachments);
+                ImageView iv1 = createImageView(attachments.get(portraitIndex), imageSize, false, portraitIndex, new ArrayList<>(attachments));
                 GridLayout.LayoutParams params1 = new GridLayout.LayoutParams(GridLayout.spec(0, 2, 1f), GridLayout.spec(0, 1, 1f));
                 iv1.setLayoutParams(params1);
                 gridLayout.addView(iv1);
@@ -611,7 +620,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 int attachmentIndex = 0;
                 for(int i=0; i<2; i++){
                     if(attachmentIndex == portraitIndex) attachmentIndex++;
-                    ImageView iv = createImageView(attachments.get(attachmentIndex), imageSize, false, attachmentIndex, attachments);
+                    ImageView iv = createImageView(attachments.get(attachmentIndex), imageSize, false, attachmentIndex, new ArrayList<>(attachments));
                     GridLayout.LayoutParams params = new GridLayout.LayoutParams(GridLayout.spec(i, 1, 1f), GridLayout.spec(1, 1, 1f));
                     iv.setLayoutParams(params);
                     gridLayout.addView(iv);
@@ -619,13 +628,13 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
 
             } else {
-                ImageView iv1 = createImageView(attachments.get(0), totalGridWidth, false, 0, attachments);
+                ImageView iv1 = createImageView(attachments.get(0), totalGridWidth, false, 0, new ArrayList<>(attachments));
                 GridLayout.LayoutParams params1 = new GridLayout.LayoutParams(GridLayout.spec(0, 1, 1f), GridLayout.spec(0, 2, 1f));
                 iv1.setLayoutParams(params1);
                 gridLayout.addView(iv1);
 
                 for (int i = 1; i < 3; i++) {
-                    ImageView iv = createImageView(attachments.get(i), imageSize, false, i, attachments);
+                    ImageView iv = createImageView(attachments.get(i), imageSize, false, i, new ArrayList<>(attachments));
                     GridLayout.LayoutParams params = new GridLayout.LayoutParams(GridLayout.spec(1, 1, 1f), GridLayout.spec(i - 1, 1, 1f));
                     iv.setLayoutParams(params);
                     gridLayout.addView(iv);
@@ -635,7 +644,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             int limit = Math.min(count, maxImages);
             for (int i = 0; i < limit; i++) {
                 View viewToAdd;
-                ImageView iv = createImageView(attachments.get(i), imageSize, false, i, attachments);
+                ImageView iv = createImageView(attachments.get(i), imageSize, false, i, new ArrayList<>(attachments));
 
                 if (i == maxImages - 1 && count > maxImages) {
                     RelativeLayout overlayContainer = new RelativeLayout(_context);
@@ -653,7 +662,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     moreText.setGravity(Gravity.CENTER);
                     overlayContainer.addView(moreText, new ViewGroup.LayoutParams(imageSize, imageSize));
                     viewToAdd = overlayContainer;
-                    viewToAdd.setOnClickListener(v -> openImageGalleryTyped(attachments, 3));
+                    viewToAdd.setOnClickListener(v -> openImageGalleryTyped(new ArrayList<>(attachments), 3));
                 } else {
                     viewToAdd = iv;
                 }
@@ -674,7 +683,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
-    private ImageView createImageView(Attachment attachment, int width, boolean adjustBounds, int position, ArrayList<Attachment> attachments) {
+    private ImageView createImageView(Attachment attachment, int width, boolean adjustBounds, int position, List<Attachment> attachments) {
         String url = attachment.getUrl();
         ImageView imageView = new ImageView(_context);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -778,9 +787,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
         }
-    }
-
-    private void bindLoadingViewHolder(LoadingViewHolder holder, int position) {
     }
 
     private void bindVoiceMessageViewHolder(VoiceMessageViewHolder holder, int position) {
@@ -901,5 +907,17 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
 
         return false;
+    }
+
+    private static class LoadingViewHolder extends RecyclerView.ViewHolder {
+        public LoadingViewHolder(@NonNull View itemView) {
+            super(itemView);
+        }
+    }
+
+    private static class TypingViewHolder extends RecyclerView.ViewHolder {
+        public TypingViewHolder(@NonNull View itemView) {
+            super(itemView);
+        }
     }
 }

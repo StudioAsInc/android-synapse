@@ -121,7 +121,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
 	private java.util.Set<String> locallyDeletedMessages = new java.util.HashSet<>();
 	private ArrayList<ChatMessage> ChatMessagesList = new ArrayList<>();
-	public ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
+	public ArrayList<com.synapse.social.studioasinc.model.Attachment> attachments = new ArrayList<>();
 
 	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
 	private ImageView ivBGimage;
@@ -386,7 +386,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 auth,
                 _firebase,
                 ChatMessagesList,
-                attactmentmap,
+                attachments,
                 chatAdapter,
                 ChatMessagesListRecycler,
                 rv_attacmentList,
@@ -464,10 +464,34 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         String otherId = getIntent().getStringExtra("uid");
         chatViewModel.loadChatMessages(otherId, is_group);
         chatViewModel.getChatMessages().observe(this, messages -> {
+            boolean shouldScrollToBottom = false;
+            LinearLayoutManager layoutManager = (LinearLayoutManager) ChatMessagesListRecycler.getLayoutManager();
+            if (layoutManager != null) {
+                int lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition();
+                int totalItemCount = layoutManager.getItemCount();
+                if (lastVisibleItemPosition == totalItemCount - 1 || totalItemCount < 2) {
+                    shouldScrollToBottom = true;
+                }
+            }
+
             ChatMessagesList.clear();
             ChatMessagesList.addAll(messages);
+            for (ChatMessage message : messages) {
+                if (message.getRepliedMessageId() != null && !message.getRepliedMessageId().isEmpty()) {
+                    chatViewModel.fetchRepliedMessage(message.getRepliedMessageId(), otherId, is_group);
+                }
+            }
             chatAdapter.notifyDataSetChanged();
-            ChatMessagesListRecycler.scrollToPosition(messages.size() - 1);
+
+            if (shouldScrollToBottom) {
+                ChatMessagesListRecycler.scrollToPosition(messages.size() - 1);
+            }
+        });
+
+        chatViewModel.getRepliedMessages().observe(this, repliedMessages -> {
+            repliedMessagesCache.clear();
+            repliedMessagesCache.putAll(repliedMessages);
+            chatAdapter.notifyDataSetChanged();
         });
 
 		if (is_group) {
@@ -539,7 +563,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 this,
                 attachmentLayoutListHolder,
                 rv_attacmentList,
-                attactmentmap,
+                attachments,
                 close_attachments_btn,
                 galleryBtn,
                 auth
@@ -549,7 +573,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         itemUploadHandler = new ItemUploadHandler(
                 this,
                 auth,
-                new ArrayList<>(attactmentmap),
+                new ArrayList<>(attachments),
                 rv_attacmentList,
                 (url) -> {
                     path = url;
@@ -634,8 +658,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		if (ChatMessagesList != null) {
 			ChatMessagesList.clear();
 		}
-		if (attactmentmap != null) {
-			attactmentmap.clear();
+		if (attachments != null) {
+			attachments.clear();
 		}
 		
 		if (SynapseLoadingDialog != null && SynapseLoadingDialog.isShowing()) {
@@ -1043,8 +1067,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _showLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty()) {
-			ChatMessage loadingMessage = new ChatMessage();
+		if (!ChatMessagesList.isEmpty() && !ChatMessagesList.get(0).getKey().equals("loading")) {
+			ChatMessage loadingMessage = new ChatMessage("", "", 0, null, "loading", "loading");
 			ChatMessagesList.add(0, loadingMessage);
 			if (chatAdapter != null) {
 				chatAdapter.notifyItemInserted(0);
@@ -1057,7 +1081,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _hideLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty()) {
+		if (!ChatMessagesList.isEmpty() && ChatMessagesList.get(0).getKey().equals("loading")) {
 			ChatMessagesList.remove(0);
 			chatAdapter.notifyItemRemoved(0);
 		}
@@ -1075,7 +1099,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			senderName = SecondUserName;
 		}
 
-		chatUIUpdater.showReplyUI(senderName, messageData.getMessage(), repliedMessagesCache.get(messageData.getReplyTo()));
+		chatUIUpdater.showReplyUI(senderName, messageData.getMessageText(), repliedMessagesCache.get(messageData.getRepliedMessageId()));
 		vbr.vibrate((long) 48);
 	}
 
@@ -1155,7 +1179,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		for (ChatMessage messageData : ChatMessagesList) {
 			if (messageId.equals(messageData.getKey())) {
 				String senderName = messageData.getUid().equals(auth.getCurrentUser().getUid()) ? "You" : SecondUserName;
-				chatUIUpdater.showReplyUI(senderName, messageData.getMessage(), repliedMessagesCache.get(messageData.getReplyTo()));
+				chatUIUpdater.showReplyUI(senderName, messageData.getMessageText(), repliedMessagesCache.get(messageData.getRepliedMessageId()));
 				vbr.vibrate(48);
 				break;
 			}
@@ -1184,4 +1208,20 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public String getOldestMessageKey() {
 		return oldestMessageKey;
 	}
+
+    public void addTypingIndicator() {
+        if (ChatMessagesList.isEmpty() || !ChatMessagesList.get(ChatMessagesList.size() - 1).getKey().equals("typing")) {
+            ChatMessagesList.add(new ChatMessage("", "", 0, null, "typing", "typing"));
+            chatAdapter.notifyItemInserted(ChatMessagesList.size() - 1);
+            scrollToBottom();
+        }
+    }
+
+    public void removeTypingIndicator() {
+        if (!ChatMessagesList.isEmpty() && ChatMessagesList.get(ChatMessagesList.size() - 1).getKey().equals("typing")) {
+            int position = ChatMessagesList.size() - 1;
+            ChatMessagesList.remove(position);
+            chatAdapter.notifyItemRemoved(position);
+        }
+    }
 }

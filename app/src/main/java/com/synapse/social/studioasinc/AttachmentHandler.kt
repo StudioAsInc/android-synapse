@@ -7,6 +7,7 @@ import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.model.Attachment
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
@@ -14,7 +15,7 @@ class AttachmentHandler(
     private val activity: ChatActivity,
     private val attachmentLayoutListHolder: View,
     private val rv_attacmentList: RecyclerView,
-    private var attactmentmap: ArrayList<HashMap<String, Any>>,
+    private var attachments: ArrayList<Attachment>,
     private val close_attachments_btn: View,
     private val galleryBtn: View,
     private val auth: FirebaseAuth
@@ -27,9 +28,9 @@ class AttachmentHandler(
 
         close_attachments_btn.setOnClickListener {
             attachmentLayoutListHolder.visibility = View.GONE
-            val oldSize = attactmentmap.size
+            val oldSize = attachments.size
             if (oldSize > 0) {
-                attactmentmap.clear()
+                attachments.clear()
                 rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
             }
 
@@ -44,7 +45,7 @@ class AttachmentHandler(
             }
         }
 
-        val attachmentAdapter = Rv_attacmentListAdapter(activity, attactmentmap, attachmentLayoutListHolder)
+        val attachmentAdapter = Rv_attacmentListAdapter(activity, attachments, attachmentLayoutListHolder)
         rv_attacmentList.adapter = attachmentAdapter
         rv_attacmentList.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false)
 

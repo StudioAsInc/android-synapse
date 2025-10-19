@@ -16,18 +16,18 @@ import com.synapse.social.studioasinc.AsyncUploadService;
 import com.synapse.social.studioasinc.FileUtil;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.UploadFiles;
+import com.synapse.social.studioasinc.model.Attachment;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentListAdapter.ViewHolder> {
 
-    private final ArrayList<HashMap<String, Object>> data;
+    private final ArrayList<Attachment> data;
     private final Context context;
     private final View attachmentLayoutListHolder;
 
     public Rv_attacmentListAdapter(@NonNull Context context,
-                                   @NonNull ArrayList<HashMap<String, Object>> data,
+                                   @NonNull ArrayList<Attachment> data,
                                    @NonNull View attachmentLayoutListHolder) {
         this.context = context;
         this.data = data;
@@ -61,14 +61,14 @@ public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentLi
             return;
         }
 
-        HashMap<String, Object> itemData = data.get(position);
+        Attachment itemData = data.get(position);
         if (itemData == null) {
             Log.w("RvAttachment", "Null item data at position: " + position);
             itemView.setVisibility(View.GONE);
             return;
         }
 
-        if (!itemData.containsKey("localPath") || itemData.get("localPath") == null) {
+        if (itemData.getLocalPath().isEmpty()) {
             itemView.setVisibility(View.GONE);
             itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
             return;
@@ -77,7 +77,7 @@ public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentLi
         itemView.setVisibility(View.VISIBLE);
         itemView.setLayoutParams(new RecyclerView.LayoutParams(dpToPx(100), dpToPx(100)));
 
-        String localPath = itemData.get("localPath").toString();
+        String localPath = itemData.getLocalPath();
         try {
             previewIV.setImageDrawable(null);
             previewIV.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(localPath, 1024, 1024));
@@ -86,16 +86,8 @@ public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentLi
             previewIV.setImageResource(R.drawable.ph_imgbluredsqure);
         }
 
-        String uploadState = itemData.getOrDefault("uploadState", "pending").toString();
-        int progress = 0;
-        if (itemData.containsKey("uploadProgress")) {
-            try {
-                progress = (int) Double.parseDouble(itemData.get("uploadProgress").toString());
-            } catch (NumberFormatException e) {
-                Log.w("RvAttachment", "Invalid upload progress value: " + itemData.get("uploadProgress"));
-                progress = 0;
-            }
-        }
+        String uploadState = itemData.getUploadState();
+        int progress = (int) itemData.getUploadProgress();
 
         switch (uploadState) {
             case "uploading":
@@ -132,14 +124,14 @@ public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentLi
                     return;
                 }
 
-                HashMap<String, Object> currentItemData = data.get(adapterPosition);
+                Attachment currentItemData = data.get(adapterPosition);
                 if (currentItemData == null) {
                     Log.w("RvAttachment", "Null item data for removal at position: " + adapterPosition);
                     return;
                 }
 
-                if ("uploading".equals(currentItemData.get("uploadState"))) {
-                    String localPath = String.valueOf(currentItemData.get("localPath"));
+                if ("uploading".equals(currentItemData.getUploadState())) {
+                    String localPath = currentItemData.getLocalPath();
                     AsyncUploadService.cancelUpload(context, localPath);
                 }
 
@@ -147,8 +139,8 @@ public class Rv_attacmentListAdapter extends RecyclerView.Adapter<Rv_attacmentLi
                 notifyItemRemoved(adapterPosition);
                 notifyItemRangeChanged(adapterPosition, data.size() - adapterPosition);
 
-                if (currentItemData.containsKey("publicId")) {
-                    String publicId = String.valueOf(currentItemData.get("publicId"));
+                if (!currentItemData.getPublicId().isEmpty()) {
+                    String publicId = currentItemData.getPublicId();
                     if (publicId != null && !publicId.isEmpty()) {
                         UploadFiles.deleteByPublicId(publicId, new UploadFiles.DeleteCallback() {
                             @Override

@@ -73,8 +73,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     private var timer: java.util.TimerTask? = null
     private val _timer = java.util.Timer()
 
-
-    private val _firebase = FirebaseDatabase.getInstance()
+    private lateinit var chatViewModel: ChatViewModel
     private val auth = FirebaseAuth.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +108,7 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
     }
 
     private fun initializeLogic() {
+        chatViewModel = ViewModelProvider(this).get(ChatViewModel::class.java)
         back = findViewById(R.id.back)
         topProfileLayoutProfileImage = findViewById(R.id.topProfileLayoutProfileImage)
         topProfileLayoutUsername = findViewById(R.id.topProfileLayoutUsername)
@@ -138,11 +138,25 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         ChatMessagesListRecycler.adapter = chatAdapter
 
         val groupId = intent.getStringExtra("uid")
-        chatMessagesRef = _firebase.getReference("group-chats").child(groupId!!)
+        chatViewModel.loadChatMessages(groupId!!, true)
+        chatViewModel.loadGroupDetails(groupId)
 
-        _getGroupReference()
-        _getChatMessagesRef()
-        _attachChatListener()
+        chatViewModel.chatMessages.observe(this) { messages ->
+            ChatMessagesList.clear()
+            ChatMessagesList.addAll(messages)
+            chatAdapter?.notifyDataSetChanged()
+            ChatMessagesListRecycler.scrollToPosition(messages.size - 1)
+        }
+
+        chatViewModel.groupName.observe(this) { name ->
+            topProfileLayoutUsername.text = name
+        }
+
+        chatViewModel.groupIcon.observe(this) { icon ->
+            Glide.with(applicationContext)
+                .load(Uri.parse(icon))
+                .into(topProfileLayoutProfileImage)
+        }
 
         back.setOnClickListener { finish() }
 
@@ -212,131 +226,6 @@ class ChatGroupActivity : AppCompatActivity(), ChatAdapterListener {
         }
     }
 
-    private fun _getGroupReference() {
-        val groupId = intent.getStringExtra("uid")
-        val groupRef = _firebase.getReference("groups").child(groupId!!)
-        groupRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    topProfileLayoutUsername.text = dataSnapshot.child("name").getValue(String::class.java)
-                    
-                    // Fetch member usernames for displaying in chat bubbles
-                    fetchMemberUsernames(dataSnapshot)
-                    Glide.with(applicationContext)
-                        .load(Uri.parse(dataSnapshot.child("icon").getValue(String::class.java)))
-                        .into(topProfileLayoutProfileImage)
-                    topProfileLayoutStatus.text = "Group"
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {}
-        })
-    }
-
-    private fun _getChatMessagesRef() {
-        isLoading = true
-        val getChatsMessages = chatMessagesRef!!.limitToLast(CHAT_PAGE_SIZE)
-        getChatsMessages.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    val initialMessages = ArrayList<ChatMessage>()
-                    for (_data in dataSnapshot.children) {
-                        val messageData = _data.getValue(ChatMessage::class.java)
-                        if (messageData != null) {
-                            initialMessages.add(messageData)
-                            messageKeys.add(messageData.key)
-                        }
-                    }
-                    if (initialMessages.isNotEmpty()) {
-                        initialMessages.sortBy { it.pushDate }
-                        oldestMessageKey = initialMessages[0].key
-                        ChatMessagesList.addAll(initialMessages)
-                        chatAdapter?.notifyDataSetChanged()
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-                isLoading = false
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                isLoading = false
-            }
-        })
-    }
-
-    private fun _attachChatListener() {
-        if (chatMessagesRef == null) return
-        _chat_child_listener = object : ChildEventListener {
-            override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
-                val newMessage = dataSnapshot.getValue(ChatMessage::class.java)
-                if (newMessage != null) {
-                    val messageKey = newMessage.key
-                    if (!messageKeys.contains(messageKey)) {
-                        messageKeys.add(messageKey)
-                        val insertPosition = _findCorrectInsertPosition(newMessage)
-                        ChatMessagesList.add(insertPosition, newMessage)
-                        chatAdapter?.notifyItemInserted(insertPosition)
-                        ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size - 1)
-                    }
-                }
-            }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
-        }
-        chatMessagesRef!!.addChildEventListener(_chat_child_listener!!)
-    }
-    
-    private fun fetchMemberUsernames(groupSnapshot: DataSnapshot) {
-        val membersSnapshot = groupSnapshot.child("members")
-        if (membersSnapshot.exists()) {
-            val memberUids = mutableListOf<String>()
-            for (memberSnapshot in membersSnapshot.children) {
-                memberSnapshot.key?.let { memberUids.add(it) }
-            }
-
-            auth.currentUser?.uid?.let {
-                if (!memberUids.contains(it)) {
-                    memberUids.add(it)
-                }
-            }
-
-            val totalMembers = memberUids.size
-            var membersProcessed = 0
-
-            for (memberUid in memberUids) {
-                _firebase.getReference("skyline/users").child(memberUid).child("username")
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(userSnapshot: DataSnapshot) {
-                            val username = userSnapshot.getValue(String::class.java)
-                            if (username != null) {
-                                memberNamesMap[memberUid] = username
-                                if (memberUid == auth.currentUser?.uid) {
-                                    FirstUserName = username
-                                    chatAdapter?.setFirstUserName(username)
-                                }
-                            }
-
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            membersProcessed++
-                            if (membersProcessed == totalMembers) {
-                                chatAdapter?.setUserNamesMap(memberNamesMap)
-                                chatAdapter?.notifyDataSetChanged()
-                            }
-                        }
-                    })
-            }
-        }
-    }
 
     private fun _send_btn() {
         val messageText = message_et.text.toString().trim()
