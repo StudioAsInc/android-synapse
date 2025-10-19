@@ -6,10 +6,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.service.studioasinc.AI.Gemini
-import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
-import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
-import com.synapse.social.studioasinc.ChatConstants.UID_KEY
-import java.util.HashMap
+import com.synapse.social.studioasinc.chat.model.ChatMessage
 import kotlin.math.max
 import kotlin.math.min
 
@@ -17,7 +14,7 @@ class AiFeatureHandler(
     private val activity: AppCompatActivity,
     private val gemini: Gemini,
     private val message_et: EditText,
-    private val chatMessagesList: ArrayList<HashMap<String, Any>>,
+    private val chatMessagesList: ArrayList<ChatMessage>,
     private val auth: FirebaseAuth,
     private var secondUserName: String,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
@@ -49,7 +46,7 @@ class AiFeatureHandler(
             callGeminiForSend(prompt, true)
         } else {
             if (replyMessageID.isNotEmpty() && replyMessageID != "null") {
-                val repliedMessageIndex = chatMessagesList.indexOfFirst { it[KEY_KEY]?.toString() == replyMessageID }
+                val repliedMessageIndex = chatMessagesList.indexOfFirst { it.key == replyMessageID }
 
                 if (repliedMessageIndex != -1) {
                     val contextBuilder = StringBuilder()
@@ -61,8 +58,8 @@ class AiFeatureHandler(
 
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
-                        val sender = if (message[UID_KEY].toString() == auth.currentUser?.uid) "Me" else secondUserName
-                        contextBuilder.append("$sender: ${message[MESSAGE_TEXT_KEY]}\n")
+                        val sender = if (message.uid == auth.currentUser?.uid) "Me" else secondUserName
+                        contextBuilder.append("$sender: ${message.message}\n")
                     }
 
                     contextBuilder.append("---\n")

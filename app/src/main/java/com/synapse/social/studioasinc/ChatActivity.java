@@ -42,6 +42,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -63,11 +64,11 @@ import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.chat.common.ui.ChatNavigator;
 import com.synapse.social.studioasinc.chat.common.ui.SwipeToReplyHandler;
 import com.synapse.social.studioasinc.chat.common.service.UserBlockService;
-import com.synapse.social.studioasinc.chat.group.service.GroupDetailsLoader;
+import com.synapse.social.studioasinc.chat.model.ChatMessage;
+import com.synapse.social.studioasinc.chat.viewmodel.ChatViewModel;
 import com.synapse.social.studioasinc.util.ActivityResultHandler;
 import com.synapse.social.studioasinc.util.ChatMessageManager;
 import com.synapse.social.studioasinc.util.ChatHelper;
-import com.synapse.social.studioasinc.util.DatabaseHelper;
 import com.synapse.social.studioasinc.util.ItemUploadHandler;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
@@ -116,10 +117,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private ValueEventListener _userStatusListener;
 	private DatabaseReference userRef;
 
-	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
+	private HashMap<String, ChatMessage> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
 	private java.util.Set<String> locallyDeletedMessages = new java.util.HashSet<>();
-	private ArrayList<HashMap<String, Object>> ChatMessagesList = new ArrayList<>();
+	private ArrayList<ChatMessage> ChatMessagesList = new ArrayList<>();
 	public ArrayList<HashMap<String, Object>> attactmentmap = new ArrayList<>();
 
 	private androidx.constraintlayout.widget.ConstraintLayout relativelayout1;
@@ -186,9 +187,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
     private ChatScrollListener chatScrollListener;
     private AttachmentHandler attachmentHandler;
 	private ChatHelper chatHelper;
-	private DatabaseHelper databaseHelper;
     private ChatNavigator chatNavigator;
-    private GroupDetailsLoader groupDetailsLoader;
+    private ChatViewModel chatViewModel;
     private UserBlockService userBlockService;
     private ItemUploadHandler itemUploadHandler;
 
@@ -203,6 +203,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			setContentView(R.layout.activity_chat);
 		}
 		initialize(_savedInstanceState);
+		chatViewModel = new ViewModelProvider(this).get(ChatViewModel.class);
 		FirebaseApp.initializeApp(this);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
@@ -377,12 +378,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		
 		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 		String otherUserUid = getIntent().getStringExtra(UID_KEY);
-		if (is_group) {
-			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
-		} else {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
-			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
-		}
 		
 		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
 
@@ -390,7 +385,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 this,
                 auth,
                 _firebase,
-                ChatMessagesList,
+                null,
                 attactmentmap,
                 chatAdapter,
                 ChatMessagesListRecycler,
@@ -418,7 +413,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         aiFeatureHandler = new AiFeatureHandler(
                 this,
                 gemini,
-                message_et,
                 ChatMessagesList,
                 auth,
                 SecondUserName,
@@ -465,38 +459,49 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         );
 
 		chatHelper = new ChatHelper(this);
-		databaseHelper = new DatabaseHelper(
-				this,
-				_firebase,
-				chatAdapter,
-				FirstUserName,
-				chatUIUpdater,
-				(ArrayList)ChatMessagesList,
-				messageKeys,
-				oldestMessageKey,
-				chatMessagesRef,
-				ChatMessagesListRecycler,
-				(HashMap)repliedMessagesCache,
-				() -> {
-					ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-					return kotlin.Unit.INSTANCE;
-				}
-		);
+
+        String otherId = getIntent().getStringExtra("uid");
+        chatViewModel.loadChatMessages(otherId, is_group);
+        chatViewModel.getChatMessages().observe(this, messages -> {
+            ChatMessagesList.clear();
+            ChatMessagesList.addAll(messages);
+            chatAdapter.notifyDataSetChanged();
+            ChatMessagesListRecycler.scrollToPosition(messages.size() - 1);
+        });
 
 		if (is_group) {
-            groupDetailsLoader = new GroupDetailsLoader(
-                    this,
-                    getIntent().getStringExtra("uid"),
-                    topProfileLayoutUsername,
-                    topProfileLayoutProfileImage,
-                    topProfileLayoutGenderBadge,
-                    topProfileLayoutVerifiedBadge,
-                    topProfileLayoutStatus
-            );
-            groupDetailsLoader.loadGroupDetails();
-            _getChatMessagesRef();
+            chatViewModel.loadGroupDetails(otherId);
+            chatViewModel.getGroupName().observe(this, name -> {
+                if (name != null) topProfileLayoutUsername.setText(name);
+            });
+            chatViewModel.getGroupIcon().observe(this, icon -> {
+                if (icon != null) {
+                    Glide.with(ChatActivity.this).load(Uri.parse(icon)).into(topProfileLayoutProfileImage);
+                }
+            });
+            topProfileLayoutGenderBadge.setVisibility(View.GONE);
+            topProfileLayoutVerifiedBadge.setVisibility(View.GONE);
+            topProfileLayoutStatus.setText("Group");
 		} else {
-			_getUserReference();
+            chatViewModel.loadUserDetails(otherId);
+            chatViewModel.getUserDetails().observe(this, user -> {
+                if (user != null) {
+                    String displayName = user.getNickname() != null && !user.getNickname().isEmpty() && !"null".equals(user.getNickname()) ? user.getNickname() : "@" + user.getUsername();
+                    topProfileLayoutUsername.setText(displayName);
+                    SecondUserName = displayName;
+                }
+            });
+            chatViewModel.getUserAvatar().observe(this, avatar -> {
+                if (avatar != null) {
+                    Glide.with(this).load(avatar).into(topProfileLayoutProfileImage);
+                    SecondUserAvatar = avatar;
+                }
+            });
+            chatViewModel.getUserStatus().observe(this, status -> {
+                if (status != null) {
+                    topProfileLayoutStatus.setText(status);
+                }
+            });
 		}
 		message_input_outlined_round.setOrientation(LinearLayout.HORIZONTAL);
 		if (message_et.getText().toString().trim().equals("")) {
@@ -523,7 +528,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         voiceMessageHandler = new VoiceMessageHandler(this, this);
         voiceMessageHandler.setupVoiceButton(btn_voice_message);
 
-        chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager);
+        chatScrollListener = new ChatScrollListener(this, ChatRecyclerLayoutManager, () -> {
+            chatViewModel.loadMoreMessages(getIntent().getStringExtra("uid"), is_group);
+            return Unit.INSTANCE;
+        });
         ChatMessagesListRecycler.addOnScrollListener(chatScrollListener);
 
         attachmentHandler = new AttachmentHandler(
@@ -540,7 +548,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         itemUploadHandler = new ItemUploadHandler(
                 this,
                 auth,
-                (ArrayList) attactmentmap,
+                new ArrayList<>(attactmentmap),
                 rv_attacmentList,
                 (url) -> {
                     path = url;
@@ -548,7 +556,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 }
         );
 
-		databaseHelper.attachChatListener();
 		_attachUserStatusListener();
         chatNavigator = new ChatNavigator(this, ChatMessagesListRecycler, ChatMessagesList);
         userBlockService = new UserBlockService(this);
@@ -574,10 +581,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	protected void onStart() {
 		super.onStart();
 		blocklist.addChildEventListener(_blocklist_child_listener);
-
-		if (chatMessagesRef != null && ChatMessagesList != null && chatAdapter != null) {
-			_attachChatListener();
-		}
 		
 		if (userRef != null) {
 			_attachUserStatusListener();
@@ -592,7 +595,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onStop() {
 		super.onStop();
-		databaseHelper.detachChatListener();
 		_detachUserStatusListener();
 		blocklist.removeEventListener(_blocklist_child_listener);
 		if (auth.getCurrentUser() != null) {
@@ -614,7 +616,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		}
 		
-		databaseHelper.detachChatListener();
 		_detachUserStatusListener();
 		
 		if (_blocklist_child_listener != null) {
@@ -744,30 +745,20 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	}
 
-
-	public void _getUserReference() {
-		databaseHelper.getUserReference();
-	}
-
-	public void _getChatMessagesRef() {
-		databaseHelper.getChatMessagesRef();
-	}
-
-	private int _findCorrectInsertPosition(HashMap<String, Object> newMessage) {
+	private int _findCorrectInsertPosition(ChatMessage newMessage) {
 		if (ChatMessagesList.isEmpty()) {
 			return 0;
 		}
-		
-		long newMessageTime = _getMessageTimestamp(newMessage);
-		
+
+		long newMessageTime = newMessage.getPushDate();
+
 		for (int i = 0; i < ChatMessagesList.size(); i++) {
-			long existingMessageTime = _getMessageTimestamp(ChatMessagesList.get(i));
-			
+			long existingMessageTime = ChatMessagesList.get(i).getPushDate();
 			if (newMessageTime <= existingMessageTime) {
 				return i;
 			}
 		}
-		
+
 		return ChatMessagesList.size();
 	}
 	
@@ -816,22 +807,18 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			if (ChatMessagesList.size() > 1) {
 				boolean needsReorder = false;
 				for (int i = 0; i < ChatMessagesList.size() - 1; i++) {
-					long currentTime = _getMessageTimestamp(ChatMessagesList.get(i));
-					long nextTime = _getMessageTimestamp(ChatMessagesList.get(i + 1));
-					if (currentTime > nextTime) {
+					ChatMessage currentMessage = ChatMessagesList.get(i);
+					ChatMessage nextMessage = ChatMessagesList.get(i + 1);
+
+					if (currentMessage.getPushDate() > nextMessage.getPushDate()) {
 						needsReorder = true;
 						break;
 					}
 				}
-				
+
 				if (needsReorder) {
 					Log.d("ChatActivity", "Messages are out of order, reordering...");
-					ChatMessagesList.sort((msg1, msg2) -> {
-						long time1 = _getMessageTimestamp(msg1);
-						long time2 = _getMessageTimestamp(msg2);
-						return Long.compare(time1, time2);
-					});
-					
+					ChatMessagesList.sort((m1, m2) -> Long.compare(m1.getPushDate(), m2.getPushDate()));
 					if (chatAdapter != null) {
 						chatAdapter.notifyDataSetChanged();
 					}
@@ -840,12 +827,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			}
 		} catch (Exception e) {
 			Log.e("ChatActivity", "Error reordering messages: " + e.getMessage());
-		}
-	}
-
-	private void _attachChatListener() {
-		if (databaseHelper != null) {
-			databaseHelper.attachChatListener();
 		}
 	}
 
@@ -893,10 +874,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 					}
                     SecondUserAvatar = dataSnapshot.child("avatar_url").getValue(String.class);
 
-					if (chatAdapter != null) {
-						chatAdapter.setSecondUserName(SecondUserName);
-						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
-					}
                     if (messageInteractionHandler != null) {
                         messageInteractionHandler.setSecondUserName(SecondUserName);
                     }
@@ -934,15 +911,15 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _getOldChatMessagesRef() {
-		databaseHelper.getOldChatMessagesRef();
+		chatViewModel.loadMoreMessages(getIntent().getStringExtra("uid"), is_group);
 	}
 
 
-	public void _DeleteMessageDialog(final HashMap<String, Object> messageData) {
-		if (messageData == null || messageData.get(KEY_KEY) == null) {
+	public void _DeleteMessageDialog(final ChatMessage messageData) {
+		if (messageData == null || messageData.getKey() == null) {
 			return;
 		}
-		final String messageKey = messageData.get(KEY_KEY).toString();
+		final String messageKey = messageData.getKey();
 
 		MaterialAlertDialogBuilder zorry = new MaterialAlertDialogBuilder(ChatActivity.this);
 		zorry.setTitle("Delete Message");
@@ -977,8 +954,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			});
 
 			for (int i = 0; i < ChatMessagesList.size(); i++) {
-				Object k = ChatMessagesList.get(i).get(KEY_KEY);
-				if (k != null && messageKey.equals(String.valueOf(k))) {
+				if (messageKey.equals(ChatMessagesList.get(i).getKey())) {
 					ChatMessagesList.remove(i);
 					messageKeys.remove(messageKey);
 					chatAdapter.notifyItemRemoved(i);
@@ -1066,10 +1042,9 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _showLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty() && !ChatMessagesList.get(0).containsKey("isLoadingMore")) {
-			HashMap<String, Object> loadingMap = new HashMap<>();
-			loadingMap.put("isLoadingMore", true);
-			ChatMessagesList.add(0, loadingMap);
+		if (!ChatMessagesList.isEmpty()) {
+			ChatMessage loadingMessage = new ChatMessage();
+			ChatMessagesList.add(0, loadingMessage);
 			if (chatAdapter != null) {
 				chatAdapter.notifyItemInserted(0);
 				if (ChatMessagesList.size() > 1) {
@@ -1081,18 +1056,26 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 
 	public void _hideLoadMoreIndicator() {
-		if (!ChatMessagesList.isEmpty() && ChatMessagesList.get(0).containsKey("isLoadingMore")) {
+		if (!ChatMessagesList.isEmpty()) {
 			ChatMessagesList.remove(0);
-			((ChatAdapter)chatAdapter).notifyItemRemoved(0);
+			chatAdapter.notifyItemRemoved(0);
 		}
 	}
 
 
 	public void _showReplyUI(final double _position) {
-		HashMap<String, Object> messageData = ChatMessagesList.get((int)_position);
-		ReplyMessageID = messageData.get(KEY_KEY).toString();
-		chatUIUpdater.showReplyUI(FirstUserName, SecondUserName, messageData);
-		vbr.vibrate((long)(48));
+		ChatMessage messageData = ChatMessagesList.get((int) _position);
+		ReplyMessageID = messageData.getKey();
+
+		String senderName;
+		if (messageData.getUid().equals(auth.getCurrentUser().getUid())) {
+			senderName = "You";
+		} else {
+			senderName = SecondUserName;
+		}
+
+		chatUIUpdater.showReplyUI(senderName, messageData.getMessage(), repliedMessagesCache.get(messageData.getReplyTo()));
+		vbr.vibrate((long) 48);
 	}
 
 
@@ -1168,9 +1151,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onReplySelected(String messageId) {
 		ReplyMessageID = messageId;
-		for (HashMap<String, Object> messageData : ChatMessagesList) {
-			if (messageId.equals(messageData.get(KEY_KEY))) {
-				chatUIUpdater.showReplyUI(FirstUserName, SecondUserName, messageData);
+		for (ChatMessage messageData : ChatMessagesList) {
+			if (messageId.equals(messageData.getKey())) {
+				String senderName = messageData.getUid().equals(auth.getCurrentUser().getUid()) ? "You" : SecondUserName;
+				chatUIUpdater.showReplyUI(senderName, messageData.getMessage(), repliedMessagesCache.get(messageData.getReplyTo()));
 				vbr.vibrate(48);
 				break;
 			}
@@ -1178,7 +1162,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	@Override
-	public void onDeleteMessage(HashMap<String, Object> messageData) {
+	public void onDeleteMessage(ChatMessage messageData) {
 		_DeleteMessageDialog(messageData);
 	}
 
