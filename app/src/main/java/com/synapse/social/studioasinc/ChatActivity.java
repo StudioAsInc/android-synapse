@@ -71,6 +71,10 @@ import com.synapse.social.studioasinc.util.DatabaseHelper;
 import com.synapse.social.studioasinc.util.ItemUploadHandler;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
+import com.synapse.social.studioasinc.chat.common.viewmodel.ChatViewModel;
+import com.synapse.social.studioasinc.factories.ChatViewModelFactory;
+import com.synapse.social.studioasinc.chat.common.repository.ChatRepository;
+import androidx.lifecycle.ViewModelProvider;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -85,9 +89,10 @@ import static com.synapse.social.studioasinc.ChatConstants.*;
 
 public class ChatActivity extends AppCompatActivity implements ChatAdapterListener, ChatInteractionListener, VoiceMessageHandler.VoiceMessageListener {
 
+	private ChatViewModel chatViewModel;
+
 	private Handler recordHandler = new Handler();
 	private Runnable recordRunnable;
-	private FirebaseDatabase _firebase = FirebaseDatabase.getInstance();
 
 	private ProgressDialog SynapseLoadingDialog;
 	private HashMap<String, Object> ChatSendMap = new HashMap<>();
@@ -111,10 +116,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	public final int REQ_CD_IMAGE_PICKER = 101;
 	private ChatAdapter chatAdapter;
 	private boolean isLoading = false;
-	private ChildEventListener _chat_child_listener;
-	private DatabaseReference chatMessagesRef;
-	private ValueEventListener _userStatusListener;
-	private DatabaseReference userRef;
 
 	private HashMap<String, HashMap<String, Object>> repliedMessagesCache = new HashMap<>();
 	private java.util.Set<String> messageKeys = new java.util.HashSet<>();
@@ -166,12 +167,10 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private ImageView galleryBtn;
 
 	private Intent intent = new Intent();
-	private DatabaseReference main = _firebase.getReference(SKYLINE_REF);
 	private FirebaseAuth auth;
 	private TimerTask loadTimer;
 	private Calendar cc = Calendar.getInstance();
 	private Vibrator vbr;
-	private DatabaseReference blocklist = _firebase.getReference(SKYLINE_REF).child(BLOCKLIST_REF);
 	private ChildEventListener _blocklist_child_listener;
 	private SharedPreferences blocked;
 	private SharedPreferences theme;
@@ -313,38 +312,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 messageSendingHandler.sendButtonAction(message_et, ReplyMessageID, mMessageReplyLayout);
 			}
 		});
-
-		_blocklist_child_listener = new ChildEventListener() {
-			@Override
-			public void onChildAdded(DataSnapshot _param1, String _param2) {
-				handleBlocklistUpdate(_param1);
-			}
-
-			@Override
-			public void onChildChanged(DataSnapshot _param1, String _param2) {
-				handleBlocklistUpdate(_param1);
-			}
-
-			@Override
-			public void onChildMoved(DataSnapshot _param1, String _param2) {
-
-			}
-
-			@Override
-			public void onChildRemoved(DataSnapshot _param1) {
-				GenericTypeIndicator<HashMap<String, Object>> _ind = new GenericTypeIndicator<HashMap<String, Object>>() {};
-				final String _childKey = _param1.getKey();
-				final HashMap<String, Object> _childValue = _param1.getValue(_ind);
-
-			}
-
-			@Override
-			public void onCancelled(DatabaseError _param1) {
-				final int _errorCode = _param1.getCode();
-				final String _errorMessage = _param1.getMessage();
-
-			}
-		};
 	}
 
 	private void initializeLogic() {
@@ -374,30 +341,61 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		ChatMessagesListRecycler.setItemViewCacheSize(50);
 		ChatMessagesListRecycler.setDrawingCacheEnabled(true);
 		ChatMessagesListRecycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+
+		String chatId = getIntent().getStringExtra("chatID");
+		ChatRepository chatRepository = new ChatRepository();
+		ChatViewModelFactory factory = new ChatViewModelFactory(chatRepository);
+		chatViewModel = new ViewModelProvider(this, factory).get(ChatViewModel.class);
 		
-		String currentUserUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-		String otherUserUid = getIntent().getStringExtra(UID_KEY);
-		if (is_group) {
-			chatMessagesRef = _firebase.getReference("skyline/group-chats").child(otherUserUid);
-		} else {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(currentUserUid, otherUserUid);
-			chatMessagesRef = _firebase.getReference(CHATS_REF).child(chatID);
-		}
+		chatViewModel.loadChatMessages(chatId);
+		chatViewModel.loadUserStatus(getIntent().getStringExtra(UID_KEY));
 		
-		userRef = _firebase.getReference(SKYLINE_REF).child(USERS_REF).child(otherUserUid);
+        chatViewModel.getChatMessages().observe(this, messages -> {
+            chatAdapter.setData(messages);
+            ChatMessagesListRecycler.scrollToPosition(messages.size() - 1);
+        });
+
+        chatViewModel.getUserStatus().observe(this, userStatus -> {
+            // Update UI with user status
+        });
+
+        chatViewModel.getBlockedUsers(auth.getCurrentUser().getUid());
+        chatViewModel.getBlockedUsers().observe(this, blockedUsers -> {
+            if (blockedUsers.contains(getIntent().getStringExtra(UID_KEY))) {
+                message_input_overall_container.setVisibility(View.GONE);
+                blocked_txt.setVisibility(View.VISIBLE);
+            } else {
+                message_input_overall_container.setVisibility(View.VISIBLE);
+                blocked_txt.setVisibility(View.GONE);
+            }
+        });
+
+        ChatMessagesListRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager != null && layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                    if (chatAdapter.getItemCount() > 0) {
+                        String lastMessageKey = chatAdapter.getData().get(0).getKey();
+                        chatViewModel.loadMoreMessages(chatId, lastMessageKey);
+                    }
+                }
+            }
+        });
 
         messageSendingHandler = new MessageSendingHandler(
                 this,
                 auth,
-                _firebase,
-                ChatMessagesList,
+                chatViewModel,
+                chatId,
                 attactmentmap,
                 chatAdapter,
                 ChatMessagesListRecycler,
                 rv_attacmentList,
                 attachmentLayoutListHolder,
                 messageKeys,
-                otherUserUid,
+                getIntent().getStringExtra(UID_KEY),
                 FirstUserName,
                 is_group
         );
@@ -564,67 +562,22 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onPause() {
 		super.onPause();
-		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
-		}
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		blocklist.addChildEventListener(_blocklist_child_listener);
-
-		if (chatMessagesRef != null && ChatMessagesList != null && chatAdapter != null) {
-			_attachChatListener();
-		}
-		
-		if (userRef != null) {
-			_attachUserStatusListener();
-		}
-
-		if (auth.getCurrentUser() != null) {
-			String recipientUid = getIntent().getStringExtra("uid");
-			PresenceManager.setChattingWith(auth.getCurrentUser().getUid(), recipientUid);
-		}
 	}
 
 	@Override
 	public void onStop() {
 		super.onStop();
-		databaseHelper.detachChatListener();
-		_detachUserStatusListener();
-		blocklist.removeEventListener(_blocklist_child_listener);
-		if (auth.getCurrentUser() != null) {
-			String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-			_firebase.getReference(CHATS_REF).child(chatID).child(TYPING_MESSAGE_REF).removeValue();
-		}
 	}
 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		
-		if (auth.getCurrentUser() != null) {
-			try {
-				String chatID = ChatMessageManager.INSTANCE.getChatId(auth.getCurrentUser().getUid(), getIntent().getStringExtra(UID_KEY));
-				_firebase.getReference("chats").child(chatID).child(TYPING_MESSAGE_REF).removeValue();
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error cleaning up typing indicator: " + e.getMessage());
-			}
-		}
-		
-		databaseHelper.detachChatListener();
-		_detachUserStatusListener();
-		
-		if (_blocklist_child_listener != null) {
-			try {
-				blocklist.removeEventListener(_blocklist_child_listener);
-			} catch (Exception e) {
-				Log.e("ChatActivity", "Error removing blocklist listener: " + e.getMessage());
-			}
-		}
-		
+
 		if (recordHandler != null && recordRunnable != null) {
 			recordHandler.removeCallbacks(recordRunnable);
 		}
@@ -687,8 +640,8 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
     private MessageInteractionHandler messageInteractionHandler;
 	@Override
-	public void showMessageOverviewPopup(View _view, int _position, ArrayList<HashMap<String, Object>> _data) {
-		messageInteractionHandler.showMessageOverviewPopup(_view, _position);
+	public void showMessageOverviewPopup(View _view, ChatMessage message) {
+		messageInteractionHandler.showMessageOverviewPopup(_view, message);
 	}
 
 
@@ -742,15 +695,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 
 	{
 
-	}
-
-
-	public void _getUserReference() {
-		databaseHelper.getUserReference();
-	}
-
-	public void _getChatMessagesRef() {
-		databaseHelper.getChatMessagesRef();
 	}
 
 	private int _findCorrectInsertPosition(HashMap<String, Object> newMessage) {
@@ -843,12 +787,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 		}
 	}
 
-	private void _attachChatListener() {
-		if (databaseHelper != null) {
-			databaseHelper.attachChatListener();
-		}
-	}
-
 	private void scrollToBottom() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.smoothScrollToPosition(ChatMessagesList.size() - 1);
@@ -858,63 +796,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	private void scrollToBottomImmediate() {
 		if (ChatMessagesListRecycler != null && !ChatMessagesList.isEmpty()) {
 			ChatMessagesListRecycler.scrollToPosition(ChatMessagesList.size() - 1);
-		}
-	}
-
-	private void _attachUserStatusListener() {
-		if (userRef == null) {
-			Log.w("ChatActivity", "Cannot attach user status listener - userRef is null");
-			return;
-		}
-		
-		if (_userStatusListener != null) {
-			try {
-				userRef.removeEventListener(_userStatusListener);
-			} catch (Exception e) {
-				Log.w("ChatActivity", "Error removing existing user status listener: " + e.getMessage());
-			}
-			_userStatusListener = null;
-		}
-		
-		_userStatusListener = new ValueEventListener() {
-			@Override
-			public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-				if (dataSnapshot.exists()) {
-					chatUIUpdater.updateUserProfile(dataSnapshot);
-
-					String nickname = dataSnapshot.child("nickname").getValue(String.class);
-					String username = dataSnapshot.child("username").getValue(String.class);
-					if (nickname != null && !"null".equals(nickname)) {
-						SecondUserName = nickname;
-					} else if (username != null && !"null".equals(username)) {
-						SecondUserName = "@" + username;
-					} else {
-						SecondUserName = "Unknown User";
-					}
-                    SecondUserAvatar = dataSnapshot.child("avatar_url").getValue(String.class);
-
-					if (chatAdapter != null) {
-						chatAdapter.setSecondUserName(SecondUserName);
-						chatAdapter.setSecondUserAvatar(SecondUserAvatar);
-					}
-                    if (messageInteractionHandler != null) {
-                        messageInteractionHandler.setSecondUserName(SecondUserName);
-                    }
-				}
-			}
-
-			@Override
-			public void onCancelled(@NonNull DatabaseError databaseError) {
-				Log.e("ChatActivity", "Failed to get user reference: " + databaseError.getMessage());
-			}
-		};
-		userRef.addValueEventListener(_userStatusListener);
-	}
-
-	private void _detachUserStatusListener() {
-		if (_userStatusListener != null) {
-			userRef.removeEventListener(_userStatusListener);
-			_userStatusListener = null;
 		}
 	}
 
@@ -933,71 +814,25 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 
-	public void _getOldChatMessagesRef() {
-		databaseHelper.getOldChatMessagesRef();
-	}
-
-
-	public void _DeleteMessageDialog(final HashMap<String, Object> messageData) {
-		if (messageData == null || messageData.get(KEY_KEY) == null) {
-			return;
-		}
-		final String messageKey = messageData.get(KEY_KEY).toString();
-
-		MaterialAlertDialogBuilder zorry = new MaterialAlertDialogBuilder(ChatActivity.this);
-		zorry.setTitle("Delete Message");
-		zorry.setMessage("Are you sure you want to delete this message? This action cannot be undone.");
-		zorry.setIcon(R.drawable.popup_ic_3);
-		zorry.setPositiveButton("Delete", (dialog, which) -> {
-			locallyDeletedMessages.add(messageKey);
-
-			final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-			final String otherUid = getIntent().getStringExtra(UID_KEY);
-			final String chatID = ChatMessageManager.INSTANCE.getChatId(myUid, otherUid);
-			final DatabaseReference chatRef = _firebase.getReference(CHATS_REF).child(chatID);
-
-			chatRef.child(messageKey).removeValue().addOnCompleteListener(task -> {
-				if (task.isSuccessful()) {
-					chatRef.limitToFirst(1).addListenerForSingleValueEvent(new ValueEventListener() {
-						@Override
-						public void onDataChange(@NonNull DataSnapshot snapshot) {
-							if (!snapshot.exists()) {
-								_firebase.getReference(INBOX_REF).child(myUid).child(otherUid).removeValue();
-								_firebase.getReference(INBOX_REF).child(otherUid).child(myUid).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(myUid).child(chatID).removeValue();
-								_firebase.getReference(USER_CHATS_REF).child(otherUid).child(chatID).removeValue();
-							}
-						}
-						@Override
-						public void onCancelled(@NonNull DatabaseError error) {
-							Log.e("ChatActivity", "Error checking for last message: " + error.getMessage());
-						}
-					});
-				}
-			});
-
-			for (int i = 0; i < ChatMessagesList.size(); i++) {
-				Object k = ChatMessagesList.get(i).get(KEY_KEY);
-				if (k != null && messageKey.equals(String.valueOf(k))) {
-					ChatMessagesList.remove(i);
-					messageKeys.remove(messageKey);
-					chatAdapter.notifyItemRemoved(i);
-					if (i > 0) {
-						chatAdapter.notifyItemChanged(i - 1);
-					}
-					break;
-				}
-			}
-		});
-		zorry.setNegativeButton("Cancel", null);
-		zorry.create().show();
-	}
 
 
 	public void _ScrollingText(final TextView _view) {
 		_view.setSingleLine(true);
 		_view.setEllipsize(TextUtils.TruncateAt.MARQUEE);
 		_view.setSelected(true);
+	}
+
+
+	public void _DeleteMessageDialog(final ChatMessage message) {
+		new MaterialAlertDialogBuilder(ChatActivity.this)
+				.setTitle("Delete Message")
+				.setMessage("Are you sure you want to delete this message? This action cannot be undone.")
+				.setPositiveButton("Delete", (dialog, which) -> {
+					String chatId = getIntent().getStringExtra("chatID");
+					chatViewModel.deleteMessage(chatId, message);
+				})
+				.setNegativeButton("Cancel", null)
+				.show();
 	}
 
     private MessageSendingHandler messageSendingHandler;
