@@ -75,9 +75,9 @@ class AttachmentHandler(
             attachmentLayoutListHolder.visibility = View.GONE
         }
         if (rv_attacmentList.adapter != null) {
-            val oldSize = attactmentmap.size
+            val oldSize = attachments.size
             if (oldSize > 0) {
-                attactmentmap.clear()
+                attachments.clear()
                 rv_attacmentList.adapter?.notifyItemRangeRemoved(0, oldSize)
             }
         }

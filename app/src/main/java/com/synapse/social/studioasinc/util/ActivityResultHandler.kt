@@ -48,28 +48,23 @@ class ActivityResultHandler(private val activity: ChatActivity) {
                 if (resolvedFilePaths.isNotEmpty()) {
                     activity.attachmentLayoutListHolder.visibility = View.VISIBLE
 
-                    val startingPosition = activity.attactmentmap.size
+                    val startingPosition = activity.attachments.size
 
                     for (filePath in resolvedFilePaths) {
                         try {
-                            val itemMap = HashMap<String, Any>()
-                            itemMap["localPath"] = filePath
-                            itemMap["uploadState"] = "pending"
-
-                            // Get image dimensions safely
                             val options = BitmapFactory.Options()
                             options.inJustDecodeBounds = true
-                            try {
-                                BitmapFactory.decodeFile(filePath, options)
-                                itemMap["width"] = if (options.outWidth > 0) options.outWidth else 100
-                                itemMap["height"] = if (options.outHeight > 0) options.outHeight else 100
-                            } catch (e: Exception) {
-                                Log.w("ChatActivity", "Could not decode image dimensions for: $filePath")
-                                itemMap["width"] = 100
-                                itemMap["height"] = 100
-                            }
+                            BitmapFactory.decodeFile(filePath, options)
+                            val width = if (options.outWidth > 0) options.outWidth.toDouble() else 100.0
+                            val height = if (options.outHeight > 0) options.outHeight.toDouble() else 100.0
 
-                            activity.attactmentmap.add(itemMap)
+                            val attachment = com.synapse.social.studioasinc.model.Attachment(
+                                localPath = filePath,
+                                uploadState = "pending",
+                                width = width,
+                                height = height
+                            )
+                            activity.attachments.add(attachment)
                         } catch (e: Exception) {
                             Log.e("ChatActivity", "Error processing file: $filePath, Error: " + e.message)
                         }

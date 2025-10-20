@@ -5,10 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.synapse.social.studioasinc.chat.model.ChatMessage
 import com.synapse.social.studioasinc.chat.model.ChatUser
 import com.synapse.social.studioasinc.util.ChatMessageManager
@@ -134,7 +131,15 @@ class ChatViewModel : ViewModel() {
                         if (newMessages.isNotEmpty()) {
                             oldestMessageKey = newMessages.first().timestamp.toString()
                             val userIds = newMessages.map { it.uid }.distinct()
-                            fetchUsers(userIds) {
+                            viewModelScope.launch {
+                                val usersToFetch = userIds.filterNot { usersCache.containsKey(it) }
+                                if (usersToFetch.isNotEmpty()) {
+                                    val usersRef = firebaseDatabase.getReference("skyline/users")
+                                    val fetchedUsers = usersToFetch.map { userId ->
+                                        async { userId to fetchUser(usersRef.child(userId)) }
+                                    }.awaitAll().filterNot { it.second == null }.associate { it.first to it.second!! }
+                                    usersCache.putAll(fetchedUsers)
+                                }
                                 val messagesWithUsers = newMessages.map { it.copy(user = usersCache[it.uid]) }
                                 val currentMessages = _chatMessages.value ?: emptyList()
                                 _chatMessages.postValue(messagesWithUsers + currentMessages)
@@ -220,5 +225,69 @@ class ChatViewModel : ViewModel() {
         activeListeners.forEach { (ref, listener) ->
             ref.removeEventListener(listener)
         }
+    }
+
+    fun sendMessage(groupId: String, messageText: String, repliedMessageId: String?) {
+        val senderUid = auth.currentUser!!.uid
+        val messagesRef = firebaseDatabase.getReference("skyline/group-chats").child(groupId).child("messages")
+        val messageKey = messagesRef.push().key ?: return
+
+        val message = ChatMessage(
+            uid = senderUid,
+            messageText = messageText,
+            timestamp = System.currentTimeMillis(),
+            key = messageKey,
+            repliedMessageId = repliedMessageId
+        )
+        messagesRef.child(messageKey).setValue(message)
+        updateGroupInbox(groupId, messageText)
+    }
+
+    fun sendVoiceMessage(groupId: String, audioUrl: String, duration: Long, repliedMessageId: String?) {
+        val senderUid = auth.currentUser!!.uid
+        val messagesRef = firebaseDatabase.getReference("skyline/group-chats").child(groupId).child("messages")
+        val messageKey = messagesRef.push().key ?: return
+
+        val message = ChatMessage(
+            uid = senderUid,
+            timestamp = System.currentTimeMillis(),
+            key = messageKey,
+            type = "VOICE_MESSAGE",
+            audioUrl = audioUrl,
+            audioDuration = duration,
+            repliedMessageId = repliedMessageId
+        )
+        messagesRef.child(messageKey).setValue(message)
+        updateGroupInbox(groupId, "Voice Message")
+    }
+
+    private fun updateGroupInbox(groupId: String, lastMessage: String) {
+        val groupRef = firebaseDatabase.getReference("skyline/group-chats").child(groupId)
+        groupRef.child("members").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (memberSnapshot in dataSnapshot.children) {
+                        val memberUid = memberSnapshot.key
+                        if (memberUid != null) {
+                            val inboxRef = firebaseDatabase.getReference("inbox").child(memberUid).child(groupId)
+                            val inboxUpdate = mapOf(
+                                "chatID" to groupId,
+                                "uid" to groupId,
+                                "last_message_uid" to auth.currentUser!!.uid,
+                                "last_message_text" to lastMessage,
+                                "last_message_state" to "sended",
+                                "push_date" to ServerValue.TIMESTAMP,
+                                "chat_type" to "group"
+                            )
+                            inboxRef.setValue(inboxUpdate)
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                android.util.Log.e("ChatViewModel", "Failed to update group inbox: ${databaseError.message}")
+            }
+        })
     }
 }

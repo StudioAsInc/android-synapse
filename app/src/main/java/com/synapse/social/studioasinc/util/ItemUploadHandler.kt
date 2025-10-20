@@ -59,7 +59,7 @@ class ItemUploadHandler(
         val file = File(filePath)
         if (!file.exists()) {
             Log.e("ItemUploadHandler", "File does not exist: $filePath")
-            itemMap["uploadState"] = "failed"
+            attachment.uploadState = "failed"
             rv_attacmentList.adapter?.notifyItemChanged(position)
             return
         }
