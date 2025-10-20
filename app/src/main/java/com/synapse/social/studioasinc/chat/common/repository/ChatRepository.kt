@@ -100,4 +100,43 @@ class ChatRepository {
         chatsRef.child(chatId).orderByKey().endAt(lastMessageKey).limitToLast(20).addValueEventListener(listener)
         awaitClose { chatsRef.child(chatId).removeEventListener(listener) }
     }
+
+    suspend fun markMessageAsSeen(chatId: String, message: ChatMessage) {
+        chatsRef.child(chatId).child(message.key).child("message_state").setValue("seen")
+    }
+
+    suspend fun getRepliedMessage(chatId: String, messageKey: String): ChatMessage? {
+        val deferred = CompletableDeferred<ChatMessage?>()
+        chatsRef.child(chatId).child(messageKey).get()
+            .addOnSuccessListener {
+                deferred.complete(it.getValue(ChatMessage::class.java))
+            }
+            .addOnFailureListener {
+                deferred.complete(null)
+            }
+        return deferred.await()
+    }
+
+    suspend fun setTyping(chatId: String, isTyping: Boolean) {
+        if (isTyping) {
+            chatsRef.child(chatId).child("typing_indicator").setValue(true)
+        } else {
+            chatsRef.child(chatId).child("typing_indicator").removeValue()
+        }
+    }
+
+    fun getTypingStatus(chatId: String): Flow<Boolean> = callbackFlow {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val isTyping = snapshot.exists()
+                trySend(isTyping)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        chatsRef.child(chatId).child("typing_indicator").addValueEventListener(listener)
+        awaitClose { chatsRef.child(chatId).child("typing_indicator").removeEventListener(listener) }
+    }
 }

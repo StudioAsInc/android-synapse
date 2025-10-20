@@ -213,6 +213,12 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	}
 
 	@Override
+	public void markMessageAsSeen(ChatMessage message) {
+		String chatId = getIntent().getStringExtra("chatID");
+		chatViewModel.markMessageAsSeen(chatId, message);
+	}
+
+	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		if (requestCode == 1000) {
@@ -356,7 +362,13 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
         });
 
         chatViewModel.getUserStatus().observe(this, userStatus -> {
-            // Update UI with user status
+            topProfileLayoutStatus.setText(userStatus.isOnline() ? "Online" : "Offline");
+            if (userStatus.getAvatarUrl() != null) {
+                Glide.with(this).load(userStatus.getAvatarUrl()).into(topProfileLayoutProfileImage);
+            }
+            if (userStatus.getNickname() != null) {
+                topProfileLayoutUsername.setText(userStatus.getNickname());
+            }
         });
 
         chatViewModel.getBlockedUsers(auth.getCurrentUser().getUid());
@@ -394,7 +406,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
                 ChatMessagesListRecycler,
                 rv_attacmentList,
                 attachmentLayoutListHolder,
-                messageKeys,
                 getIntent().getStringExtra(UID_KEY),
                 FirstUserName,
                 is_group
@@ -562,16 +573,29 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 	@Override
 	public void onPause() {
 		super.onPause();
+		String chatId = getIntent().getStringExtra("chatID");
+		chatViewModel.setTyping(chatId, false);
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
+		String chatId = getIntent().getStringExtra("chatID");
+		chatViewModel.getTypingStatus(chatId);
+		chatViewModel.getTypingStatus().observe(this, isTyping -> {
+			if (isTyping) {
+				chatAdapter.addTypingIndicator();
+			} else {
+				chatAdapter.removeTypingIndicator();
+			}
+		});
 	}
 
 	@Override
 	public void onStop() {
 		super.onStop();
+		String chatId = getIntent().getStringExtra("chatID");
+		chatViewModel.setTyping(chatId, false);
 	}
 
 	@Override
@@ -834,9 +858,6 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 				.setNegativeButton("Cancel", null)
 				.show();
 	}
-
-    private MessageSendingHandler messageSendingHandler;
-
 
 	public void _TransitionManager(final View _view, final double _duration) {
 		LinearLayout viewgroup =(LinearLayout) _view;

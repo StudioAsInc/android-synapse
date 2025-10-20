@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.model.ChatMessage
 import com.synapse.social.studioasinc.model.UserStatus
 import com.synapse.social.studioasinc.chat.common.repository.ChatRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 class ChatViewModel(
@@ -25,6 +27,16 @@ class ChatViewModel(
     fun loadChatMessages(chatId: String) {
         viewModelScope.launch {
             chatRepository.getChatMessages(chatId).collect { messages ->
+                val deferreds = messages.map { message ->
+                    if (message.repliedMessageId != null) {
+                        async {
+                            message.repliedMessage = chatRepository.getRepliedMessage(chatId, message.repliedMessageId!!)
+                        }
+                    } else {
+                        null
+                    }
+                }
+                deferreds.filterNotNull().awaitAll()
                 _chatMessages.postValue(messages)
             }
         }
@@ -77,7 +89,31 @@ class ChatViewModel(
     fun loadMoreMessages(chatId: String, lastMessageKey: String) {
         viewModelScope.launch {
             chatRepository.getMoreMessages(chatId, lastMessageKey).collect {
-                _chatMessages.postValue(it)
+                val currentMessages = _chatMessages.value ?: emptyList()
+                _chatMessages.postValue(it + currentMessages)
+            }
+        }
+    }
+
+    fun markMessageAsSeen(chatId: String, message: ChatMessage) {
+        viewModelScope.launch {
+            chatRepository.markMessageAsSeen(chatId, message)
+        }
+    }
+
+    fun setTyping(chatId: String, isTyping: Boolean) {
+        viewModelScope.launch {
+            chatRepository.setTyping(chatId, isTyping)
+        }
+    }
+
+    private val _typingStatus = MutableLiveData<Boolean>()
+    val typingStatus: LiveData<Boolean> = _typingStatus
+
+    fun getTypingStatus(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.getTypingStatus(chatId).collect {
+                _typingStatus.postValue(it)
             }
         }
     }

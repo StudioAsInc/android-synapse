@@ -26,17 +26,3 @@ data class ChatMessage(
     var isLoadingMore: Boolean = false,
     var isTyping: Boolean = false
 ) : Parcelable
-
-@Parcelize
-data class Attachment(
-    @SerializedName("publicId")
-    val publicId: String = "",
-    @SerializedName("url")
-    val url: String = "",
-    @SerializedName("width")
-    val width: Int = 0,
-    @SerializedName("height")
-    val height: Int = 0,
-    @SerializedName("resource_type")
-    val resourceType: String = ""
-) : Parcelable

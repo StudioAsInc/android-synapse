@@ -10,4 +10,5 @@ public interface ChatAdapterListener {
     void showMessageOverviewPopup(View anchor, ChatMessage message);
     void openUrl(String url);
     String getRecipientUid();
+    void markMessageAsSeen(ChatMessage message);
 }

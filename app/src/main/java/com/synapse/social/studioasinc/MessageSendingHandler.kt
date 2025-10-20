@@ -42,13 +42,11 @@ class MessageSendingHandler(
     private val auth: FirebaseAuth,
     private val chatViewModel: ChatViewModel,
     private val chatId: String,
-    private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val attactmentmap: ArrayList<HashMap<String, Any>>,
     private val chatAdapter: ChatAdapter,
     private val chatMessagesListRecycler: RecyclerView,
     private val rv_attacmentList: RecyclerView,
     private val attachmentLayoutListHolder: RelativeLayout,
-    private val messageKeys: MutableSet<String>,
     private val recipientUid: String,
     private var firstUserName: String,
     private val isGroup: Boolean
@@ -111,7 +109,10 @@ class MessageSendingHandler(
 
         val senderDisplayName = if (TextUtils.isEmpty(firstUserName)) "Someone" else firstUserName
         val notificationMessage = "$senderDisplayName: ${message.messageText}"
-        NotificationHelper.sendMessageAndNotifyIfNeeded(auth.currentUser!!.uid, recipientUid, "missing_id", notificationMessage, chatId)
+        FirebaseDatabase.getInstance().getReference("users").child(recipientUid).child("oneSignalPlayerId").get().addOnSuccessListener {
+            val oneSignalPlayerId = it.value as String? ?: "missing_id"
+            NotificationHelper.sendMessageAndNotifyIfNeeded(auth.currentUser!!.uid, recipientUid, oneSignalPlayerId, notificationMessage, chatId)
+        }
     }
 
     fun sendVoiceMessage(audioUrl: String, duration: Long, replyMessageID: String, mMessageReplyLayout: LinearLayout) {
@@ -125,7 +126,8 @@ class MessageSendingHandler(
             type = VOICE_MESSAGE_TYPE,
             attachments = listOf(
                 com.synapse.social.studioasinc.model.Attachment(
-                    url = audioUrl
+                    url = audioUrl,
+                    duration = duration
                 )
             ),
             repliedMessageId = if (replyMessageID != "null") replyMessageID else null

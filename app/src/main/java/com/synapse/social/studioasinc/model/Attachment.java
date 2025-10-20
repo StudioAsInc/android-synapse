@@ -27,6 +27,7 @@ public class Attachment implements Parcelable {
     private String type; // "image" or "video"
     private String mimeType;
     private long size;
+    private long duration;
     
     public Attachment() {
         // Default constructor
@@ -49,6 +50,7 @@ public class Attachment implements Parcelable {
         type = in.readString();
         mimeType = in.readString();
         size = in.readLong();
+        duration = in.readLong();
     }
     
     public static final Creator<Attachment> CREATOR = new Creator<Attachment>() {
@@ -77,11 +79,20 @@ public class Attachment implements Parcelable {
         dest.writeString(type);
         dest.writeString(mimeType);
         dest.writeLong(size);
+        dest.writeLong(duration);
     }
     
     // Getters and setters
     public String getPublicId() {
         return publicId;
+    }
+
+    public long getDuration() {
+        return duration;
+    }
+
+    public void setDuration(long duration) {
+        this.duration = duration;
     }
     
     public void setPublicId(String publicId) {

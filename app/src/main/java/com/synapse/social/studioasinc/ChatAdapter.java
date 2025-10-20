@@ -85,6 +85,18 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public void setGroupChat(boolean isGroup) { this.isGroupChat = isGroup; }
     public void setUserNamesMap(HashMap<String, String> map) { this.userNamesMap = map; }
 
+    public void addTypingIndicator() {
+        _data.add(new ChatMessage("", "", "", 0, "", "", null, null, null, false, true));
+        notifyItemInserted(_data.size() - 1);
+    }
+
+    public void removeTypingIndicator() {
+        if (!_data.isEmpty() && _data.get(_data.size() - 1).isTyping()) {
+            _data.remove(_data.size() - 1);
+            notifyItemRemoved(_data.size());
+        }
+    }
+
     @Override
     public int getItemViewType(int position) {
         ChatMessage message = _data.get(position);
@@ -313,6 +325,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if(holder.message_text != null) holder.message_text.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
         if (holder.mRepliedMessageLayoutUsername != null) holder.mRepliedMessageLayoutUsername.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize - 2);
         if (holder.mRepliedMessageLayoutMessage != null) holder.mRepliedMessageLayoutMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSize);
+
+        if (!isMyMessage && "sended".equals(message.getMessageState())) {
+            listener.markMessageAsSeen(message);
+        }
         
         // Consolidated long click listener for the message context menu.
         View.OnLongClickListener longClickListener = v -> {
@@ -369,7 +385,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             return;
         }
 
-        if (holder.mediaGridLayout != null) {
+        boolean useCarousel = message.getAttachments().size() >= 3;
+
+        if (useCarousel && holder.mediaCarouselContainer != null && holder.mediaCarouselRecyclerView != null) {
+            holder.mediaGridLayout.setVisibility(View.GONE);
+            holder.mediaCarouselContainer.setVisibility(View.VISIBLE);
+            setupCarouselLayout(holder, message.getAttachments());
+        } else if (holder.mediaGridLayout != null) {
+            holder.mediaCarouselContainer.setVisibility(View.GONE);
             holder.mediaGridLayout.setVisibility(View.VISIBLE);
             setupGridLayout(holder, message.getAttachments());
         }
@@ -489,12 +512,13 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         bindCommonMessageProperties(holder, position);
         ChatMessage message = _data.get(position);
         String audioUrl = message.getAttachments().get(0).getUrl();
+        long duration = message.getAttachments().get(0).getDuration();
 
         if (holder.mediaPlayer == null) {
             holder.mediaPlayer = new MediaPlayer();
         }
 
-        holder.duration.setText(_getDurationString(0)); // Updated later
+        holder.duration.setText(_getDurationString(duration));
         holder.playPauseButton.setOnClickListener(v -> {
             if (holder.mediaPlayer.isPlaying()) {
                 holder.mediaPlayer.pause();
