@@ -28,22 +28,29 @@ object UserUtils {
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val databaseService = SupabaseDatabaseService()
-                val user = databaseService.getUserById(userId)
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                val userResult = userRepository.getUserById(userId)
                 
                 withContext(Dispatchers.Main) {
-                    if (user != null) {
-                        // Return nickname if available, otherwise username
-                        val displayName = user.nickname?.takeIf { it.isNotBlank() } ?: user.username
-                        
-                        if (displayName != null) {
-                            callback.onSuccess(displayName)
-                        } else {
-                            callback.onError("User display name not found")
+                    userResult.fold(
+                        onSuccess = { user ->
+                            if (user != null) {
+                                // Return nickname if available, otherwise username
+                                val displayName = user.nickname?.takeIf { it.isNotBlank() } ?: user.username
+                                
+                                if (displayName != null) {
+                                    callback.onSuccess(displayName)
+                                } else {
+                                    callback.onError("User display name not found")
+                                }
+                            } else {
+                                callback.onError("User not found")
+                            }
+                        },
+                        onFailure = { error ->
+                            callback.onError("Error fetching user: ${error.message}")
                         }
-                    } else {
-                        callback.onError("User not found")
-                    }
+                    )
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -61,19 +68,26 @@ object UserUtils {
             if (userId.isBlank()) {
                 Result.failure(Exception("Invalid user ID"))
             } else {
-                val databaseService = SupabaseDatabaseService()
-                val user = databaseService.getUserById(userId)
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                val userResult = userRepository.getUserById(userId)
                 
-                if (user != null) {
-                    val displayName = user.nickname?.takeIf { it.isNotBlank() } ?: user.username
-                    if (displayName != null) {
-                        Result.success(displayName)
-                    } else {
-                        Result.failure(Exception("User display name not found"))
+                userResult.fold(
+                    onSuccess = { user ->
+                        if (user != null) {
+                            val displayName = user.nickname?.takeIf { it.isNotBlank() } ?: user.username
+                            if (displayName != null) {
+                                Result.success(displayName)
+                            } else {
+                                Result.failure(Exception("User display name not found"))
+                            }
+                        } else {
+                            Result.failure(Exception("User not found"))
+                        }
+                    },
+                    onFailure = { error ->
+                        Result.failure(error)
                     }
-                } else {
-                    Result.failure(Exception("User not found"))
-                }
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -91,15 +105,22 @@ object UserUtils {
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val databaseService = SupabaseDatabaseService()
-                val user = databaseService.getUserById(userId)
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                val userResult = userRepository.getUserById(userId)
                 
                 withContext(Dispatchers.Main) {
-                    if (user != null) {
-                        callback.onSuccess(user.profileImageUrl)
-                    } else {
-                        callback.onError("User not found")
-                    }
+                    userResult.fold(
+                        onSuccess = { user ->
+                            if (user != null) {
+                                callback.onSuccess(user.profileImageUrl)
+                            } else {
+                                callback.onError("User not found")
+                            }
+                        },
+                        onFailure = { error ->
+                            callback.onError("Error fetching user profile: ${error.message}")
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -117,9 +138,12 @@ object UserUtils {
             if (username.isBlank()) {
                 Result.failure(Exception("Username cannot be empty"))
             } else {
-                val databaseService = SupabaseDatabaseService()
-                val existingUser = databaseService.getUserByUsername(username)
-                Result.success(existingUser == null)
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                val userResult = userRepository.getUserByUsername(username)
+                userResult.fold(
+                    onSuccess = { user -> Result.success(user == null) },
+                    onFailure = { error -> Result.failure(error) }
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -129,14 +153,13 @@ object UserUtils {
     /**
      * Get user by username
      */
-    suspend fun getUserByUsername(username: String): Result<com.synapse.social.studioasinc.backend.User?> {
+    suspend fun getUserByUsername(username: String): Result<com.synapse.social.studioasinc.model.User?> {
         return try {
             if (username.isBlank()) {
                 Result.failure(Exception("Username cannot be empty"))
             } else {
-                val databaseService = SupabaseDatabaseService()
-                val user = databaseService.getUserByUsername(username)
-                Result.success(user)
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                userRepository.getUserByUsername(username)
             }
         } catch (e: Exception) {
             Result.failure(e)

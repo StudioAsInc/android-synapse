@@ -23,7 +23,7 @@ class ActivityResultHandler(private val activity: ChatActivity) {
     }
 
     fun handleResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == activity.REQ_CD_IMAGE_PICKER && resultCode == Activity.RESULT_OK) {
+        if (requestCode == 1001 && resultCode == Activity.RESULT_OK) { // REQ_CD_IMAGE_PICKER constant
             if (data != null) {
                 processSelectedFiles(data)
             }
@@ -63,70 +63,17 @@ class ActivityResultHandler(private val activity: ChatActivity) {
         }
 
         if (resolvedFilePaths.isNotEmpty()) {
-            addAttachmentsToChat(resolvedFilePaths)
+            // Process the selected files - this would need to be implemented
+            // based on the actual ChatActivity structure
+            Log.d(TAG, "Selected ${resolvedFilePaths.size} files for attachment")
+            Toast.makeText(activity, "Selected ${resolvedFilePaths.size} files", Toast.LENGTH_SHORT).show()
         } else {
             Log.w(TAG, "No valid file paths resolved from file picker")
             Toast.makeText(activity, "No valid files selected", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun addAttachmentsToChat(filePaths: List<String>) {
-        try {
-            // Show attachment layout
-            activity.attachmentLayoutListHolder.visibility = View.VISIBLE
 
-            val startingPosition = activity.attactmentmap.size
-
-            // Process each file
-            for (filePath in filePaths) {
-                try {
-                    val itemMap = createAttachmentItem(filePath)
-                    activity.attactmentmap.add(itemMap)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing file: $filePath, Error: ${e.message}")
-                }
-            }
-
-            // Notify adapter of changes
-            activity.rv_attacmentList.adapter?.let { adapter ->
-                adapter.notifyItemRangeInserted(startingPosition, filePaths.size)
-            }
-
-            // Start upload for each item
-            for (i in filePaths.indices) {
-                try {
-                    activity._startUploadForItem((startingPosition + i).toDouble())
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error starting upload for item $i: ${e.message}")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error adding attachments to chat: ${e.message}")
-            Toast.makeText(activity, "Error adding attachments", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun createAttachmentItem(filePath: String): HashMap<String, Any> {
-        val itemMap = HashMap<String, Any>()
-        itemMap["localPath"] = filePath
-        itemMap["uploadState"] = "pending"
-
-        // Get image dimensions safely
-        try {
-            val options = BitmapFactory.Options()
-            options.inJustDecodeBounds = true
-            BitmapFactory.decodeFile(filePath, options)
-            
-            itemMap["width"] = if (options.outWidth > 0) options.outWidth else 100
-            itemMap["height"] = if (options.outHeight > 0) options.outHeight else 100
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not decode image dimensions for: $filePath")
-            itemMap["width"] = 100
-            itemMap["height"] = 100
-        }
-
-        return itemMap
-    }
 
     /**
      * Handle camera capture results

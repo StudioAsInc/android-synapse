@@ -44,16 +44,23 @@ object MentionUtils {
                         // Use Supabase to find user by username
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val databaseService = SupabaseDatabaseService()
-                                val user = databaseService.getUserByUsername(username)
+                                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                                val userResult = userRepository.getUserByUsername(username)
                                 
-                                if (user != null) {
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        val intent = Intent(context, ProfileActivity::class.java)
-                                        intent.putExtra("uid", user.uid)
-                                        context.startActivity(intent)
+                                userResult.fold(
+                                    onSuccess = { user ->
+                                        if (user != null) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val intent = Intent(context, ProfileActivity::class.java)
+                                                intent.putExtra("uid", user.uid)
+                                                context.startActivity(intent)
+                                            }
+                                        }
+                                    },
+                                    onFailure = { error ->
+                                        android.util.Log.e("MentionUtils", "Error finding user: ${error.message}")
                                     }
-                                }
+                                )
                             } catch (e: Exception) {
                                 android.util.Log.e("MentionUtils", "Error finding user: ${e.message}")
                             }
@@ -102,13 +109,20 @@ object MentionUtils {
         // Send notifications using Supabase
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 for (username in mentionedUsernames) {
-                    val user = databaseService.getUserByUsername(username)
-                    if (user != null) {
-                        sendMentionNotification(user.uid, postKey, commentKey, contentType)
-                    }
+                    val userResult = userRepository.getUserByUsername(username)
+                    userResult.fold(
+                        onSuccess = { user ->
+                            if (user != null) {
+                                sendMentionNotification(user.uid, postKey, commentKey, contentType)
+                            }
+                        },
+                        onFailure = { error ->
+                            android.util.Log.e("MentionUtils", "Error finding user $username: ${error.message}")
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 android.util.Log.e("MentionUtils", "Error sending mention notifications: ${e.message}")
@@ -126,14 +140,16 @@ object MentionUtils {
         contentType: String
     ) {
         try {
-            val databaseService = SupabaseDatabaseService()
-            val currentUser = databaseService.getCurrentUser()
+            val authService = com.synapse.social.studioasinc.backend.SupabaseAuthenticationService()
+            val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
             
-            if (currentUser == null || currentUser.uid == mentionedUid) {
+            val currentUser = authService.getCurrentUser()
+            if (currentUser == null || currentUser.id == mentionedUid) {
                 return
             }
 
-            val senderName = currentUser.username ?: "Someone"
+            val currentUserData = userRepository.getUserById(currentUser.id).getOrNull()
+            val senderName = currentUserData?.username ?: "Someone"
             val message = "$senderName mentioned you in a $contentType"
 
             val data = hashMapOf<String, String>().apply {
@@ -143,7 +159,7 @@ object MentionUtils {
 
             NotificationHelper.sendNotification(
                 mentionedUid,
-                currentUser.uid,
+                currentUser.id,
                 message,
                 NotificationConfig.NOTIFICATION_TYPE_MENTION,
                 data

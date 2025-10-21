@@ -1,7 +1,6 @@
 package com.synapse.social.studioasinc.util
 
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.NotificationConfig
 import com.synapse.social.studioasinc.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
@@ -21,14 +20,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == postAuthorUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 val message = "$senderName liked your post"
 
@@ -56,14 +55,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == postAuthorUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 val message = "$senderName commented on your post"
 
@@ -92,14 +91,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == commentAuthorUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 val message = "$senderName liked your comment"
 
@@ -128,14 +127,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == followedUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 val message = "$senderName started following you"
 
@@ -163,14 +162,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == recipientUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 
                 // Truncate message for notification
@@ -207,14 +206,14 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val databaseService = SupabaseDatabaseService()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == mentionedUid) {
                     return@launch
                 }
 
-                val senderUser = databaseService.getUserById(currentUser.id)
+                val senderUser = userRepository.getUserById(currentUser.id).getOrNull()
                 val senderName = senderUser?.username ?: "Someone"
                 val message = "$senderName mentioned you in a $contentType"
 
