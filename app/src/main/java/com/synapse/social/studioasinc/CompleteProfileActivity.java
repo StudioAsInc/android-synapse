@@ -157,7 +157,7 @@ public class CompleteProfileActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_complete_profile);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {

@@ -21,7 +21,9 @@ import com.bumptech.glide.Glide
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.User
 import com.synapse.social.studioasinc.adapter.CommentsAdapter
 import com.synapse.social.studioasinc.model.Comment
 import com.synapse.social.studioasinc.model.Reply

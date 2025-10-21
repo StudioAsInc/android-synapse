@@ -37,7 +37,7 @@ import androidx.viewpager.widget.ViewPager.OnAdapterChangeListener;
 import androidx.viewpager.widget.ViewPager.OnPageChangeListener;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomnavigation.BottomNavigationView.OnNavigationItemSelectedListener;
-import com.google.firebase.FirebaseApp;
+// Firebase removed - using Supabase
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -68,7 +68,7 @@ public class InboxActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_inbox);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 		initializeLogic();
 	}
 

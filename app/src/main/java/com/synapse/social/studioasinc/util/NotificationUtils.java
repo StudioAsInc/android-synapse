@@ -1,13 +1,10 @@
 package com.synapse.social.studioasinc.util;
 
 import androidx.annotation.NonNull;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.User;
 import com.synapse.social.studioasinc.NotificationConfig;
 import com.synapse.social.studioasinc.NotificationHelper;
 import java.util.HashMap;

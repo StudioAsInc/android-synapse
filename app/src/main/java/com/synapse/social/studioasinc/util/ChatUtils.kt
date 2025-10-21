@@ -1,11 +1,11 @@
-package com.synapse.social.studioasinc.compatibility
+package com.synapse.social.studioasinc.util
 
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import kotlinx.coroutines.runBlocking
 
 /**
- * Chat utility functions for Supabase migration
+ * Chat utility functions for Supabase
  */
 
 object ChatUtils {
@@ -56,28 +56,20 @@ object ChatUtils {
         lastMessageId: String
     ) {
         // Update inbox for participant 1
-        dbService.upsert(
-            "inbox",
-            mapOf(
-                "user_id" to participant1,
-                "chat_partner_id" to participant2,
-                "last_message_id" to lastMessageId,
-                "updated_at" to System.currentTimeMillis().toString()
-            ),
-            "user_id,chat_partner_id"
-        )
+        dbService.upsert("inbox", mapOf(
+            "user_id" to participant1,
+            "chat_partner_id" to participant2,
+            "last_message_id" to lastMessageId,
+            "updated_at" to System.currentTimeMillis().toString()
+        ))
         
         // Update inbox for participant 2
-        dbService.upsert(
-            "inbox",
-            mapOf(
-                "user_id" to participant2,
-                "chat_partner_id" to participant1,
-                "last_message_id" to lastMessageId,
-                "updated_at" to System.currentTimeMillis().toString()
-            ),
-            "user_id,chat_partner_id"
-        )
+        dbService.upsert("inbox", mapOf(
+            "user_id" to participant2,
+            "chat_partner_id" to participant1,
+            "last_message_id" to lastMessageId,
+            "updated_at" to System.currentTimeMillis().toString()
+        ))
     }
     
     private fun generateMessageKey(): String {

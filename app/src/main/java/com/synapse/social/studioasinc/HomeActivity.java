@@ -18,8 +18,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.User;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -46,7 +47,7 @@ public class HomeActivity extends AppCompatActivity {
     protected void onCreate(Bundle _savedInstanceState) {
         super.onCreate(_savedInstanceState);
         setContentView(R.layout.activity_home);
-        FirebaseApp.initializeApp(this);
+        // Firebase removed - using Supabase
         initialize();
         initializeLogic();
     }

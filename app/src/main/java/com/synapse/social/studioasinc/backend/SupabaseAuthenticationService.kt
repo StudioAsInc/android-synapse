@@ -1,108 +1,131 @@
 package com.synapse.social.studioasinc.backend
 
-import io.github.jan.supabase.gotrue.Auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
-import io.github.jan.supabase.gotrue.user.UserInfo
-import io.github.jan.supabase.gotrue.SessionStatus
 import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * Service for handling Supabase authentication operations.
- * Provides methods for sign up, sign in, sign out, and user management.
+ * Supabase Authentication Service
+ * Handles user authentication using Supabase Auth
  */
-class SupabaseAuthenticationService {
-
+class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService {
+    
     private val client = SupabaseClient.client
-
+    
     /**
-     * Signs up a new user with email and password.
-     * @param email User's email address
-     * @param password User's password
-     * @return UserInfo object containing user details
-     * @throws Exception if sign up fails
+     * Sign up a new user with email and password
      */
-    suspend fun signUp(email: String, password: String): UserInfo? {
-        return client.auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
-        }.user
-    }
-
-    /**
-     * Signs in an existing user with email and password.
-     * @param email User's email address
-     * @param password User's password
-     * @return UserInfo object containing user details
-     * @throws Exception if sign in fails
-     */
-    suspend fun signIn(email: String, password: String): UserInfo? {
-        client.auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+    override suspend fun signUp(email: String, password: String): Result<User> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.auth.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+                
+                val user = client.auth.currentUserOrNull()
+                if (user != null) {
+                    Result.success(User(user.id, user.email ?: ""))
+                } else {
+                    Result.failure(Exception("Failed to create user"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-        return client.auth.currentUserOrNull()
     }
-
+    
     /**
-     * Signs out the current user.
-     * @throws Exception if sign out fails
+     * Sign in with email and password
      */
-    suspend fun signOut() {
-        client.auth.signOut()
+    override suspend fun signIn(email: String, password: String): Result<User> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.auth.signInWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+                
+                val user = client.auth.currentUserOrNull()
+                if (user != null) {
+                    Result.success(User(user.id, user.email ?: ""))
+                } else {
+                    Result.failure(Exception("Failed to sign in"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
-
+    
     /**
-     * Gets the current authenticated user.
-     * @return UserInfo object if user is authenticated, null otherwise
+     * Sign out the current user
      */
-    fun getCurrentUser(): UserInfo? {
-        return client.auth.currentUserOrNull()
+    override suspend fun signOut(): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.auth.signOut()
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
-
+    
     /**
-     * Gets the current user's ID.
-     * @return User ID string if authenticated, null otherwise
+     * Get current user
      */
-    fun getCurrentUserId(): String? {
+    override fun getCurrentUser(): User? {
+        val user = client.auth.currentUserOrNull()
+        return user?.let { User(it.id, it.email ?: "") }
+    }
+    
+    /**
+     * Get current user ID
+     */
+    override fun getCurrentUserId(): String? {
         return client.auth.currentUserOrNull()?.id
     }
-
+    
     /**
-     * Checks if a user is currently authenticated.
-     * @return true if user is authenticated, false otherwise
+     * Update user password
      */
-    fun isUserAuthenticated(): Boolean {
-        return client.auth.currentUserOrNull() != null
-    }
-
-    /**
-     * Sends a password reset email to the specified email address.
-     * @param email Email address to send reset link to
-     * @throws Exception if password reset fails
-     */
-    suspend fun resetPassword(email: String) {
-        client.auth.resetPasswordForEmail(email)
-    }
-
-    /**
-     * Updates the current user's password.
-     * @param newPassword New password to set
-     * @throws Exception if password update fails
-     */
-    suspend fun updatePassword(newPassword: String) {
-        client.auth.updateUser {
-            password = newPassword
+    override suspend fun updatePassword(newPassword: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.auth.updateUser {
+                    password = newPassword
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
-
+    
     /**
-     * Updates the current user's email.
-     * @param newEmail New email address to set
-     * @throws Exception if email update fails
+     * Update user email
      */
-    suspend fun updateEmail(newEmail: String) {
-        client.auth.updateUser {
-            email = newEmail
+    override suspend fun updateEmail(newEmail: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.auth.updateUser {
+                    email = newEmail
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 }
+
+/**
+ * User data class
+ */
+data class User(
+    val id: String,
+    val email: String
+)

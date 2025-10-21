@@ -6,8 +6,9 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class ChatKeyboardHandler(

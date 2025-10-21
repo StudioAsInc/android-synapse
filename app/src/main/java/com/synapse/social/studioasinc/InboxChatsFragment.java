@@ -39,16 +39,10 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.chip.*;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-// Using Firebase compatibility layer for Supabase
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
-import com.synapse.social.studioasinc.compatibility.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.ValueEventListener;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.User;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -60,7 +54,7 @@ import java.util.HashMap;
 import java.util.regex.*;
 import org.json.*;
 import androidx.core.widget.NestedScrollView;
-import com.google.firebase.database.Query;
+// Query functionality handled by SupabaseDatabaseService
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import android.os.Handler;
 import android.os.Looper;
@@ -119,7 +113,7 @@ public class InboxChatsFragment extends Fragment {
 	public View onCreateView(@NonNull LayoutInflater _inflater, @Nullable ViewGroup _container, @Nullable Bundle _savedInstanceState) {
 		View _view = _inflater.inflate(R.layout.fragment_inbox_chats, _container, false);
 		initialize(_savedInstanceState, _view);
-		FirebaseApp.initializeApp(getContext());
+		// Firebase removed - using Supabase
 		initializeLogic();
 		return _view;
 	}

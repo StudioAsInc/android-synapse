@@ -6,8 +6,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.User
 
 class ChatUIUpdater(
     private val activity: ChatActivity,

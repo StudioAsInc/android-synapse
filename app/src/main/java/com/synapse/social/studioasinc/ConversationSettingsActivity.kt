@@ -10,12 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
-import com.synapse.social.studioasinc.compatibility.DatabaseReference
-import com.synapse.social.studioasinc.compatibility.ValueEventListener
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
-import com.synapse.social.studioasinc.compatibility.DatabaseError
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.User
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
 import kotlin.math.abs
 

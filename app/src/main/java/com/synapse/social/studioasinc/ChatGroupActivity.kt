@@ -25,15 +25,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import androidx.activity.OnBackPressedCallback
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
-import com.synapse.social.studioasinc.compatibility.DatabaseReference
-import com.synapse.social.studioasinc.compatibility.ValueEventListener
-import com.synapse.social.studioasinc.compatibility.ChildEventListener
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
-import com.synapse.social.studioasinc.compatibility.DatabaseError
-import com.synapse.social.studioasinc.compatibility.ServerValue
-import com.synapse.social.studioasinc.compatibility.GenericTypeIndicator
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.User
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import java.util.ArrayList
 import java.util.Calendar

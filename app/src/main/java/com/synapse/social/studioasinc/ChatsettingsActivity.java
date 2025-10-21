@@ -47,14 +47,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
-// Using Firebase compatibility layer for Supabase
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
-import com.synapse.social.studioasinc.compatibility.FirebaseUser;
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase;
-import com.synapse.social.studioasinc.compatibility.DatabaseReference;
-import com.synapse.social.studioasinc.compatibility.DataSnapshot;
-import com.synapse.social.studioasinc.compatibility.DatabaseError;
-import com.synapse.social.studioasinc.compatibility.ValueEventListener;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.User;
+// Database operations handled by SupabaseDatabaseService
 import com.synapse.social.studioasinc.CenterCropLinearLayoutNoEffect;
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
@@ -212,7 +209,7 @@ public class ChatsettingsActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_chatsettings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 		initializeLogic();
 	}
 	

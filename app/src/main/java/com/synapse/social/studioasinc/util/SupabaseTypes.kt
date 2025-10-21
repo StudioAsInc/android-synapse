@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.compatibility
+package com.synapse.social.studioasinc.util
 
 import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder as SupabasePostgrestFilterBuilder
 

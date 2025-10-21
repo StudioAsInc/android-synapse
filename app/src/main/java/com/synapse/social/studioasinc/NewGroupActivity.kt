@@ -13,11 +13,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
-import com.synapse.social.studioasinc.compatibility.DatabaseReference
-import com.synapse.social.studioasinc.compatibility.ValueEventListener
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
-import com.synapse.social.studioasinc.compatibility.DatabaseError
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.User
 
 class NewGroupActivity : AppCompatActivity() {

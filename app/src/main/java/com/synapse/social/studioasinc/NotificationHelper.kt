@@ -1,7 +1,8 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody

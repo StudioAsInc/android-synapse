@@ -8,13 +8,10 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import android.view.View
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
-import com.synapse.social.studioasinc.compatibility.DatabaseReference
-import com.synapse.social.studioasinc.compatibility.ValueEventListener
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
-import com.synapse.social.studioasinc.compatibility.DatabaseError
-import com.synapse.social.studioasinc.compatibility.ServerValue
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.User
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.NotificationHelper
 import com.synapse.social.studioasinc.PresenceManager

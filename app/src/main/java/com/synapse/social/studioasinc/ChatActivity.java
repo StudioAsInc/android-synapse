@@ -49,14 +49,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-// Using Firebase compatibility layer for Supabase
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
-import com.synapse.social.studioasinc.compatibility.FirebaseUser;
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase;
-import com.synapse.social.studioasinc.compatibility.DatabaseReference;
-import com.synapse.social.studioasinc.compatibility.DataSnapshot;
-import com.synapse.social.studioasinc.compatibility.DatabaseError;
-import com.synapse.social.studioasinc.compatibility.ValueEventListener;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.User;
+// Database operations handled by SupabaseDatabaseService
 import com.service.studioasinc.AI.Gemini;
 import com.synapse.social.studioasinc.chat.common.ui.ChatNavigator;
 import com.synapse.social.studioasinc.chat.common.ui.SwipeToReplyHandler;
@@ -201,7 +198,7 @@ public class ChatActivity extends AppCompatActivity implements ChatAdapterListen
 			setContentView(R.layout.activity_chat);
 		}
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED

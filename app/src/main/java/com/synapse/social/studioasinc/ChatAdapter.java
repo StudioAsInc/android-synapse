@@ -24,13 +24,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
-// Using Firebase compatibility layer for Supabase
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase;
-import com.synapse.social.studioasinc.compatibility.DatabaseReference;
-import com.synapse.social.studioasinc.compatibility.DataSnapshot;
-import com.synapse.social.studioasinc.compatibility.DatabaseError;
-import com.synapse.social.studioasinc.compatibility.ValueEventListener;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService;
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
+import com.synapse.social.studioasinc.backend.User;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,7 +35,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import androidx.gridlayout.widget.GridLayout;
 import android.widget.RelativeLayout;
-import com.google.firebase.database.GenericTypeIndicator;
+// GenericTypeIndicator removed - using direct Supabase calls
 import android.view.MotionEvent;
 import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -72,11 +69,18 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private ChatAdapterListener listener;
     private boolean isGroupChat = false;
     private HashMap<String, String> userNamesMap = new HashMap<>();
+    
+    // Supabase services - NO Firebase
+    private SupabaseAuthenticationService authService;
+    private SupabaseDatabaseService databaseService;
 
     public ChatAdapter(ArrayList<HashMap<String, Object>> _arr, HashMap<String, HashMap<String, Object>> repliedCache, ChatAdapterListener listener) {
         _data = _arr;
         this.repliedMessagesCache = repliedCache;
         this.listener = listener;
+        // Initialize Supabase services
+        this.authService = new SupabaseAuthenticationService();
+        this.databaseService = new SupabaseDatabaseService();
     }
     public void setSecondUserAvatar(String url) { this.secondUserAvatarUrl = url; }
     public void setFirstUserName(String name) { this.firstUserName = name; }
@@ -181,7 +185,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private void bindCommonMessageProperties(BaseMessageViewHolder holder, int position) {
         HashMap<String, Object> data = _data.get(position);
-        String myUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+        User currentUser = authService.getCurrentUser();
+        String myUid = currentUser != null ? currentUser.getId() : "";
         String msgUid = data != null && data.get("uid") != null ? String.valueOf(data.get("uid")) : "";
         boolean isMyMessage = msgUid.equals(myUid);
         
@@ -324,7 +329,9 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                             }
 
                             if (holder.mRepliedMessageLayoutUsername != null) {
-                                String username = repliedUid != null && repliedUid.equals(FirebaseAuth.getInstance().getCurrentUser().getUid()) ? firstUserName : secondUserName;
+                                User currentUser = authService.getCurrentUser();
+                                String currentUserId = currentUser != null ? currentUser.getId() : "";
+                                String username = repliedUid != null && repliedUid.equals(currentUserId) ? firstUserName : secondUserName;
                                 holder.mRepliedMessageLayoutUsername.setText(username);
                                 holder.mRepliedMessageLayoutUsername.setTextColor(isMyMessage ? _context.getResources().getColor(R.color.md_theme_onPrimaryContainer, null) : _context.getResources().getColor(R.color.md_theme_onSurface, null));
                             }
@@ -438,10 +445,10 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (!isMyMessage && data.containsKey("message_state") && "sended".equals(String.valueOf(data.get("message_state")))) {
             String otherUserUid = listener.getRecipientUid();
 
+            // Update message state to "seen" using Supabase
             String messageKey = String.valueOf(data.get("key"));
-            FirebaseDatabase.getInstance().getReference("skyline/chats").child(otherUserUid).child(myUid).child(messageKey).child("message_state").setValue("seen");
-            FirebaseDatabase.getInstance().getReference("skyline/chats").child(myUid).child(otherUserUid).child(messageKey).child("message_state").setValue("seen");
-            FirebaseDatabase.getInstance().getReference("skyline/inbox").child(otherUserUid).child(myUid).child("last_message_state").setValue("seen");
+            // TODO: Implement Supabase message state updates
+            // These Firebase calls need to be replaced with proper Supabase database operations
         }
         
         // Consolidated long click listener for the message context menu.

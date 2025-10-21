@@ -29,7 +29,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
+// Firebase removed - using Supabase
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -65,7 +65,7 @@ public class DisappearingMessageSettingsActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_disappearing_message_settings);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 		initializeLogic();
 	}
 	
@@ -94,4 +94,4 @@ public class DisappearingMessageSettingsActivity extends AppCompatActivity {
 	private void initializeLogic() {
 	}
 	
-}
+}

@@ -13,14 +13,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-// Using Firebase compatibility layer for Supabase
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase;
-import com.synapse.social.studioasinc.compatibility.DatabaseReference;
-import com.synapse.social.studioasinc.compatibility.DataSnapshot;
-import com.synapse.social.studioasinc.compatibility.DatabaseError;
-import com.synapse.social.studioasinc.compatibility.ValueEventListener;
-import com.synapse.social.studioasinc.compatibility.GenericTypeIndicator;
-import com.synapse.social.studioasinc.compatibility.Query;
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService;
 import com.synapse.social.studioasinc.LineVideosRecyclerViewAdapter;
 import com.synapse.social.studioasinc.R;
 import com.synapse.social.studioasinc.RequestNetwork;
