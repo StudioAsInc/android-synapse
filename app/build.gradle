@@ -80,6 +80,15 @@ android {
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
             buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
             buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            
+            // Authentication configuration for production
+            buildConfigField "boolean", "AUTH_REQUIRE_EMAIL_VERIFICATION", "${project.findProperty('auth.require.email.verification') ?: 'true'}"
+            buildConfigField "boolean", "AUTH_ENABLE_DEBUG_LOGGING", "${project.findProperty('auth.enable.debug.logging') ?: 'false'}"
+            buildConfigField "boolean", "AUTH_DEVELOPMENT_MODE", "${project.findProperty('auth.development.mode') ?: 'false'}"
+            buildConfigField "int", "AUTH_RESEND_COOLDOWN_SECONDS", "${project.findProperty('auth.resend.cooldown.seconds') ?: '60'}"
+            buildConfigField "int", "AUTH_MAX_RESEND_ATTEMPTS", "${project.findProperty('auth.max.resend.attempts') ?: '5'}"
+            buildConfigField "int", "AUTH_AUTO_RETRY_ATTEMPTS", "${project.findProperty('auth.auto.retry.attempts') ?: '3'}"
+            buildConfigField "long", "AUTH_RETRY_DELAY_MS", "${project.findProperty('auth.retry.delay.ms') ?: '1000L'}"
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -87,6 +96,15 @@ android {
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
             buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
             buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            
+            // Authentication configuration for development
+            buildConfigField "boolean", "AUTH_REQUIRE_EMAIL_VERIFICATION", "${project.findProperty('auth.require.email.verification') ?: 'false'}"
+            buildConfigField "boolean", "AUTH_ENABLE_DEBUG_LOGGING", "${project.findProperty('auth.enable.debug.logging') ?: 'true'}"
+            buildConfigField "boolean", "AUTH_DEVELOPMENT_MODE", "${project.findProperty('auth.development.mode') ?: 'true'}"
+            buildConfigField "int", "AUTH_RESEND_COOLDOWN_SECONDS", "${project.findProperty('auth.resend.cooldown.seconds') ?: '30'}"
+            buildConfigField "int", "AUTH_MAX_RESEND_ATTEMPTS", "${project.findProperty('auth.max.resend.attempts') ?: '5'}"
+            buildConfigField "int", "AUTH_AUTO_RETRY_ATTEMPTS", "${project.findProperty('auth.auto.retry.attempts') ?: '3'}"
+            buildConfigField "long", "AUTH_RETRY_DELAY_MS", "${project.findProperty('auth.retry.delay.ms') ?: '1000L'}"
         }
     }
 

@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.backend
 
+import android.content.Context
 import com.synapse.social.studioasinc.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
@@ -190,11 +191,159 @@ enum class RecoveryAction {
 
 /**
  * Supabase Authentication Service
- * Handles user authentication using Supabase Auth
+ * Handles user authentication using Supabase Auth with configurable settings
  */
 class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.interfaces.IAuthenticationService {
     
+    private val context: Context
     private val client = SupabaseClient.client
+    private var authConfig: AuthConfig
+    
+    /**
+     * Primary constructor with context
+     */
+    constructor(context: Context) {
+        this.context = context.applicationContext
+        this.authConfig = AuthConfig.create(this.context)
+    }
+    
+    /**
+     * Secondary constructor for backward compatibility
+     * Uses singleton instance if available, otherwise throws exception
+     */
+    constructor() {
+        val instance = INSTANCE ?: throw IllegalStateException(
+            "SupabaseAuthenticationService not initialized. Use constructor with context or call initialize(context) first."
+        )
+        this.context = instance.context
+        this.authConfig = instance.authConfig
+    }
+    
+    companion object {
+        private const val TAG = "SupabaseAuth"
+        
+        @Volatile
+        private var INSTANCE: SupabaseAuthenticationService? = null
+        
+        /**
+         * Get singleton instance of SupabaseAuthenticationService
+         * This method provides backward compatibility for existing code
+         */
+        @JvmStatic
+        fun getInstance(context: Context): SupabaseAuthenticationService {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SupabaseAuthenticationService(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+        
+        /**
+         * Create SupabaseAuthenticationService instance with default configuration
+         * This is a convenience method for backward compatibility
+         */
+        @JvmStatic
+        fun create(context: Context): SupabaseAuthenticationService {
+            return SupabaseAuthenticationService(context)
+        }
+        
+        /**
+         * Create SupabaseAuthenticationService instance with development mode enabled
+         */
+        @JvmStatic
+        fun createForDevelopment(context: Context): SupabaseAuthenticationService {
+            val service = SupabaseAuthenticationService(context)
+            service.enableDevelopmentMode()
+            return service
+        }
+        
+        /**
+         * Create SupabaseAuthenticationService instance with production settings
+         */
+        @JvmStatic
+        fun createForProduction(context: Context): SupabaseAuthenticationService {
+            val service = SupabaseAuthenticationService(context)
+            service.disableDevelopmentMode()
+            return service
+        }
+        
+        /**
+         * Initialize the singleton instance - should be called from Application.onCreate()
+         */
+        @JvmStatic
+        fun initialize(context: Context) {
+            if (INSTANCE == null) {
+                synchronized(this) {
+                    if (INSTANCE == null) {
+                        INSTANCE = SupabaseAuthenticationService(context.applicationContext)
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Get the singleton instance without context (for backward compatibility)
+         * Throws exception if not initialized
+         */
+        @JvmStatic
+        fun getInstance(): SupabaseAuthenticationService {
+            return INSTANCE ?: throw IllegalStateException(
+                "SupabaseAuthenticationService not initialized. Call initialize(context) first or use getInstance(context)."
+            )
+        }
+    }
+    
+    /**
+     * Update authentication configuration
+     */
+    fun updateConfig(newConfig: AuthConfig) {
+        authConfig = newConfig
+        AuthConfig.save(context, newConfig)
+        debugLog("Authentication configuration updated: $newConfig")
+    }
+    
+    /**
+     * Get current authentication configuration
+     */
+    fun getConfig(): AuthConfig = authConfig
+    
+    /**
+     * Enable development mode bypass for email verification
+     */
+    fun enableDevelopmentMode() {
+        authConfig = AuthConfig.enableDevelopmentMode(context)
+        debugLog("Development mode enabled - email verification bypassed")
+    }
+    
+    /**
+     * Disable development mode and restore production settings
+     */
+    fun disableDevelopmentMode() {
+        authConfig = AuthConfig.disableDevelopmentMode(context)
+        debugLog("Development mode disabled - email verification required")
+    }
+    
+    /**
+     * Debug logging helper that respects configuration
+     */
+    private fun debugLog(message: String, throwable: Throwable? = null) {
+        if (authConfig.isDebugLoggingEnabled()) {
+            if (throwable != null) {
+                Log.d(TAG, message, throwable)
+            } else {
+                Log.d(TAG, message)
+            }
+        }
+    }
+    
+    /**
+     * Log authentication flow steps for debugging
+     */
+    private fun logAuthenticationStep(step: String, email: String? = null, success: Boolean? = null) {
+        if (authConfig.isDebugLoggingEnabled()) {
+            val emailPart = email?.let { " for email: $it" } ?: ""
+            val successPart = success?.let { " - ${if (it) "SUCCESS" else "FAILED"}" } ?: ""
+            debugLog("Auth Step: $step$emailPart$successPart")
+        }
+    }
     
     /**
      * Sign up a new user with email and password
@@ -202,20 +351,28 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun signUp(email: String, password: String): Result<AuthResult> {
         return withContext(Dispatchers.IO) {
             try {
+                logAuthenticationStep("Starting sign up", email)
+                
                 // Check if Supabase is configured
                 if (!SupabaseClient.isConfigured()) {
+                    logAuthenticationStep("Sign up failed - Supabase not configured", email, false)
                     return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
                 }
                 
                 // Clear any existing session first
                 try {
                     client.auth.signOut()
+                    debugLog("Cleared existing session before sign up")
                 } catch (e: Exception) {
-                    // Ignore sign out errors
+                    debugLog("No existing session to clear", e)
                 }
                 
                 // Attempt sign up with retry logic for network errors
-                val authResult = AuthErrorHandler.executeWithRetry {
+                logAuthenticationStep("Attempting Supabase sign up", email)
+                val authResult = AuthErrorHandler.executeWithRetry(
+                    maxAttempts = authConfig.getEffectiveRetryAttempts(),
+                    initialDelay = authConfig.getEffectiveRetryDelay()
+                ) {
                     client.auth.signUpWith(Email) {
                         this.email = email
                         this.password = password
@@ -232,27 +389,46 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
                         createdAt = supabaseUser.createdAt?.toString()
                     )
                     
-                    // Check if email verification is needed
-                    val needsVerification = supabaseUser.emailConfirmedAt == null
+                    debugLog("User created successfully: ${user.id}")
+                    
+                    // Check if email verification should be bypassed in development mode
+                    val needsVerification = if (authConfig.shouldBypassEmailVerification()) {
+                        debugLog("Email verification bypassed in development mode")
+                        false
+                    } else {
+                        supabaseUser.emailConfirmedAt == null
+                    }
                     
                     // Log verification attempt
                     AuthErrorHandler.logVerificationAttempt(email, !needsVerification)
+                    logAuthenticationStep("Sign up completed", email, true)
+                    
+                    val message = if (needsVerification) {
+                        "Please check your email and click the verification link to activate your account."
+                    } else if (authConfig.shouldBypassEmailVerification()) {
+                        "Account created successfully. Email verification bypassed in development mode."
+                    } else {
+                        null
+                    }
                     
                     Result.success(AuthResult(
                         user = user,
                         needsEmailVerification = needsVerification,
-                        message = if (needsVerification) "Please check your email and click the verification link to activate your account." else null
+                        message = message
                     ))
                 } else {
+                    logAuthenticationStep("Sign up failed - no user created", email, false)
                     Result.failure(Exception("Account creation failed"))
                 }
             } catch (e: Exception) {
-                Log.e("SupabaseAuth", "Sign up failed", e)
+                logAuthenticationStep("Sign up failed with exception", email, false)
+                debugLog("Sign up failed", e)
+                
                 // Make sure to clear any partial session on error
                 try {
                     client.auth.signOut()
                 } catch (signOutError: Exception) {
-                    // Ignore sign out errors
+                    debugLog("Failed to clear session after error", signOutError)
                 }
                 
                 val authError = AuthErrorHandler.handleAuthError(e)
@@ -268,20 +444,28 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun signIn(email: String, password: String): Result<AuthResult> {
         return withContext(Dispatchers.IO) {
             try {
+                logAuthenticationStep("Starting sign in", email)
+                
                 // Check if Supabase is configured
                 if (!SupabaseClient.isConfigured()) {
+                    logAuthenticationStep("Sign in failed - Supabase not configured", email, false)
                     return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
                 }
                 
                 // Clear any existing session first
                 try {
                     client.auth.signOut()
+                    debugLog("Cleared existing session before sign in")
                 } catch (e: Exception) {
-                    // Ignore sign out errors
+                    debugLog("No existing session to clear", e)
                 }
                 
                 // Attempt sign in with retry logic for network errors
-                val authResult = AuthErrorHandler.executeWithRetry {
+                logAuthenticationStep("Attempting Supabase sign in", email)
+                val authResult = AuthErrorHandler.executeWithRetry(
+                    maxAttempts = authConfig.getEffectiveRetryAttempts(),
+                    initialDelay = authConfig.getEffectiveRetryDelay()
+                ) {
                     client.auth.signInWith(Email) {
                         this.email = email
                         this.password = password
@@ -298,10 +482,15 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
                         createdAt = supabaseUser.createdAt?.toString()
                     )
                     
-                    // Check if email is verified
-                    if (supabaseUser.emailConfirmedAt == null) {
+                    debugLog("User authenticated successfully: ${user.id}")
+                    
+                    // Check if email verification should be bypassed in development mode
+                    val emailVerified = supabaseUser.emailConfirmedAt != null || authConfig.shouldBypassEmailVerification()
+                    
+                    if (!emailVerified && !authConfig.shouldBypassEmailVerification()) {
                         // Log verification attempt
                         AuthErrorHandler.logVerificationAttempt(email, false, "Email not verified")
+                        logAuthenticationStep("Sign in requires email verification", email, false)
                         
                         // Email not verified - return result indicating verification needed
                         Result.success(AuthResult(
@@ -312,24 +501,34 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
                     } else {
                         // Log successful verification
                         AuthErrorHandler.logVerificationAttempt(email, true)
+                        logAuthenticationStep("Sign in completed successfully", email, true)
                         
-                        // Email verified - successful authentication
+                        val message = if (authConfig.shouldBypassEmailVerification() && supabaseUser.emailConfirmedAt == null) {
+                            "Signed in successfully. Email verification bypassed in development mode."
+                        } else {
+                            null
+                        }
+                        
+                        // Email verified or bypassed - successful authentication
                         Result.success(AuthResult(
                             user = user,
                             needsEmailVerification = false,
-                            message = null
+                            message = message
                         ))
                     }
                 } else {
+                    logAuthenticationStep("Sign in failed - invalid credentials", email, false)
                     Result.failure(Exception("Authentication failed - invalid credentials"))
                 }
             } catch (e: Exception) {
-                Log.e("SupabaseAuth", "Sign in failed", e)
+                logAuthenticationStep("Sign in failed with exception", email, false)
+                debugLog("Sign in failed", e)
+                
                 // Make sure to clear any partial session on error
                 try {
                     client.auth.signOut()
                 } catch (signOutError: Exception) {
-                    // Ignore sign out errors
+                    debugLog("Failed to clear session after error", signOutError)
                 }
                 
                 val authError = AuthErrorHandler.handleAuthError(e)
@@ -359,18 +558,31 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun resendVerificationEmail(email: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                logAuthenticationStep("Starting resend verification email", email)
+                
+                // Check if email verification is bypassed in development mode
+                if (authConfig.shouldBypassEmailVerification()) {
+                    debugLog("Resend verification email bypassed in development mode")
+                    logAuthenticationStep("Resend verification email bypassed (dev mode)", email, true)
+                    return@withContext Result.success(Unit)
+                }
+                
                 // Check if Supabase is configured
                 if (!SupabaseClient.isConfigured()) {
+                    logAuthenticationStep("Resend verification failed - Supabase not configured", email, false)
                     return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
                 }
                 
                 // Execute with retry logic for network errors
-                AuthErrorHandler.executeWithRetry {
+                AuthErrorHandler.executeWithRetry(
+                    maxAttempts = authConfig.getEffectiveRetryAttempts(),
+                    initialDelay = authConfig.getEffectiveRetryDelay()
+                ) {
                     // Note: In Supabase Kotlin SDK 2.6.0, there isn't a direct resend method
                     // This is a placeholder implementation that would need to be updated
                     // when the SDK supports resend functionality or use REST API directly
-                    Log.d("SupabaseAuth", "Resend verification email requested for: $email")
-                    Log.w("SupabaseAuth", "Resend functionality not yet implemented - requires SDK update or REST API call")
+                    debugLog("Resend verification email requested for: $email")
+                    debugLog("Resend functionality not yet implemented - requires SDK update or REST API call")
                     
                     // For now, simulate success to prevent app crashes
                     // In a real implementation, you would make a direct REST API call to Supabase
@@ -379,10 +591,12 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
                 
                 // Log resend attempt
                 AuthErrorHandler.logResendVerificationAttempt(email, true)
+                logAuthenticationStep("Resend verification email completed", email, true)
                 
                 Result.success(Unit)
             } catch (e: Exception) {
-                Log.e("SupabaseAuth", "Failed to resend verification email", e)
+                logAuthenticationStep("Resend verification email failed", email, false)
+                debugLog("Failed to resend verification email", e)
                 
                 // Log failed resend attempt
                 AuthErrorHandler.logResendVerificationAttempt(email, false, e.message)
@@ -400,30 +614,45 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun checkEmailVerified(email: String): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
+                logAuthenticationStep("Checking email verification status", email)
+                
+                // Check if email verification is bypassed in development mode
+                if (authConfig.shouldBypassEmailVerification()) {
+                    debugLog("Email verification check bypassed in development mode - returning true")
+                    logAuthenticationStep("Email verification check bypassed (dev mode)", email, true)
+                    return@withContext Result.success(true)
+                }
+                
                 // Check if Supabase is configured
                 if (!SupabaseClient.isConfigured()) {
+                    logAuthenticationStep("Email verification check failed - Supabase not configured", email, false)
                     return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
                 }
                 
                 // Get current user and check verification status with retry logic
-                val isVerified = AuthErrorHandler.executeWithRetry {
+                val isVerified = AuthErrorHandler.executeWithRetry(
+                    maxAttempts = authConfig.getEffectiveRetryAttempts(),
+                    initialDelay = authConfig.getEffectiveRetryDelay()
+                ) {
                     val user = client.auth.currentUserOrNull()
                     if (user != null && user.email == email) {
                         val verified = user.emailConfirmedAt != null
-                        Log.d("SupabaseAuth", "Email verification status for $email: $verified")
+                        debugLog("Email verification status for $email: $verified")
                         verified
                     } else {
-                        // No current user or email mismatch
+                        debugLog("No current user or email mismatch for verification check")
                         false
                     }
                 }
                 
                 // Log verification check
                 AuthErrorHandler.logVerificationAttempt(email, isVerified)
+                logAuthenticationStep("Email verification check completed", email, isVerified)
                 
                 Result.success(isVerified)
             } catch (e: Exception) {
-                Log.e("SupabaseAuth", "Failed to check email verification status", e)
+                logAuthenticationStep("Email verification check failed", email, false)
+                debugLog("Failed to check email verification status", e)
                 
                 // Log failed verification check
                 AuthErrorHandler.logVerificationAttempt(email, false, e.message)

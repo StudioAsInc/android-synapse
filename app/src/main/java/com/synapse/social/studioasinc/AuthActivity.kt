@@ -48,7 +48,7 @@ class AuthActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Initialize services
-        authService = SupabaseAuthenticationService()
+        authService = SupabaseAuthenticationService(this)
         sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
 
         setupUI()

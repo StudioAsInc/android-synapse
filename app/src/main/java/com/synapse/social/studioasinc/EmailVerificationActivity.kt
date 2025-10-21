@@ -43,7 +43,7 @@ class EmailVerificationActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Initialize services
-        authService = SupabaseAuthenticationService()
+        authService = SupabaseAuthenticationService(this)
         sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
 
         // Get email and password from intent
