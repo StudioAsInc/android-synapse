@@ -122,13 +122,15 @@ class MainActivity : AppCompatActivity() {
         viewModel.authState.observe(this) { state ->
             when (state) {
                 is AuthState.Authenticated -> {
-                    // Navigate to home - placeholder for now
-                    Toast.makeText(this, "Authentication successful! (Home screen not implemented yet)", Toast.LENGTH_LONG).show()
+                    // Navigate to home screen
+                    val intent = Intent(this, HomeActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
-                    // Navigate to auth - placeholder for now
-                    Toast.makeText(this, "Not authenticated! (Auth screen not implemented yet)", Toast.LENGTH_LONG).show()
+                    // Navigate to auth screen
+                    val intent = Intent(this, AuthActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Banned -> {
@@ -139,8 +141,9 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 }
                 is AuthState.NeedsProfileCompletion -> {
-                    // Navigate to complete profile - placeholder for now
-                    Toast.makeText(this, "Profile completion needed! (Profile screen not implemented yet)", Toast.LENGTH_LONG).show()
+                    // Navigate to complete profile screen
+                    val intent = Intent(this, CompleteProfileActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Error -> showErrorDialog(state.message)
