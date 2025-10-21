@@ -9,6 +9,7 @@ import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.Comment
 import com.synapse.social.studioasinc.model.Reply
 import com.synapse.social.studioasinc.model.User
+import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import kotlinx.coroutines.launch
 
 class PostCommentsViewModel : ViewModel() {
@@ -275,7 +276,10 @@ class PostCommentsViewModel : ViewModel() {
                 
                 if (likes.isNotEmpty()) {
                     // Unlike
-                    dbService.delete("reply_likes")
+                    dbService.delete("reply_likes") {
+                        eq("reply_key", replyKey)
+                        eq("user_id", currentUid)
+                    }
                 } else {
                     // Like
                     val likeData = mapOf(

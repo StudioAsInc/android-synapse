@@ -58,7 +58,7 @@ class StoryAdapter(
 
             // Load user information
             lifecycleOwner.lifecycleScope.launch {
-                userRepository.getUserById(story.userId)
+                userRepository.getUserById(story.uid)
                     .onSuccess { user ->
                         userName.text = user?.username ?: "Unknown"
                     }

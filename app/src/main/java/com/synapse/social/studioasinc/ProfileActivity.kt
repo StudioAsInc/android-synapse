@@ -18,10 +18,8 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
-import com.synapse.social.studioasinc.adapter.PostsAdapter
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.UserProfileManager
-import com.synapse.social.studioasinc.util.adapter.PostAdapter
 import io.noties.markwon.Markwon
 import java.util.Calendar
 import java.util.HashMap
@@ -39,7 +37,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProfileBinding
     private lateinit var viewModel: ProfileViewModel
     private lateinit var userProfileManager: UserProfileManager
-    private lateinit var postAdapter: PostAdapter
+    private lateinit var postAdapter: PostsAdapter
     private lateinit var markwon: Markwon
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,7 +103,9 @@ class ProfileActivity : AppCompatActivity() {
      * @param userId The ID of the user whose posts are to be observed.
      */
     private fun observeUserPosts(userId: String) {
-        postAdapter = PostAdapter(
+        postAdapter = PostsAdapter(
+            context = this,
+            lifecycleOwner = this,
             markwon = markwon,
             onLikeClicked = { post -> viewModel.togglePostLike(post) },
             onCommentClicked = { post -> showCommentsDialog(post) },
@@ -131,7 +131,7 @@ class ProfileActivity : AppCompatActivity() {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
-                    postAdapter.submitList(state.posts)
+                    postAdapter.submitList(state.data)
                 }
                 is ProfileViewModel.State.Error -> {
                     binding.ProfilePageLoadingBody.visibility = View.GONE

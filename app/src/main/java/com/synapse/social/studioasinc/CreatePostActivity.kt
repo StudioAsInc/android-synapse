@@ -28,6 +28,10 @@ import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.toHashMap
 import com.synapse.social.studioasinc.util.MediaUploadManager
+import com.synapse.social.studioasinc.util.UserMention
+import com.synapse.social.studioasinc.util.FileUtil
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.*
 
 class CreatePostActivity : AppCompatActivity() {
@@ -271,7 +275,7 @@ class CreatePostActivity : AppCompatActivity() {
         val postKey = postsRef.push().key ?: return
         val post = Post(
             key = postKey,
-            uid = currentUser.uid,
+            authorUid = currentUser.uid,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
@@ -292,42 +296,52 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun uploadMediaAndSavePost(post: Post) {
-        MediaUploadManager.uploadMultipleMedia(
-            selectedMediaItems,
-            onProgress = { progress ->
-                runOnUiThread {
-                    val progressInt = (progress * 100).toInt()
-                    progressBar?.progress = progressInt
-                    progressPercentage?.text = "$progressInt%"
-                }
-            },
-            onComplete = { uploadedItems ->
-                post.mediaItems = uploadedItems.toMutableList()
-                post.determinePostType()
-                
-                // Set legacy image field for backward compatibility
-                uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
-                    post.postImage = it.url
-                }
-                
-                savePostToDatabase(post)
-            },
-            onError = { error ->
+        lifecycleScope.launch {
+            try {
+                MediaUploadManager.uploadMultipleMedia(
+                    selectedMediaItems,
+                    onProgress = { progress ->
+                        runOnUiThread {
+                            val progressInt = (progress * 100).toInt()
+                            progressBar?.progress = progressInt
+                            progressPercentage?.text = "$progressInt%"
+                        }
+                    },
+                    onComplete = { uploadedItems ->
+                        post.mediaItems = uploadedItems.toMutableList()
+                        post.determinePostType()
+                        
+                        // Set legacy image field for backward compatibility
+                        uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
+                            post.postImage = it.url
+                        }
+                        
+                        savePostToDatabase(post)
+                    },
+                    onError = { error ->
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Failed to upload media: $error", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)
-                    Toast.makeText(this, "Failed to upload media: $error", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@CreatePostActivity, "Failed to upload media: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
-        )
+        }
     }
 
     private fun savePostToDatabase(post: Post) {
-        postsRef.child(post.key).setValue(post.toHashMap())
+        val postKey = post.key ?: return
+        postsRef.child(postKey).setValue(post.toHashMap())
             .addOnSuccessListener {
                 runOnUiThread {
                     showLoading(false)
                     Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                    handleMentions(post.postText, post.key)
+                    handleMentions(post.postText, postKey)
                     finish()
                 }
             }
@@ -339,8 +353,10 @@ class CreatePostActivity : AppCompatActivity() {
             }
     }
 
-    private fun handleMentions(text: String?, postKey: String) {
-        com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, null, "post")
+    private fun handleMentions(text: String?, postKey: String?) {
+        if (postKey != null) {
+            com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, null, "post")
+        }
     }
 
     private fun showLoading(show: Boolean) {

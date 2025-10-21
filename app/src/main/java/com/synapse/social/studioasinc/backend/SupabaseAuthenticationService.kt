@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc.backend
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.user.UserInfo
+import io.github.jan.supabase.gotrue.SessionStatus
 import com.synapse.social.studioasinc.SupabaseClient
 
 /**

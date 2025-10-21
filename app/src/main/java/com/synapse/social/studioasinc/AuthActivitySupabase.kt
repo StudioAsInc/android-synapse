@@ -305,7 +305,7 @@ class AuthActivitySupabase : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val user = authService.signIn(email, pass)
-                fetchUsername(user.id)
+                user?.let { fetchUsername(it.id) } ?: showSignInError()
             } catch (e: Exception) {
                 showSignInError()
             }
@@ -321,10 +321,8 @@ class AuthActivitySupabase : AppCompatActivity() {
                 val userData = dbService.selectWithFilter<Map<String, Any?>>(
                     table = "users",
                     columns = "username"
-                ) { query ->
-                    query.filter {
-                        eq("uid", uid)
-                    }
+                ) {
+                    eq("uid", uid)
                 }
 
                 val username = userData.firstOrNull()?.get("username") as? String

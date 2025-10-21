@@ -9,6 +9,8 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -49,8 +51,7 @@ class HomeFragment : Fragment() {
         setupRecyclerView()
         setupListeners()
 
-        viewModel.fetchPosts()
-        viewModel.fetchStories()
+        viewModel.loadPosts()
     }
 
     private fun initializeViews(view: View) {
@@ -67,7 +68,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        postAdapter = PostAdapter(this, emptyList())
+        postAdapter = PostAdapter(requireContext(), this)
         storyAdapter = StoryAdapter(requireContext(), emptyList())
         headerAdapter = HeaderAdapter(requireContext(), storyAdapter)
 
@@ -80,23 +81,34 @@ class HomeFragment : Fragment() {
 
     private fun setupListeners() {
         swipeLayout.setOnRefreshListener {
-            viewModel.fetchPosts()
-            viewModel.fetchStories()
+            viewModel.loadPosts()
         }
     }
 
     private fun observePosts() {
-        viewModel.posts.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is HomeViewModel.State.Loading -> showShimmer()
-                is HomeViewModel.State.Success -> {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.posts.collect { posts ->
+                hideShimmer()
+                postAdapter.updatePosts(posts)
+                swipeLayout.isRefreshing = false
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoading.collect { isLoading ->
+                if (isLoading) {
+                    showShimmer()
+                } else {
                     hideShimmer()
-                    postAdapter.updatePosts(state.data)
-                    swipeLayout.isRefreshing = false
                 }
-                is HomeViewModel.State.Error -> {
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.error.collect { error ->
+                error?.let {
                     hideShimmer()
-                    Toast.makeText(context, "Failed to fetch posts: ${state.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Failed to fetch posts: $it", Toast.LENGTH_LONG).show()
                     swipeLayout.isRefreshing = false
                 }
             }
@@ -104,13 +116,8 @@ class HomeFragment : Fragment() {
     }
 
     private fun observeStories() {
-        viewModel.stories.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is HomeViewModel.State.Loading -> {}
-                is HomeViewModel.State.Success -> storyAdapter.updateStories(state.data)
-                is HomeViewModel.State.Error -> Toast.makeText(context, "Failed to fetch stories: ${state.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        // Stories functionality can be implemented later
+        // For now, we'll just show empty stories
     }
 
     private fun showShimmer() {

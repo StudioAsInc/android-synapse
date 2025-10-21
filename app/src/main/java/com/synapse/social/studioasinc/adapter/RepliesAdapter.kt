@@ -65,7 +65,7 @@ class RepliesAdapter(
                     profileImage.setImageResource(R.drawable.avatar)
                 }
 
-                when (it.account_type) {
+                when (it.accountType) {
                     "admin" -> badge.setImageResource(R.drawable.admin_badge)
                     "moderator" -> badge.setImageResource(R.drawable.moderator_badge)
                     "support" -> badge.setImageResource(R.drawable.support_badge)

@@ -39,16 +39,14 @@ class PostsAdapter(
     }
 
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val contentText: TextView = itemView.findViewById(R.id.contentText)
-        private val authorText: TextView = itemView.findViewById(R.id.authorText)
-        private val timestampText: TextView = itemView.findViewById(R.id.timestampText)
-        private val likeButton: ImageView = itemView.findViewById(R.id.likeButton)
-        private val commentButton: ImageView = itemView.findViewById(R.id.commentButton)
+        private val contentText: TextView = itemView.findViewById(R.id.postContent)
+        private val authorText: TextView = itemView.findViewById(R.id.authorName)
+        private val likeButton: View = itemView.findViewById(R.id.likeButton)
+        private val commentButton: View = itemView.findViewById(R.id.commentButton)
         private val shareButton: ImageView = itemView.findViewById(R.id.shareButton)
-        private val moreButton: ImageView = itemView.findViewById(R.id.moreButton)
-        private val favoriteButton: ImageView = itemView.findViewById(R.id.favoriteButton)
-        private val likesCountText: TextView = itemView.findViewById(R.id.likesCountText)
-        private val commentsCountText: TextView = itemView.findViewById(R.id.commentsCountText)
+        private val moreButton: ImageView = itemView.findViewById(R.id.postOptions)
+        private val likesCountText: TextView = itemView.findViewById(R.id.likeCount)
+        private val commentsCountText: TextView = itemView.findViewById(R.id.commentCount)
 
         fun bind(post: Post) {
             // Set content with markdown support if available
@@ -61,9 +59,6 @@ class PostsAdapter(
             // Set author info
             authorText.text = post.authorUid // This should be replaced with actual username
             
-            // Set timestamp
-            timestampText.text = formatTimestamp(post.timestamp)
-            
             // Set counts
             likesCountText.text = post.likesCount.toString()
             commentsCountText.text = post.commentsCount.toString()
@@ -73,7 +68,6 @@ class PostsAdapter(
             commentButton.setOnClickListener { onCommentClicked?.invoke(post) }
             shareButton.setOnClickListener { onShareClicked?.invoke(post) }
             moreButton.setOnClickListener { onMoreOptionsClicked?.invoke(post) }
-            favoriteButton.setOnClickListener { onFavoriteClicked?.invoke(post) }
             authorText.setOnClickListener { onUserClicked?.invoke(post.authorUid) }
         }
 
