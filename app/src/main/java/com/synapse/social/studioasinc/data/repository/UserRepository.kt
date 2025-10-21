@@ -10,8 +10,13 @@ class UserRepository {
     
     private val client = SupabaseClient.client
     
+    private fun isSupabaseConfigured(): Boolean = SupabaseClient.isConfigured()
+    
     suspend fun createUser(user: User): Result<User> {
         return try {
+            if (!isSupabaseConfigured()) {
+                return Result.failure(Exception("Supabase not configured"))
+            }
             val result = client.from("users").insert(user)
             Result.success(user)
         } catch (e: Exception) {
@@ -21,6 +26,9 @@ class UserRepository {
     
     suspend fun getUserById(userId: String): Result<User?> {
         return try {
+            if (!isSupabaseConfigured()) {
+                return Result.success(null)
+            }
             // Simplified query - will need proper implementation with actual Supabase setup
             Result.success(null)
         } catch (e: Exception) {

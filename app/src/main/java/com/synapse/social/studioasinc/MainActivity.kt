@@ -102,6 +102,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
+        // Check if Supabase is configured first
+        if (!com.synapse.social.studioasinc.SupabaseClient.isConfigured()) {
+            showErrorDialog("Supabase Configuration Missing\n\nPlease configure your Supabase credentials in gradle.properties:\n\n" +
+                    "SUPABASE_URL=https://your-project.supabase.co\n" +
+                    "SUPABASE_ANON_KEY=your-anon-key-here\n\n" +
+                    "Contact the developer for proper setup.")
+            return
+        }
+        
         viewModel.updateState.observe(this) { state ->
             when (state) {
                 is UpdateState.UpdateAvailable -> showUpdateDialog(state.title, state.versionName, state.changelog, state.updateLink, state.isCancelable)
@@ -114,10 +123,12 @@ class MainActivity : AppCompatActivity() {
             when (state) {
                 is AuthState.Authenticated -> {
                     // Navigate to home - placeholder for now
+                    Toast.makeText(this, "Authentication successful! (Home screen not implemented yet)", Toast.LENGTH_LONG).show()
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
                     // Navigate to auth - placeholder for now
+                    Toast.makeText(this, "Not authenticated! (Auth screen not implemented yet)", Toast.LENGTH_LONG).show()
                     finish()
                 }
                 is AuthState.Banned -> {
@@ -129,6 +140,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 is AuthState.NeedsProfileCompletion -> {
                     // Navigate to complete profile - placeholder for now
+                    Toast.makeText(this, "Profile completion needed! (Profile screen not implemented yet)", Toast.LENGTH_LONG).show()
                     finish()
                 }
                 is AuthState.Error -> showErrorDialog(state.message)

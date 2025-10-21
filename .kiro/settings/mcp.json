@@ -1,7 +1,13 @@
 {
   "mcpServers": {
     "supabase": {
-      "url": "https://mcp.supabase.com/mcp"
+      "command": "uvx",
+      "args": ["mcp-server-supabase"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": true,
+      "autoApprove": ["*"]
     }
   }
 }
