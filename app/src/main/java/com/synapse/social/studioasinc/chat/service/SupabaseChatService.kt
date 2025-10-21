@@ -336,6 +336,58 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
         }
     }
 
+    /**
+     * Clear chat messages for a specific user
+     * This removes all messages from the chat for the requesting user
+     */
+    suspend fun clearChatForUser(chatId: String, userId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Delete all messages in the chat
+                val result = databaseService.deleteWhere("messages", "chat_id", chatId)
+                
+                result.fold(
+                    onSuccess = {
+                        // Update chat room to clear last message info
+                        val updateData = mapOf(
+                            "last_message_id" to null,
+                            "last_message_text" to null,
+                            "last_message_time" to null,
+                            "last_message_sender_id" to null,
+                            "updated_at" to System.currentTimeMillis()
+                        )
+                        databaseService.update("chat_rooms", updateData, "id", chatId)
+                        
+                        // Reset unread count for user
+                        val userChatUpdate = mapOf(
+                            "unread_count" to 0,
+                            "last_read_at" to System.currentTimeMillis()
+                        )
+                        
+                        // Find and update user_chat record
+                        val userChatsResult = databaseService.selectWhere("user_chats", "*", "user_id", userId)
+                        userChatsResult.fold(
+                            onSuccess = { userChats ->
+                                val userChat = userChats.find { it["chat_id"] == chatId }
+                                if (userChat != null) {
+                                    databaseService.update("user_chats", userChatUpdate, "user_id", userId)
+                                }
+                            },
+                            onFailure = { }
+                        )
+                        
+                        Result.success(Unit)
+                    },
+                    onFailure = { error ->
+                        Result.failure(error)
+                    }
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     // Helper methods
     private suspend fun updateChatLastMessage(
         chatId: String,

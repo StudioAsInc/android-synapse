@@ -471,8 +471,154 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptions() {
-        // TODO: Implement more options (block user, delete chat, etc.)
-        SketchwareUtil.showMessage(this, "More options coming soon")
+        val options = arrayOf("View Profile", "Clear Chat", "Block User", "Report User")
+        
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("Chat Options")
+        builder.setItems(options) { _, which ->
+            when (which) {
+                0 -> { // View Profile
+                    if (otherUserId != null) {
+                        val intent = Intent(this, ProfileActivity::class.java)
+                        intent.putExtra("uid", otherUserId)
+                        startActivity(intent)
+                    }
+                }
+                1 -> { // Clear Chat
+                    showClearChatConfirmation()
+                }
+                2 -> { // Block User
+                    showBlockUserConfirmation()
+                }
+                3 -> { // Report User
+                    showReportUserDialog()
+                }
+            }
+        }
+        builder.show()
+    }
+
+    private fun showClearChatConfirmation() {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("Clear Chat")
+        builder.setMessage("Are you sure you want to clear this chat? This action cannot be undone.")
+        builder.setPositiveButton("Clear") { _, _ ->
+            clearChat()
+        }
+        builder.setNegativeButton("Cancel", null)
+        builder.show()
+    }
+
+    private fun clearChat() {
+        if (chatId == null || currentUserId == null) return
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                loadingDialog(true)
+                val result = chatService.clearChatForUser(chatId!!, currentUserId!!)
+                result.fold(
+                    onSuccess = {
+                        messagesList.clear()
+                        chatAdapter.notifyDataSetChanged()
+                        Toast.makeText(this@ChatActivity, "Chat cleared", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { error ->
+                        showError("Failed to clear chat: ${error.message}")
+                    }
+                )
+                loadingDialog(false)
+            } catch (e: Exception) {
+                showError("Error clearing chat: ${e.message}")
+                loadingDialog(false)
+            }
+        }
+    }
+
+    private fun showBlockUserConfirmation() {
+        if (otherUserId == null) return
+        
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("Block User")
+        builder.setMessage("Are you sure you want to block this user? They won't be able to message you.")
+        builder.setPositiveButton("Block") { _, _ ->
+            blockUser()
+        }
+        builder.setNegativeButton("Cancel", null)
+        builder.show()
+    }
+
+    private fun blockUser() {
+        if (otherUserId == null || currentUserId == null) return
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                loadingDialog(true)
+                val blockData = mapOf(
+                    "blocker_id" to currentUserId!!,
+                    "blocked_id" to otherUserId!!,
+                    "reason" to "Blocked from chat"
+                )
+                
+                val result = databaseService.insert("blocked_users", blockData)
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(this@ChatActivity, "User blocked", Toast.LENGTH_SHORT).show()
+                        finish()
+                    },
+                    onFailure = { error ->
+                        showError("Failed to block user: ${error.message}")
+                    }
+                )
+                loadingDialog(false)
+            } catch (e: Exception) {
+                showError("Error blocking user: ${e.message}")
+                loadingDialog(false)
+            }
+        }
+    }
+
+    private fun showReportUserDialog() {
+        if (otherUserId == null) return
+        
+        val reasons = arrayOf("Spam", "Harassment", "Inappropriate Content", "Fake Account", "Other")
+        
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("Report User")
+        builder.setItems(reasons) { _, which ->
+            reportUser(reasons[which])
+        }
+        builder.show()
+    }
+
+    private fun reportUser(reason: String) {
+        if (otherUserId == null || currentUserId == null) return
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                loadingDialog(true)
+                val reportData = mapOf(
+                    "reporter_id" to currentUserId!!,
+                    "reported_user_id" to otherUserId!!,
+                    "target_type" to "user",
+                    "reason" to reason,
+                    "description" to "Reported from chat"
+                )
+                
+                val result = databaseService.insert("reports", reportData)
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(this@ChatActivity, "User reported", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { error ->
+                        showError("Failed to report user: ${error.message}")
+                    }
+                )
+                loadingDialog(false)
+            } catch (e: Exception) {
+                showError("Error reporting user: ${e.message}")
+                loadingDialog(false)
+            }
+        }
     }
 
     private fun showAttachmentOptions() {
