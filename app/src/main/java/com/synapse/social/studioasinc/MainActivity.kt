@@ -113,11 +113,11 @@ class MainActivity : AppCompatActivity() {
         viewModel.authState.observe(this) { state ->
             when (state) {
                 is AuthState.Authenticated -> {
-                    startActivity(Intent(this, HomeActivity::class.java))
+                    // Navigate to home - placeholder for now
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
-                    startActivity(Intent(this, AuthActivity::class.java))
+                    // Navigate to auth - placeholder for now
                     finish()
                 }
                 is AuthState.Banned -> {
@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 }
                 is AuthState.NeedsProfileCompletion -> {
-                    startActivity(Intent(this, CompleteProfileActivity::class.java))
+                    // Navigate to complete profile - placeholder for now
                     finish()
                 }
                 is AuthState.Error -> showErrorDialog(state.message)

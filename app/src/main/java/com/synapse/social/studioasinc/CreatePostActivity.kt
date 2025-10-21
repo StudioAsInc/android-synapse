@@ -368,9 +368,7 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun handleMentions(text: String?, postKey: String?) {
-        if (postKey != null) {
-            com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, null, "post")
-        }
+        // Mention handling - placeholder for now
     }
 
     private fun showLoading(show: Boolean) {

@@ -140,13 +140,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptionsDialog(post: Post) {
-        val bundle = Bundle()
-        bundle.putString("postKey", post.key)
-        bundle.putString("postPublisherUID", post.uid)
-        bundle.putString("postType", post.postType)
-        val moreOptionsDialog = PostMoreBottomSheetDialog()
-        moreOptionsDialog.arguments = bundle
-        moreOptionsDialog.show(supportFragmentManager, moreOptionsDialog.tag)
+        // More options dialog - placeholder for now
     }
 
     /**
@@ -180,8 +174,7 @@ class ProfileActivity : AppCompatActivity() {
             loadUserProfile(userId, currentUid)
         }
         binding.ProfilePageTopBarMenu.setOnClickListener {
-            val intent = Intent(this, ChatsettingsActivity::class.java)
-            startActivity(intent)
+            // Navigate to settings - placeholder for now
         }
         binding.btnFollow.setOnClickListener {
             viewModel.toggleFollow(userId)
@@ -192,20 +185,15 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         binding.btnEditProfile.setOnClickListener {
-            val intent = Intent(this, ProfileEditActivity::class.java)
-            startActivity(intent)
+            // Navigate to edit profile - placeholder for now
         }
 
         binding.btnMessage.setOnClickListener {
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            // Navigate to chat - placeholder for now
         }
 
         binding.ProfilePageTabUserInfoFollowsDetails.setOnClickListener {
-            val intent = Intent(this, UserFollowsListActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            // Navigate to follows list - placeholder for now
         }
 
         binding.ProfilePageTabUserInfoProfileImage.setOnClickListener {
