@@ -3,20 +3,20 @@ package com.synapse.social.studioasinc.presentation.activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.MainActivity
 import com.synapse.social.studioasinc.databinding.ActivityAuthBinding
+import com.synapse.social.studioasinc.di.Dependencies
 import com.synapse.social.studioasinc.presentation.viewmodel.AuthViewModel
-import dagger.hilt.android.AndroidEntryPoint
+import com.synapse.social.studioasinc.presentation.viewmodel.AuthViewModelFactory
 import kotlinx.coroutines.launch
 
-@AndroidEntryPoint
 class AuthActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAuthBinding
-    private val authViewModel: AuthViewModel by viewModels()
+    private lateinit var authViewModel: AuthViewModel
     
     private var isSignUpMode = false
 
@@ -24,6 +24,16 @@ class AuthActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Initialize ViewModel with dependencies
+        val factory = AuthViewModelFactory(
+            Dependencies.signInUseCase,
+            Dependencies.signUpUseCase,
+            Dependencies.signOutUseCase,
+            Dependencies.getCurrentUserUseCase,
+            Dependencies.observeAuthStateUseCase
+        )
+        authViewModel = ViewModelProvider(this, factory)[AuthViewModel::class.java]
 
         setupUI()
         observeViewModel()

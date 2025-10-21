@@ -4,9 +4,9 @@ import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.model.User
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
 
-class SignInUseCase @Inject constructor(
+
+class SignInUseCase(
     private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(email: String, password: String): Result<String> {
@@ -14,7 +14,7 @@ class SignInUseCase @Inject constructor(
     }
 }
 
-class SignUpUseCase @Inject constructor(
+class SignUpUseCase(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository
 ) {
@@ -43,7 +43,7 @@ class SignUpUseCase @Inject constructor(
     }
 }
 
-class SignOutUseCase @Inject constructor(
+class SignOutUseCase(
     private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(): Result<Unit> {
@@ -51,7 +51,7 @@ class SignOutUseCase @Inject constructor(
     }
 }
 
-class GetCurrentUserUseCase @Inject constructor(
+class GetCurrentUserUseCase(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository
 ) {
@@ -65,7 +65,7 @@ class GetCurrentUserUseCase @Inject constructor(
     }
 }
 
-class ObserveAuthStateUseCase @Inject constructor(
+class ObserveAuthStateUseCase(
     private val authRepository: AuthRepository
 ) {
     operator fun invoke(): Flow<Boolean> {

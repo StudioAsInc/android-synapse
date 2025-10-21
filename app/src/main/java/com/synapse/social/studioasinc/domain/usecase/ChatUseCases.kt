@@ -6,9 +6,9 @@ import com.synapse.social.studioasinc.model.Message
 import com.synapse.social.studioasinc.model.Chat
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
-import javax.inject.Inject
 
-class SendMessageUseCase @Inject constructor(
+
+class SendMessageUseCase(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository
 ) {
@@ -43,7 +43,7 @@ class SendMessageUseCase @Inject constructor(
     }
 }
 
-class GetMessagesUseCase @Inject constructor(
+class GetMessagesUseCase(
     private val chatRepository: ChatRepository
 ) {
     suspend operator fun invoke(chatId: String, limit: Int = 50): Result<List<Message>> {
@@ -51,7 +51,7 @@ class GetMessagesUseCase @Inject constructor(
     }
 }
 
-class ObserveMessagesUseCase @Inject constructor(
+class ObserveMessagesUseCase(
     private val chatRepository: ChatRepository
 ) {
     operator fun invoke(chatId: String): Flow<List<Message>> {
@@ -59,7 +59,7 @@ class ObserveMessagesUseCase @Inject constructor(
     }
 }
 
-class GetUserChatsUseCase @Inject constructor(
+class GetUserChatsUseCase(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository
 ) {
@@ -71,7 +71,7 @@ class GetUserChatsUseCase @Inject constructor(
     }
 }
 
-class DeleteMessageUseCase @Inject constructor(
+class DeleteMessageUseCase(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository
 ) {
@@ -83,7 +83,7 @@ class DeleteMessageUseCase @Inject constructor(
     }
 }
 
-class EditMessageUseCase @Inject constructor(
+class EditMessageUseCase(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository
 ) {

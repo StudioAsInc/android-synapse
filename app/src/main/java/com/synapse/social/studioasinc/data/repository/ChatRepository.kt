@@ -9,11 +9,9 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class ChatRepository @Inject constructor() {
+
+class ChatRepository {
     
     private val client = SupabaseClient.client
     

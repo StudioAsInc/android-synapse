@@ -5,11 +5,9 @@ import com.synapse.social.studioasinc.model.User
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class UserRepository @Inject constructor() {
+
+class UserRepository {
     
     private val client = SupabaseClient.client
     
