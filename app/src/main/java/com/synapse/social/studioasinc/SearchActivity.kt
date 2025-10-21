@@ -31,6 +31,7 @@ class SearchActivity : AppCompatActivity() {
     private val databaseService = SupabaseDatabaseService()
 
     private val searchedUsersList = mutableListOf<Map<String, Any?>>()
+    private var chatMode = false
 
     // UI Components
     private lateinit var body: LinearLayout
@@ -69,6 +70,9 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun initialize(savedInstanceState: Bundle?) {
+        // Check if we're in chat mode
+        chatMode = intent.getBooleanExtra("mode", false) || intent.getStringExtra("mode") == "chat"
+        
         // Initialize UI components
         body = findViewById(R.id.body)
         middleLayout = findViewById(R.id.middleLayout)
@@ -120,8 +124,8 @@ class SearchActivity : AppCompatActivity() {
         }
 
         bottomChats.setOnClickListener {
-            // TODO: Implement InboxActivity when available
-            SketchwareUtil.showMessage(applicationContext, "Chat inbox coming soon")
+            val intent = Intent(applicationContext, InboxActivity::class.java)
+            startActivity(intent)
         }
 
         bottomProfile.setOnClickListener {
@@ -446,11 +450,22 @@ class SearchActivity : AppCompatActivity() {
                 
                 // Set click listener
                 holder.body.setOnClickListener {
-                    val intent = Intent(applicationContext, ProfileActivity::class.java)
-                    intent.putExtra("uid", item["uid"]?.toString())
-                    intent.putExtra("origin", "SearchActivity")
-                    startActivity(intent)
-                    finish()
+                    val userId = item["uid"]?.toString()
+                    if (chatMode && userId != null) {
+                        // Start chat with this user
+                        val intent = Intent(applicationContext, ChatActivity::class.java)
+                        intent.putExtra("uid", userId)
+                        intent.putExtra("ORIGIN_KEY", "SearchActivity")
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        // Go to profile
+                        val intent = Intent(applicationContext, ProfileActivity::class.java)
+                        intent.putExtra("uid", userId)
+                        intent.putExtra("origin", "SearchActivity")
+                        startActivity(intent)
+                        finish()
+                    }
                 }
                 
             } catch (e: Exception) {
