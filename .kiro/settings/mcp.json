@@ -6,7 +6,7 @@
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": true,
+      "disabled": false,
       "autoApprove": ["*"]
     }
   }
