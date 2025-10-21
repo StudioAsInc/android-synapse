@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "supabase": {
+    "fetch": {
       "command": "uvx",
-      "args": ["mcp-server-supabase"],
+      "args": ["mcp-server-fetch"],
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
