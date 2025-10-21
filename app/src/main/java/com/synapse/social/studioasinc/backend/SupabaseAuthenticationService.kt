@@ -20,19 +20,39 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun signUp(email: String, password: String): Result<User> {
         return withContext(Dispatchers.IO) {
             try {
-                val result = client.auth.signUpWith(Email) {
+                // Check if Supabase is configured
+                if (!SupabaseClient.isConfigured()) {
+                    return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
+                }
+                
+                // Clear any existing session first
+                try {
+                    client.auth.signOut()
+                } catch (e: Exception) {
+                    // Ignore sign out errors
+                }
+                
+                // Attempt sign up
+                val authResult = client.auth.signUpWith(Email) {
                     this.email = email
                     this.password = password
                 }
                 
+                // Verify the user was created and authenticated
                 val user = client.auth.currentUserOrNull()
-                if (user != null) {
+                if (user != null && user.id.isNotEmpty()) {
                     Result.success(User(user.id, user.email ?: ""))
                 } else {
-                    Result.failure(Exception("Failed to create user"))
+                    Result.failure(Exception("Account creation failed"))
                 }
             } catch (e: Exception) {
-                Result.failure(e)
+                // Make sure to clear any partial session on error
+                try {
+                    client.auth.signOut()
+                } catch (signOutError: Exception) {
+                    // Ignore sign out errors
+                }
+                Result.failure(Exception("Sign up failed: ${e.message}"))
             }
         }
     }
@@ -43,19 +63,39 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
     override suspend fun signIn(email: String, password: String): Result<User> {
         return withContext(Dispatchers.IO) {
             try {
-                client.auth.signInWith(Email) {
+                // Check if Supabase is configured
+                if (!SupabaseClient.isConfigured()) {
+                    return@withContext Result.failure(Exception("Supabase not configured. Please set up your credentials."))
+                }
+                
+                // Clear any existing session first
+                try {
+                    client.auth.signOut()
+                } catch (e: Exception) {
+                    // Ignore sign out errors
+                }
+                
+                // Attempt sign in
+                val authResult = client.auth.signInWith(Email) {
                     this.email = email
                     this.password = password
                 }
                 
+                // Verify the user is actually authenticated
                 val user = client.auth.currentUserOrNull()
-                if (user != null) {
+                if (user != null && user.id.isNotEmpty()) {
                     Result.success(User(user.id, user.email ?: ""))
                 } else {
-                    Result.failure(Exception("Failed to sign in"))
+                    Result.failure(Exception("Authentication failed - invalid credentials"))
                 }
             } catch (e: Exception) {
-                Result.failure(e)
+                // Make sure to clear any partial session on error
+                try {
+                    client.auth.signOut()
+                } catch (signOutError: Exception) {
+                    // Ignore sign out errors
+                }
+                Result.failure(Exception("Sign in failed: ${e.message}"))
             }
         }
     }
@@ -78,8 +118,21 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
      * Get current user
      */
     override fun getCurrentUser(): User? {
-        val user = client.auth.currentUserOrNull()
-        return user?.let { User(it.id, it.email ?: "") }
+        return try {
+            // Check if Supabase is configured
+            if (!SupabaseClient.isConfigured()) {
+                return null
+            }
+            
+            val user = client.auth.currentUserOrNull()
+            if (user != null && user.id.isNotEmpty()) {
+                User(user.id, user.email ?: "")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
     
     /**

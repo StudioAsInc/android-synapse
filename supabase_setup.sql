@@ -666,91 +666,234 @@ CREATE TRIGGER update_comments_count AFTER INSERT OR DELETE ON comments
 -- Bucket: 'chat-attachments' (Private, 50MB, all file types)
 
 -- Storage policies for file access control
+-- Note: These policies may already exist if you've run this script before
+-- If you get "policy already exists" errors, that's normal and can be ignored
+
 -- Profile Photos Policies
-CREATE POLICY "Users can upload their own profile photos" ON storage.objects
-    FOR INSERT WITH CHECK (
-        bucket_id = 'avatars' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload their own profile photos'
+    ) THEN
+        CREATE POLICY "Users can upload their own profile photos" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'avatars' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can update their own profile photos" ON storage.objects
-    FOR UPDATE USING (
-        bucket_id = 'avatars' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can update their own profile photos'
+    ) THEN
+        CREATE POLICY "Users can update their own profile photos" ON storage.objects
+            FOR UPDATE USING (
+                bucket_id = 'avatars' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can delete their own profile photos" ON storage.objects
-    FOR DELETE USING (
-        bucket_id = 'avatars' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can delete their own profile photos'
+    ) THEN
+        CREATE POLICY "Users can delete their own profile photos" ON storage.objects
+            FOR DELETE USING (
+                bucket_id = 'avatars' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Anyone can view profile photos" ON storage.objects
-    FOR SELECT USING (bucket_id = 'avatars');
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view profile photos'
+    ) THEN
+        CREATE POLICY "Anyone can view profile photos" ON storage.objects
+            FOR SELECT USING (bucket_id = 'avatars');
+    END IF;
+END $$;
 
 -- Media Files Policies
-CREATE POLICY "Users can upload their own media" ON storage.objects
-    FOR INSERT WITH CHECK (
-        bucket_id = 'media' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload their own media'
+    ) THEN
+        CREATE POLICY "Users can upload their own media" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'media' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can update their own media" ON storage.objects
-    FOR UPDATE USING (
-        bucket_id = 'media' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can update their own media'
+    ) THEN
+        CREATE POLICY "Users can update their own media" ON storage.objects
+            FOR UPDATE USING (
+                bucket_id = 'media' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can delete their own media" ON storage.objects
-    FOR DELETE USING (
-        bucket_id = 'media' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can delete their own media'
+    ) THEN
+        CREATE POLICY "Users can delete their own media" ON storage.objects
+            FOR DELETE USING (
+                bucket_id = 'media' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Anyone can view public media" ON storage.objects
-    FOR SELECT USING (bucket_id = 'media');
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view public media'
+    ) THEN
+        CREATE POLICY "Anyone can view public media" ON storage.objects
+            FOR SELECT USING (bucket_id = 'media');
+    END IF;
+END $$;
 
 -- Post Attachments Policies
-CREATE POLICY "Users can upload post attachments" ON storage.objects
-    FOR INSERT WITH CHECK (
-        bucket_id = 'posts' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload post attachments'
+    ) THEN
+        CREATE POLICY "Users can upload post attachments" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'posts' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can manage their own post attachments" ON storage.objects
-    FOR ALL USING (
-        bucket_id = 'posts' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can manage their own post attachments'
+    ) THEN
+        CREATE POLICY "Users can manage their own post attachments" ON storage.objects
+            FOR ALL USING (
+                bucket_id = 'posts' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Anyone can view post attachments" ON storage.objects
-    FOR SELECT USING (bucket_id = 'posts');
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view post attachments'
+    ) THEN
+        CREATE POLICY "Anyone can view post attachments" ON storage.objects
+            FOR SELECT USING (bucket_id = 'posts');
+    END IF;
+END $$;
 
 -- Chat Attachments Policies (Private bucket)
-CREATE POLICY "Users can upload chat attachments" ON storage.objects
-    FOR INSERT WITH CHECK (
-        bucket_id = 'chat-attachments' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload chat attachments'
+    ) THEN
+        CREATE POLICY "Users can upload chat attachments" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'chat-attachments' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can view chat attachments they have access to" ON storage.objects
-    FOR SELECT USING (
-        bucket_id = 'chat-attachments' AND (
-            auth.uid()::text = (storage.foldername(name))[1] OR
-            EXISTS (
-                SELECT 1 FROM messages m
-                JOIN chat_participants cp ON m.chat_id = cp.chat_id
-                WHERE m.media_url LIKE '%' || name || '%'
-                AND cp.user_id = auth.uid()::text
-            )
-        )
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can view chat attachments they have access to'
+    ) THEN
+        CREATE POLICY "Users can view chat attachments they have access to" ON storage.objects
+            FOR SELECT USING (
+                bucket_id = 'chat-attachments' AND (
+                    auth.uid()::text = (storage.foldername(name))[1] OR
+                    EXISTS (
+                        SELECT 1 FROM messages m
+                        JOIN chat_participants cp ON m.chat_id = cp.chat_id
+                        WHERE m.media_url LIKE '%' || name || '%'
+                        AND cp.user_id = auth.uid()::text
+                    )
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY "Users can delete their own chat attachments" ON storage.objects
-    FOR DELETE USING (
-        bucket_id = 'chat-attachments' AND
-        auth.uid()::text = (storage.foldername(name))[1]
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can delete their own chat attachments'
+    ) THEN
+        CREATE POLICY "Users can delete their own chat attachments" ON storage.objects
+            FOR DELETE USING (
+                bucket_id = 'chat-attachments' AND
+                auth.uid()::text = (storage.foldername(name))[1]
+            );
+    END IF;
+END $$;
 
 -- =====================================================
 -- 12. ENABLE REAL-TIME SUBSCRIPTIONS
