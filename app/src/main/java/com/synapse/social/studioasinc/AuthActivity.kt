@@ -134,6 +134,9 @@ class AuthActivity : AppCompatActivity() {
                     
                     // Save email for resend functionality
                     saveEmailForResend(state.email)
+                    
+                    // Start automatic verification checking for auto sign in
+                    startVerificationChecking(state.email)
                 }
                 
                 is AuthUIState.Authenticated -> {
@@ -306,47 +309,82 @@ class AuthActivity : AppCompatActivity() {
                     result.fold(
                         onSuccess = { authResult ->
                             if (authResult.needsEmailVerification) {
-                                // Email verification required
+                                // Email verification required - navigate to verification pending state
+                                Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
                                 updateUIState(AuthUIState.EmailVerificationPending(email))
                             } else {
-                                // Successful authentication
+                                // Successful authentication - clear any saved email and navigate
                                 authResult.user?.let { user ->
                                     clearSavedEmail()
                                     updateUIState(AuthUIState.Authenticated(user))
                                 } ?: run {
+                                    // Clean up session on authentication failure
+                                    cleanupFailedSession()
                                     updateUIState(AuthUIState.Error(AuthError.UNKNOWN_ERROR, "Authentication failed"))
                                 }
                             }
                         },
                         onFailure = { error ->
+                            // Clean up session on authentication failure
+                            cleanupFailedSession()
+                            
                             val authError = when {
                                 error.message?.contains("email not confirmed", ignoreCase = true) == true -> 
                                     AuthError.EMAIL_NOT_VERIFIED
+                                error.message?.contains("Email not confirmed", ignoreCase = true) == true -> 
+                                    AuthError.EMAIL_NOT_VERIFIED
                                 error.message?.contains("invalid", ignoreCase = true) == true -> 
                                     AuthError.INVALID_CREDENTIALS
+                                error.message?.contains("Invalid login credentials", ignoreCase = true) == true -> 
+                                    AuthError.INVALID_CREDENTIALS
+                                error.message?.contains("network", ignoreCase = true) == true -> 
+                                    AuthError.NETWORK_ERROR
                                 else -> AuthError.UNKNOWN_ERROR
                             }
                             
                             if (authError == AuthError.EMAIL_NOT_VERIFIED) {
+                                // Navigate to verification pending state for unverified email
+                                Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
                                 updateUIState(AuthUIState.EmailVerificationPending(email))
                             } else {
-                                updateUIState(AuthUIState.Error(authError, error.message ?: "Sign in failed"))
+                                val errorMessage = when (authError) {
+                                    AuthError.INVALID_CREDENTIALS -> "Invalid email or password. Please try again."
+                                    AuthError.NETWORK_ERROR -> "Network connection error. Please check your internet and try again."
+                                    else -> error.message ?: "Sign in failed"
+                                }
+                                updateUIState(AuthUIState.Error(authError, errorMessage))
                             }
                         }
                     )
                 } catch (e: Exception) {
+                    // Clean up session on exception
+                    cleanupFailedSession()
+                    
                     val authError = when {
                         e.message?.contains("email not confirmed", ignoreCase = true) == true -> 
                             AuthError.EMAIL_NOT_VERIFIED
+                        e.message?.contains("Email not confirmed", ignoreCase = true) == true -> 
+                            AuthError.EMAIL_NOT_VERIFIED
                         e.message?.contains("invalid", ignoreCase = true) == true -> 
                             AuthError.INVALID_CREDENTIALS
+                        e.message?.contains("Invalid login credentials", ignoreCase = true) == true -> 
+                            AuthError.INVALID_CREDENTIALS
+                        e.message?.contains("network", ignoreCase = true) == true -> 
+                            AuthError.NETWORK_ERROR
                         else -> AuthError.UNKNOWN_ERROR
                     }
                     
                     if (authError == AuthError.EMAIL_NOT_VERIFIED) {
+                        // Navigate to verification pending state for unverified email
+                        Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
                         updateUIState(AuthUIState.EmailVerificationPending(email))
                     } else {
-                        updateUIState(AuthUIState.Error(authError, e.message ?: "Sign in failed"))
+                        val errorMessage = when (authError) {
+                            AuthError.INVALID_CREDENTIALS -> "Invalid email or password. Please try again."
+                            AuthError.NETWORK_ERROR -> "Network connection error. Please check your internet and try again."
+                            else -> e.message ?: "Sign in failed"
+                        }
+                        updateUIState(AuthUIState.Error(authError, errorMessage))
                     }
                 }
             }
@@ -379,35 +417,58 @@ class AuthActivity : AppCompatActivity() {
                     result.fold(
                         onSuccess = { authResult ->
                             if (authResult.needsEmailVerification) {
-                                // Email verification required - show verification pending state
+                                // Email verification required - navigate to verification pending state
                                 Toast.makeText(this@AuthActivity, "Account created! Please check your email for verification.", Toast.LENGTH_LONG).show()
                                 updateUIState(AuthUIState.EmailVerificationPending(email))
                             } else {
                                 // Account created and verified - proceed to complete profile
                                 Toast.makeText(this@AuthActivity, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                                clearSavedEmail()
                                 navigateToCompleteProfile()
                             }
                         },
                         onFailure = { error ->
+                            // Clean up session on sign up failure
+                            cleanupFailedSession()
+                            
                             val authError = when {
                                 error.message?.contains("already registered", ignoreCase = true) == true -> 
+                                    AuthError.INVALID_CREDENTIALS
+                                error.message?.contains("User already registered", ignoreCase = true) == true -> 
                                     AuthError.INVALID_CREDENTIALS
                                 error.message?.contains("network", ignoreCase = true) == true -> 
                                     AuthError.NETWORK_ERROR
                                 else -> AuthError.UNKNOWN_ERROR
                             }
-                            updateUIState(AuthUIState.Error(authError, error.message ?: "Sign up failed"))
+                            
+                            val errorMessage = when (authError) {
+                                AuthError.INVALID_CREDENTIALS -> "An account with this email already exists. Please sign in instead."
+                                AuthError.NETWORK_ERROR -> "Network connection error. Please check your internet and try again."
+                                else -> error.message ?: "Sign up failed"
+                            }
+                            updateUIState(AuthUIState.Error(authError, errorMessage))
                         }
                     )
                 } catch (e: Exception) {
+                    // Clean up session on exception
+                    cleanupFailedSession()
+                    
                     val authError = when {
                         e.message?.contains("already registered", ignoreCase = true) == true -> 
+                            AuthError.INVALID_CREDENTIALS
+                        e.message?.contains("User already registered", ignoreCase = true) == true -> 
                             AuthError.INVALID_CREDENTIALS
                         e.message?.contains("network", ignoreCase = true) == true -> 
                             AuthError.NETWORK_ERROR
                         else -> AuthError.UNKNOWN_ERROR
                     }
-                    updateUIState(AuthUIState.Error(authError, e.message ?: "Sign up failed"))
+                    
+                    val errorMessage = when (authError) {
+                        AuthError.INVALID_CREDENTIALS -> "An account with this email already exists. Please sign in instead."
+                        AuthError.NETWORK_ERROR -> "Network connection error. Please check your internet and try again."
+                        else -> e.message ?: "Sign up failed"
+                    }
+                    updateUIState(AuthUIState.Error(authError, errorMessage))
                 }
             }
         }
@@ -453,5 +514,102 @@ class AuthActivity : AppCompatActivity() {
     private fun navigateToCompleteProfile() {
         startActivity(Intent(this, CompleteProfileActivity::class.java))
         finish()
+    }
+
+    /**
+     * Clean up session for failed authentication attempts
+     */
+    private fun cleanupFailedSession() {
+        lifecycleScope.launch {
+            try {
+                authService.signOut()
+            } catch (e: Exception) {
+                // Ignore sign out errors during cleanup
+                android.util.Log.w("AuthActivity", "Failed to clean up session: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Implement automatic retry of sign in after email verification
+     */
+    private fun attemptAutoSignInAfterVerification(email: String, password: String) {
+        lifecycleScope.launch {
+            try {
+                // Check if email is now verified
+                val verificationResult = authService.checkEmailVerified(email)
+                verificationResult.fold(
+                    onSuccess = { isVerified ->
+                        if (isVerified) {
+                            // Email is verified, attempt sign in
+                            android.util.Log.d("AuthActivity", "Email verified, attempting automatic sign in")
+                            performAutoSignIn(email, password)
+                        } else {
+                            android.util.Log.d("AuthActivity", "Email not yet verified")
+                        }
+                    },
+                    onFailure = { error ->
+                        android.util.Log.w("AuthActivity", "Failed to check verification status: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("AuthActivity", "Error during auto sign in check: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Perform automatic sign in after email verification
+     */
+    private fun performAutoSignIn(email: String, password: String) {
+        lifecycleScope.launch {
+            try {
+                val result = authService.signIn(email, password)
+                result.fold(
+                    onSuccess = { authResult ->
+                        if (!authResult.needsEmailVerification) {
+                            // Successful authentication after verification
+                            authResult.user?.let { user ->
+                                clearSavedEmail()
+                                Toast.makeText(this@AuthActivity, "Email verified! Welcome back.", Toast.LENGTH_SHORT).show()
+                                updateUIState(AuthUIState.Authenticated(user))
+                            }
+                        }
+                    },
+                    onFailure = { error ->
+                        android.util.Log.w("AuthActivity", "Auto sign in failed: ${error.message}")
+                        // Don't show error to user for auto sign in failures
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("AuthActivity", "Auto sign in exception: ${e.message}")
+                // Don't show error to user for auto sign in failures
+            }
+        }
+    }
+
+    /**
+     * Start periodic verification checking when in verification pending state
+     */
+    private fun startVerificationChecking(email: String) {
+        // Get the password from the form if available for auto sign in
+        val password = binding.etPassword.text.toString().trim()
+        
+        if (password.isNotEmpty()) {
+            lifecycleScope.launch {
+                // Check verification status every 30 seconds for up to 10 minutes
+                repeat(20) { attempt ->
+                    delay(30000) // Wait 30 seconds
+                    
+                    // Only continue checking if still in verification pending state
+                    if (currentState is AuthUIState.EmailVerificationPending) {
+                        attemptAutoSignInAfterVerification(email, password)
+                    } else {
+                        // Exit checking if state changed
+                        return@launch
+                    }
+                }
+            }
+        }
     }
 }
