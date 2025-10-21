@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 /**
  * User model for Supabase
  */
-@Serializable
 data class User(
     val id: String? = null,
     val uid: String,

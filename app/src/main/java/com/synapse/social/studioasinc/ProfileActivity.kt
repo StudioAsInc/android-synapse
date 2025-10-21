@@ -19,7 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.util.UserProfileManager
+
 import io.noties.markwon.Markwon
 import java.util.Calendar
 import java.util.HashMap
@@ -36,7 +36,6 @@ class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
     private lateinit var viewModel: ProfileViewModel
-    private lateinit var userProfileManager: UserProfileManager
     private lateinit var postAdapter: PostsAdapter
     private lateinit var markwon: Markwon
 
@@ -48,9 +47,8 @@ class ProfileActivity : AppCompatActivity() {
         // Initialize ViewModel
         viewModel = ViewModelProvider(this).get(ProfileViewModel::class.java)
 
-        // Initialize UserProfileManager and Markwon
+        // Initialize Markwon
         markwon = Markwon.create(this)
-        userProfileManager = UserProfileManager(this, markwon)
 
         // Get user ID from intent
         val userId = intent.getStringExtra("uid") ?: return
@@ -61,8 +59,8 @@ class ProfileActivity : AppCompatActivity() {
         loadUserProfile(userId, currentUid)
 
         // Fetch initial states
-        viewModel.fetchInitialFollowState(userId, currentUid)
-        viewModel.fetchInitialProfileLikeState(userId, currentUid)
+        viewModel.fetchInitialFollowState(userId)
+        viewModel.fetchInitialProfileLikeState(userId)
 
         // Observe user posts
         observeUserPosts(userId)
@@ -75,26 +73,14 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
-     * Loads the user profile information using the [UserProfileManager].
+     * Loads the user profile information using the ViewModel.
      *
      * @param userId The ID of the user whose profile is to be loaded.
      * @param currentUid The ID of the current user.
      */
     private fun loadUserProfile(userId: String, currentUid: String) {
-        val views = UserProfileManager.ProfileViews(
-            profileImage = binding.ProfilePageTabUserInfoProfileImage,
-            coverImage = binding.ProfilePageTabUserInfoCoverImage,
-            nickname = binding.ProfilePageTabUserInfoNickname,
-            username = binding.ProfilePageTabUserInfoUsername,
-            bio = binding.ProfilePageTabUserInfoBioLayoutText,
-            joinDate = binding.joinDateLayoutText,
-            status = binding.ProfilePageTabUserInfoStatus,
-            followersCount = binding.ProfilePageTabUserInfoFollowersCount,
-            followingCount = binding.ProfilePageTabUserInfoFollowingCount,
-            btnEditProfile = binding.btnEditProfile,
-            secondaryButtons = binding.ProfilePageTabUserInfoSecondaryButtons
-        )
-        userProfileManager.loadUserProfile(userId, currentUid, views)
+        viewModel.loadUserProfile(userId)
+        viewModel.getUserPosts(userId)
     }
 
     /**
@@ -107,11 +93,11 @@ class ProfileActivity : AppCompatActivity() {
             context = this,
             lifecycleOwner = this,
             markwon = markwon,
-            onLikeClicked = { post -> viewModel.togglePostLike(post) },
+            onLikeClicked = { post -> viewModel.togglePostLike(post.id) },
             onCommentClicked = { post -> showCommentsDialog(post) },
             onShareClicked = { post -> /* Handle share click */ },
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
-            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) },
+            onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
                 val intent = Intent(this, ProfileActivity::class.java)
                 intent.putExtra("uid", uid)
@@ -198,11 +184,11 @@ class ProfileActivity : AppCompatActivity() {
             startActivity(intent)
         }
         binding.btnFollow.setOnClickListener {
-            viewModel.toggleFollow(userId, currentUid)
+            viewModel.toggleFollow(userId)
         }
 
         binding.likeUserProfileButton.setOnClickListener {
-            viewModel.toggleProfileLike(userId, currentUid)
+            viewModel.toggleProfileLike(userId)
         }
 
         binding.btnEditProfile.setOnClickListener {
@@ -262,10 +248,12 @@ class ProfileActivity : AppCompatActivity() {
         val dbService = SupabaseDatabaseService()
         lifecycleScope.launch {
             try {
-                val users = dbService.selectWithFilter<Map<String, Any?>>(
+                val users = dbService.selectWithFilter(
                     table = "users",
-                    columns = "*"
-                ) { /* Add filter for userId */ }
+                    columns = "*",
+                    filter = "uid",
+                    value = userId
+                ).getOrNull() ?: emptyList()
                 
                 if (users.isNotEmpty()) {
                     val userData = users.first()

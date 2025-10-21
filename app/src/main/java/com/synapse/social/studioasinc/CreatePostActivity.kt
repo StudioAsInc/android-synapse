@@ -22,6 +22,8 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.User
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
@@ -59,10 +61,9 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressBar: ProgressBar? = null
     private var progressPercentage: TextView? = null
     
-    // Firebase
-    private val firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    private val postsRef = firebase.getReference("skyline/posts")
+    // Supabase services
+    private val authService = SupabaseAuthenticationService()
+    private val databaseService = SupabaseDatabaseService()
     
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -263,7 +264,7 @@ class CreatePostActivity : AppCompatActivity() {
             return
         }
         
-        val currentUser = auth.currentUser
+        val currentUser = authService.getCurrentUser()
         if (currentUser == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
@@ -272,10 +273,10 @@ class CreatePostActivity : AppCompatActivity() {
         showLoading(true)
         
         // Create post object
-        val postKey = postsRef.push().key ?: return
+        val postKey = "post_${System.currentTimeMillis()}_${(1000..9999).random()}"
         val post = Post(
             key = postKey,
-            authorUid = currentUser.uid,
+            authorUid = currentUser.id,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
@@ -336,21 +337,34 @@ class CreatePostActivity : AppCompatActivity() {
 
     private fun savePostToDatabase(post: Post) {
         val postKey = post.key ?: return
-        postsRef.child(postKey).setValue(post.toHashMap())
-            .addOnSuccessListener {
+        
+        // Use coroutines for Supabase operations
+        lifecycleScope.launch {
+            try {
+                val result = databaseService.insert("posts", post.toHashMap())
+                result.fold(
+                    onSuccess = {
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Post created successfully!", Toast.LENGTH_SHORT).show()
+                            handleMentions(post.postText, postKey)
+                            finish()
+                        }
+                    },
+                    onFailure = { exception ->
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)
-                    Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                    handleMentions(post.postText, postKey)
-                    finish()
+                    Toast.makeText(this@CreatePostActivity, "Failed to create post: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
-            .addOnFailureListener { exception ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+        }
     }
 
     private fun handleMentions(text: String?, postKey: String?) {

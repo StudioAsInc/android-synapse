@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
 
 // User model moved to separate file for compatibility
 
-@Serializable
 data class Chat(
     val id: String? = null,
     val chat_id: String,
@@ -18,7 +17,6 @@ data class Chat(
     val updated_at: String? = null
 )
 
-@Serializable
 data class Message(
     val id: String? = null,
     val message_key: String,
@@ -36,7 +34,6 @@ data class Message(
     val created_at: String? = null
 )
 
-@Serializable
 data class Story(
     val id: String? = null,
     val uid: String,

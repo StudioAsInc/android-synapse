@@ -3,7 +3,6 @@ package com.synapse.social.studioasinc.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
 data class Story(
     val id: String? = null,
     @SerialName("user_id")

@@ -23,6 +23,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.User
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.util.getChatId
 import com.synapse.social.studioasinc.util.ChatMessageManager
 import java.util.HashMap
 import com.synapse.social.studioasinc.ChatConstants.CHATS_REF
@@ -33,8 +34,8 @@ import com.synapse.social.studioasinc.ChatConstants.UID_KEY
 class MessageInteractionHandler(
     private val activity: AppCompatActivity,
     private val listener: ChatInteractionListener,
-    private val auth: FirebaseAuth,
-    private val _firebase: FirebaseDatabase,
+    private val authService: SupabaseAuthenticationService,
+    private val databaseService: SupabaseDatabaseService,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
     private val chatMessagesListRecycler: RecyclerView,
     private val vbr: android.os.Vibrator,
@@ -57,9 +58,9 @@ class MessageInteractionHandler(
         }
 
         val messageData = chatMessagesList[position]
-        val currentUser = auth.currentUser
+        val currentUser = authService.getCurrentUser()
         val senderUid = messageData[UID_KEY]?.toString()
-        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.uid
+        val isMine = currentUser != null && senderUid != null && senderUid == currentUser.id
         val messageText = messageData[MESSAGE_TEXT_KEY]?.toString() ?: ""
 
         val inflater = activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater

@@ -16,7 +16,7 @@ class AuthRepository {
                 this.email = email
                 this.password = password
             }
-            Result.success(result.user?.id ?: "")
+            Result.success(client.auth.currentUserOrNull()?.id ?: "")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -28,7 +28,7 @@ class AuthRepository {
                 this.email = email
                 this.password = password
             }
-            Result.success(result.user?.id ?: "")
+            Result.success(client.auth.currentUserOrNull()?.id ?: "")
         } catch (e: Exception) {
             Result.failure(e)
         }

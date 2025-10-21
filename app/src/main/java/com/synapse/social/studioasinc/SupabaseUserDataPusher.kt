@@ -23,9 +23,7 @@ object SupabaseUserDataPusher {
     fun updateUserProfile(uid: String, userData: Map<String, Any?>) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                dbService.update("users", userData) {
-                    eq("uid", uid)
-                }
+                dbService.update("users", userData, "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -118,8 +116,10 @@ object SupabaseUserDataPusher {
     fun incrementPostCount(uid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Use RPC to increment post count atomically
-                dbService.rpc("increment_post_count", mapOf("user_uid" to uid))
+                // Use direct update to increment post count
+                val currentUser = dbService.selectById("users", uid, "posts_count").getOrNull()
+                val currentCount = (currentUser?.get("posts_count") as? String)?.toIntOrNull() ?: 0
+                dbService.update("users", mapOf("posts_count" to (currentCount + 1).toString()), "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -134,8 +134,10 @@ object SupabaseUserDataPusher {
     fun incrementFollowerCount(uid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Use RPC to increment follower count atomically
-                dbService.rpc("increment_follower_count", mapOf("user_uid" to uid))
+                // Use direct update to increment follower count
+                val currentUser = dbService.selectById("users", uid, "followers_count").getOrNull()
+                val currentCount = (currentUser?.get("followers_count") as? String)?.toIntOrNull() ?: 0
+                dbService.update("users", mapOf("followers_count" to (currentCount + 1).toString()), "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -150,8 +152,10 @@ object SupabaseUserDataPusher {
     fun decrementFollowerCount(uid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Use RPC to decrement follower count atomically
-                dbService.rpc("decrement_follower_count", mapOf("user_uid" to uid))
+                // Use direct update to decrement follower count
+                val currentUser = dbService.selectById("users", uid, "followers_count").getOrNull()
+                val currentCount = (currentUser?.get("followers_count") as? String)?.toIntOrNull() ?: 0
+                dbService.update("users", mapOf("followers_count" to maxOf(0, currentCount - 1).toString()), "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }

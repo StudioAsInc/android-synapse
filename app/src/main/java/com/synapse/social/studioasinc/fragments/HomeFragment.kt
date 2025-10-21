@@ -19,13 +19,10 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.home.HeaderAdapter
 import com.synapse.social.studioasinc.home.HomeViewModel
 import com.synapse.social.studioasinc.home.PostAdapter
-import com.synapse.social.studioasinc.home.StoryAdapter
-
 class HomeFragment : Fragment() {
 
     private lateinit var viewModel: HomeViewModel
     private lateinit var postAdapter: PostAdapter
-    private lateinit var storyAdapter: StoryAdapter
     private lateinit var headerAdapter: HeaderAdapter
     private lateinit var concatAdapter: ConcatAdapter
 
@@ -69,8 +66,7 @@ class HomeFragment : Fragment() {
 
     private fun setupRecyclerView() {
         postAdapter = PostAdapter(requireContext(), this)
-        storyAdapter = StoryAdapter(requireContext(), emptyList())
-        headerAdapter = HeaderAdapter(requireContext(), storyAdapter)
+        headerAdapter = HeaderAdapter(requireContext(), this)
 
         concatAdapter = ConcatAdapter(headerAdapter, postAdapter)
         publicPostsList.apply {

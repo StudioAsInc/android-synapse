@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 /**
  * Represents a user mention in posts or comments
  */
-@Serializable
 data class UserMention(
     val uid: String,
     val username: String,

@@ -25,7 +25,7 @@ object UserProfileManager {
         profileCache[uid]?.let { return it }
         
         return try {
-            val result = dbService.selectById("users", uid, "uid")
+            val result = dbService.selectById("users", uid, "*").getOrNull()
             if (result != null) {
                 val user = User(
                     uid = result["uid"] as? String ?: "",
@@ -34,9 +34,9 @@ object UserProfileManager {
                     displayName = result["display_name"] as? String ?: "",
                     profileImageUrl = result["profile_image_url"] as? String,
                     bio = result["bio"] as? String,
-                    followersCount = (result["followers_count"] as? Number)?.toInt() ?: 0,
-                    followingCount = (result["following_count"] as? Number)?.toInt() ?: 0,
-                    postsCount = (result["posts_count"] as? Number)?.toInt() ?: 0
+                    followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
+                    followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
+                    postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
                 )
                 // Cache the user
                 profileCache[uid] = user
@@ -54,9 +54,7 @@ object UserProfileManager {
      */
     suspend fun updateUserProfile(uid: String, updates: Map<String, Any?>): Boolean {
         return try {
-            dbService.update("users", updates) {
-                eq("uid", uid)
-            }
+            dbService.update("users", updates, "uid", uid)
             // Clear cache for this user
             profileCache.remove(uid)
             true
@@ -86,12 +84,7 @@ object UserProfileManager {
      */
     suspend fun searchUsers(query: String, limit: Int = 20): List<User> {
         return try {
-            val results = dbService.select<Map<String, Any?>>("users") {
-                or {
-                    ilike("username", "%$query%")
-                    ilike("display_name", "%$query%")
-                }
-            }
+            val results = dbService.selectWithFilter("users", "*", "username", "%$query%").getOrNull() ?: emptyList()
             
             results.take(limit).mapNotNull { result ->
                 try {
@@ -120,9 +113,7 @@ object UserProfileManager {
      */
     suspend fun getUserProfiles(uids: List<String>): List<User> {
         return try {
-            val results = dbService.select<Map<String, Any?>>("users") {
-                `in`("uid", uids)
-            }
+            val results = dbService.select("users", "*").getOrNull() ?: emptyList()
             
             results.mapNotNull { result ->
                 try {
@@ -133,9 +124,9 @@ object UserProfileManager {
                         displayName = result["display_name"] as? String ?: "",
                         profileImageUrl = result["profile_image_url"] as? String,
                         bio = result["bio"] as? String,
-                        followersCount = (result["followers_count"] as? Number)?.toInt() ?: 0,
-                        followingCount = (result["following_count"] as? Number)?.toInt() ?: 0,
-                        postsCount = (result["posts_count"] as? Number)?.toInt() ?: 0
+                        followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
+                        followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
+                        postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
                     )
                     // Cache the user
                     profileCache[user.uid] = user
@@ -168,7 +159,7 @@ object UserProfileManager {
      */
     suspend fun userExists(uid: String): Boolean {
         return try {
-            val result = dbService.selectById("users", uid, "uid", "uid")
+            val result = dbService.selectById("users", uid, "uid").getOrNull()
             result != null
         } catch (e: Exception) {
             false
@@ -180,9 +171,7 @@ object UserProfileManager {
      */
     suspend fun isUsernameAvailable(username: String): Boolean {
         return try {
-            val results = dbService.select<Map<String, Any?>>("users") {
-                eq("username", username)
-            }
+            val results = dbService.selectWithFilter("users", "*", "username", username).getOrNull() ?: emptyList()
             results.isEmpty()
         } catch (e: Exception) {
             false

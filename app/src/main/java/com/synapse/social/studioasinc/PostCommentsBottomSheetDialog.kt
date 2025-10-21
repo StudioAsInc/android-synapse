@@ -101,7 +101,8 @@ class PostCommentsBottomSheetDialog : BottomSheetDialogFragment() {
             viewModel.getComments(postKey!!)
         }
 
-        FirebaseAuth.getInstance().getCurrentUser()?.uid?.let { viewModel.getUserData(it) }
+        val authService = SupabaseAuthenticationService()
+        authService.getCurrentUser()?.id?.let { viewModel.getUserData(it) }
     }
 
     private fun initializeViews(view: View) {

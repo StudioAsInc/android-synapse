@@ -27,7 +27,7 @@ class NewGroupActivity : AppCompatActivity() {
     private val usersList = mutableListOf<User>()
     private val selectedUsers = mutableListOf<String>()
 
-    private val database = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val databaseService = SupabaseDatabaseService()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

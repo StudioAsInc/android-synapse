@@ -318,12 +318,12 @@ class AuthActivitySupabase : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val userData = dbService.selectWithFilter<Map<String, Any?>>(
+                val userData = dbService.selectWithFilter(
                     table = "users",
-                    columns = "username"
-                ) {
-                    eq("uid", uid)
-                }
+                    columns = "username",
+                    filter = "uid",
+                    value = uid
+                ).getOrNull() ?: emptyList()
 
                 val username = userData.firstOrNull()?.get("username") as? String
                 if (username != null) {
@@ -378,20 +378,24 @@ class AuthActivitySupabase : AppCompatActivity() {
      */
     private fun updateOneSignalPlayerId(uid: String) {
         // Get current OneSignal Player ID if available
-        if (OneSignal.getUser().pushSubscription.optedIn) {
-            val playerId = OneSignal.getUser().pushSubscription.id
+        try {
+            val playerId = OneSignal.User.pushSubscription.id
             if (!playerId.isNullOrEmpty()) {
                 lifecycleScope.launch {
                     try {
                         dbService.update(
                             table = "users",
-                            data = mapOf("one_signal_player_id" to playerId)
+                            data = mapOf("one_signal_player_id" to playerId),
+                            filter = "uid",
+                            value = uid
                         )
                     } catch (e: Exception) {
                         // Handle error silently
                     }
                 }
             }
+        } catch (e: Exception) {
+            // Handle OneSignal error
         }
     }
 

@@ -6,9 +6,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-// Using direct Supabase services - NO Firebase
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.User
+import com.synapse.social.studioasinc.model.ChatMessage
 
 class ChatUIUpdater(
     private val activity: ChatActivity,
@@ -21,9 +20,10 @@ class ChatUIUpdater(
     private val topProfileLayoutVerifiedBadge: ImageView,
     private val mMessageReplyLayout: LinearLayout,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
-    private val mMessageReplyLayoutBodyRightMessage: TextView,
-    private val auth: FirebaseAuth
+    private val mMessageReplyLayoutBodyRightMessage: TextView
 ) {
+
+    private val authService = SupabaseAuthenticationService()
 
     fun updateNoChatVisibility(isEmpty: Boolean) {
         if (isEmpty) {
@@ -35,13 +35,13 @@ class ChatUIUpdater(
         }
     }
 
-    fun updateUserProfile(dataSnapshot: DataSnapshot) {
-        val nickname = dataSnapshot.child("nickname").getValue(String::class.java)
-        val username = dataSnapshot.child("username").getValue(String::class.java)
-        val status = dataSnapshot.child("status").getValue(String::class.java)
-        val gender = dataSnapshot.child("gender").getValue(String::class.java)
-        val verified = dataSnapshot.child("verified").getValue(Boolean::class.java)
-        val avatarUrl = dataSnapshot.child("avatar_url").getValue(String::class.java)
+    fun updateUserProfile(userData: Map<String, Any?>) {
+        val nickname = userData["nickname"] as? String
+        val username = userData["username"] as? String
+        val status = userData["status"] as? String
+        val gender = userData["gender"] as? String
+        val verified = userData["verified"] as? Boolean
+        val avatarUrl = userData["avatar_url"] as? String
 
         if (nickname != null && nickname != "null") {
             topProfileLayoutUsername.text = nickname
@@ -66,13 +66,16 @@ class ChatUIUpdater(
             topProfileLayoutVerifiedBadge.visibility = View.GONE
         }
 
-        Glide.with(activity).load(avatarUrl).into(topProfileLayoutProfileImage)
+        if (avatarUrl != null && avatarUrl != "null") {
+            Glide.with(activity).load(avatarUrl).into(topProfileLayoutProfileImage)
+        }
     }
 
-    fun showReplyUI(firstUserName: String, secondUserName: String, messageData: HashMap<String, Any>) {
-        val isMyMessage = auth.currentUser!!.uid == messageData[ChatConstants.UID_KEY].toString()
+    fun showReplyUI(firstUserName: String, secondUserName: String, message: ChatMessage) {
+        val currentUserId = authService.getCurrentUserId()
+        val isMyMessage = currentUserId == message.senderId
         mMessageReplyLayoutBodyRightUsername.text = if (isMyMessage) firstUserName else secondUserName
-        mMessageReplyLayoutBodyRightMessage.text = messageData[ChatConstants.MESSAGE_TEXT_KEY].toString()
+        mMessageReplyLayoutBodyRightMessage.text = message.message
         mMessageReplyLayout.visibility = View.VISIBLE
     }
 

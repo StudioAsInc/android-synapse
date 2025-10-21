@@ -44,15 +44,17 @@ class PostCommentsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Fetch comments from Supabase
-                val comments = dbService.selectWithFilter<Map<String, Any?>>(
+                val commentsResult = dbService.selectWithFilter(
                     table = "comments",
-                    columns = "*"
-                ) { /* Add filter for post_key and limit */ }
+                    columns = "*",
+                    filter = "post_key",
+                    value = postKey
+                )
                 
                 val commentsList = mutableListOf<Comment>()
                 val uids = mutableListOf<String>()
                 
-                comments.forEach { commentData ->
+                commentsResult.getOrNull()?.forEach { commentData ->
                     // Convert map to Comment object
                     val comment = Comment(
                         uid = commentData["uid"] as? String ?: "",
@@ -79,15 +81,17 @@ class PostCommentsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Fetch replies from Supabase
-                val replies = dbService.selectWithFilter<Map<String, Any?>>(
+                val repliesResult = dbService.selectWithFilter(
                     table = "replies",
-                    columns = "*"
-                ) { /* Add filter for post_key and comment_key */ }
+                    columns = "*",
+                    filter = "comment_key",
+                    value = commentKey
+                )
                 
                 val repliesList = mutableListOf<Reply>()
                 val uids = mutableListOf<String>()
                 
-                replies.forEach { replyData ->
+                repliesResult.getOrNull()?.forEach { replyData ->
                     // Convert map to Reply object
                     val reply = Reply(
                         uid = replyData["uid"] as? String ?: "",
@@ -116,12 +120,14 @@ class PostCommentsViewModel : ViewModel() {
             try {
                 val userMap = mutableMapOf<String, User>()
                 uids.distinct().forEach { uid ->
-                    val users = dbService.selectWithFilter<Map<String, Any?>>(
+                    val usersResult = dbService.selectWithFilter(
                         table = "users",
-                        columns = "*"
-                    ) { /* Add filter for uid */ }
+                        columns = "*",
+                        filter = "uid",
+                        value = uid
+                    )
                     
-                    users.firstOrNull()?.let { userData ->
+                    usersResult.getOrNull()?.firstOrNull()?.let { userData ->
                         val user = User(
                             id = userData["id"] as? String,
                             uid = userData["uid"] as? String ?: uid,
@@ -143,11 +149,13 @@ class PostCommentsViewModel : ViewModel() {
     fun getCommentCount(postKey: String) {
         viewModelScope.launch {
             try {
-                val comments = dbService.selectWithFilter<Map<String, Any?>>(
+                val commentsResult = dbService.selectWithFilter(
                     table = "comments",
-                    columns = "id"
-                ) { /* Add filter for post_key */ }
-                _commentCount.postValue(comments.size.toLong())
+                    columns = "id",
+                    filter = "post_key",
+                    value = postKey
+                )
+                _commentCount.postValue(commentsResult.getOrNull()?.size?.toLong() ?: 0L)
             } catch (e: Exception) {
                 _error.postValue("Failed to get comment count: ${e.message}")
             }
@@ -157,12 +165,14 @@ class PostCommentsViewModel : ViewModel() {
     fun getUserData(uid: String) {
         viewModelScope.launch {
             try {
-                val users = dbService.selectWithFilter<Map<String, Any?>>(
+                val usersResult = dbService.selectWithFilter(
                     table = "users",
-                    columns = "avatar"
-                ) { /* Add filter for uid */ }
+                    columns = "avatar",
+                    filter = "uid",
+                    value = uid
+                )
                 
-                val avatar = users.firstOrNull()?.get("avatar") as? String
+                val avatar = usersResult.getOrNull()?.firstOrNull()?.get("avatar") as? String
                 _userAvatar.postValue(avatar)
             } catch (e: Exception) {
                 _error.postValue("Failed to get user data: ${e.message}")
@@ -208,17 +218,16 @@ class PostCommentsViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already liked
-                val likes = dbService.select<Map<String, Any?>>(
+                val likesResult = dbService.selectWithFilter(
                     table = "comment_likes",
-                    columns = "*"
-                ) { 
-                    eq("comment_key", commentKey)
-                    eq("user_id", currentUserId)
-                }
+                    columns = "*",
+                    filter = "comment_key",
+                    value = commentKey
+                )
                 
-                if (likes.isNotEmpty()) {
+                if (likesResult.getOrNull()?.isNotEmpty() == true) {
                     // Unlike - remove the like
-                    dbService.delete("comment_likes")
+                    dbService.delete("comment_likes", "comment_key", commentKey)
                 } else {
                     // Like - add the like
                     val likeData = mapOf(
@@ -239,7 +248,7 @@ class PostCommentsViewModel : ViewModel() {
             try {
                 // Soft delete by setting deleted_at timestamp
                 val updateData = mapOf("deleted_at" to System.currentTimeMillis().toString())
-                dbService.update("comments", updateData)
+                dbService.update("comments", updateData, "id", commentKey)
             } catch (e: Exception) {
                 _error.postValue("Failed to delete comment: ${e.message}")
             }
@@ -253,7 +262,7 @@ class PostCommentsViewModel : ViewModel() {
                     "text" to newComment,
                     "edited_at" to System.currentTimeMillis().toString()
                 )
-                dbService.update("comments", updateData)
+                dbService.update("comments", updateData, "id", commentKey)
             } catch (e: Exception) {
                 _error.postValue("Failed to edit comment: ${e.message}")
             }
@@ -266,20 +275,16 @@ class PostCommentsViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already liked
-                val likes = dbService.select<Map<String, Any?>>(
+                val likesResult = dbService.selectWithFilter(
                     table = "reply_likes",
-                    columns = "*"
-                ) { 
-                    eq("reply_key", replyKey)
-                    eq("user_id", currentUid)
-                }
+                    columns = "*",
+                    filter = "reply_key",
+                    value = replyKey
+                )
                 
-                if (likes.isNotEmpty()) {
+                if (likesResult.getOrNull()?.isNotEmpty() == true) {
                     // Unlike
-                    dbService.delete("reply_likes") {
-                        eq("reply_key", replyKey)
-                        eq("user_id", currentUid)
-                    }
+                    dbService.delete("reply_likes", "reply_key", replyKey)
                 } else {
                     // Like
                     val likeData = mapOf(
@@ -301,7 +306,7 @@ class PostCommentsViewModel : ViewModel() {
             try {
                 // Soft delete
                 val updateData = mapOf("deleted_at" to System.currentTimeMillis().toString())
-                dbService.update("replies", updateData)
+                dbService.update("replies", updateData, "id", replyKey)
             } catch (e: Exception) {
                 _error.postValue("Failed to delete reply: ${e.message}")
             }
@@ -315,7 +320,7 @@ class PostCommentsViewModel : ViewModel() {
                     "text" to newReply,
                     "edited_at" to System.currentTimeMillis().toString()
                 )
-                dbService.update("replies", updateData)
+                dbService.update("replies", updateData, "id", replyKey)
             } catch (e: Exception) {
                 _error.postValue("Failed to edit reply: ${e.message}")
             }

@@ -44,7 +44,7 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _userProfile.value = State.Loading
-                val result = dbService.selectById("users", uid, "uid")
+                val result = dbService.selectById("users", uid, "*").getOrNull()
                 if (result != null) {
                     val user = User(
                         uid = result["uid"] as? String ?: "",
@@ -53,9 +53,9 @@ class ProfileViewModel : ViewModel() {
                         displayName = result["display_name"] as? String ?: "",
                         profileImageUrl = result["profile_image_url"] as? String,
                         bio = result["bio"] as? String,
-                        followersCount = (result["followers_count"] as? Number)?.toInt() ?: 0,
-                        followingCount = (result["following_count"] as? Number)?.toInt() ?: 0,
-                        postsCount = (result["posts_count"] as? Number)?.toInt() ?: 0
+                        followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
+                        followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
+                        postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
                     )
                     _userProfile.value = State.Success(user)
                 } else {
@@ -74,17 +74,15 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _userPosts.value = State.Loading
-                val results = dbService.select<Map<String, Any?>>("posts") {
-                    eq("author_uid", uid)
-                }
+                val results = dbService.selectWithFilter("posts", "*", "author_uid", uid).getOrNull() ?: emptyList()
                 val posts = results.map { result ->
                     Post(
                         id = result["id"] as? String ?: "",
                         authorUid = result["author_uid"] as? String ?: "",
                         content = result["content"] as? String ?: "",
                         timestamp = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
-                        likesCount = (result["likes_count"] as? Number)?.toInt() ?: 0,
-                        commentsCount = (result["comments_count"] as? Number)?.toInt() ?: 0
+                        likesCount = (result["likes_count"] as? String)?.toIntOrNull() ?: 0,
+                        commentsCount = (result["comments_count"] as? String)?.toIntOrNull() ?: 0
                     )
                 }
                 _userPosts.value = State.Success(posts)
@@ -105,10 +103,7 @@ class ProfileViewModel : ViewModel() {
                 
                 if (isCurrentlyFollowing) {
                     // Unfollow
-                    dbService.delete("follows") {
-                        eq("follower_uid", currentUid)
-                        eq("following_uid", targetUid)
-                    }
+                    dbService.delete("follows", "follower_uid", currentUid)
                 } else {
                     // Follow
                     val followData = mapOf(
@@ -137,10 +132,7 @@ class ProfileViewModel : ViewModel() {
                 
                 if (isCurrentlyLiked) {
                     // Unlike profile
-                    dbService.delete("profile_likes") {
-                        eq("liker_uid", currentUid)
-                        eq("profile_uid", targetUid)
-                    }
+                    dbService.delete("profile_likes", "liker_uid", currentUid)
                 } else {
                     // Like profile
                     val likeData = mapOf(
@@ -167,17 +159,11 @@ class ProfileViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already liked
-                val existingLike = dbService.select<Map<String, Any?>>("post_likes") {
-                    eq("user_uid", currentUid)
-                    eq("post_id", postId)
-                }
+                val existingLike = dbService.selectWithFilter("post_likes", "*", "user_uid", currentUid).getOrNull() ?: emptyList()
                 
                 if (existingLike.isNotEmpty()) {
                     // Unlike
-                    dbService.delete("post_likes") {
-                        eq("user_uid", currentUid)
-                        eq("post_id", postId)
-                    }
+                    dbService.delete("post_likes", "user_uid", currentUid)
                 } else {
                     // Like
                     val likeData = mapOf(
@@ -202,17 +188,11 @@ class ProfileViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already favorited
-                val existingFavorite = dbService.select<Map<String, Any?>>("favorites") {
-                    eq("user_uid", currentUid)
-                    eq("post_id", postId)
-                }
+                val existingFavorite = dbService.selectWithFilter("favorites", "*", "user_uid", currentUid).getOrNull() ?: emptyList()
                 
                 if (existingFavorite.isNotEmpty()) {
                     // Remove favorite
-                    dbService.delete("favorites") {
-                        eq("user_uid", currentUid)
-                        eq("post_id", postId)
-                    }
+                    dbService.delete("favorites", "user_uid", currentUid)
                 } else {
                     // Add favorite
                     val favoriteData = mapOf(
@@ -235,10 +215,7 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
-                val follows = dbService.select<Map<String, Any?>>("follows") {
-                    eq("follower_uid", currentUid)
-                    eq("following_uid", targetUid)
-                }
+                val follows = dbService.selectWithFilter("follows", "*", "follower_uid", currentUid).getOrNull() ?: emptyList()
                 _isFollowing.value = follows.isNotEmpty()
             } catch (e: Exception) {
                 _isFollowing.value = false
@@ -253,10 +230,7 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
-                val likes = dbService.select<Map<String, Any?>>("profile_likes") {
-                    eq("liker_uid", currentUid)
-                    eq("profile_uid", targetUid)
-                }
+                val likes = dbService.selectWithFilter("profile_likes", "*", "liker_uid", currentUid).getOrNull() ?: emptyList()
                 _isProfileLiked.value = likes.isNotEmpty()
             } catch (e: Exception) {
                 _isProfileLiked.value = false

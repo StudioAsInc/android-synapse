@@ -45,7 +45,7 @@ class StoryAdapter(
 
     inner class StoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val storyImage: ImageView = itemView.findViewById(R.id.storyImage)
-        private val userName: TextView = itemView.findViewById(R.id.userName)
+        private val userNameText: TextView = itemView.findViewById(R.id.textView1)
 
         fun bind(story: Story) {
             // Load story image
@@ -58,12 +58,12 @@ class StoryAdapter(
 
             // Load user information
             lifecycleOwner.lifecycleScope.launch {
-                userRepository.getUserById(story.uid)
+                userRepository.getUserById(story.userId)
                     .onSuccess { user ->
-                        userName.text = user?.username ?: "Unknown"
+                        userNameText.text = user?.displayName ?: user?.username ?: "Unknown"
                     }
                     .onFailure {
-                        userName.text = "Unknown"
+                        userNameText.text = "Unknown"
                     }
             }
         }

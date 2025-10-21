@@ -25,7 +25,7 @@ object PresenceManager {
                     "status" to "online",
                     "last_seen" to System.currentTimeMillis().toString()
                 )
-                dbService.update("users", updateData)
+                dbService.update("users", updateData, "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -44,7 +44,7 @@ object PresenceManager {
                     "status" to "offline",
                     "last_seen" to System.currentTimeMillis().toString()
                 )
-                dbService.update("users", updateData)
+                dbService.update("users", updateData, "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }

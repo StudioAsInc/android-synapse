@@ -35,12 +35,10 @@ object SupabaseOneSignalManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get current OneSignal Player ID if available
-                val playerId = OneSignal.getUser().pushSubscription.id
+                val playerId = OneSignal.User.pushSubscription.id
                 if (!playerId.isNullOrEmpty()) {
                     val updateData = mapOf("one_signal_player_id" to playerId)
-                    dbService.update("users", updateData) {
-                        eq("uid", uid)
-                    }
+                    dbService.update("users", updateData, "uid", uid)
                 }
             } catch (e: Exception) {
                 // Handle error silently
@@ -71,7 +69,11 @@ object SupabaseOneSignalManager {
      */
     @JvmStatic
     fun getPlayerId(): String? {
-        return OneSignal.getUser().pushSubscription.id
+        return try {
+            OneSignal.User.pushSubscription.id
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**
@@ -80,8 +82,12 @@ object SupabaseOneSignalManager {
      */
     @JvmStatic
     fun setTags(tags: Map<String, String>) {
-        tags.forEach { (key, value) ->
-            OneSignal.getUser().addTag(key, value)
+        try {
+            tags.forEach { (key, value) ->
+                OneSignal.User.addTag(key, value)
+            }
+        } catch (e: Exception) {
+            // Handle error
         }
     }
 
@@ -91,8 +97,12 @@ object SupabaseOneSignalManager {
      */
     @JvmStatic
     fun removeTags(tagKeys: List<String>) {
-        tagKeys.forEach { key ->
-            OneSignal.getUser().removeTag(key)
+        try {
+            tagKeys.forEach { key ->
+                OneSignal.User.removeTag(key)
+            }
+        } catch (e: Exception) {
+            // Handle error
         }
     }
 }

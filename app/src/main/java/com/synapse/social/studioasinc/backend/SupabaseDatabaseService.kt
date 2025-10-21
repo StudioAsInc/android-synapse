@@ -214,4 +214,31 @@ class SupabaseDatabaseService : com.synapse.social.studioasinc.backend.interface
             }
         }
     }
+    
+    /**
+     * Select with filter (alias for selectWhere)
+     */
+    suspend fun selectWithFilter(table: String, columns: String = "*", filter: String, value: Any): Result<List<Map<String, Any?>>> {
+        return selectWhere(table, columns, filter, value)
+    }
+    
+    /**
+     * Select by ID (convenience method)
+     */
+    suspend fun selectById(table: String, id: String, columns: String = "*"): Result<Map<String, Any?>?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw(columns)) {
+                    filter { eq("id", id) }
+                }.decodeSingleOrNull<JsonObject>()
+                
+                val mappedResult = result?.toMap()?.mapValues { (_, jsonValue) ->
+                    jsonValue.toString().removeSurrounding("\"")
+                }
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }

@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 /**
  * Post model for Supabase
  */
-@Serializable
 data class Post(
     val id: String = "",
     @SerialName("post_id")
@@ -61,13 +60,13 @@ data class Post(
  */
 fun HashMap<String, Any>.toPost(): Post {
     return Post(
-        id = this["id"] as? String,
+        id = this["id"] as? String ?: "",
         postId = this["post_id"] as? String ?: this["postId"] as? String ?: "",
         authorId = this["author_id"] as? String ?: this["authorId"] as? String ?: this["uid"] as? String ?: "",
         content = this["content"] as? String ?: this["postText"] as? String ?: this["post_text"] as? String ?: "",
         imageUrl = this["image_url"] as? String ?: this["postImage"] as? String ?: this["post_image"] as? String,
         videoUrl = this["video_url"] as? String,
-        createdAt = this["created_at"] as? String ?: this["publishDate"] as? String ?: this["publish_date"] as? String,
+        createdAt = this["created_at"] as? String ?: this["publishDate"] as? String ?: this["publish_date"] as? String ?: "",
         updatedAt = this["updated_at"] as? String,
         deletedAt = this["deleted_at"] as? String
     )

@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
-                    startActivity(Intent(this, AuthActivitySupabase::class.java))
+                    startActivity(Intent(this, AuthActivity::class.java))
                     finish()
                 }
                 is AuthState.Banned -> {

@@ -47,74 +47,22 @@ object NotificationHelper {
             return
         }
 
-        val userDb = com.synapse.social.studioasinc.compatibility.FirebaseDatabase.getInstance().getReference("skyline/users")
-        userDb.child(recipientUid).child("oneSignalPlayerId").addListenerForSingleValueEvent(object : com.synapse.social.studioasinc.compatibility.ValueEventListener {
-            override fun onDataChange(snapshot: com.synapse.social.studioasinc.compatibility.DataSnapshot) {
-                val recipientOneSignalPlayerId = snapshot.getValue(String::class.java)
-            if (recipientOneSignalPlayerId.isNullOrBlank()) {
-                Log.w(TAG, "Recipient OneSignal Player ID is blank. Cannot send notification.")
-                return@addOnSuccessListener
-            }
-
-                val recipientStatusRef = com.synapse.social.studioasinc.compatibility.FirebaseDatabase.getInstance().getReference("/skyline/users/$recipientUid/status")
-
-                recipientStatusRef.addListenerForSingleValueEvent(object : com.synapse.social.studioasinc.compatibility.ValueEventListener {
-                    override fun onDataChange(dataSnapshot: com.synapse.social.studioasinc.compatibility.DataSnapshot) {
-                        val recipientStatus = dataSnapshot.getValue(String::class.java)
-                val suppressStatus = "chatting_with_$senderUid"
-
-                if (NotificationConfig.ENABLE_SMART_SUPPRESSION) {
-                    if (suppressStatus == recipientStatus) {
-                        if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                            Log.i(TAG, "Recipient is actively chatting with sender. Suppressing notification.")
-                        }
-                            return@onDataChange
-                        }
-
-                        if (recipientStatus == "online") {
-                            if (NotificationConfig.ENABLE_DEBUG_LOGGING) {
-                                Log.i(TAG, "Recipient is online. Suppressing notification for real-time message visibility.")
-                            }
-                            return@onDataChange
-                        }
-                    }
-
-                    if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                        sendClientSideNotification(
-                            recipientOneSignalPlayerId,
-                            message,
-                            senderUid,
-                            notificationType,
-                            data
-                        )
-                    } else {
-                        sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                    }
-                    // Removed Firebase RDB chat notifications as requested
-                }
-
-                override fun onCancelled(error: com.synapse.social.studioasinc.compatibility.DatabaseError) {
-                    Log.e(TAG, "Status check failed. Defaulting to send notification.", error.toException())
-                    if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
-                         sendClientSideNotification(
-                            recipientOneSignalPlayerId,
-                            message,
-                            senderUid,
-                            notificationType,
-                            data
-                        )
-                    } else {
-                        sendServerSideNotification(recipientOneSignalPlayerId, message, notificationType, data)
-                    }
-                    // Removed Firebase RDB chat notifications as requested
-                }
-            })
-            }
-
-            override fun onCancelled(error: com.synapse.social.studioasinc.compatibility.DatabaseError) {
-                Log.e(TAG, "Failed to get recipient's OneSignal Player ID.", error.toException())
-            }
-        })
+        // TODO: Implement Supabase notification system
+        // For now, we'll use a simple notification without presence checking
+        Log.i(TAG, "Sending notification via OneSignal (Supabase implementation needed)")
+        
+        // Simple notification sending - would need proper Supabase implementation
+        if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
+            sendClientSideNotification(
+                "placeholder_player_id", // Would get from Supabase
+                message,
+                senderUid,
+                notificationType,
+                data
+            )
+        } else {
+            sendServerSideNotification("placeholder_player_id", message, notificationType, data)
+        }
     }
 
     /**

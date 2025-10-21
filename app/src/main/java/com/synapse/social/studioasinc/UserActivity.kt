@@ -27,9 +27,7 @@ object UserActivity {
                     "status" to activity,
                     "last_seen" to System.currentTimeMillis().toString()
                 )
-                dbService.update("users", updateData) { 
-                    eq("uid", uid)
-                }
+                dbService.update("users", updateData, "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -57,9 +55,7 @@ object UserActivity {
                     "status" to "offline",
                     "last_seen" to System.currentTimeMillis().toString()
                 )
-                dbService.update("users", updateData) {
-                    eq("uid", uid)
-                }
+                dbService.update("users", updateData, "uid", uid)
             } catch (e: Exception) {
                 // Handle error silently for now
             }
@@ -73,7 +69,7 @@ object UserActivity {
      */
     suspend fun getActivity(uid: String): String? {
         return try {
-            val result = dbService.selectById("users", uid, "uid", "status")
+            val result = dbService.selectById("users", uid, "status").getOrNull()
             result?.get("status") as? String
         } catch (e: Exception) {
             null

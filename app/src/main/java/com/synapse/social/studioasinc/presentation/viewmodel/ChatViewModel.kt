@@ -2,128 +2,214 @@ package com.synapse.social.studioasinc.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.data.repository.ChatRepository
 import com.synapse.social.studioasinc.domain.usecase.*
-import com.synapse.social.studioasinc.model.Message
 import com.synapse.social.studioasinc.model.Chat
-import kotlinx.coroutines.flow.*
+import com.synapse.social.studioasinc.model.Message
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-class ChatViewModel(
-    private val sendMessageUseCase: SendMessageUseCase,
-    private val getMessagesUseCase: GetMessagesUseCase,
-    private val observeMessagesUseCase: ObserveMessagesUseCase,
-    private val getUserChatsUseCase: GetUserChatsUseCase,
-    private val deleteMessageUseCase: DeleteMessageUseCase,
-    private val editMessageUseCase: EditMessageUseCase
-) : ViewModel() {
+/**
+ * ViewModel for chat functionality
+ */
+class ChatViewModel : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ChatUiState())
-    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    private val authService = SupabaseAuthenticationService()
+    private val chatRepository = ChatRepository()
+    
+    // Use cases
+    private val sendMessageUseCase = SendMessageUseCase(chatRepository)
+    private val getMessagesUseCase = GetMessagesUseCase(chatRepository)
+    private val observeMessagesUseCase = ObserveMessagesUseCase(chatRepository)
+    private val getUserChatsUseCase = GetUserChatsUseCase(chatRepository)
+    private val deleteMessageUseCase = DeleteMessageUseCase(chatRepository)
+    private val editMessageUseCase = EditMessageUseCase(chatRepository)
 
-    private val _messages = MutableStateFlow<List<Message>>(emptyList())
-    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+    private val _messages = MutableLiveData<List<Message>>()
+    val messages: LiveData<List<Message>> = _messages
 
-    private val _chats = MutableStateFlow<List<Chat>>(emptyList())
-    val chats: StateFlow<List<Chat>> = _chats.asStateFlow()
+    private val _chats = MutableLiveData<List<Chat>>()
+    val chats: LiveData<List<Chat>> = _chats
+
+    private val _isLoading = MutableLiveData<Boolean>()
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _error = MutableLiveData<String?>()
+    val error: LiveData<String?> = _error
+
+    private val _messageSent = MutableLiveData<Boolean>()
+    val messageSent: LiveData<Boolean> = _messageSent
 
     private var currentChatId: String? = null
 
-    fun loadChats() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            
-            getUserChatsUseCase()
-                .onSuccess { chatList ->
-                    _chats.value = chatList
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message ?: "Failed to load chats"
-                    )
-                }
-        }
-    }
-
+    /**
+     * Loads messages for a chat
+     */
     fun loadMessages(chatId: String) {
         currentChatId = chatId
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            
-            getMessagesUseCase(chatId)
-                .onSuccess { messageList ->
+            _isLoading.value = true
+            try {
+                val result = getMessagesUseCase(chatId)
+                result.onSuccess { messageList ->
                     _messages.value = messageList
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    
-                    // Start observing real-time messages
-                    observeMessagesUseCase(chatId)
-                        .collect { updatedMessages ->
-                            _messages.value = updatedMessages
-                        }
+                    _error.value = null
+                }.onFailure { exception ->
+                    _error.value = exception.message
                 }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message ?: "Failed to load messages"
-                    )
-                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
-    fun sendMessage(
-        recipientId: String,
-        messageText: String,
-        messageType: String = "text",
-        attachmentUrl: String? = null,
-        replyToMessageId: String? = null
-    ) {
+    /**
+     * Starts observing messages in real-time
+     */
+    fun startObservingMessages(chatId: String) {
+        currentChatId = chatId
+        observeMessagesUseCase(chatId)
+            .onEach { messageList ->
+                _messages.value = messageList
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Sends a message
+     */
+    fun sendMessage(chatId: String, content: String, messageType: String = "text", mediaUrl: String? = null) {
+        if (content.isBlank() && mediaUrl == null) return
+        
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSending = true)
-            
-            sendMessageUseCase(recipientId, messageText, messageType, attachmentUrl, replyToMessageId)
-                .onSuccess { message ->
-                    _uiState.value = _uiState.value.copy(isSending = false)
-                    // Message will be added via real-time subscription
+            try {
+                val result = sendMessageUseCase(chatId, content, messageType, mediaUrl)
+                result.onSuccess {
+                    _messageSent.value = true
+                    _error.value = null
+                    // Refresh messages
+                    loadMessages(chatId)
+                }.onFailure { exception ->
+                    _error.value = exception.message
+                    _messageSent.value = false
                 }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isSending = false,
-                        error = error.message ?: "Failed to send message"
-                    )
-                }
+            } catch (e: Exception) {
+                _error.value = e.message
+                _messageSent.value = false
+            }
         }
     }
 
+    /**
+     * Loads user's chats
+     */
+    fun loadUserChats() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val currentUserId = authService.getCurrentUserId()
+                if (currentUserId != null) {
+                    val result = getUserChatsUseCase(currentUserId)
+                    result.onSuccess { chatList ->
+                        _chats.value = chatList
+                        _error.value = null
+                    }.onFailure { exception ->
+                        _error.value = exception.message
+                    }
+                } else {
+                    _error.value = "User not authenticated"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Deletes a message
+     */
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
-            deleteMessageUseCase(messageId)
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        error = error.message ?: "Failed to delete message"
-                    )
+            try {
+                val result = deleteMessageUseCase(messageId)
+                result.onSuccess {
+                    _error.value = null
+                    // Refresh messages
+                    currentChatId?.let { loadMessages(it) }
+                }.onFailure { exception ->
+                    _error.value = exception.message
                 }
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
         }
     }
 
-    fun editMessage(messageId: String, newText: String) {
+    /**
+     * Edits a message
+     */
+    fun editMessage(messageId: String, newContent: String) {
+        if (newContent.isBlank()) return
+        
         viewModelScope.launch {
-            editMessageUseCase(messageId, newText)
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        error = error.message ?: "Failed to edit message"
-                    )
+            try {
+                val result = editMessageUseCase(messageId, newContent)
+                result.onSuccess {
+                    _error.value = null
+                    // Refresh messages
+                    currentChatId?.let { loadMessages(it) }
+                }.onFailure { exception ->
+                    _error.value = exception.message
                 }
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
         }
     }
 
+    /**
+     * Creates or gets a direct chat with another user
+     */
+    fun createOrGetDirectChat(otherUserId: String, onChatReady: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val currentUserId = authService.getCurrentUserId()
+                if (currentUserId != null) {
+                    val result = chatRepository.getOrCreateDirectChat(otherUserId, currentUserId)
+                    result.onSuccess { chatId ->
+                        onChatReady(chatId)
+                        _error.value = null
+                    }.onFailure { exception ->
+                        _error.value = exception.message
+                    }
+                } else {
+                    _error.value = "User not authenticated"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
+
+    /**
+     * Clears error message
+     */
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _error.value = null
+    }
+
+    /**
+     * Resets message sent status
+     */
+    fun resetMessageSent() {
+        _messageSent.value = false
     }
 }
-
-data class ChatUiState(
-    val isLoading: Boolean = false,
-    val isSending: Boolean = false,
-    val error: String? = null
-)
