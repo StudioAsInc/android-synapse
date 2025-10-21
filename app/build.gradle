@@ -78,15 +78,15 @@ android {
                 signingConfig = signingConfigs.debug
             }
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
-            buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: ''}\""
-            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
-            buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: ''}\""
-            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
         }
     }
 
