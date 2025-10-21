@@ -11,16 +11,16 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
-import com.synapse.social.studioasinc.data.repository.AuthRepository
-import com.synapse.social.studioasinc.data.repository.UserRepository
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.Story
 import kotlinx.coroutines.launch
 
 class StoryAdapter(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
-    private val authRepository: AuthRepository = AuthRepository(),
-    private val userRepository: UserRepository = UserRepository()
+    private val authService: SupabaseAuthenticationService = SupabaseAuthenticationService(),
+    private val databaseService: SupabaseDatabaseService = SupabaseDatabaseService()
 ) : RecyclerView.Adapter<StoryAdapter.StoryViewHolder>() {
 
     private var stories = mutableListOf<Story>()
@@ -45,7 +45,7 @@ class StoryAdapter(
 
     inner class StoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val storyImage: ImageView = itemView.findViewById(R.id.storyImage)
-        private val userNameText: TextView = itemView.findViewById(R.id.textView1)
+        private val userNameText: TextView = itemView.findViewById(R.id.storyUsername)
 
         fun bind(story: Story) {
             // Load story image
@@ -58,13 +58,25 @@ class StoryAdapter(
 
             // Load user information
             lifecycleOwner.lifecycleScope.launch {
-                userRepository.getUserById(story.userId)
-                    .onSuccess { user ->
-                        userNameText.text = user?.displayName ?: user?.username ?: "Unknown"
-                    }
-                    .onFailure {
+                try {
+                    val result = databaseService.selectById("users", story.userId, "username,display_name,nickname")
+                    
+                    result.onSuccess { userData ->
+                        if (userData != null) {
+                            val displayName = userData["display_name"] as? String
+                            val username = userData["username"] as? String
+                            val nickname = userData["nickname"] as? String
+                            
+                            userNameText.text = displayName ?: username ?: nickname ?: "Unknown"
+                        } else {
+                            userNameText.text = "Unknown"
+                        }
+                    }.onFailure {
                         userNameText.text = "Unknown"
                     }
+                } catch (e: Exception) {
+                    userNameText.text = "Unknown"
+                }
             }
         }
     }
