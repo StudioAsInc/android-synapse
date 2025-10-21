@@ -74,7 +74,7 @@ class AuthActivity : AppCompatActivity() {
             }
             
             btnBackToSignIn.setOnClickListener {
-                updateUIState(AuthUIState.SignInForm)
+                handleBackToSignIn()
             }
         }
     }
@@ -202,8 +202,11 @@ class AuthActivity : AppCompatActivity() {
                 val result = authService.resendVerificationEmail(email)
                 result.fold(
                     onSuccess = {
-                        Toast.makeText(this@AuthActivity, "Verification email sent!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AuthActivity, "Verification email sent! Please check your inbox.", Toast.LENGTH_LONG).show()
                         startResendCooldown()
+                        
+                        // Restart verification checking after resend
+                        startVerificationChecking(email)
                     },
                     onFailure = { error ->
                         Toast.makeText(this@AuthActivity, "Failed to resend: ${error.message}", Toast.LENGTH_LONG).show()
@@ -611,5 +614,21 @@ class AuthActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Handle back to sign in from verification pending state
+     */
+    private fun handleBackToSignIn() {
+        // Clear saved email when going back to sign in
+        clearSavedEmail()
+        
+        // Reset form fields
+        binding.etEmail.text?.clear()
+        binding.etPassword.text?.clear()
+        binding.etUsername.text?.clear()
+        
+        // Navigate back to sign in form
+        updateUIState(AuthUIState.SignInForm)
     }
 }
