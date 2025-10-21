@@ -8,7 +8,7 @@ import io.github.jan.supabase.postgrest.from
  */
 class SupabaseDatabaseService {
     
-    private val client = SupabaseClient.client
+    internal val client = SupabaseClient.client
     
     suspend inline fun <reified T : Any> select(table: String, columns: String = "*"): List<T> {
         return client.from(table).select().decodeList<T>()

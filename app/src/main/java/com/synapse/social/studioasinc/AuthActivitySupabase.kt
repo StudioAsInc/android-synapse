@@ -322,7 +322,9 @@ class AuthActivitySupabase : AppCompatActivity() {
                     table = "users",
                     columns = "username"
                 ) { query ->
-                    query.eq("uid", uid)
+                    query.filter {
+                        eq("uid", uid)
+                    }
                 }
 
                 val username = userData.firstOrNull()?.get("username") as? String

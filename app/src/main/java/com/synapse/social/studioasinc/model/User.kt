@@ -1,32 +1,44 @@
 package com.synapse.social.studioasinc.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Unified User model for Supabase with Firebase compatibility
+ * User model for Supabase
  */
 @Serializable
 data class User(
     val id: String? = null,
-    val uid: String? = null,
-    val email: String? = null,
-    val username: String? = null,
+    val uid: String,
+    val email: String,
+    val username: String,
     val nickname: String? = null,
     val biography: String? = null,
     val avatar: String? = null,
-    val avatar_history_type: String? = "local",
-    val profile_cover_image: String? = null,
-    val account_premium: Boolean = false,
-    val user_level_xp: Int = 500,
+    @SerialName("avatar_history_type")
+    val avatarHistoryType: String = "local",
+    @SerialName("profile_cover_image")
+    val profileCoverImage: String? = null,
+    @SerialName("account_premium")
+    val accountPremium: Boolean = false,
+    @SerialName("user_level_xp")
+    val userLevelXp: Int = 500,
     val verify: Boolean = false,
-    val account_type: String = "user",
+    @SerialName("account_type")
+    val accountType: String = "user",
     val gender: String = "hidden",
     val banned: Boolean = false,
     val status: String = "offline",
-    val join_date: String? = null,
-    val one_signal_player_id: String? = null,
-    val last_seen: String? = null,
-    val chatting_with: String? = null,
-    val created_at: String? = null,
-    val updated_at: String? = null
+    @SerialName("join_date")
+    val joinDate: String? = null,
+    @SerialName("one_signal_player_id")
+    val oneSignalPlayerId: String? = null,
+    @SerialName("last_seen")
+    val lastSeen: String? = null,
+    @SerialName("chatting_with")
+    val chattingWith: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null
 )

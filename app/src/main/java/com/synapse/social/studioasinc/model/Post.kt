@@ -1,55 +1,30 @@
 package com.synapse.social.studioasinc.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Unified Post model for Supabase with Firebase compatibility
+ * Post model for Supabase
  */
 @Serializable
 data class Post(
     val id: String? = null,
-    val post_id: String = "",
-    val author_id: String = "",
-    val uid: String = "", // For compatibility with existing code
+    @SerialName("post_id")
+    val postId: String,
+    @SerialName("author_id")
+    val authorId: String,
     val content: String? = null,
-    val postText: String? = null, // For compatibility
-    val post_text: String? = null, // Alternative naming
-    val image_url: String? = null,
-    val postImage: String? = null, // For compatibility
-    val post_image: String? = null, // Alternative naming
-    val video_url: String? = null,
-    val publishDate: String? = null, // For compatibility
-    val publish_date: String? = null, // Alternative naming
-    val postVisibility: String = "public", // For compatibility
-    val post_visibility: String = "public", // Alternative naming
-    val postHideLikeCount: String = "false", // For compatibility
-    val post_hide_like_count: String = "false", // Alternative naming
-    val postDisableComments: String = "false", // For compatibility
-    val post_disable_comments: String = "false", // Alternative naming
-    val postHideCommentsCount: String = "false", // For compatibility
-    val post_hide_comments_count: String = "false", // Alternative naming
-    val post_hide_views_count: String = "false", // Additional field
-    val post_region: String = "none", // Additional field
-    val post_disable_favorite: String = "false", // Additional field
-    val post_type: String = "text", // For compatibility
-    val postType: String = "text", // For compatibility
-    val key: String? = null, // For Firebase compatibility
-    val created_at: String? = null,
-    val updated_at: String? = null,
-    val deleted_at: String? = null,
-    // Media items for new media system
-    val mediaItems: List<MediaItem>? = null
-) {
-    // Helper function to convert legacy image to MediaItem
-    fun convertLegacyImage(): List<MediaItem> {
-        val imageUrl = post_image ?: postImage ?: image_url
-        return if (imageUrl != null) {
-            listOf(MediaItem(url = imageUrl, type = MediaType.IMAGE))
-        } else {
-            emptyList()
-        }
-    }
-}
+    @SerialName("image_url")
+    val imageUrl: String? = null,
+    @SerialName("video_url")
+    val videoUrl: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null,
+    @SerialName("deleted_at")
+    val deletedAt: String? = null
+)
 
 /**
  * Extension function to convert HashMap to Post object
