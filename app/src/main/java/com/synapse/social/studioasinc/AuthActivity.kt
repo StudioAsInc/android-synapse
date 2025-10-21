@@ -52,6 +52,12 @@ class AuthActivity : AppCompatActivity() {
         sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
 
         setupUI()
+        
+        // Check if returning from successful email verification
+        if (intent.getBooleanExtra("verification_success", false)) {
+            Toast.makeText(this, "Email verified! Please sign in to continue.", Toast.LENGTH_LONG).show()
+        }
+        
         checkCurrentUser()
     }
 
@@ -312,9 +318,9 @@ class AuthActivity : AppCompatActivity() {
                     result.fold(
                         onSuccess = { authResult ->
                             if (authResult.needsEmailVerification) {
-                                // Email verification required - navigate to verification pending state
+                                // Email verification required - navigate to EmailVerificationActivity
                                 Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
-                                updateUIState(AuthUIState.EmailVerificationPending(email))
+                                navigateToEmailVerification(email, password)
                             } else {
                                 // Successful authentication - clear any saved email and navigate
                                 authResult.user?.let { user ->
@@ -346,9 +352,9 @@ class AuthActivity : AppCompatActivity() {
                             }
                             
                             if (authError == AuthError.EMAIL_NOT_VERIFIED) {
-                                // Navigate to verification pending state for unverified email
+                                // Navigate to EmailVerificationActivity for unverified email
                                 Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
-                                updateUIState(AuthUIState.EmailVerificationPending(email))
+                                navigateToEmailVerification(email, password)
                             } else {
                                 val errorMessage = when (authError) {
                                     AuthError.INVALID_CREDENTIALS -> "Invalid email or password. Please try again."
@@ -378,9 +384,9 @@ class AuthActivity : AppCompatActivity() {
                     }
                     
                     if (authError == AuthError.EMAIL_NOT_VERIFIED) {
-                        // Navigate to verification pending state for unverified email
+                        // Navigate to EmailVerificationActivity for unverified email
                         Toast.makeText(this@AuthActivity, "Please verify your email address to continue", Toast.LENGTH_LONG).show()
-                        updateUIState(AuthUIState.EmailVerificationPending(email))
+                        navigateToEmailVerification(email, password)
                     } else {
                         val errorMessage = when (authError) {
                             AuthError.INVALID_CREDENTIALS -> "Invalid email or password. Please try again."
@@ -420,9 +426,9 @@ class AuthActivity : AppCompatActivity() {
                     result.fold(
                         onSuccess = { authResult ->
                             if (authResult.needsEmailVerification) {
-                                // Email verification required - navigate to verification pending state
+                                // Email verification required - navigate to EmailVerificationActivity
                                 Toast.makeText(this@AuthActivity, "Account created! Please check your email for verification.", Toast.LENGTH_LONG).show()
-                                updateUIState(AuthUIState.EmailVerificationPending(email))
+                                navigateToEmailVerification(email, password)
                             } else {
                                 // Account created and verified - proceed to complete profile
                                 Toast.makeText(this@AuthActivity, "Account created successfully!", Toast.LENGTH_SHORT).show()
@@ -517,6 +523,17 @@ class AuthActivity : AppCompatActivity() {
     private fun navigateToCompleteProfile() {
         startActivity(Intent(this, CompleteProfileActivity::class.java))
         finish()
+    }
+
+    /**
+     * Navigate to EmailVerificationActivity for dedicated verification flow
+     */
+    private fun navigateToEmailVerification(email: String, password: String) {
+        val intent = Intent(this, EmailVerificationActivity::class.java)
+        intent.putExtra(EmailVerificationActivity.EXTRA_EMAIL, email)
+        intent.putExtra(EmailVerificationActivity.EXTRA_PASSWORD, password)
+        startActivity(intent)
+        // Don't finish() here so user can come back if needed
     }
 
     /**
