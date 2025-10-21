@@ -1,15 +1,15 @@
 package com.synapse.social.studioasinc.util
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.runBlocking
 import java.util.Calendar
 import java.util.HashMap
 
 object ChatMessageManager {
 
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private val dbService = SupabaseDatabaseService()
+    private val authService = SupabaseAuthenticationService()
 
     private const val SKYLINE_REF = "skyline"
     private const val CHATS_REF = "chats"

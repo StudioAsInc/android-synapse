@@ -14,28 +14,30 @@ import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.models.User
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.synapse.social.studioasinc.R
 
 class StoryAdapter(
     private val context: Context,
-    private var stories: List<Story>
+    private var stories: List<com.synapse.social.studioasinc.models.Story>
 ) : RecyclerView.Adapter<StoryAdapter.StoryViewHolder>() {
 
     private val userInfoCache = mutableMapOf<String, User>()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val currentUser = FirebaseAuth.getInstance().currentUser
+    private val authService = SupabaseAuthenticationService()
+    private val dbService = SupabaseDatabaseService()
 
     companion object {
         private const val VIEW_TYPE_MY_STORY = 0
         private const val VIEW_TYPE_OTHER_STORY = 1
     }
 
-    fun updateStories(newStories: List<Story>) {
+    fun updateStories(newStories: List<com.synapse.social.studioasinc.models.Story>) {
         stories = newStories
         notifyDataSetChanged()
     }
@@ -68,7 +70,7 @@ class StoryAdapter(
         private val storiesSecondStoryTitle: TextView = itemView.findViewById(R.id.storiesSecondStoryTitle)
         private val storiesSecondStoryProfileImage: ImageView = itemView.findViewById(R.id.storiesSecondStoryProfileImage)
 
-        fun bind(story: Story, viewType: Int) {
+        fun bind(story: com.synapse.social.studioasinc.models.Story, viewType: Int) {
             setupLayout()
 
             if (viewType == VIEW_TYPE_MY_STORY) {
@@ -105,25 +107,25 @@ class StoryAdapter(
             storiesMyStory.visibility = View.VISIBLE
             storiesSecondStory.visibility = View.GONE
 
-            val userRef = firebaseDatabase.getReference("skyline/users").child(currentUser!!.uid)
-            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val user = snapshot.getValue(User::class.java)
-                    user?.avatar?.takeIf { it != "null" }?.let {
-                        Glide.with(context).load(Uri.parse(it)).into(storiesMyStoryProfileImage)
-                    } ?: storiesMyStoryProfileImage.setImageResource(R.drawable.avatar)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val currentUser = authService.getCurrentUser()
+                    currentUser?.let { user ->
+                        val userData = dbService.selectSingle<User>("users", "*")
+                        userData?.avatar?.takeIf { it != "null" }?.let {
+                            Glide.with(context).load(Uri.parse(it)).into(storiesMyStoryProfileImage)
+                        } ?: storiesMyStoryProfileImage.setImageResource(R.drawable.avatar)
+                    }
+                } catch (e: Exception) {
                     storiesMyStoryProfileImage.setImageResource(R.drawable.avatar)
                 }
-            })
+            }
             storiesMyStory.setOnClickListener {
                 Toast.makeText(context, "Add story clicked", Toast.LENGTH_SHORT).show()
             }
         }
 
-        private fun displayOtherStory(story: Story) {
+        private fun displayOtherStory(story: com.synapse.social.studioasinc.models.Story) {
             storiesMyStory.visibility = View.GONE
             storiesSecondStory.visibility = View.VISIBLE
 
@@ -131,24 +133,21 @@ class StoryAdapter(
             if (userInfoCache.containsKey(storyUid)) {
                 _displayUserInfoForStory(userInfoCache[storyUid]!!, storiesSecondStoryProfileImage, storiesSecondStoryTitle)
             } else {
-                val userRef = firebaseDatabase.getReference("skyline/users").child(storyUid)
-                userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        if (snapshot.exists()) {
-                            val user = snapshot.getValue(User::class.java)!!
+                CoroutineScope(Dispatchers.Main).launch {
+                    try {
+                        val user = dbService.selectSingle<User>("users", "*")
+                        if (user != null) {
                             userInfoCache[storyUid] = user
                             _displayUserInfoForStory(user, storiesSecondStoryProfileImage, storiesSecondStoryTitle)
                         } else {
                             storiesSecondStoryProfileImage.setImageResource(R.drawable.avatar)
                             storiesSecondStoryTitle.text = "Unknown User"
                         }
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
+                    } catch (e: Exception) {
                         storiesSecondStoryProfileImage.setImageResource(R.drawable.avatar)
                         storiesSecondStoryTitle.text = "Error User"
                     }
-                })
+                }
             }
             storiesSecondStory.setOnClickListener {
                 Toast.makeText(context, "Story clicked", Toast.LENGTH_SHORT).show()

@@ -4,21 +4,20 @@ import io.github.jan.tennert.supabase.gotrue.auth
 import io.github.jan.tennert.supabase.gotrue.providers.builtin.Email
 import io.github.jan.tennert.supabase.gotrue.user.UserInfo
 import com.synapse.social.studioasinc.SupabaseClient
-import com.synapse.social.studioasinc.backend.interfaces.ISupabaseAuthenticationService
 
 /**
- * Supabase implementation of authentication service.
- * Handles user authentication operations using Supabase GoTrue.
+ * Supabase Authentication Service
+ * Handles user authentication operations using Supabase Auth
  */
-class SupabaseAuthenticationService : ISupabaseAuthenticationService {
+class SupabaseAuthenticationService {
     
     private val auth = SupabaseClient.client.auth
     
-    override suspend fun getCurrentUser(): UserInfo? {
+    suspend fun getCurrentUser(): UserInfo? {
         return auth.currentUserOrNull()
     }
     
-    override suspend fun signIn(email: String, password: String): UserInfo {
+    suspend fun signIn(email: String, password: String): UserInfo {
         auth.signInWith(Email) {
             this.email = email
             this.password = password
@@ -26,7 +25,7 @@ class SupabaseAuthenticationService : ISupabaseAuthenticationService {
         return auth.currentUserOrNull() ?: throw Exception("Sign in failed")
     }
     
-    override suspend fun signUp(email: String, password: String): UserInfo {
+    suspend fun signUp(email: String, password: String): UserInfo {
         auth.signUpWith(Email) {
             this.email = email
             this.password = password
@@ -34,11 +33,15 @@ class SupabaseAuthenticationService : ISupabaseAuthenticationService {
         return auth.currentUserOrNull() ?: throw Exception("Sign up failed")
     }
     
-    override suspend fun signOut() {
+    suspend fun signOut() {
         auth.signOut()
     }
     
-    override suspend fun deleteUser() {
+    suspend fun deleteUser() {
         auth.deleteUser()
+    }
+    
+    fun getCurrentUserId(): String? {
+        return auth.currentUserOrNull()?.id
     }
 }
