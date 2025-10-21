@@ -7,7 +7,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.google.firebase.database.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
 import com.synapse.social.studioasinc.R
 import java.util.Calendar
 import java.util.concurrent.TimeUnit

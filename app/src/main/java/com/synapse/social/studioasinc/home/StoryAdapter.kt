@@ -17,7 +17,7 @@ import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.models.User
+import com.synapse.social.studioasinc.model.User
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,7 +25,7 @@ import com.synapse.social.studioasinc.R
 
 class StoryAdapter(
     private val context: Context,
-    private var stories: List<com.synapse.social.studioasinc.models.Story>
+    private var stories: List<com.synapse.social.studioasinc.model.Story>
 ) : RecyclerView.Adapter<StoryAdapter.StoryViewHolder>() {
 
     private val userInfoCache = mutableMapOf<String, User>()

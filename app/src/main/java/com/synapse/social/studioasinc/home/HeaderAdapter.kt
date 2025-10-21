@@ -18,8 +18,8 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.*
 import com.synapse.social.studioasinc.CreateLineVideoActivity
 import com.synapse.social.studioasinc.CreatePostActivity
 import com.synapse.social.studioasinc.R

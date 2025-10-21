@@ -1,7 +1,7 @@
 package com.synapse.social.studioasinc.repository
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.models.User
+import com.synapse.social.studioasinc.model.User
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 

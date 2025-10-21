@@ -35,88 +35,66 @@ object ChatMessageManager {
         }
     }
 
-    fun sendMessageToDb(
+    suspend fun sendMessageToDb(
         messageMap: HashMap<String, Any>,
         senderUid: String,
         recipientUid: String,
         uniqueMessageKey: String,
         isGroup: Boolean
     ) {
-        if (isGroup) {
-            firebaseDatabase.getReference(SKYLINE_REF).child(GROUP_CHATS_REF).child(recipientUid).child(uniqueMessageKey)
-                .setValue(messageMap)
-        } else {
-            val chatId = getChatId(senderUid, recipientUid)
-            val fanOutObject = hashMapOf<String, Any?>(
-                "/$CHATS_REF/$chatId/$uniqueMessageKey" to messageMap,
-                "/$USER_CHATS_REF/$senderUid/$chatId" to true,
-                "/$USER_CHATS_REF/$recipientUid/$chatId" to true
-            )
-            firebaseDatabase.reference.updateChildren(fanOutObject)
+        try {
+            if (isGroup) {
+                // Insert group message
+                dbService.insert("group_messages", messageMap)
+            } else {
+                // Insert direct message
+                dbService.insert("messages", messageMap)
+            }
+        } catch (e: Exception) {
+            // Handle error
         }
     }
 
-    fun updateInbox(lastMessage: String, recipientUid: String, isGroup: Boolean, groupName: String? = null) {
-        val senderUid = auth.currentUser?.uid ?: return
-
-        if (isGroup) {
-            val groupRef = firebaseDatabase.getReference(SKYLINE_REF).child("groups").child(recipientUid)
-            groupRef.child("members").get().addOnSuccessListener { dataSnapshot ->
-                if (dataSnapshot.exists()) {
-                    for (memberSnapshot in dataSnapshot.children) {
-                        val memberUid = memberSnapshot.key
-                        if (memberUid != null) {
-                            val inboxUpdate = createInboxUpdate(
-                                chatId = recipientUid,
-                                conversationPartnerUid = recipientUid,
-                                lastMessage = lastMessage,
-                                isGroup = true
-                            )
-                            firebaseDatabase.getReference(INBOX_REF).child(memberUid).child(recipientUid)
-                                .setValue(inboxUpdate)
-                        }
+    ) {
+        try {
+            if (isGroup) {
+                // Update group inbox for all members
+                val groupMembers = dbService.selectWithFilter<Map<String, Any?>>(
+                    table = "group_members",
+                    columns = "user_id"
+                ) { query ->
+                    query.eq("group_id", recipientUid)
+                }
+                
+                groupMembers.forEach { member ->
+                    val userId = member["user_id"] as? String
+                    if (userId != null) {
+                        updateUserInbox(userId, recipientUid, lastMessage, true)
                     }
                 }
+            } else {
+                // Update inbox for both users
+                updateUserInbox(senderUid, recipientUid, lastMessage, false)
+                updateUserInbox(recipientUid, senderUid, lastMessage, false)
             }
-        } else {
-            // Update inbox for the current user
-            val senderInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = recipientUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(senderUid).child(recipientUid)
-                .setValue(senderInboxUpdate)
-
-            // Update inbox for the other user
-            val recipientInboxUpdate = createInboxUpdate(
-                chatId = getChatId(senderUid, recipientUid),
-                conversationPartnerUid = senderUid,
-                lastMessage = lastMessage,
-                isGroup = false
-            )
-            firebaseDatabase.getReference(INBOX_REF).child(recipientUid).child(senderUid)
-                .setValue(recipientInboxUpdate)
+        } catch (e: Exception) {
+            // Handle error
         }
     }
 
-    private fun createInboxUpdate(
-        chatId: String,
-        conversationPartnerUid: String,
-        lastMessage: String,
-        isGroup: Boolean
-    ): HashMap<String, Any> {
-        val senderUid = auth.currentUser?.uid ?: ""
-        return hashMapOf(
-            CHAT_ID_KEY to chatId,
-            UID_KEY to conversationPartnerUid,
-            LAST_MESSAGE_UID_KEY to senderUid,
-            LAST_MESSAGE_TEXT_KEY to lastMessage,
-            LAST_MESSAGE_STATE_KEY to "sended",
-            PUSH_DATE_KEY to System.currentTimeMillis().toString(),
-            "chat_type" to if (isGroup) "group" else "single",
-            "isGroup" to isGroup.toString()
-        )
+    ) {
+        try {
+            val inboxData = mapOf(
+                "user_id" to userId,
+                "chat_partner_id" to if (!isGroup) partnerId else null,
+                "group_id" to if (isGroup) partnerId else null,
+                "unread_count" to 1,
+                "updated_at" to java.time.Instant.now().toString()
+            )
+            
+            dbService.upsert("inbox", inboxData)
+        } catch (e: Exception) {
+            // Handle error
+        }
     }
 }

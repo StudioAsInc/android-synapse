@@ -50,13 +50,11 @@ class SupabaseDatabaseService {
     suspend fun <T> selectWithFilter(
         table: String, 
         columns: String = "*",
-        filter: String
+        filterBuilder: (io.github.jan.tennert.supabase.postgrest.query.PostgrestQueryBuilder) -> Unit = {}
     ): List<T> {
         return client.from(table)
-            .select(columns = Columns.raw(columns)) {
-                // Apply filter - this is a simplified version
-                // In real implementation, you'd parse the filter string
-            }
+            .select(columns = Columns.raw(columns))
+            .apply { filterBuilder(this) }
             .decodeList()
     }
 }

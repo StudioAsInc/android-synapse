@@ -7,10 +7,10 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.DatabaseError
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.ValueEventListener
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.model.User
 import io.noties.markwon.Markwon

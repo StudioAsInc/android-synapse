@@ -5,8 +5,8 @@ import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.*
 import com.synapse.social.studioasinc.ChatAdapter
 import com.synapse.social.studioasinc.ChatUIUpdater
 import java.util.ArrayList

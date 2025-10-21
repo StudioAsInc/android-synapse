@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc.util
 import android.content.Context
 import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
 import com.synapse.social.studioasinc.AsyncUploadService
 import com.synapse.social.studioasinc.PresenceManager
 import com.synapse.social.studioasinc.SketchwareUtil
