@@ -1,33 +1,35 @@
 package com.synapse.social.studioasinc
 
-import io.github.jan.tennert.supabase.createSupabaseClient
-import io.github.jan.tennert.supabase.gotrue.GoTrue
-import io.github.jan.tennert.supabase.postgrest.Postgrest
-import io.github.jan.tennert.supabase.realtime.Realtime
-import io.github.jan.tennert.supabase.storage.Storage
-
 /**
- * Singleton Supabase client for the entire application.
- * Provides a centralized access point to all Supabase services.
+ * Temporary stub for Supabase client during migration.
+ * This will be replaced with actual Supabase implementation once dependencies are resolved.
  */
 object SupabaseClient {
-    val client = createSupabaseClient(
-        supabaseUrl = BuildConfig.SUPABASE_URL,
-        supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-    ) {
-        install(GoTrue) {
-            // Authentication configuration
-            autoRefreshToken = true
-            autoSaveToStorage = true
+    // Temporary stub - will be replaced with actual Supabase client
+    val client = object {
+        val auth = object {
+            fun currentUserOrNull(): Any? = null
+            suspend fun signInWith(provider: Any, block: Any.() -> Unit): Any = Unit
+            suspend fun signUpWith(provider: Any, block: Any.() -> Unit): Any = Unit
+            suspend fun signOut() = Unit
+            suspend fun deleteUser() = Unit
         }
-        install(Postgrest) {
-            // Database configuration
+        
+        fun from(table: String) = object {
+            fun select(columns: Any? = null) = this
+            fun insert(data: Any) = this
+            fun update(data: Any) = this
+            fun upsert(data: Any) = this
+            fun delete() = this
+            suspend fun <T> decodeList(): List<T> = emptyList()
+            suspend fun <T> decodeSingle(): T? = null
         }
-        install(Realtime) {
-            // Realtime configuration
-        }
-        install(Storage) {
-            // Storage configuration
+        
+        val realtime = object {
+            fun channel(name: String) = object {
+                suspend fun join() = Unit
+                suspend fun leave() = Unit
+            }
         }
     }
 }

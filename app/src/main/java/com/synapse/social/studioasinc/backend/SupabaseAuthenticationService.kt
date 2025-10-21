@@ -1,48 +1,41 @@
 package com.synapse.social.studioasinc.backend
 
-import io.github.jan.tennert.supabase.gotrue.auth
-import io.github.jan.tennert.supabase.gotrue.providers.builtin.Email
-import io.github.jan.tennert.supabase.gotrue.user.UserInfo
 import com.synapse.social.studioasinc.SupabaseClient
-import com.synapse.social.studioasinc.backend.interfaces.ISupabaseAuthenticationService
 
 /**
- * Supabase Authentication Service
- * Handles user authentication operations using Supabase Auth
+ * Temporary stub for Supabase Authentication Service during migration.
  */
-class SupabaseAuthenticationService : ISupabaseAuthenticationService {
+class SupabaseAuthenticationService {
     
     private val auth = SupabaseClient.client.auth
     
-    override suspend fun getCurrentUser(): UserInfo? {
+    suspend fun getCurrentUser(): Any? {
         return auth.currentUserOrNull()
     }
     
-    override suspend fun signIn(email: String, password: String): UserInfo {
-        auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+    suspend fun signIn(email: String, password: String): Any {
+        auth.signInWith("Email") {
+            // Stub implementation
         }
         return auth.currentUserOrNull() ?: throw Exception("Sign in failed")
     }
     
-    override suspend fun signUp(email: String, password: String): UserInfo {
-        auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
+    suspend fun signUp(email: String, password: String): Any {
+        auth.signUpWith("Email") {
+            // Stub implementation
         }
         return auth.currentUserOrNull() ?: throw Exception("Sign up failed")
     }
     
-    override suspend fun signOut() {
+    suspend fun signOut() {
         auth.signOut()
     }
     
-    override suspend fun deleteUser() {
+    suspend fun deleteUser() {
         auth.deleteUser()
     }
     
     fun getCurrentUserId(): String? {
-        return auth.currentUserOrNull()?.id
+        return null // Stub implementation
     }
 }

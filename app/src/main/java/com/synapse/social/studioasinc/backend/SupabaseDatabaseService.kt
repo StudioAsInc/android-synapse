@@ -1,37 +1,34 @@
 package com.synapse.social.studioasinc.backend
 
-import io.github.jan.tennert.supabase.postgrest.from
-import io.github.jan.tennert.supabase.postgrest.query.Columns
-import io.github.jan.tennert.supabase.postgrest.query.PostgrestQueryBuilder
-import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.SupabaseClient
 
 /**
- * Supabase Database Service
- * Handles database operations using Supabase PostgREST
+ * Temporary stub for Supabase Database Service during migration.
  */
 class SupabaseDatabaseService {
     
     private val client = SupabaseClient.client
     
     suspend fun <T> select(table: String, columns: String = "*"): List<T> {
-        return client.from(table).select(columns = Columns.raw(columns)).decodeList()
+        return client.from(table).decodeList()
     }
     
     suspend fun <T> selectSingle(table: String, columns: String = "*"): T? {
         return try {
-            client.from(table).select(columns = Columns.raw(columns)).decodeSingle<T>()
+            client.from(table).decodeSingle<T>()
         } catch (e: Exception) {
             null
         }
     }
     
     suspend fun insert(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).insert(data).decodeSingle()
+        client.from(table).insert(data)
+        return emptyMap()
     }
     
     suspend fun update(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).update(data).decodeSingle()
+        client.from(table).update(data)
+        return emptyMap()
     }
     
     suspend fun delete(table: String): Boolean {
@@ -44,18 +41,16 @@ class SupabaseDatabaseService {
     }
     
     suspend fun upsert(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).upsert(data).decodeSingle()
+        client.from(table).upsert(data)
+        return emptyMap()
     }
     
     // Helper method for filtering queries
     suspend fun <T> selectWithFilter(
         table: String, 
         columns: String = "*",
-        filterBuilder: (PostgrestQueryBuilder) -> Unit = {}
+        filterBuilder: (Any) -> Unit = {}
     ): List<T> {
-        return client.from(table)
-            .select(columns = Columns.raw(columns))
-            .apply { filterBuilder(this) }
-            .decodeList()
+        return client.from(table).decodeList()
     }
 }

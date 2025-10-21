@@ -39,13 +39,18 @@ class DatabaseReference {
     fun removeEventListener(listener: ValueEventListener) {}
     fun removeEventListener(listener: ChildEventListener) {}
     fun setValue(value: Any?) {}
+    fun removeValue() {}
+    fun updateChildren(updates: Map<String, Any?>) {}
     fun push(): DatabaseReference = DatabaseReference()
+    val key: String? = null
 }
 
 class Query {
     fun addListenerForSingleValueEvent(listener: ValueEventListener) {}
+    fun addValueEventListener(listener: ValueEventListener) {}
     fun limitToLast(limit: Int): Query = Query()
     fun orderByKey(): Query = Query()
+    fun orderByChild(key: String): Query = Query()
     fun endBefore(value: String): Query = Query()
 }
 
@@ -86,7 +91,7 @@ class FirebaseApp {
 }
 
 // Additional Firebase compatibility classes
-class Task<T> {
+open class Task<T> {
     fun addOnCompleteListener(listener: (Task<T>) -> Unit): Task<T> = this
     fun addOnSuccessListener(listener: (T) -> Unit): Task<T> = this
     fun addOnFailureListener(listener: (Exception) -> Unit): Task<T> = this
