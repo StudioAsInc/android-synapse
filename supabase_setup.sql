@@ -753,7 +753,38 @@ CREATE POLICY "Users can delete their own chat attachments" ON storage.objects
     );
 
 -- =====================================================
--- 12. SAMPLE DATA (Optional - for testing)
+-- 12. ENABLE REAL-TIME SUBSCRIPTIONS
+-- =====================================================
+
+-- Enable real-time for messages (CRITICAL for chat functionality)
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+
+-- Enable real-time for chat participants (user join/leave events)
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_participants;
+
+-- Enable real-time for user presence (online status)
+ALTER PUBLICATION supabase_realtime ADD TABLE user_presence;
+
+-- Enable real-time for notifications (live notifications)
+ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+
+-- Enable real-time for posts (live feed updates)
+ALTER PUBLICATION supabase_realtime ADD TABLE posts;
+
+-- Enable real-time for likes (live like counts)
+ALTER PUBLICATION supabase_realtime ADD TABLE likes;
+
+-- Enable real-time for comments (live comments)
+ALTER PUBLICATION supabase_realtime ADD TABLE comments;
+
+-- Enable real-time for follows (follow notifications)
+ALTER PUBLICATION supabase_realtime ADD TABLE follows;
+
+-- Enable real-time for stories (story updates)
+ALTER PUBLICATION supabase_realtime ADD TABLE stories;
+
+-- =====================================================
+-- 13. SAMPLE DATA (Optional - for testing)
 -- =====================================================
 
 -- Insert sample notification types for reference
