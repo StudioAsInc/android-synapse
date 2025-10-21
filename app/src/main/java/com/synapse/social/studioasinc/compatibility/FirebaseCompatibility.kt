@@ -84,3 +84,33 @@ class FirebaseApp {
         fun initializeApp(context: android.content.Context) {}
     }
 }
+
+// Additional Firebase compatibility classes
+class Task<T> {
+    fun addOnCompleteListener(listener: (Task<T>) -> Unit): Task<T> = this
+    fun addOnSuccessListener(listener: (T) -> Unit): Task<T> = this
+    fun addOnFailureListener(listener: (Exception) -> Unit): Task<T> = this
+    val isSuccessful: Boolean = true
+    val result: T? = null
+    val exception: Exception? = null
+}
+
+class AuthResult {
+    val user: FirebaseUser? = null
+}
+
+// Stub implementations for missing Firebase classes
+object FirebaseStorage {
+    fun getInstance(): FirebaseStorage = this
+    fun getReference(): StorageReference = StorageReference()
+}
+
+class StorageReference {
+    fun child(path: String): StorageReference = StorageReference()
+    fun putFile(uri: android.net.Uri): UploadTask = UploadTask()
+    fun downloadUrl(): Task<android.net.Uri> = Task()
+}
+
+class UploadTask : Task<UploadTask.TaskSnapshot>() {
+    class TaskSnapshot
+}

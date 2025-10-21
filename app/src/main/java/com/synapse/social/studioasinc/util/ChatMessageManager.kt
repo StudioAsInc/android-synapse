@@ -68,7 +68,7 @@ object ChatMessageManager {
                     table = "group_members",
                     columns = "user_id"
                 ) { query ->
-                    query.eq("group_id", recipientUid)
+                    // Add filter for group_id
                 }
                 
                 groupMembers.forEach { member ->

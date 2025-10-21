@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.backend
 
 import io.github.jan.tennert.supabase.postgrest.from
 import io.github.jan.tennert.supabase.postgrest.query.Columns
+import io.github.jan.tennert.supabase.postgrest.query.PostgrestQueryBuilder
 import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.SupabaseClient
 
@@ -50,7 +51,7 @@ class SupabaseDatabaseService {
     suspend fun <T> selectWithFilter(
         table: String, 
         columns: String = "*",
-        filterBuilder: (io.github.jan.tennert.supabase.postgrest.query.PostgrestQueryBuilder) -> Unit = {}
+        filterBuilder: (PostgrestQueryBuilder) -> Unit = {}
     ): List<T> {
         return client.from(table)
             .select(columns = Columns.raw(columns))
