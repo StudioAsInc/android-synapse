@@ -10,12 +10,12 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.ProfileViewModel
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.databinding.SynapsePostCvBinding
-import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.model.User
+import com.synapse.social.studioasinc.models.Post
+import com.synapse.social.studioasinc.models.User
 import com.synapse.social.studioasinc.util.DateFormatter
 import com.synapse.social.studioasinc.util.NumberFormatter
 import io.noties.markwon.Markwon
@@ -87,7 +87,8 @@ class PostAdapter(
         fun bind(postState: ProfileViewModel.PostUiState) {
             val post = postState.post
             val user = postState.user
-            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+            val authService = SupabaseAuthenticationService()
+            val currentUid = authService.getCurrentUserId()
 
             // Handle visibility of private posts
             if (post.postVisibility == "private" && post.uid != currentUid) {
