@@ -48,12 +48,12 @@ class DatabaseReference(
         return DatabaseReference("$path/$pushId", dbService)
     }
     
-    fun setValue(value: Any?): Task<Void> {
-        return Task.forResult(null as Void?)
+    fun setValue(value: Any?): Task<Void?> {
+        return Task.forResult(null)
     }
     
-    fun updateChildren(update: Map<String, Any?>): Task<Void> {
-        return Task.forResult(null as Void?)
+    fun updateChildren(update: Map<String, Any?>): Task<Void?> {
+        return Task.forResult(null)
     }
     
     fun addValueEventListener(listener: ValueEventListener) {
@@ -65,6 +65,20 @@ class DatabaseReference(
         // For migration purposes, we'll implement basic functionality
     }
     
+    fun addChildEventListener(listener: ChildEventListener) {
+        // For migration purposes, we'll implement basic functionality
+    }
+    
+    fun limitToLast(limit: Int): Query {
+        return Query(path, dbService)
+    }
+    
+    fun removeValue(): Task<Void?> {
+        return Task.forResult(null)
+    }
+    
+    val key: String? get() = path.substringAfterLast("/").takeIf { it.isNotEmpty() }
+    
     private fun generatePushId(): String {
         return System.currentTimeMillis().toString()
     }
@@ -75,6 +89,25 @@ interface ValueEventListener {
     fun onCancelled(error: DatabaseError)
 }
 
+interface ChildEventListener {
+    fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?)
+    fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?)
+    fun onChildRemoved(snapshot: DataSnapshot)
+    fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?)
+    fun onCancelled(error: DatabaseError)
+}
+
+class GenericTypeIndicator<T>
+
+class Query(
+    private val path: String,
+    private val dbService: SupabaseDatabaseService
+) {
+    fun limitToLast(limit: Int): Query = this
+    fun addValueEventListener(listener: ValueEventListener) {}
+    fun addChildEventListener(listener: ChildEventListener) {}
+}
+
 class DataSnapshot(private val data: Any?) {
     fun exists(): Boolean = data != null
     fun hasChild(path: String): Boolean = false
@@ -82,8 +115,10 @@ class DataSnapshot(private val data: Any?) {
     val children: Iterable<DataSnapshot> get() = emptyList()
     fun getValue(): Any? = data
     fun getValue(clazz: Class<*>): Any? = data
+    fun <T> getValue(indicator: GenericTypeIndicator<T>): T? = data as? T
     inline fun <reified T> getValue(): T? = data as? T
     val key: String? get() = null
+    fun containsKey(key: String): Boolean = false
 }
 
 class DatabaseError(val message: String, val code: Int = 0) {

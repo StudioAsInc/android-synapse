@@ -24,11 +24,13 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+// Using Firebase compatibility layer for Supabase
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase;
+import com.synapse.social.studioasinc.compatibility.DatabaseReference;
+import com.synapse.social.studioasinc.compatibility.DataSnapshot;
+import com.synapse.social.studioasinc.compatibility.DatabaseError;
+import com.synapse.social.studioasinc.compatibility.ValueEventListener;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;

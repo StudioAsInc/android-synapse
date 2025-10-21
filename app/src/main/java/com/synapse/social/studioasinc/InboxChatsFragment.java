@@ -39,10 +39,9 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.chip.*;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+// Using Firebase compatibility layer for Supabase
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth;
+import com.synapse.social.studioasinc.compatibility.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
