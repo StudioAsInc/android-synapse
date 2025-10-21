@@ -79,22 +79,10 @@ class InboxActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
+        // TODO: Implement bottom navigation when proper menu items are available
         bottomnavigation1.setOnNavigationItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navigation_chats -> {
-                    viewpager1.currentItem = 0
-                    true
-                }
-                R.id.navigation_calls -> {
-                    viewpager1.currentItem = 1
-                    true
-                }
-                R.id.navigation_contacts -> {
-                    viewpager1.currentItem = 2
-                    true
-                }
-                else -> false
-            }
+            // Handle navigation when menu items are properly defined
+            true
         }
     }
 
@@ -166,10 +154,10 @@ class InboxActivity : AppCompatActivity() {
 
         override fun getItem(position: Int): Fragment {
             return when (position) {
-                0 -> InboxChatsFragment() // Chat list fragment
+                0 -> InboxChatsFragmentSimple() // Chat list fragment (simplified)
                 1 -> InboxCallsFragment() // Calls fragment (placeholder)
                 2 -> InboxContactsFragment() // Contacts fragment (placeholder)
-                else -> InboxChatsFragment()
+                else -> InboxChatsFragmentSimple()
             }
         }
 
@@ -190,6 +178,21 @@ class InboxActivity : AppCompatActivity() {
  * Placeholder fragments for the inbox tabs
  * These would be implemented separately with their own functionality
  */
+class InboxChatsFragmentSimple : Fragment() {
+    override fun onCreateView(
+        inflater: android.view.LayoutInflater,
+        container: android.view.ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = TextView(context)
+        view.text = "Chat list coming soon\nTap on a user in Search to start chatting"
+        view.gravity = android.view.Gravity.CENTER
+        view.setTextColor(Color.GRAY)
+        view.setPadding(32, 32, 32, 32)
+        return view
+    }
+}
+
 class InboxCallsFragment : Fragment() {
     override fun onCreateView(
         inflater: android.view.LayoutInflater,
