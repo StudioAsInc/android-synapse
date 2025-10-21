@@ -91,7 +91,7 @@ class AuthActivity : AppCompatActivity() {
                     val user = authService.signUp(email, password)
                     if (user != null) {
                         Toast.makeText(this@AuthActivity, "Account created successfully!", Toast.LENGTH_SHORT).show()
-                        navigateToMain()
+                        navigateToCompleteProfile()
                     }
                 } catch (e: Exception) {
                     Toast.makeText(this@AuthActivity, "Sign up failed: ${e.message}", Toast.LENGTH_LONG).show()
@@ -142,6 +142,11 @@ class AuthActivity : AppCompatActivity() {
 
     private fun navigateToMain() {
         startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
+
+    private fun navigateToCompleteProfile() {
+        startActivity(Intent(this, CompleteProfileActivity::class.java))
         finish()
     }
 }
