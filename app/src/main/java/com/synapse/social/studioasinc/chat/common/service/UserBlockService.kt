@@ -3,9 +3,9 @@ package com.synapse.social.studioasinc.chat.common.service
 import android.app.Activity
 import android.content.Intent
 import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.DatabaseReference
 
 class UserBlockService(private val activity: Activity) {
 

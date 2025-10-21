@@ -117,7 +117,7 @@ class UserMention(
         if (atIndex != -1) {
             val newText = text.substring(0, atIndex + 1) + username + " " + text.substring(cursorPosition)
             editText.setText(newText)
-            editText.setSelection(atIndex + username.length + 2)
+            editText.setSelection(atIndex + (username?.length ?: 0) + 2)
         }
 
         hidePopup()

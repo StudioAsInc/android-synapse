@@ -268,3 +268,8 @@ class StorageReference {
 class UploadTask : Task<UploadTask.TaskSnapshot>() {
     class TaskSnapshot
 }
+
+// ServerValue for timestamp operations
+object ServerValue {
+    val TIMESTAMP: Map<String, String> = mapOf(".sv" to "timestamp")
+}

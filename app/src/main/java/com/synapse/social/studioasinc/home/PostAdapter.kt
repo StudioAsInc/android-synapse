@@ -292,7 +292,7 @@ class PostAdapter(
     }
 
     private fun _displayUserInfoFromCache(user: User, userInfoProfileImage: ImageView, userInfoUsername: TextView, userInfoGenderBadge: ImageView, userInfoUsernameVerifiedBadge: ImageView) {
-        if ("true" == user.banned) {
+        if (user.banned == true) {
             userInfoProfileImage.setImageResource(R.drawable.banned_avatar)
         } else {
             if ("null" == user.avatar) {
@@ -330,7 +330,7 @@ class PostAdapter(
                 userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
             }
             "user" -> {
-                if ("true" == user.verify) {
+                if (user.verify == true) {
                     userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
                 } else {
                     userInfoUsernameVerifiedBadge.visibility = View.GONE

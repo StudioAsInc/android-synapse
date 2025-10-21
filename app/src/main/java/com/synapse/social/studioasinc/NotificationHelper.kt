@@ -1,7 +1,7 @@
 package com.synapse.social.studioasinc
 
 import android.util.Log
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody

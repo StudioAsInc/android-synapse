@@ -6,11 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.DatabaseReference
+import com.synapse.social.studioasinc.compatibility.ValueEventListener
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.DatabaseError
 import com.synapse.social.studioasinc.R
 import java.util.HashMap
 

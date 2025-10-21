@@ -3,6 +3,9 @@ package com.synapse.social.studioasinc.backend
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
 
 /**
  * Supabase Realtime Service
@@ -10,23 +13,27 @@ import com.synapse.social.studioasinc.SupabaseClient
  */
 class SupabaseRealtimeService {
     
-    private val realtime = SupabaseClient.client.realtime
+    private val client = SupabaseClient.client
     
     fun subscribeToMessages(chatId: String): Flow<Map<String, Any?>> {
-        // Temporary stub - will be implemented with proper Supabase realtime
+        // Simplified implementation - return empty flow for now
+        // Real implementation would use Supabase realtime subscriptions
         return flowOf(emptyMap())
     }
     
     fun subscribeToUserStatus(userId: String): Flow<Map<String, Any?>> {
-        // Temporary stub - will be implemented with proper Supabase realtime
+        // Simplified implementation - return empty flow for now
+        // Real implementation would use Supabase realtime subscriptions
         return flowOf(emptyMap())
     }
     
     suspend fun joinChannel(channelName: String) {
-        // Temporary stub - will be implemented with proper Supabase realtime
+        // Simplified implementation - no-op for now
+        // Real implementation would join Supabase realtime channel
     }
     
     suspend fun leaveChannel(channelName: String) {
-        // Temporary stub - will be implemented with proper Supabase realtime
+        // Simplified implementation - no-op for now
+        // Real implementation would leave Supabase realtime channel
     }
 }

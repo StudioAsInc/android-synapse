@@ -6,8 +6,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
 
 class ChatUIUpdater(
     private val activity: ChatActivity,

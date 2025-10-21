@@ -10,8 +10,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.DatabaseReference
+import com.synapse.social.studioasinc.compatibility.ValueEventListener
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.DatabaseError
 import com.synapse.social.studioasinc.databinding.ActivityConversationSettingsBinding
 import kotlin.math.abs
 

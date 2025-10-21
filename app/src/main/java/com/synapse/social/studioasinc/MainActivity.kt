@@ -14,7 +14,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
 import com.synapse.social.studioasinc.databinding.DialogErrorBinding
 import com.synapse.social.studioasinc.databinding.DialogUpdateBinding

@@ -70,7 +70,7 @@ class StoryAdapter(
         private val storiesSecondStoryTitle: TextView = itemView.findViewById(R.id.storiesSecondStoryTitle)
         private val storiesSecondStoryProfileImage: ImageView = itemView.findViewById(R.id.storiesSecondStoryProfileImage)
 
-        fun bind(story: com.synapse.social.studioasinc.models.Story, viewType: Int) {
+        fun bind(story: com.synapse.social.studioasinc.model.Story, viewType: Int) {
             setupLayout()
 
             if (viewType == VIEW_TYPE_MY_STORY) {

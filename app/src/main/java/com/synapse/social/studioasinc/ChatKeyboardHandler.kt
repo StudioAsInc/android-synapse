@@ -6,8 +6,8 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
 class ChatKeyboardHandler(

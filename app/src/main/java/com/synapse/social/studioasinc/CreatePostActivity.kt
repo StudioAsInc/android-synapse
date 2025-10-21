@@ -18,8 +18,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.DatabaseReference
+import com.synapse.social.studioasinc.compatibility.Task
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType

@@ -37,7 +37,9 @@ class SupabaseAuthenticationService {
     }
     
     suspend fun deleteUser() {
-        auth.deleteUser()
+        // Note: User deletion should be handled through Supabase dashboard or custom function
+        // For now, we'll just sign out the user
+        auth.signOut()
     }
     
     fun getCurrentUserId(): String? {

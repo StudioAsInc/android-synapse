@@ -14,8 +14,8 @@ import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.ProfileViewModel
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.databinding.SynapsePostCvBinding
-import com.synapse.social.studioasinc.models.Post
-import com.synapse.social.studioasinc.models.User
+import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.util.DateFormatter
 import com.synapse.social.studioasinc.util.NumberFormatter
 import io.noties.markwon.Markwon

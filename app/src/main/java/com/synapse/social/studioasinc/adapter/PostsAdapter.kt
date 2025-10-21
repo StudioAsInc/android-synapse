@@ -103,7 +103,7 @@ class PostsAdapter(
             setupActionButtons(post, originalMap)
             
             // Set publish date
-            TimeUtils.setTime(post.publishDate.toDoubleOrNull() ?: 0.0, postPublishDate, context)
+            TimeUtils.setTime(post.publishDate?.toDoubleOrNull() ?: 0.0, postPublishDate, context)
             
             // Handle visibility
             updatePostVisibility(post)
@@ -224,9 +224,11 @@ class PostsAdapter(
             commentsButton.visibility = if (post.postDisableComments == "true") View.GONE else View.VISIBLE
             
             // Load interaction data
-            loadLikeStatus(post.key)
-            loadCounts(post.key)
-            loadFavoriteStatus(post.key)
+            post.key?.let { key ->
+                loadLikeStatus(key)
+                loadCounts(key)
+                loadFavoriteStatus(key)
+            }
             
             // Setup click listeners
             likeButton.setOnClickListener { toggleLike(post) }

@@ -66,7 +66,7 @@ class UserProfileManager(
      * @param views A data class containing the views to populate.
      */
     private fun populateUI(user: User, currentUid: String, views: ProfileViews) {
-        if (user.banned == "true") {
+        if (user.banned == true) {
             handleBannedUser(views)
             return
         }
