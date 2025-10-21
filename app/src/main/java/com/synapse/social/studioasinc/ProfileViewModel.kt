@@ -4,8 +4,12 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
+import com.synapse.social.studioasinc.compatibility.ValueEventListener
+import com.synapse.social.studioasinc.compatibility.DataSnapshot
+import com.synapse.social.studioasinc.compatibility.DatabaseError
+import com.synapse.social.studioasinc.compatibility.Query
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.repository.UserRepository

@@ -37,7 +37,7 @@ class StoryAdapter(
         private const val VIEW_TYPE_OTHER_STORY = 1
     }
 
-    fun updateStories(newStories: List<com.synapse.social.studioasinc.models.Story>) {
+    fun updateStories(newStories: List<com.synapse.social.studioasinc.model.Story>) {
         stories = newStories
         notifyDataSetChanged()
     }

@@ -12,8 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
@@ -53,7 +55,8 @@ class ProfileActivity : AppCompatActivity() {
 
         // Get user ID from intent
         val userId = intent.getStringExtra("uid") ?: return
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val authService = SupabaseAuthenticationService()
+        val currentUid = authService.getCurrentUserId() ?: ""
 
         // Load user profile
         loadUserProfile(userId, currentUid)
@@ -255,37 +258,55 @@ class ProfileActivity : AppCompatActivity() {
             .setView(dialogBinding.root)
             .create()
 
-        val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(userId)
-        userRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
-            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                if (snapshot.exists()) {
-                    val user = snapshot.getValue(com.synapse.social.studioasinc.model.User::class.java)
-                    user?.let {
-                        if (it.avatar != "null") {
-                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(user.avatar).into(dialogBinding.avatar)
-                            dialogBinding.saveToHistory.setOnClickListener {
-                                saveToHistory(user.avatar)
-                                dialog.dismiss()
-                            }
+        val dbService = SupabaseDatabaseService()
+        lifecycleScope.launch {
+            try {
+                val users = dbService.selectWithFilter<Map<String, Any?>>(
+                    table = "users",
+                    columns = "*"
+                ) { /* Add filter for userId */ }
+                
+                if (users.isNotEmpty()) {
+                    val userData = users.first()
+                    val avatar = userData["avatar"] as? String
+                    if (avatar != null && avatar != "null") {
+                        com.bumptech.glide.Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
+                        dialogBinding.saveToHistory.setOnClickListener {
+                            saveToHistory(avatar)
+                            dialog.dismiss()
                         }
                     }
                 }
+            } catch (e: Exception) {
+                // Handle error
             }
-            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
-        })
+        }
         dialog.show()
     }
 
     private fun saveToHistory(imageUrl: String) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val db = FirebaseDatabase.getInstance()
-        val historyRef = db.getReference("skyline/profile-history").child(currentUid).push()
-        val historyItem = HashMap<String, Any>()
-        historyItem["key"] = historyRef.key ?: ""
-        historyItem["image_url"] = imageUrl
-        historyItem["upload_date"] = Calendar.getInstance().timeInMillis.toString()
-        historyItem["type"] = "url"
-        historyRef.setValue(historyItem)
-        Toast.makeText(this, "Saved to History", Toast.LENGTH_SHORT).show()
+        val authService = SupabaseAuthenticationService()
+        val currentUid = authService.getCurrentUserId() ?: return
+        val dbService = SupabaseDatabaseService()
+        
+        lifecycleScope.launch {
+            try {
+                val historyItem = mapOf(
+                    "user_id" to currentUid,
+                    "image_url" to imageUrl,
+                    "upload_date" to java.util.Calendar.getInstance().timeInMillis.toString(),
+                    "type" to "url"
+                )
+                
+                dbService.insert("profile_history", historyItem)
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Saved to History", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Failed to save to history", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }
