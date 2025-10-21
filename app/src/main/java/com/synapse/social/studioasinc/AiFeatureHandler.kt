@@ -4,11 +4,14 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import androidx.lifecycle.lifecycleScope
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.domain.usecase.SendMessageUseCase
 import com.service.studioasinc.AI.Gemini
 import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
 import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
 import com.synapse.social.studioasinc.ChatConstants.UID_KEY
+import kotlinx.coroutines.launch
 import java.util.HashMap
 import kotlin.math.max
 import kotlin.math.min
@@ -18,7 +21,8 @@ class AiFeatureHandler(
     private val gemini: Gemini,
     private val message_et: EditText,
     private val chatMessagesList: ArrayList<HashMap<String, Any>>,
-    private val auth: FirebaseAuth,
+    private val authRepository: AuthRepository,
+    private val sendMessageUseCase: SendMessageUseCase,
     private var secondUserName: String,
     private val mMessageReplyLayoutBodyRightUsername: TextView,
     private val mMessageReplyLayoutBodyRightMessage: TextView
@@ -61,7 +65,8 @@ class AiFeatureHandler(
 
                     for (i in startIndex..endIndex) {
                         val message = chatMessagesList[i]
-                        val sender = if (message[UID_KEY].toString() == auth.currentUser?.uid) "Me" else secondUserName
+                        val currentUserId = authRepository.getCurrentUserId()
+                        val sender = if (message[UID_KEY].toString() == currentUserId) "Me" else secondUserName
                         contextBuilder.append("$sender: ${message[MESSAGE_TEXT_KEY]}\n")
                     }
 

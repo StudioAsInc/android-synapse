@@ -6,7 +6,7 @@ import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.attachments.Rv_attacmentListAdapter
 import com.synapse.social.studioasinc.util.ChatMessageManager
 
@@ -17,7 +17,7 @@ class AttachmentHandler(
     private var attactmentmap: ArrayList<HashMap<String, Any>>,
     private val close_attachments_btn: View,
     private val galleryBtn: View,
-    private val auth: FirebaseAuth
+    private val authRepository: AuthRepository
 ) {
 
     fun setup() {
@@ -34,13 +34,14 @@ class AttachmentHandler(
             }
 
             val drafts: SharedPreferences = activity.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
-            val chatId = ChatMessageManager.getChatId(
-                auth.currentUser!!.uid,
-                activity.intent.getStringExtra("uid")
-            )
-            drafts.edit().remove(chatId + "_attachments").apply()
-            if (auth.currentUser != null) {
-                PresenceManager.setActivity(auth.currentUser!!.uid, "Idle")
+            val currentUserId = authRepository.getCurrentUserId()
+            if (currentUserId != null) {
+                val chatId = ChatMessageManager.getChatId(
+                    currentUserId,
+                    activity.intent.getStringExtra("uid")
+                )
+                drafts.edit().remove(chatId + "_attachments").apply()
+                PresenceManager.setActivity(currentUserId, "Idle")
             }
         }
 

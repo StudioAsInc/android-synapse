@@ -9,22 +9,26 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
-import com.synapse.social.studioasinc.compatibility.FirebaseDatabase
-import com.synapse.social.studioasinc.compatibility.DataSnapshot
-import com.synapse.social.studioasinc.compatibility.DatabaseError
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.inject.Inject
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    application: Application,
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
+) : AndroidViewModel(application) {
 
     private val _updateState = MutableLiveData<UpdateState>()
     val updateState: LiveData<UpdateState> = _updateState
@@ -89,21 +93,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkUserAuthentication() {
         viewModelScope.launch {
             try {
-                val user = FirebaseAuth.getInstance().currentUser
-                if (user != null) {
-                    val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(user.uid)
-                    val snapshot = userRef.get().await()
-
-                    if (snapshot.exists()) {
-                        val banned = snapshot.child("banned").getValue(String::class.java)
-                        if ("false" == banned) {
-                            _authState.value = AuthState.Authenticated
-                        } else {
-                            _authState.value = AuthState.Banned
+                val userId = authRepository.getCurrentUserId()
+                if (userId != null) {
+                    userRepository.getUserById(userId)
+                        .onSuccess { user ->
+                            if (user != null) {
+                                if (!user.banned) {
+                                    _authState.value = AuthState.Authenticated
+                                } else {
+                                    _authState.value = AuthState.Banned
+                                }
+                            } else {
+                                _authState.value = AuthState.NeedsProfileCompletion
+                            }
                         }
-                    } else {
-                        _authState.value = AuthState.NeedsProfileCompletion
-                    }
+                        .onFailure {
+                            _authState.value = AuthState.NeedsProfileCompletion
+                        }
                 } else {
                     _authState.value = AuthState.Unauthenticated
                 }
