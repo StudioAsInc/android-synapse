@@ -10,11 +10,14 @@ import kotlinx.serialization.Serializable
 data class User(
     val id: String? = null,
     val uid: String,
-    val email: String,
-    val username: String,
+    val email: String? = null,
+    val username: String? = null,
     val nickname: String? = null,
+    val displayName: String? = null,
     val biography: String? = null,
+    val bio: String? = null,
     val avatar: String? = null,
+    val profileImageUrl: String? = null,
     @SerialName("avatar_history_type")
     val avatarHistoryType: String = "local",
     @SerialName("profile_cover_image")
@@ -40,5 +43,9 @@ data class User(
     @SerialName("created_at")
     val createdAt: String? = null,
     @SerialName("updated_at")
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    // Additional properties for compatibility
+    val followersCount: Int = 0,
+    val followingCount: Int = 0,
+    val postsCount: Int = 0
 )

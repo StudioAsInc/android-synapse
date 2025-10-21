@@ -8,12 +8,13 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Post(
-    val id: String? = null,
+    val id: String = "",
     @SerialName("post_id")
-    val postId: String,
+    val postId: String = "",
     @SerialName("author_id")
-    val authorId: String,
-    val content: String? = null,
+    val authorId: String = "",
+    val authorUid: String = "", // For compatibility
+    val content: String = "",
     @SerialName("image_url")
     val imageUrl: String? = null,
     @SerialName("video_url")
@@ -23,7 +24,17 @@ data class Post(
     @SerialName("updated_at")
     val updatedAt: String? = null,
     @SerialName("deleted_at")
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    // Additional properties for compatibility
+    val timestamp: Long = 0L,
+    val likesCount: Int = 0,
+    val commentsCount: Int = 0,
+    val key: String? = null,
+    val uid: String? = null,
+    val postType: String? = null,
+    val postText: String? = null,
+    val postImage: String? = null,
+    val mediaItems: List<MediaItem>? = null
 )
 
 /**

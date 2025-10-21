@@ -11,7 +11,7 @@ import com.synapse.social.studioasinc.SupabaseClient
  */
 class SupabaseAuthenticationService {
 
-    private val auth: Auth = SupabaseClient.client.auth
+    private val client = SupabaseClient.client
 
     /**
      * Signs up a new user with email and password.
@@ -20,11 +20,11 @@ class SupabaseAuthenticationService {
      * @return UserInfo object containing user details
      * @throws Exception if sign up fails
      */
-    suspend fun signUp(email: String, password: String): UserInfo {
-        return auth.signUpWith(Email) {
+    suspend fun signUp(email: String, password: String): UserInfo? {
+        return client.auth.signUpWith(Email) {
             this.email = email
             this.password = password
-        }
+        }.user
     }
 
     /**
@@ -34,11 +34,12 @@ class SupabaseAuthenticationService {
      * @return UserInfo object containing user details
      * @throws Exception if sign in fails
      */
-    suspend fun signIn(email: String, password: String): UserInfo {
-        return auth.signInWith(Email) {
+    suspend fun signIn(email: String, password: String): UserInfo? {
+        client.auth.signInWith(Email) {
             this.email = email
             this.password = password
         }
+        return client.auth.currentUserOrNull()
     }
 
     /**
@@ -46,7 +47,7 @@ class SupabaseAuthenticationService {
      * @throws Exception if sign out fails
      */
     suspend fun signOut() {
-        auth.signOut()
+        client.auth.signOut()
     }
 
     /**
@@ -54,7 +55,7 @@ class SupabaseAuthenticationService {
      * @return UserInfo object if user is authenticated, null otherwise
      */
     fun getCurrentUser(): UserInfo? {
-        return auth.currentUserOrNull()
+        return client.auth.currentUserOrNull()
     }
 
     /**
@@ -62,7 +63,7 @@ class SupabaseAuthenticationService {
      * @return User ID string if authenticated, null otherwise
      */
     fun getCurrentUserId(): String? {
-        return auth.currentUserOrNull()?.id
+        return client.auth.currentUserOrNull()?.id
     }
 
     /**
@@ -70,7 +71,7 @@ class SupabaseAuthenticationService {
      * @return true if user is authenticated, false otherwise
      */
     fun isUserAuthenticated(): Boolean {
-        return auth.currentUserOrNull() != null
+        return client.auth.currentUserOrNull() != null
     }
 
     /**
@@ -79,7 +80,7 @@ class SupabaseAuthenticationService {
      * @throws Exception if password reset fails
      */
     suspend fun resetPassword(email: String) {
-        auth.resetPasswordForEmail(email)
+        client.auth.resetPasswordForEmail(email)
     }
 
     /**
@@ -88,7 +89,7 @@ class SupabaseAuthenticationService {
      * @throws Exception if password update fails
      */
     suspend fun updatePassword(newPassword: String) {
-        auth.updateUser {
+        client.auth.updateUser {
             password = newPassword
         }
     }
@@ -99,7 +100,7 @@ class SupabaseAuthenticationService {
      * @throws Exception if email update fails
      */
     suspend fun updateEmail(newEmail: String) {
-        auth.updateUser {
+        client.auth.updateUser {
             email = newEmail
         }
     }

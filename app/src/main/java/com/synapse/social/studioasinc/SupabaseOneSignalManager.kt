@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc
 import android.content.Context
 import com.onesignal.OneSignal
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import io.github.jan.supabase.postgrest.query.PostgrestFilterBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,15 +35,11 @@ object SupabaseOneSignalManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Get current OneSignal Player ID if available
-                if (OneSignal.getUser().pushSubscription.optedIn) {
-                    val playerId = OneSignal.getUser().pushSubscription.id
-                    if (!playerId.isNullOrEmpty()) {
-                        val updateData = mapOf("one_signal_player_id" to playerId)
-                        dbService.update("users", updateData) {
-                            filter {
-                                eq("uid", uid)
-                            }
-                        }
+                val playerId = OneSignal.getUser().pushSubscription.id
+                if (!playerId.isNullOrEmpty()) {
+                    val updateData = mapOf("one_signal_player_id" to playerId)
+                    dbService.update("users", updateData) {
+                        eq("uid", uid)
                     }
                 }
             } catch (e: Exception) {
@@ -74,11 +71,7 @@ object SupabaseOneSignalManager {
      */
     @JvmStatic
     fun getPlayerId(): String? {
-        return if (OneSignal.getUser().pushSubscription.optedIn) {
-            OneSignal.getUser().pushSubscription.id
-        } else {
-            null
-        }
+        return OneSignal.getUser().pushSubscription.id
     }
 
     /**

@@ -207,10 +207,13 @@ class PostCommentsViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already liked
-                val likes = dbService.selectWithFilter<Map<String, Any?>>(
+                val likes = dbService.select<Map<String, Any?>>(
                     table = "comment_likes",
                     columns = "*"
-                ) { /* Add filter for comment_key and user_id */ }
+                ) { 
+                    eq("comment_key", commentKey)
+                    eq("user_id", currentUserId)
+                }
                 
                 if (likes.isNotEmpty()) {
                     // Unlike - remove the like
@@ -262,10 +265,13 @@ class PostCommentsViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
                 // Check if already liked
-                val likes = dbService.selectWithFilter<Map<String, Any?>>(
+                val likes = dbService.select<Map<String, Any?>>(
                     table = "reply_likes",
                     columns = "*"
-                ) { /* Add filter for reply_key and user_id */ }
+                ) { 
+                    eq("reply_key", replyKey)
+                    eq("user_id", currentUid)
+                }
                 
                 if (likes.isNotEmpty()) {
                     // Unlike

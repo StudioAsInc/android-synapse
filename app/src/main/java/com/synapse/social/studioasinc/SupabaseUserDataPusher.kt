@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import io.github.jan.supabase.postgrest.query.PostgrestFilterBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,9 +24,7 @@ object SupabaseUserDataPusher {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 dbService.update("users", userData) {
-                    filter {
-                        eq("uid", uid)
-                    }
+                    eq("uid", uid)
                 }
             } catch (e: Exception) {
                 // Handle error silently for now

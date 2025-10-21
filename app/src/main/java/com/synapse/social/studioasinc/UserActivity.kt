@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import io.github.jan.supabase.postgrest.query.PostgrestFilterBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,9 +28,7 @@ object UserActivity {
                     "last_seen" to System.currentTimeMillis().toString()
                 )
                 dbService.update("users", updateData) { 
-                    filter {
-                        eq("uid", uid)
-                    }
+                    eq("uid", uid)
                 }
             } catch (e: Exception) {
                 // Handle error silently for now
@@ -59,9 +58,7 @@ object UserActivity {
                     "last_seen" to System.currentTimeMillis().toString()
                 )
                 dbService.update("users", updateData) {
-                    filter {
-                        eq("uid", uid)
-                    }
+                    eq("uid", uid)
                 }
             } catch (e: Exception) {
                 // Handle error silently for now

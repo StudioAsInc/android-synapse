@@ -3,6 +3,8 @@ package com.synapse.social.studioasinc.backend
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
+import io.github.jan.supabase.postgrest.query.PostgrestFilterBuilder
+import io.github.jan.supabase.postgrest.query.Count
 import com.synapse.social.studioasinc.SupabaseClient
 import kotlinx.serialization.json.JsonElement
 
@@ -12,7 +14,7 @@ import kotlinx.serialization.json.JsonElement
  */
 class SupabaseDatabaseService {
 
-    private val postgrest: Postgrest = SupabaseClient.client.postgrest
+    private val client = SupabaseClient.client
 
     /**
      * Inserts data into a table.
@@ -22,24 +24,27 @@ class SupabaseDatabaseService {
      * @throws Exception if insert fails
      */
     suspend fun insert(table: String, data: Map<String, Any?>): List<Map<String, Any?>> {
-        return postgrest.from(table).insert(data) {
+        return client.postgrest.from(table).insert(data) {
             select()
         }.decodeList<Map<String, Any?>>()
     }
 
     /**
-     * Updates data in a table.
+     * Updates data in a table with filter.
      * @param table Table name
      * @param data Data to update as a map
+     * @param filter Filter function to apply WHERE conditions
      * @return List of updated records
      * @throws Exception if update fails
      */
     suspend fun update(
         table: String, 
-        data: Map<String, Any?>
+        data: Map<String, Any?>,
+        filter: (PostgrestFilterBuilder.() -> Unit)
     ): List<Map<String, Any?>> {
-        return postgrest.from(table).update(data) {
+        return client.postgrest.from(table).update(data) {
             select()
+            filter()
         }.decodeList<Map<String, Any?>>()
     }
 
@@ -51,14 +56,16 @@ class SupabaseDatabaseService {
      * @return List of selected records
      * @throws Exception if select fails
      */
-    suspend fun <T> selectWithFilter(
+    suspend fun <T> select(
         table: String,
         columns: String = "*",
-        filter: (PostgrestQueryBuilder.() -> Unit)? = null
+        filter: (PostgrestFilterBuilder.() -> Unit)? = null
     ): List<Map<String, Any?>> {
-        val query = postgrest.from(table).select(columns = Columns.raw(columns))
+        val query = client.postgrest.from(table).select(columns = Columns.raw(columns))
         
-        filter?.let { query.apply(it) }
+        filter?.let { 
+            query.filter { filter() }
+        }
         
         return query.decodeList<Map<String, Any?>>()
     }
@@ -71,7 +78,7 @@ class SupabaseDatabaseService {
      * @throws Exception if select fails
      */
     suspend fun selectAll(table: String, columns: String = "*"): List<Map<String, Any?>> {
-        return postgrest.from(table)
+        return client.postgrest.from(table)
             .select(columns = Columns.raw(columns))
             .decodeList<Map<String, Any?>>()
     }
@@ -91,7 +98,7 @@ class SupabaseDatabaseService {
         idColumn: String = "id",
         columns: String = "*"
     ): Map<String, Any?>? {
-        return postgrest.from(table)
+        return client.postgrest.from(table)
             .select(columns = Columns.raw(columns)) {
                 filter {
                     eq(idColumn, id)
@@ -109,9 +116,9 @@ class SupabaseDatabaseService {
      */
     suspend fun delete(
         table: String,
-        filter: PostgrestQueryBuilder.() -> Unit
+        filter: PostgrestFilterBuilder.() -> Unit
     ): List<Map<String, Any?>> {
-        return postgrest.from(table).delete {
+        return client.postgrest.from(table).delete {
             select()
             filter()
         }.decodeList<Map<String, Any?>>()
@@ -130,7 +137,7 @@ class SupabaseDatabaseService {
         id: String, 
         idColumn: String = "id"
     ): Map<String, Any?>? {
-        return postgrest.from(table).delete {
+        return client.postgrest.from(table).delete {
             select()
             filter {
                 eq(idColumn, id)
@@ -147,11 +154,13 @@ class SupabaseDatabaseService {
      */
     suspend fun count(
         table: String,
-        filter: (PostgrestQueryBuilder.() -> Unit)? = null
+        filter: (PostgrestFilterBuilder.() -> Unit)? = null
     ): Long {
-        val query = postgrest.from(table).select(columns = Columns.raw("*"), count = io.github.jan.supabase.postgrest.query.Count.EXACT)
+        val query = client.postgrest.from(table).select(columns = Columns.raw("*"), count = Count.EXACT)
         
-        filter?.let { query.apply(it) }
+        filter?.let { 
+            query.filter { filter() }
+        }
         
         return query.execute().countOrNull() ?: 0L
     }
@@ -167,7 +176,7 @@ class SupabaseDatabaseService {
         functionName: String,
         parameters: Map<String, Any?> = emptyMap()
     ): JsonElement {
-        return postgrest.rpc(functionName, parameters)
+        return client.postgrest.rpc(functionName, parameters)
     }
 
     /**
@@ -183,7 +192,7 @@ class SupabaseDatabaseService {
         data: Map<String, Any?>,
         onConflict: String = "id"
     ): List<Map<String, Any?>> {
-        return postgrest.from(table).upsert(data, onConflict = onConflict) {
+        return client.postgrest.from(table).upsert(data, onConflict = onConflict) {
             select()
         }.decodeList<Map<String, Any?>>()
     }
