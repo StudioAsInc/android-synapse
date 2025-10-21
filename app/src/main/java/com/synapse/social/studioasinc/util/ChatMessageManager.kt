@@ -55,6 +55,11 @@ object ChatMessageManager {
         }
     }
 
+    suspend fun updateInbox(
+        senderUid: String,
+        recipientUid: String,
+        lastMessage: String,
+        isGroup: Boolean = false
     ) {
         try {
             if (isGroup) {
@@ -82,6 +87,11 @@ object ChatMessageManager {
         }
     }
 
+    private suspend fun updateUserInbox(
+        userId: String,
+        partnerId: String,
+        lastMessage: String,
+        isGroup: Boolean
     ) {
         try {
             val inboxData = mapOf(
