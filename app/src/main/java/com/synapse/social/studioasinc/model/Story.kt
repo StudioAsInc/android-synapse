@@ -1,16 +1,20 @@
 package com.synapse.social.studioasinc.model
 
-/**
- * Story model for social media stories
- */
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Story(
     val id: String? = null,
-    val uid: String = "",
-    val story_id: String = "",
-    val content_url: String? = null,
-    val story_type: String = "image", // image, video
-    val publish_date: String? = null,
-    val expires_at: String? = null,
-    val created_at: String? = null,
-    val updated_at: String? = null
+    @SerialName("user_id")
+    val userId: String,
+    @SerialName("image_url")
+    val imageUrl: String? = null,
+    @SerialName("video_url")
+    val videoUrl: String? = null,
+    val content: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("expires_at")
+    val expiresAt: String? = null
 )

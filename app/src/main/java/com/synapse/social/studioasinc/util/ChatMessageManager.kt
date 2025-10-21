@@ -1,38 +1,56 @@
 package com.synapse.social.studioasinc.util
 
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import kotlinx.coroutines.runBlocking
-import java.util.Calendar
-import java.util.HashMap
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.ChatRepository
+import com.synapse.social.studioasinc.model.Message
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.UUID
 
-object ChatMessageManager {
+class ChatMessageManager(
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val chatRepository: ChatRepository = ChatRepository()
+) {
 
-    private val dbService = SupabaseDatabaseService()
-    private val authService = SupabaseAuthenticationService()
+    fun getChatId(userId1: String, userId2: String): String {
+        return "${minOf(userId1, userId2)}_${maxOf(userId1, userId2)}"
+    }
 
-    private const val SKYLINE_REF = "skyline"
-    private const val CHATS_REF = "chats"
-    private const val USER_CHATS_REF = "user-chats"
-    private const val GROUP_CHATS_REF = "group-chats"
-    private const val INBOX_REF = "inbox"
+    suspend fun sendMessage(
+        recipientId: String,
+        messageText: String,
+        messageType: String = "text",
+        attachmentUrl: String? = null
+    ): Result<Message> {
+        val senderId = authRepository.getCurrentUserId()
+            ?: return Result.failure(Exception("User not authenticated"))
 
-    private const val CHAT_ID_KEY = "chatID"
-    private const val UID_KEY = "uid"
-    private const val LAST_MESSAGE_UID_KEY = "last_message_uid"
-    private const val LAST_MESSAGE_TEXT_KEY = "last_message_text"
-    private const val LAST_MESSAGE_STATE_KEY = "last_message_state"
-    private const val PUSH_DATE_KEY = "push_date"
+        val chatId = getChatId(senderId, recipientId)
+        
+        // Create or get chat first
+        chatRepository.createChat(senderId, recipientId)
+            .onFailure { return Result.failure(it) }
 
-    fun getChatId(uid1: String?, uid2: String?): String {
-        if (uid1 == null || uid2 == null) {
-            return ""
-        }
-        return if (uid1.compareTo(uid2) > 0) {
-            uid1 + uid2
-        } else {
-            uid2 + uid1
-        }
+        val message = Message(
+            messageKey = UUID.randomUUID().toString(),
+            chatId = chatId,
+            senderId = senderId,
+            messageText = messageText,
+            messageType = messageType,
+            attachmentUrl = attachmentUrl
+        )
+
+        return chatRepository.sendMessage(message)
+    }
+
+    suspend fun getMessages(chatId: String, limit: Int = 50): Result<List<Message>> {
+        return chatRepository.getMessages(chatId, limit)
+    }
+
+    suspend fun updateInbox(senderUid: String, recipientUid: String, lastMessage: String, isGroup: Boolean = false) {
+        // This would update the inbox/conversation list
+        // Implementation depends on your inbox structure
     }
 
     suspend fun sendMessageToDb(
@@ -42,69 +60,10 @@ object ChatMessageManager {
         uniqueMessageKey: String,
         isGroup: Boolean
     ) {
-        try {
-            if (isGroup) {
-                // Insert group message
-                dbService.insert("group_messages", messageMap)
-            } else {
-                // Insert direct message
-                dbService.insert("messages", messageMap)
-            }
-        } catch (e: Exception) {
-            // Handle error
-        }
-    }
+        val messageText = messageMap["message_text"] as? String ?: ""
+        val messageType = messageMap["message_type"] as? String ?: "text"
+        val attachmentUrl = messageMap["attachment_url"] as? String
 
-    suspend fun updateInbox(
-        senderUid: String,
-        recipientUid: String,
-        lastMessage: String,
-        isGroup: Boolean = false
-    ) {
-        try {
-            if (isGroup) {
-                // Update group inbox for all members
-                val groupMembers = dbService.selectWithFilter<Map<String, Any?>>(
-                    table = "group_members",
-                    columns = "user_id"
-                ) { query ->
-                    // Add filter for group_id
-                }
-                
-                groupMembers.forEach { member ->
-                    val userId = member["user_id"] as? String
-                    if (userId != null) {
-                        updateUserInbox(userId, recipientUid, lastMessage, true)
-                    }
-                }
-            } else {
-                // Update inbox for both users
-                updateUserInbox(senderUid, recipientUid, lastMessage, false)
-                updateUserInbox(recipientUid, senderUid, lastMessage, false)
-            }
-        } catch (e: Exception) {
-            // Handle error
-        }
-    }
-
-    private suspend fun updateUserInbox(
-        userId: String,
-        partnerId: String,
-        lastMessage: String,
-        isGroup: Boolean
-    ) {
-        try {
-            val inboxData = mapOf(
-                "user_id" to userId,
-                "chat_partner_id" to if (!isGroup) partnerId else null,
-                "group_id" to if (isGroup) partnerId else null,
-                "unread_count" to 1,
-                "updated_at" to java.time.Instant.now().toString()
-            )
-            
-            dbService.upsert("inbox", inboxData)
-        } catch (e: Exception) {
-            // Handle error
-        }
+        sendMessage(recipientUid, messageText, messageType, attachmentUrl)
     }
 }

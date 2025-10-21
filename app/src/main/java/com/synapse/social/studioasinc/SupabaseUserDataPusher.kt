@@ -1,88 +1,160 @@
 package com.synapse.social.studioasinc
 
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.Calendar
+import kotlinx.coroutines.launch
 
 /**
- * Supabase implementation of UserDataPusher.
- * Handles user profile creation and updates using Supabase database.
+ * Handles pushing user data to Supabase database.
+ * Manages user profile updates, status changes, and other user-related data operations.
  */
-class SupabaseUserDataPusher {
+object SupabaseUserDataPusher {
 
     private val dbService = SupabaseDatabaseService()
 
-    suspend fun pushData(
-        username: String,
-        nickname: String,
-        biography: String,
-        thedpurl: String,
-        googleLoginAvatarUri: String?,
-        email: String,
-        uid: String,
-        onComplete: (Boolean, String?) -> Unit
-    ) = withContext(Dispatchers.IO) {
-        try {
-            val getJoinTime = Calendar.getInstance()
-            val createUserMap = mutableMapOf<String, Any?>()
-            
-            createUserMap["uid"] = uid
-            createUserMap["email"] = email
-            createUserMap["profile_cover_image"] = null
-
-            if (googleLoginAvatarUri != null) {
-                createUserMap["avatar"] = googleLoginAvatarUri
-            } else {
-                createUserMap["avatar"] = if (thedpurl == "null") null else thedpurl
+    /**
+     * Updates user profile data in Supabase.
+     * @param uid User's UID
+     * @param userData Map of user data to update
+     */
+    @JvmStatic
+    fun updateUserProfile(uid: String, userData: Map<String, Any?>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                dbService.update("users", userData) {
+                    filter {
+                        eq("uid", uid)
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error silently for now
             }
+        }
+    }
 
-            createUserMap["avatar_history_type"] = "local"
-            createUserMap["username"] = username
-            createUserMap["nickname"] = if (nickname.isEmpty()) null else nickname
-            createUserMap["biography"] = if (biography.isEmpty()) null else biography
-
-            // Set special privileges for admin email
-            if (email == "mashikahamed0@gmail.com") {
-                createUserMap["account_premium"] = true
-                createUserMap["user_level_xp"] = 500
-                createUserMap["verify"] = true
-                createUserMap["account_type"] = "admin"
-                createUserMap["gender"] = "hidden"
-            } else {
-                createUserMap["account_premium"] = false
-                createUserMap["user_level_xp"] = 500
-                createUserMap["verify"] = false
-                createUserMap["account_type"] = "user"
-                createUserMap["gender"] = "hidden"
+    /**
+     * Creates a new user profile in Supabase.
+     * @param uid User's UID
+     * @param userData Map of user data to insert
+     */
+    @JvmStatic
+    fun createUserProfile(uid: String, userData: Map<String, Any?>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val dataWithUid = userData.toMutableMap()
+                dataWithUid["uid"] = uid
+                dbService.insert("users", dataWithUid)
+            } catch (e: Exception) {
+                // Handle error silently for now
             }
+        }
+    }
 
-            createUserMap["banned"] = false
-            createUserMap["status"] = "online"
-            createUserMap["join_date"] = getJoinTime.time
-            createUserMap["created_at"] = getJoinTime.time
-            createUserMap["updated_at"] = getJoinTime.time
+    /**
+     * Updates user's online status.
+     * @param uid User's UID
+     * @param isOnline Whether user is online
+     */
+    @JvmStatic
+    fun updateOnlineStatus(uid: String, isOnline: Boolean) {
+        val status = if (isOnline) "online" else "offline"
+        val userData = mapOf(
+            "status" to status,
+            "last_seen" to System.currentTimeMillis().toString()
+        )
+        updateUserProfile(uid, userData)
+    }
 
-            // Insert or update user in users table
-            val userResult = dbService.upsert("users", createUserMap)
+    /**
+     * Updates user's OneSignal player ID.
+     * @param uid User's UID
+     * @param playerId OneSignal player ID
+     */
+    @JvmStatic
+    fun updateOneSignalPlayerId(uid: String, playerId: String) {
+        val userData = mapOf("one_signal_player_id" to playerId)
+        updateUserProfile(uid, userData)
+    }
 
-            // Create username registry entry
-            val usernameMap = mapOf(
-                "username" to username,
-                "uid" to uid,
-                "email" to email,
-                "user_id" to userResult["id"]
-            )
+    /**
+     * Updates user's device token for push notifications.
+     * @param uid User's UID
+     * @param deviceToken Device token
+     */
+    @JvmStatic
+    fun updateDeviceToken(uid: String, deviceToken: String) {
+        val userData = mapOf("device_token" to deviceToken)
+        updateUserProfile(uid, userData)
+    }
 
-            dbService.upsert("username_registry", usernameMap)
+    /**
+     * Updates user's last seen timestamp.
+     * @param uid User's UID
+     */
+    @JvmStatic
+    fun updateLastSeen(uid: String) {
+        val userData = mapOf("last_seen" to System.currentTimeMillis().toString())
+        updateUserProfile(uid, userData)
+    }
 
-            withContext(Dispatchers.Main) {
-                onComplete(true, null)
+    /**
+     * Updates user's typing status in a chat.
+     * @param uid User's UID
+     * @param chatId Chat ID where user is typing
+     * @param isTyping Whether user is typing
+     */
+    @JvmStatic
+    fun updateTypingStatus(uid: String, chatId: String, isTyping: Boolean) {
+        val status = if (isTyping) "typing_in_$chatId" else "online"
+        val userData = mapOf("status" to status)
+        updateUserProfile(uid, userData)
+    }
+
+    /**
+     * Increments user's post count.
+     * @param uid User's UID
+     */
+    @JvmStatic
+    fun incrementPostCount(uid: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Use RPC to increment post count atomically
+                dbService.rpc("increment_post_count", mapOf("user_uid" to uid))
+            } catch (e: Exception) {
+                // Handle error silently for now
             }
+        }
+    }
 
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                onComplete(false, e.message)
+    /**
+     * Increments user's follower count.
+     * @param uid User's UID
+     */
+    @JvmStatic
+    fun incrementFollowerCount(uid: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Use RPC to increment follower count atomically
+                dbService.rpc("increment_follower_count", mapOf("user_uid" to uid))
+            } catch (e: Exception) {
+                // Handle error silently for now
+            }
+        }
+    }
+
+    /**
+     * Decrements user's follower count.
+     * @param uid User's UID
+     */
+    @JvmStatic
+    fun decrementFollowerCount(uid: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Use RPC to decrement follower count atomically
+                dbService.rpc("decrement_follower_count", mapOf("user_uid" to uid))
+            } catch (e: Exception) {
+                // Handle error silently for now
             }
         }
     }

@@ -14,7 +14,12 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.synapse.social.studioasinc.compatibility.FirebaseAuth
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
 import com.synapse.social.studioasinc.databinding.DialogErrorBinding
 import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
@@ -22,7 +27,17 @@ import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: MainViewModel by viewModels()
+    private val authRepository = AuthRepository()
+    private val userRepository = UserRepository()
+    
+    private val viewModel: MainViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return MainViewModel(application, authRepository, userRepository) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,9 +94,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.appLogo.setOnLongClickListener {
-            if (FirebaseAuth.getInstance().currentUser?.email == BuildConfig.DEVELOPER_EMAIL) {
-                finish()
-            }
+            // Developer access check - implement with Supabase user metadata if needed
+            // For now, just allow long press to exit
+            finish()
             true
         }
     }
@@ -102,12 +117,14 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
-                    startActivity(Intent(this, AuthActivity::class.java))
+                    startActivity(Intent(this, AuthActivitySupabase::class.java))
                     finish()
                 }
                 is AuthState.Banned -> {
                     Toast.makeText(this, "You are banned & Signed Out.", Toast.LENGTH_LONG).show()
-                    FirebaseAuth.getInstance().signOut()
+                    lifecycleScope.launch {
+                        authRepository.signOut()
+                    }
                     finish()
                 }
                 is AuthState.NeedsProfileCompletion -> {

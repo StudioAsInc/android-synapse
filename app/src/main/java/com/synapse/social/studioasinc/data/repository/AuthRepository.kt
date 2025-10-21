@@ -16,7 +16,7 @@ class AuthRepository {
                 this.email = email
                 this.password = password
             }
-            Result.success(result.user?.id ?: "")
+            Result.success(result?.user?.id ?: "")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -28,7 +28,7 @@ class AuthRepository {
                 this.email = email
                 this.password = password
             }
-            Result.success(result.user?.id ?: "")
+            Result.success(result?.user?.id ?: "")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -57,7 +57,7 @@ class AuthRepository {
     
     fun observeAuthState(): Flow<Boolean> {
         return client.auth.sessionStatus.map { status ->
-            status.isAuthenticated()
+            client.auth.currentUserOrNull() != null
         }
     }
 }

@@ -13,11 +13,11 @@ object OneSignalManager {
      */
     @JvmStatic
     fun savePlayerIdToRealtimeDatabase(userUid: String, playerId: String) {
-        SupabaseOneSignalManager.savePlayerIdToDatabase(userUid, playerId)
+        SupabaseOneSignalManager.updatePlayerIdForUser(userUid)
     }
 
     @JvmStatic
     fun savePlayerIdToSupabase(userUid: String, playerId: String) {
-        SupabaseOneSignalManager.savePlayerIdToDatabase(userUid, playerId)
+        SupabaseOneSignalManager.updatePlayerIdForUser(userUid)
     }
 }
