@@ -439,7 +439,7 @@ class ProfileCoverPhotoHistoryActivity : AppCompatActivity() {
                         
                         if (imageUrl == currentAvatarUri) {
                             // Remove current cover image
-                            val userData = mapOf(
+                            val userData: Map<String, Any?> = mapOf(
                                 "profile_cover_image" to "null",
                                 "cover_image_history_type" to "local"
                             )
@@ -447,9 +447,9 @@ class ProfileCoverPhotoHistoryActivity : AppCompatActivity() {
                             currentAvatarUri = "null"
                         } else {
                             // Set as current cover image
-                            val userData = mapOf(
+                            val userData: Map<String, Any?> = mapOf(
                                 "profile_cover_image" to imageUrl,
-                                "cover_image_history_type" to item["type"]?.toString() ?: "url"
+                                "cover_image_history_type" to (item["type"]?.toString() ?: "url")
                             )
                             databaseService.update("users", userData, "uid", currentUserId)
                             currentAvatarUri = imageUrl

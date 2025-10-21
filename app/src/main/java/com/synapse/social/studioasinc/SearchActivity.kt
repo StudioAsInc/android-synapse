@@ -115,13 +115,13 @@ class SearchActivity : AppCompatActivity() {
         }
 
         bottomVideos.setOnClickListener {
-            val intent = Intent(applicationContext, LineVideoPlayerActivity::class.java)
-            startActivity(intent)
+            // TODO: Implement LineVideoPlayerActivity when available
+            SketchwareUtil.showMessage(applicationContext, "Video player coming soon")
         }
 
         bottomChats.setOnClickListener {
-            val intent = Intent(applicationContext, InboxActivity::class.java)
-            startActivity(intent)
+            // TODO: Implement InboxActivity when available
+            SketchwareUtil.showMessage(applicationContext, "Chat inbox coming soon")
         }
 
         bottomProfile.setOnClickListener {

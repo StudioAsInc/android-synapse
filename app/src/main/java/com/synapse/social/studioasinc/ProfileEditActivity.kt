@@ -199,8 +199,8 @@ class ProfileEditActivity : AppCompatActivity() {
         }
 
         region.setOnClickListener {
-            val intent = Intent(applicationContext, SelectRegionActivity::class.java)
-            startActivity(intent)
+            // TODO: Implement SelectRegionActivity when available
+            SketchwareUtil.showMessage(applicationContext, "Region selection coming soon")
         }
 
         profileImageHistoryStage.setOnClickListener {
