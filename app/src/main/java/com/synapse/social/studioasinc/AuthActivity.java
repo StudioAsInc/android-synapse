@@ -25,7 +25,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.FirebaseApp;
 import com.synapse.social.studioasinc.animations.layout.layoutshaker;
 import com.synapse.social.studioasinc.animations.textview.TVeffects;
 import com.onesignal.OneSignal;
@@ -152,7 +151,7 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void initializeBackend() {
-        FirebaseApp.initializeApp(this);
+        // Initialize Supabase-based services
         authService = new AuthenticationService();
         dbService = new DatabaseService();
     }

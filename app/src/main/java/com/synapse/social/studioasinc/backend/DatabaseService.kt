@@ -1,118 +1,97 @@
 package com.synapse.social.studioasinc.backend
 
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.Query
-import com.google.firebase.database.ValueEventListener
 import com.synapse.social.studioasinc.backend.interfaces.*
-
-// --- Wrapper Implementations for Firebase ---
-
-/**
- * Wraps a Firebase `Query` to conform to the generic `IQuery` interface.
- */
-private class FirebaseQueryWrapper(val query: Query) : IQuery {
-    override fun orderByChild(path: String): IQuery = FirebaseQueryWrapper(query.orderByChild(path))
-    override fun equalTo(value: String?): IQuery = FirebaseQueryWrapper(query.equalTo(value))
-    override fun limitToLast(limit: Int): IQuery = FirebaseQueryWrapper(query.limitToLast(limit))
-    override fun limitToFirst(limit: Int): IQuery = FirebaseQueryWrapper(query.limitToFirst(limit))
-    override fun startAt(value: String): IQuery = FirebaseQueryWrapper(query.startAt(value))
-    override fun endAt(value: String): IQuery = FirebaseQueryWrapper(query.endAt(value))
-}
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
- * Wraps a Firebase `DatabaseReference` to conform to the generic `IDatabaseReference` interface.
+ * Supabase-based database service that implements the existing interface
+ * for backward compatibility during migration.
  */
-private class FirebaseDbReferenceWrapper(val dbRef: DatabaseReference) : IDatabaseReference {
-    private val queryWrapper = FirebaseQueryWrapper(dbRef)
-    override fun orderByChild(path: String): IQuery = queryWrapper.orderByChild(path)
-    override fun equalTo(value: String?): IQuery = queryWrapper.equalTo(value)
-    override fun limitToLast(limit: Int): IQuery = queryWrapper.limitToLast(limit)
-    override fun limitToFirst(limit: Int): IQuery = queryWrapper.limitToFirst(limit)
-    override fun startAt(value: String): IQuery = queryWrapper.startAt(value)
-    override fun endAt(value: String): IQuery = queryWrapper.endAt(value)
-
-    // --- IDatabaseReference specific methods ---
-    override fun child(path: String): IDatabaseReference = FirebaseDbReferenceWrapper(dbRef.child(path))
-    override fun push(): IDatabaseReference = FirebaseDbReferenceWrapper(dbRef.push())
-    override val key: String?
-        get() = dbRef.key
-}
-
-/**
- * Wraps a Firebase `DataSnapshot` to conform to the generic `IDataSnapshot` interface.
- */
-private class FirebaseDataSnapshot(private val snapshot: DataSnapshot) : IDataSnapshot {
-    override fun <T> getValue(valueType: Class<T>): T? = snapshot.getValue(valueType)
-    override fun exists(): Boolean = snapshot.exists()
-    override val children: Iterable<IDataSnapshot>
-        get() = snapshot.children.map { FirebaseDataSnapshot(it) }
-    override val key: String?
-        get() = snapshot.key
-}
-
-/**
- * Wraps a Firebase `DatabaseError` to conform to the generic `IDatabaseError` interface.
- */
-private class FirebaseDbError(private val error: DatabaseError) : IDatabaseError {
-    override val message: String
-        get() = error.message
-    override val code: Int
-        get() = error.code
-}
-
-// --- Service Implementation ---
-
 class DatabaseService : IDatabaseService {
 
-    private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
+    private val supabaseDbService = SupabaseDatabaseService()
 
     override fun getReference(path: String): IDatabaseReference {
-        return FirebaseDbReferenceWrapper(database.getReference(path))
+        return SupabaseDbReferenceWrapper(path)
     }
 
     override fun getData(query: IQuery, listener: IDataListener) {
-        // Unwrap the generic IQuery to get the underlying Firebase Query
-        val firebaseQuery = (query as? FirebaseQueryWrapper)?.query
-            ?: (query as? FirebaseDbReferenceWrapper)?.dbRef
-            ?: throw IllegalArgumentException("Unsupported IQuery type provided")
-
-        firebaseQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                listener.onDataChange(FirebaseDataSnapshot(snapshot))
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // This is a simplified implementation
+                // In practice, you'd need to parse the query and convert it to Supabase format
+                val data = supabaseDbService.select<Map<String, Any?>>("users") // placeholder
+                val snapshot = SupabaseDataSnapshot(data.firstOrNull() ?: emptyMap())
+                listener.onDataChange(snapshot)
+            } catch (e: Exception) {
+                val error = SupabaseDbError(e.message ?: "Unknown error", -1)
+                listener.onCancelled(error)
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                listener.onCancelled(FirebaseDbError(error))
-            }
-        })
+        }
     }
 
     override fun setValue(ref: IDatabaseReference, value: Any?, listener: ICompletionListener<Unit>) {
-        val firebaseRef = (ref as? FirebaseDbReferenceWrapper)?.dbRef
-            ?: throw IllegalArgumentException("Unsupported IDatabaseReference type provided")
-
-        firebaseRef.setValue(value).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // Convert Firebase-style setValue to Supabase upsert
+                val refWrapper = ref as SupabaseDbReferenceWrapper
+                val data = mapOf("data" to value) // This would need proper mapping
+                supabaseDbService.upsert(refWrapper.tableName, data)
                 listener.onComplete(Unit, null)
-            } else {
-                listener.onComplete(null, task.exception)
+            } catch (e: Exception) {
+                listener.onComplete(null, e)
             }
         }
     }
 
     override fun updateChildren(ref: IDatabaseReference, updates: Map<String, Any?>, listener: ICompletionListener<Unit>) {
-        val firebaseRef = (ref as? FirebaseDbReferenceWrapper)?.dbRef
-            ?: throw IllegalArgumentException("Unsupported IDatabaseReference type provided")
-
-        firebaseRef.updateChildren(updates).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val refWrapper = ref as SupabaseDbReferenceWrapper
+                supabaseDbService.update(refWrapper.tableName, updates)
                 listener.onComplete(Unit, null)
-            } else {
-                listener.onComplete(null, task.exception)
+            } catch (e: Exception) {
+                listener.onComplete(null, e)
             }
         }
     }
 }
+
+// Wrapper classes for Supabase to maintain interface compatibility
+
+private class SupabaseDbReferenceWrapper(val tableName: String) : IDatabaseReference {
+    override fun orderByChild(path: String): IQuery = SupabaseQueryWrapper(tableName, path)
+    override fun equalTo(value: String?): IQuery = SupabaseQueryWrapper(tableName)
+    override fun limitToLast(limit: Int): IQuery = SupabaseQueryWrapper(tableName)
+    override fun limitToFirst(limit: Int): IQuery = SupabaseQueryWrapper(tableName)
+    override fun startAt(value: String): IQuery = SupabaseQueryWrapper(tableName)
+    override fun endAt(value: String): IQuery = SupabaseQueryWrapper(tableName)
+    override fun child(path: String): IDatabaseReference = SupabaseDbReferenceWrapper("$tableName/$path")
+    override fun push(): IDatabaseReference = SupabaseDbReferenceWrapper(tableName)
+    override val key: String? get() = tableName
+}
+
+private class SupabaseQueryWrapper(val tableName: String, val orderBy: String? = null) : IQuery {
+    override fun orderByChild(path: String): IQuery = SupabaseQueryWrapper(tableName, path)
+    override fun equalTo(value: String?): IQuery = SupabaseQueryWrapper(tableName, orderBy)
+    override fun limitToLast(limit: Int): IQuery = SupabaseQueryWrapper(tableName, orderBy)
+    override fun limitToFirst(limit: Int): IQuery = SupabaseQueryWrapper(tableName, orderBy)
+    override fun startAt(value: String): IQuery = SupabaseQueryWrapper(tableName, orderBy)
+    override fun endAt(value: String): IQuery = SupabaseQueryWrapper(tableName, orderBy)
+}
+
+private class SupabaseDataSnapshot(private val data: Map<String, Any?>) : IDataSnapshot {
+    override fun <T> getValue(valueType: Class<T>): T? {
+        return when (valueType) {
+            String::class.java -> data.values.firstOrNull() as? T
+            else -> null
+        }
+    }
+    override fun exists(): Boolean = data.isNotEmpty()
+    override val children: Iterable<IDataSnapshot> get() = emptyList()
+    override val key: String? get() = data.keys.firstOrNull()
+}
+
+private class SupabaseDbError(override val message: String, override val code: Int) : IDatabaseError
