@@ -1,21 +1,23 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 
 /**
- * Temporary stub for Supabase Database Service during migration.
+ * Supabase Database Service
  */
 class SupabaseDatabaseService {
     
     private val client = SupabaseClient.client
     
-    suspend fun <T> select(table: String, columns: String = "*"): List<T> {
-        return client.from(table).decodeList()
+    suspend inline fun <reified T> select(table: String, columns: String = "*"): List<T> {
+        return client.from(table).select(columns = Columns.raw(columns)).decodeList<T>()
     }
     
-    suspend fun <T> selectSingle(table: String, columns: String = "*"): T? {
+    suspend inline fun <reified T> selectSingle(table: String, columns: String = "*"): T? {
         return try {
-            client.from(table).decodeSingle<T>()
+            client.from(table).select(columns = Columns.raw(columns)).decodeSingle<T>()
         } catch (e: Exception) {
             null
         }
@@ -23,12 +25,12 @@ class SupabaseDatabaseService {
     
     suspend fun insert(table: String, data: Map<String, Any?>): Map<String, Any?> {
         client.from(table).insert(data)
-        return emptyMap()
+        return data
     }
     
     suspend fun update(table: String, data: Map<String, Any?>): Map<String, Any?> {
         client.from(table).update(data)
-        return emptyMap()
+        return data
     }
     
     suspend fun delete(table: String): Boolean {
@@ -42,15 +44,17 @@ class SupabaseDatabaseService {
     
     suspend fun upsert(table: String, data: Map<String, Any?>): Map<String, Any?> {
         client.from(table).upsert(data)
-        return emptyMap()
+        return data
     }
     
     // Helper method for filtering queries
-    suspend fun <T> selectWithFilter(
+    suspend inline fun <reified T> selectWithFilter(
         table: String, 
         columns: String = "*",
-        filterBuilder: (Any) -> Unit = {}
+        noinline filterBuilder: suspend (io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder) -> Unit = {}
     ): List<T> {
-        return client.from(table).decodeList()
+        return client.from(table).select(columns = Columns.raw(columns)) {
+            filterBuilder(this)
+        }.decodeList<T>()
     }
 }

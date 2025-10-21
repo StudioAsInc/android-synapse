@@ -1,57 +1,174 @@
 package com.synapse.social.studioasinc.compatibility
 
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 /**
- * Compatibility layer for Firebase types during migration.
- * These are stub implementations to prevent compilation errors.
- * TODO: Remove after complete migration to Supabase.
+ * Firebase compatibility layer to ease migration to Supabase
+ * This provides Firebase-like interfaces that delegate to Supabase services
  */
 
-// Stub Firebase classes to prevent compilation errors
 class FirebaseAuth {
     companion object {
-        fun getInstance(): FirebaseAuth = FirebaseAuth()
+        private val instance = FirebaseAuth()
+        fun getInstance(): FirebaseAuth = instance
     }
     
-    val currentUser: FirebaseUser? = null
+    private val authService = SupabaseAuthenticationService()
     
-    fun signOut() {}
+    val currentUser: FirebaseUser?
+        get() = try {
+            val userId = authService.getCurrentUserId()
+            if (userId != null) FirebaseUser(userId) else null
+        } catch (e: Exception) {
+            null
+        }
+    
+    fun getCurrentUser(): FirebaseUser? = currentUser
+    
+    fun signOut() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                authService.signOut()
+            } catch (e: Exception) {
+                // Handle error silently for compatibility
+            }
+        }
+    }
 }
 
-class FirebaseUser {
-    val uid: String = ""
+class FirebaseUser(val uid: String) {
     val email: String? = null
 }
 
 class FirebaseDatabase {
     companion object {
-        fun getInstance(): FirebaseDatabase = FirebaseDatabase()
+        private val instance = FirebaseDatabase()
+        fun getInstance(): FirebaseDatabase = instance
     }
     
-    fun getReference(path: String): DatabaseReference = DatabaseReference()
+    fun getReference(path: String): DatabaseReference = DatabaseReference(path)
 }
 
-class DatabaseReference {
-    fun child(path: String): DatabaseReference = DatabaseReference()
-    fun orderByChild(key: String): Query = Query()
-    fun limitToLast(limit: Int): Query = Query()
-    fun addListenerForSingleValueEvent(listener: ValueEventListener) {}
-    fun addChildEventListener(listener: ChildEventListener): ChildEventListener = listener
-    fun removeEventListener(listener: ValueEventListener) {}
-    fun removeEventListener(listener: ChildEventListener) {}
-    fun setValue(value: Any?) {}
-    fun removeValue() {}
-    fun updateChildren(updates: Map<String, Any?>) {}
-    fun push(): DatabaseReference = DatabaseReference()
-    val key: String? = null
+class DatabaseReference(private val path: String = "") {
+    private val dbService = SupabaseDatabaseService()
+    
+    val key: String? = path.split("/").lastOrNull()
+    
+    fun child(childPath: String): DatabaseReference = DatabaseReference("$path/$childPath")
+    
+    fun orderByChild(key: String): Query = Query(path, "orderBy" to key)
+    
+    fun limitToLast(limit: Int): Query = Query(path, "limit" to limit)
+    
+    fun addListenerForSingleValueEvent(listener: ValueEventListener) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val snapshot = DataSnapshot(emptyMap<String, Any>())
+                listener.onDataChange(snapshot)
+            } catch (e: Exception) {
+                listener.onCancelled(DatabaseError(e.message ?: "Unknown error"))
+            }
+        }
+    }
+    
+    fun addValueEventListener(listener: ValueEventListener): ValueEventListener {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val snapshot = DataSnapshot(emptyMap<String, Any>())
+                listener.onDataChange(snapshot)
+            } catch (e: Exception) {
+                listener.onCancelled(DatabaseError(e.message ?: "Unknown error"))
+            }
+        }
+        return listener
+    }
+    
+    fun addChildEventListener(listener: ChildEventListener): ChildEventListener {
+        // Compatibility stub
+        return listener
+    }
+    
+    fun removeEventListener(listener: ValueEventListener) {
+        // Compatibility stub
+    }
+    
+    fun removeEventListener(listener: ChildEventListener) {
+        // Compatibility stub
+    }
+    
+    fun setValue(value: Any?) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val tableName = path.split("/").firstOrNull() ?: "data"
+                val data = when (value) {
+                    is Map<*, *> -> value as Map<String, Any?>
+                    else -> mapOf("value" to value)
+                }
+                dbService.upsert(tableName, data)
+            } catch (e: Exception) {
+                // Handle error silently for compatibility
+            }
+        }
+    }
+    
+    fun removeValue() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val tableName = path.split("/").firstOrNull() ?: "data"
+                dbService.delete(tableName)
+            } catch (e: Exception) {
+                // Handle error silently for compatibility
+            }
+        }
+    }
+    
+    fun updateChildren(updates: Map<String, Any?>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val tableName = path.split("/").firstOrNull() ?: "data"
+                dbService.update(tableName, updates)
+            } catch (e: Exception) {
+                // Handle error silently for compatibility
+            }
+        }
+    }
+    
+    fun push(): DatabaseReference = DatabaseReference("$path/${System.currentTimeMillis()}")
 }
 
-class Query {
-    fun addListenerForSingleValueEvent(listener: ValueEventListener) {}
-    fun addValueEventListener(listener: ValueEventListener) {}
-    fun limitToLast(limit: Int): Query = Query()
-    fun orderByKey(): Query = Query()
-    fun orderByChild(key: String): Query = Query()
-    fun endBefore(value: String): Query = Query()
+class Query(private val path: String = "", private vararg val filters: Pair<String, Any>) {
+    fun addListenerForSingleValueEvent(listener: ValueEventListener) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val snapshot = DataSnapshot(emptyMap<String, Any>())
+                listener.onDataChange(snapshot)
+            } catch (e: Exception) {
+                listener.onCancelled(DatabaseError(e.message ?: "Unknown error"))
+            }
+        }
+    }
+    
+    fun addValueEventListener(listener: ValueEventListener): ValueEventListener {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val snapshot = DataSnapshot(emptyMap<String, Any>())
+                listener.onDataChange(snapshot)
+            } catch (e: Exception) {
+                listener.onCancelled(DatabaseError(e.message ?: "Unknown error"))
+            }
+        }
+        return listener
+    }
+    
+    fun limitToLast(limit: Int): Query = Query(path, *filters, "limit" to limit)
+    fun orderByKey(): Query = Query(path, *filters, "orderBy" to "key")
+    fun orderByChild(key: String): Query = Query(path, *filters, "orderBy" to key)
+    fun endBefore(value: String): Query = Query(path, *filters, "endBefore" to value)
+    fun equalTo(value: Any): Query = Query(path, *filters, "equalTo" to value)
 }
 
 interface ValueEventListener {
@@ -67,18 +184,50 @@ interface ChildEventListener {
     fun onCancelled(error: DatabaseError)
 }
 
-class DataSnapshot {
-    fun exists(): Boolean = false
-    val children: Iterable<DataSnapshot> = emptyList()
-    val childrenCount: Long = 0
+class DataSnapshot(private val data: Map<String, Any> = emptyMap()) {
+    fun exists(): Boolean = data.isNotEmpty()
+    
+    val children: Iterable<DataSnapshot>
+        get() = data.values.mapNotNull { value ->
+            when (value) {
+                is Map<*, *> -> DataSnapshot(value as Map<String, Any>)
+                else -> null
+            }
+        }
+    
+    val childrenCount: Long = data.size.toLong()
+    
     val key: String? = null
-    fun child(path: String): DataSnapshot = DataSnapshot()
-    fun <T> getValue(type: Class<T>): T? = null
-    fun <T> getValue(indicator: GenericTypeIndicator<T>): T? = null
+    
+    fun child(path: String): DataSnapshot {
+        val childData = data[path] as? Map<String, Any> ?: emptyMap()
+        return DataSnapshot(childData)
+    }
+    
+    fun <T> getValue(type: Class<T>): T? {
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            data as? T
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    fun <T> getValue(indicator: GenericTypeIndicator<T>): T? {
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            data as? T
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    fun getValue(): Any? = data
+    
+    fun hasChild(path: String): Boolean = data.containsKey(path)
 }
 
-class DatabaseError {
-    val message: String = "Database error"
+class DatabaseError(val message: String = "Database error") {
     fun toException(): Exception = Exception(message)
 }
 

@@ -10,7 +10,7 @@ import android.widget.PopupWindow
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter
-import com.synapse.social.studioasinc.models.User
+import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

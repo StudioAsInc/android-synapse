@@ -137,7 +137,7 @@ class PostsAdapter(
             post.convertLegacyImage()
             
             when {
-                post.mediaItems.isNotEmpty() -> {
+                post.mediaItems?.isNotEmpty() == true -> {
                     // Show ViewPager2 for multiple media
                     postImage.visibility = View.GONE
                     mediaContainer.visibility = View.VISIBLE
@@ -166,7 +166,7 @@ class PostsAdapter(
         }
 
         private fun setupMediaViewPager(post: Post) {
-            val adapter = MediaPagerAdapter(context, post.mediaItems) { mediaItem, position ->
+            val adapter = MediaPagerAdapter(context, post.mediaItems ?: emptyList()) { mediaItem, position ->
                 onMediaClick?.invoke(mediaItem.url)
             }
             
@@ -174,15 +174,15 @@ class PostsAdapter(
             mediaViewPager.adapter = adapter
             
             // Setup page indicator
-            if (post.mediaItems.size > 1) {
-                setupPageIndicator(post.mediaItems.size)
+            if ((post.mediaItems?.size ?: 0) > 1) {
+                setupPageIndicator(post.mediaItems?.size ?: 0)
                 mediaCountBadge.visibility = View.VISIBLE
-                mediaCountBadge.text = "1/${post.mediaItems.size}"
+                mediaCountBadge.text = "1/${post.mediaItems?.size ?: 0}"
                 
                 mediaViewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                     override fun onPageSelected(position: Int) {
                         updatePageIndicator(position)
-                        mediaCountBadge.text = "${position + 1}/${post.mediaItems.size}"
+                        mediaCountBadge.text = "${position + 1}/${post.mediaItems?.size ?: 0}"
                     }
                 })
             } else {

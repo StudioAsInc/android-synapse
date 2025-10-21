@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
+import com.synapse.social.studioasinc.model.Post as ModelPost
+import com.synapse.social.studioasinc.adapter.PostsAdapter
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.UserProfileManager
 import com.synapse.social.studioasinc.util.adapter.PostAdapter

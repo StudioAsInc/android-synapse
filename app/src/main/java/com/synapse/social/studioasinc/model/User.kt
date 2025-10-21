@@ -1,9 +1,11 @@
 package com.synapse.social.studioasinc.model
 
+import kotlinx.serialization.Serializable
+
 /**
- * Compatibility User model for existing code
- * This is a temporary bridge while migrating to Supabase
+ * Unified User model for Supabase with Firebase compatibility
  */
+@Serializable
 data class User(
     val id: String? = null,
     val uid: String? = null,
