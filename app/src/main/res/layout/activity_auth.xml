@@ -53,6 +53,81 @@
         android:textColor="@android:color/holo_blue_dark"
         android:layout_marginBottom="16dp" />
 
+    <!-- Email Verification Section -->
+    <LinearLayout
+        android:id="@+id/layoutEmailVerification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tvVerificationTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Email Verification Required"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvVerificationMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Please check your email and click the verification link to activate your account."
+            android:textAlignment="center"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/tvVerificationEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Email sent to: example@email.com"
+            android:textAlignment="center"
+            android:textStyle="italic"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnResendVerification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Resend Verification Email"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvResendCooldown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="You can resend in 60 seconds"
+            android:textAlignment="center"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnBackToSignIn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Back to Sign In"
+            android:background="@android:color/transparent"
+            android:textColor="@android:color/holo_blue_dark" />
+
+    </LinearLayout>
+
+    <!-- Error Message Section -->
+    <TextView
+        android:id="@+id/tvErrorMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Error message will appear here"
+        android:textColor="@android:color/holo_red_dark"
+        android:textAlignment="center"
+        android:visibility="gone"
+        android:layout_marginBottom="16dp" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
