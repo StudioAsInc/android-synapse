@@ -9,9 +9,12 @@ import android.widget.EditText
 import android.widget.PopupWindow
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.database.*
 import com.synapse.social.studioasinc.adapter.SearchUserAdapter
-import com.synapse.social.studioasinc.model.User
+import com.synapse.social.studioasinc.models.User
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class UserMention(
     private val editText: EditText,
@@ -19,7 +22,7 @@ class UserMention(
 ) : TextWatcher, SearchUserAdapter.OnUserClickListener {
 
     private val context: Context = editText.context
-    private val usersRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("skyline/users")
+    private val dbService = SupabaseDatabaseService()
     private lateinit var popupWindow: PopupWindow
     private lateinit var searchUserAdapter: SearchUserAdapter
     private val userList = mutableListOf<User>()
@@ -74,28 +77,21 @@ class UserMention(
     override fun afterTextChanged(s: Editable?) {}
 
     private fun searchUsers(query: String) {
-        val searchQuery = usersRef.orderByChild("username")
-            .startAt(query)
-            .endAt(query + "\uf8ff")
-            .limitToFirst(10)
-
-        searchQuery.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
                 userList.clear()
-                for (snapshot in dataSnapshot.children) {
-                    val user = snapshot.getValue(User::class.java)
-                    if (user != null) {
-                        user.uid = snapshot.key
-                        userList.add(user)
-                    }
-                }
+                val users = dbService.select<User>("users", "*")
+                // Filter users by username containing query
+                val filteredUsers = users.filter { 
+                    it.username?.contains(query, ignoreCase = true) == true 
+                }.take(10)
+                
+                userList.addAll(filteredUsers)
                 searchUserAdapter.notifyDataSetChanged()
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
+            } catch (e: Exception) {
                 // Handle error
             }
-        })
+        }
     }
 
     private fun showPopup() {
