@@ -165,7 +165,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                 }
                 
                 val emailVerificationView = findViewById<View>(R.id.email_verification)
-                if (currentUser.isEmailConfirmed) {
+                if (currentUser.emailConfirmedAt != null) {
                     emailVerificationView.visibility = View.GONE
                 } else {
                     emailVerificationView.visibility = View.VISIBLE
@@ -247,8 +247,7 @@ class CompleteProfileActivity : AppCompatActivity() {
 
                 var imageUrl: String? = null
                 selectedImageUri?.let { uri ->
-                    val result = storageService.uploadImage(this, uri)
-                    result.onSuccess {
+                    storageService.uploadImage(this, uri).onSuccess {
                         imageUrl = it
                     }.onFailure {
                         Toast.makeText(this@CompleteProfileActivity, "Failed to upload image", Toast.LENGTH_SHORT).show()
@@ -267,9 +266,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                 )
 
                 // Insert user profile into Supabase
-                val result = dbService.insert("users", userProfile)
-                
-                result.onSuccess {
+                dbService.insert("users", userProfile).onSuccess {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->

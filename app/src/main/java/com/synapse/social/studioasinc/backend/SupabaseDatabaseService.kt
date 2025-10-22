@@ -11,14 +11,14 @@ import kotlinx.serialization.json.JsonObject
  * Supabase Database Service
  * Handles database operations using Supabase Postgrest
  */
-class SupabaseDatabaseService : com.synapse.social.studioasinc.backend.interfaces.IDatabaseService {
+class SupabaseDatabaseService {
     
     private val client = SupabaseClient.client
     
     /**
      * Insert data into a table
      */
-    override suspend fun insert(table: String, data: Map<String, Any?>): Result<Unit> {
+    suspend fun <T : Any> insert(table: String, data: T): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 client.from(table).insert(data)
@@ -32,7 +32,7 @@ class SupabaseDatabaseService : com.synapse.social.studioasinc.backend.interface
     /**
      * Update data in a table
      */
-    override suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
+    suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 client.from(table).update(data) {

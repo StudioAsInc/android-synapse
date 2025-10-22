@@ -10,6 +10,7 @@ import io.github.jan.supabase.storage.storage
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.addDefaultResponseValidation
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import okhttp3.OkHttpClient
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -50,7 +51,6 @@ object SupabaseClient {
                     install(Realtime)
                     install(Storage) {
                         customUrl = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_URL
-                        region = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_REGION
                     }
                     httpEngine = OkHttp.create {}
                 }
