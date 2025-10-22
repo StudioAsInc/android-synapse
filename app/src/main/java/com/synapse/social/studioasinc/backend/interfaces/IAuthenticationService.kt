@@ -1,32 +1,19 @@
 package com.synapse.social.studioasinc.backend.interfaces
 
+import com.synapse.social.studioasinc.backend.User
+import com.synapse.social.studioasinc.backend.AuthResult
+
 /**
- * Defines the contract for authentication operations, fully abstracted from the underlying provider.
+ * Authentication Service Interface
  */
 interface IAuthenticationService {
-    /**
-     * Gets the currently signed-in user.
-     * @return The current user, or null if no user is signed in.
-     */
-    fun getCurrentUser(): IUser?
-
-    /**
-     * Signs in a user with the given email and password.
-     */
-    fun signIn(email: String, pass: String, listener: ICompletionListener<IAuthResult>)
-
-    /**
-     * Creates a new user account with the given email and password.
-     */
-    fun signUp(email: String, pass: String, listener: ICompletionListener<IAuthResult>)
-
-    /**
-     * Signs out the current user.
-     */
-    fun signOut()
-
-    /**
-     * Deletes the currently signed-in user's account.
-     */
-    fun deleteUser(listener: ICompletionListener<Unit>)
+    suspend fun signUp(email: String, password: String): Result<AuthResult>
+    suspend fun signIn(email: String, password: String): Result<AuthResult>
+    suspend fun signOut(): Result<Unit>
+    suspend fun resendVerificationEmail(email: String): Result<Unit>
+    suspend fun checkEmailVerified(email: String): Result<Boolean>
+    fun getCurrentUser(): User?
+    fun getCurrentUserId(): String?
+    suspend fun updatePassword(newPassword: String): Result<Unit>
+    suspend fun updateEmail(newEmail: String): Result<Unit>
 }

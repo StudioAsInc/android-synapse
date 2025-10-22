@@ -10,10 +10,19 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 
+/**
+ * Adapter for displaying selected media items in create post
+ */
 class SelectedMediaAdapter(
-    private val mediaItems: List<MediaItem>,
+    private val mediaItems: MutableList<MediaItem>,
     private val onRemoveClick: (Int) -> Unit
 ) : RecyclerView.Adapter<SelectedMediaAdapter.MediaViewHolder>() {
+
+    class MediaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val mediaImageView: ImageView = itemView.findViewById(R.id.mediaImage)
+        val removeButton: ImageView = itemView.findViewById(R.id.removeButton)
+        val playIcon: ImageView? = itemView.findViewById(R.id.videoIndicator)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -22,39 +31,30 @@ class SelectedMediaAdapter(
     }
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
-        holder.bind(mediaItems[position])
+        val mediaItem = mediaItems[position]
+        
+        // Load media thumbnail
+        Glide.with(holder.itemView.context)
+            .load(mediaItem.url)
+            .centerCrop()
+            .into(holder.mediaImageView)
+        
+        // Show play icon for videos
+        holder.playIcon?.visibility = if (mediaItem.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+        
+        // Handle remove button click
+        holder.removeButton.setOnClickListener {
+            onRemoveClick(position)
+        }
     }
 
     override fun getItemCount(): Int = mediaItems.size
-
-    inner class MediaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val mediaImage: ImageView = itemView.findViewById(R.id.mediaImage)
-        private val removeButton: ImageView = itemView.findViewById(R.id.removeButton)
-        private val videoIndicator: ImageView = itemView.findViewById(R.id.videoIndicator)
-
-        init {
-            removeButton.setOnClickListener {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onRemoveClick(position)
-                }
-            }
-        }
-
-        fun bind(mediaItem: MediaItem) {
-            // Load thumbnail
-            Glide.with(itemView.context)
-                .load(mediaItem.url)
-                .centerCrop()
-                .placeholder(R.drawable.default_image)
-                .into(mediaImage)
-
-            // Show video indicator for videos
-            videoIndicator.visibility = if (mediaItem.type == MediaType.VIDEO) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
+    
+    fun removeItem(position: Int) {
+        if (position in 0 until mediaItems.size) {
+            mediaItems.removeAt(position)
+            notifyItemRemoved(position)
+            notifyItemRangeChanged(position, mediaItems.size)
         }
     }
 }

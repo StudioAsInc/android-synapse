@@ -1,4 +1,31 @@
 {
   "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "*",
+        "fetch"
+      ]
+    },
+    "supabase": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-supabase"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "*"
+      ]
+    }
   }
 }

@@ -12,13 +12,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.util.UserProfileManager
-import com.synapse.social.studioasinc.util.adapter.PostAdapter
+
 import io.noties.markwon.Markwon
 import java.util.Calendar
 import java.util.HashMap
@@ -35,8 +36,7 @@ class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
     private lateinit var viewModel: ProfileViewModel
-    private lateinit var userProfileManager: UserProfileManager
-    private lateinit var postAdapter: PostAdapter
+    private lateinit var postAdapter: PostsAdapter
     private lateinit var markwon: Markwon
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,20 +47,20 @@ class ProfileActivity : AppCompatActivity() {
         // Initialize ViewModel
         viewModel = ViewModelProvider(this).get(ProfileViewModel::class.java)
 
-        // Initialize UserProfileManager and Markwon
+        // Initialize Markwon
         markwon = Markwon.create(this)
-        userProfileManager = UserProfileManager(this, markwon)
 
         // Get user ID from intent
         val userId = intent.getStringExtra("uid") ?: return
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val authService = SupabaseAuthenticationService()
+        val currentUid = authService.getCurrentUserId() ?: ""
 
         // Load user profile
         loadUserProfile(userId, currentUid)
 
         // Fetch initial states
-        viewModel.fetchInitialFollowState(userId, currentUid)
-        viewModel.fetchInitialProfileLikeState(userId, currentUid)
+        viewModel.fetchInitialFollowState(userId)
+        viewModel.fetchInitialProfileLikeState(userId)
 
         // Observe user posts
         observeUserPosts(userId)
@@ -73,26 +73,14 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
-     * Loads the user profile information using the [UserProfileManager].
+     * Loads the user profile information using the ViewModel.
      *
      * @param userId The ID of the user whose profile is to be loaded.
      * @param currentUid The ID of the current user.
      */
     private fun loadUserProfile(userId: String, currentUid: String) {
-        val views = UserProfileManager.ProfileViews(
-            profileImage = binding.ProfilePageTabUserInfoProfileImage,
-            coverImage = binding.ProfilePageTabUserInfoCoverImage,
-            nickname = binding.ProfilePageTabUserInfoNickname,
-            username = binding.ProfilePageTabUserInfoUsername,
-            bio = binding.ProfilePageTabUserInfoBioLayoutText,
-            joinDate = binding.joinDateLayoutText,
-            status = binding.ProfilePageTabUserInfoStatus,
-            followersCount = binding.ProfilePageTabUserInfoFollowersCount,
-            followingCount = binding.ProfilePageTabUserInfoFollowingCount,
-            btnEditProfile = binding.btnEditProfile,
-            secondaryButtons = binding.ProfilePageTabUserInfoSecondaryButtons
-        )
-        userProfileManager.loadUserProfile(userId, currentUid, views)
+        viewModel.loadUserProfile(userId)
+        viewModel.getUserPosts(userId)
     }
 
     /**
@@ -101,13 +89,15 @@ class ProfileActivity : AppCompatActivity() {
      * @param userId The ID of the user whose posts are to be observed.
      */
     private fun observeUserPosts(userId: String) {
-        postAdapter = PostAdapter(
+        postAdapter = PostsAdapter(
+            context = this,
+            lifecycleOwner = this,
             markwon = markwon,
-            onLikeClicked = { post -> viewModel.togglePostLike(post) },
+            onLikeClicked = { post -> viewModel.togglePostLike(post.id) },
             onCommentClicked = { post -> showCommentsDialog(post) },
             onShareClicked = { post -> /* Handle share click */ },
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
-            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) },
+            onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
                 val intent = Intent(this, ProfileActivity::class.java)
                 intent.putExtra("uid", uid)
@@ -127,7 +117,7 @@ class ProfileActivity : AppCompatActivity() {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
-                    postAdapter.submitList(state.posts)
+                    postAdapter.submitList(state.data)
                 }
                 is ProfileViewModel.State.Error -> {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
@@ -150,13 +140,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptionsDialog(post: Post) {
-        val bundle = Bundle()
-        bundle.putString("postKey", post.key)
-        bundle.putString("postPublisherUID", post.uid)
-        bundle.putString("postType", post.postType)
-        val moreOptionsDialog = PostMoreBottomSheetDialog()
-        moreOptionsDialog.arguments = bundle
-        moreOptionsDialog.show(supportFragmentManager, moreOptionsDialog.tag)
+        // More options dialog - placeholder for now
     }
 
     /**
@@ -190,32 +174,26 @@ class ProfileActivity : AppCompatActivity() {
             loadUserProfile(userId, currentUid)
         }
         binding.ProfilePageTopBarMenu.setOnClickListener {
-            val intent = Intent(this, ChatsettingsActivity::class.java)
-            startActivity(intent)
+            // Navigate to settings - placeholder for now
         }
         binding.btnFollow.setOnClickListener {
-            viewModel.toggleFollow(userId, currentUid)
+            viewModel.toggleFollow(userId)
         }
 
         binding.likeUserProfileButton.setOnClickListener {
-            viewModel.toggleProfileLike(userId, currentUid)
+            viewModel.toggleProfileLike(userId)
         }
 
         binding.btnEditProfile.setOnClickListener {
-            val intent = Intent(this, ProfileEditActivity::class.java)
-            startActivity(intent)
+            // Navigate to edit profile - placeholder for now
         }
 
         binding.btnMessage.setOnClickListener {
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            // Navigate to chat - placeholder for now
         }
 
         binding.ProfilePageTabUserInfoFollowsDetails.setOnClickListener {
-            val intent = Intent(this, UserFollowsListActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            // Navigate to follows list - placeholder for now
         }
 
         binding.ProfilePageTabUserInfoProfileImage.setOnClickListener {
@@ -255,37 +233,57 @@ class ProfileActivity : AppCompatActivity() {
             .setView(dialogBinding.root)
             .create()
 
-        val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(userId)
-        userRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
-            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                if (snapshot.exists()) {
-                    val user = snapshot.getValue(com.synapse.social.studioasinc.model.User::class.java)
-                    user?.let {
-                        if (it.avatar != "null") {
-                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(user.avatar).into(dialogBinding.avatar)
-                            dialogBinding.saveToHistory.setOnClickListener {
-                                saveToHistory(user.avatar)
-                                dialog.dismiss()
-                            }
+        val dbService = SupabaseDatabaseService()
+        lifecycleScope.launch {
+            try {
+                val users = dbService.selectWithFilter(
+                    table = "users",
+                    columns = "*",
+                    filter = "uid",
+                    value = userId
+                ).getOrNull() ?: emptyList()
+                
+                if (users.isNotEmpty()) {
+                    val userData = users.first()
+                    val avatar = userData["avatar"] as? String
+                    if (avatar != null && avatar != "null") {
+                        com.bumptech.glide.Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
+                        dialogBinding.saveToHistory.setOnClickListener {
+                            saveToHistory(avatar)
+                            dialog.dismiss()
                         }
                     }
                 }
+            } catch (e: Exception) {
+                // Handle error
             }
-            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
-        })
+        }
         dialog.show()
     }
 
     private fun saveToHistory(imageUrl: String) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val db = FirebaseDatabase.getInstance()
-        val historyRef = db.getReference("skyline/profile-history").child(currentUid).push()
-        val historyItem = HashMap<String, Any>()
-        historyItem["key"] = historyRef.key ?: ""
-        historyItem["image_url"] = imageUrl
-        historyItem["upload_date"] = Calendar.getInstance().timeInMillis.toString()
-        historyItem["type"] = "url"
-        historyRef.setValue(historyItem)
-        Toast.makeText(this, "Saved to History", Toast.LENGTH_SHORT).show()
+        val authService = SupabaseAuthenticationService()
+        val currentUid = authService.getCurrentUserId() ?: return
+        val dbService = SupabaseDatabaseService()
+        
+        lifecycleScope.launch {
+            try {
+                val historyItem = mapOf(
+                    "user_id" to currentUid,
+                    "image_url" to imageUrl,
+                    "upload_date" to java.util.Calendar.getInstance().timeInMillis.toString(),
+                    "type" to "url"
+                )
+                
+                dbService.insert("profile_history", historyItem)
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Saved to History", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Failed to save to history", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }

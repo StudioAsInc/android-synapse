@@ -1,45 +1,29 @@
 package com.synapse.social.studioasinc
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
-import com.synapse.social.studioasinc.model.Post
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.model.User
-import com.synapse.social.studioasinc.repository.UserRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import com.synapse.social.studioasinc.model.Post
+import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 /**
- * ViewModel for the [ProfileActivity].
- *
- * This ViewModel is responsible for fetching and managing the data
- * related to a user's profile, such as their posts, follow status,
- * and profile likes.
+ * ViewModel for managing profile data and operations
  */
 class ProfileViewModel : ViewModel() {
 
-    data class PostUiState(
-        val post: Post,
-        val user: User?,
-        val likeCount: Long,
-        val commentCount: Long,
-        val isLiked: Boolean,
-        val isFavorited: Boolean
-    )
+    private val dbService = SupabaseDatabaseService()
+    private val authService = SupabaseAuthenticationService()
 
-    sealed class State {
-        object Loading : State()
-        data class Success(val posts: List<PostUiState>) : State()
-        object Error : State()
-    }
+    private val _userProfile = MutableLiveData<State<User>>()
+    val userProfile: LiveData<State<User>> = _userProfile
 
-    private val _userPosts = MutableLiveData<State>()
-    val userPosts: LiveData<State> = _userPosts
+    private val _userPosts = MutableLiveData<State<List<Post>>>()
+    val userPosts: LiveData<State<List<Post>>> = _userPosts
 
     private val _isFollowing = MutableLiveData<Boolean>()
     val isFollowing: LiveData<Boolean> = _isFollowing
@@ -47,170 +31,210 @@ class ProfileViewModel : ViewModel() {
     private val _isProfileLiked = MutableLiveData<Boolean>()
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
-    private var postsListener: ValueEventListener? = null
-    private var postsRef: Query? = null
-
-    fun getUserPosts(userId: String) {
-        _userPosts.postValue(State.Loading)
-        postsRef = FirebaseDatabase.getInstance().getReference("skyline/posts")
-            .orderByChild("uid").equalTo(userId)
-
-        postsListener = postsRef?.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val posts = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    enrichPostsWithState(posts)
-                } else {
-                    _userPosts.postValue(State.Success(emptyList()))
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                _userPosts.postValue(State.Error)
-            }
-        })
+    sealed class State<out T> {
+        object Loading : State<Nothing>()
+        data class Success<T>(val data: T) : State<T>()
+        data class Error(val message: String) : State<Nothing>()
     }
 
-    private fun enrichPostsWithState(posts: List<Post>) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        if (posts.isEmpty()) {
-            _userPosts.postValue(State.Success(emptyList()))
-            return
-        }
-
+    /**
+     * Loads user profile data
+     */
+    fun loadUserProfile(uid: String) {
         viewModelScope.launch {
-            val enrichedPosts = posts.map { post ->
-                async {
-                    val userDeferred = async { UserRepository.getUser(post.uid) }
-                    val likesDeferred = async { getLikes(post.key, currentUid) }
-                    val commentsDeferred = async { getCommentCount(post.key) }
-                    val favoritesDeferred = async { getFavoriteStatus(post.key, currentUid) }
-
-                    val user = userDeferred.await()
-                    val (likeCount, isLiked) = likesDeferred.await()
-                    val commentCount = commentsDeferred.await()
-                    val isFavorited = favoritesDeferred.await()
-
-                    PostUiState(post, user, likeCount, commentCount, isLiked, isFavorited)
+            try {
+                _userProfile.value = State.Loading
+                val result = dbService.selectById("users", uid, "*").getOrNull()
+                if (result != null) {
+                    val user = User(
+                        uid = result["uid"] as? String ?: "",
+                        username = result["username"] as? String ?: "",
+                        email = result["email"] as? String ?: "",
+                        displayName = result["display_name"] as? String ?: "",
+                        profileImageUrl = result["profile_image_url"] as? String,
+                        bio = result["bio"] as? String,
+                        followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
+                        followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
+                        postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
+                    )
+                    _userProfile.value = State.Success(user)
+                } else {
+                    _userProfile.value = State.Error("User not found")
                 }
-            }.awaitAll()
-            _userPosts.postValue(State.Success(enrichedPosts))
+            } catch (e: Exception) {
+                _userProfile.value = State.Error(e.message ?: "Unknown error")
+            }
         }
     }
 
-    private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(postKey)
-        val snapshot = ref.get().await()
-        return Pair(snapshot.childrenCount, snapshot.hasChild(currentUid))
-    }
-
-    private suspend fun getCommentCount(postKey: String): Long {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.childrenCount
-    }
-
-    private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.exists()
-    }
-
-
-    fun fetchInitialFollowState(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isFollowing.postValue(snapshot.exists())
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-    fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isProfileLiked.postValue(snapshot.exists())
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-
-    fun toggleFollow(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        val followingRef = FirebaseDatabase.getInstance().getReference("skyline/following").child(currentUid).child(userId)
-
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    followersRef.removeValue()
-                    followingRef.removeValue()
-                    _isFollowing.postValue(false)
-                } else {
-                    followersRef.setValue(true)
-                    followingRef.setValue(true)
-                    _isFollowing.postValue(true)
+    /**
+     * Gets user posts
+     */
+    fun getUserPosts(uid: String) {
+        viewModelScope.launch {
+            try {
+                _userPosts.value = State.Loading
+                val results = dbService.selectWithFilter("posts", "*", "author_uid", uid).getOrNull() ?: emptyList()
+                val posts = results.map { result ->
+                    Post(
+                        id = result["id"] as? String ?: "",
+                        authorUid = result["author_uid"] as? String ?: "",
+                        content = result["content"] as? String ?: "",
+                        timestamp = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
+                        likesCount = (result["likes_count"] as? String)?.toIntOrNull() ?: 0,
+                        commentsCount = (result["comments_count"] as? String)?.toIntOrNull() ?: 0
+                    )
                 }
+                _userPosts.value = State.Success(posts)
+            } catch (e: Exception) {
+                _userPosts.value = State.Error(e.message ?: "Unknown error")
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun toggleProfileLike(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    profileLikesRef.removeValue()
-                    _isProfileLiked.postValue(false)
+    /**
+     * Toggles follow status for a user
+     */
+    fun toggleFollow(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                val isCurrentlyFollowing = _isFollowing.value ?: false
+                
+                if (isCurrentlyFollowing) {
+                    // Unfollow
+                    dbService.delete("follows", "follower_uid", currentUid)
                 } else {
-                    profileLikesRef.setValue(true)
-                    _isProfileLiked.postValue(true)
+                    // Follow
+                    val followData = mapOf(
+                        "follower_uid" to currentUid,
+                        "following_uid" to targetUid,
+                        "created_at" to System.currentTimeMillis().toString()
+                    )
+                    dbService.insert("follows", followData)
                 }
+                
+                _isFollowing.value = !isCurrentlyFollowing
+            } catch (e: Exception) {
+                // Handle error
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun togglePostLike(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val postLikesRef = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(post.key).child(currentUid)
-
-        postLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    postLikesRef.removeValue()
+    /**
+     * Toggles profile like status
+     */
+    fun toggleProfileLike(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                val isCurrentlyLiked = _isProfileLiked.value ?: false
+                
+                if (isCurrentlyLiked) {
+                    // Unlike profile
+                    dbService.delete("profile_likes", "liker_uid", currentUid)
                 } else {
-                    postLikesRef.setValue(true)
+                    // Like profile
+                    val likeData = mapOf(
+                        "liker_uid" to currentUid,
+                        "profile_uid" to targetUid,
+                        "created_at" to System.currentTimeMillis().toString()
+                    )
+                    dbService.insert("profile_likes", likeData)
                 }
+                
+                _isProfileLiked.value = !isCurrentlyLiked
+            } catch (e: Exception) {
+                // Handle error
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun toggleFavorite(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val favoriteRef = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(post.key)
-
-        favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    favoriteRef.removeValue()
+    /**
+     * Toggles post like status
+     */
+    fun togglePostLike(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                
+                // Check if already liked
+                val existingLike = dbService.selectWithFilter("post_likes", "*", "user_uid", currentUid).getOrNull() ?: emptyList()
+                
+                if (existingLike.isNotEmpty()) {
+                    // Unlike
+                    dbService.delete("post_likes", "user_uid", currentUid)
                 } else {
-                    favoriteRef.setValue(true)
+                    // Like
+                    val likeData = mapOf(
+                        "user_uid" to currentUid,
+                        "post_id" to postId,
+                        "created_at" to System.currentTimeMillis().toString()
+                    )
+                    dbService.insert("post_likes", likeData)
                 }
+            } catch (e: Exception) {
+                // Handle error
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        postsListener?.let { postsRef?.removeEventListener(it) }
+    /**
+     * Toggles favorite status for a post
+     */
+    fun toggleFavorite(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                
+                // Check if already favorited
+                val existingFavorite = dbService.selectWithFilter("favorites", "*", "user_uid", currentUid).getOrNull() ?: emptyList()
+                
+                if (existingFavorite.isNotEmpty()) {
+                    // Remove favorite
+                    dbService.delete("favorites", "user_uid", currentUid)
+                } else {
+                    // Add favorite
+                    val favoriteData = mapOf(
+                        "user_uid" to currentUid,
+                        "post_id" to postId,
+                        "created_at" to System.currentTimeMillis().toString()
+                    )
+                    dbService.insert("favorites", favoriteData)
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    /**
+     * Fetches initial follow state
+     */
+    fun fetchInitialFollowState(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                val follows = dbService.selectWithFilter("follows", "*", "follower_uid", currentUid).getOrNull() ?: emptyList()
+                _isFollowing.value = follows.isNotEmpty()
+            } catch (e: Exception) {
+                _isFollowing.value = false
+            }
+        }
+    }
+
+    /**
+     * Fetches initial profile like state
+     */
+    fun fetchInitialProfileLikeState(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = authService.getCurrentUserId() ?: return@launch
+                val likes = dbService.selectWithFilter("profile_likes", "*", "liker_uid", currentUid).getOrNull() ?: emptyList()
+                _isProfileLiked.value = likes.isNotEmpty()
+            } catch (e: Exception) {
+                _isProfileLiked.value = false
+            }
+        }
     }
 }

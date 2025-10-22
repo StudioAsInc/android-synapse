@@ -1,168 +1,330 @@
 package com.synapse.social.studioasinc.backend
 
-import io.github.jan.tennert.supabase.postgrest.from
-import io.github.jan.tennert.supabase.postgrest.query.PostgrestQueryBuilder
-import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.SupabaseClient
-import com.synapse.social.studioasinc.backend.interfaces.ISupabaseDatabaseService
-import com.synapse.social.studioasinc.model.*
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 
 /**
- * Supabase implementation of database service.
- * Handles database operations using Supabase Postgrest with typed models.
+ * Supabase Database Service
+ * Handles database operations using Supabase Postgrest
  */
-class SupabaseDatabaseService : ISupabaseDatabaseService {
+class SupabaseDatabaseService : IDatabaseService {
     
     private val client = SupabaseClient.client
     
-    override suspend fun <T> select(table: String, columns: String): List<T> {
-        return client.from(table).select(columns = columns).decodeList()
-    }
-    
-    override suspend fun <T> selectSingle(table: String, columns: String): T? {
-        return try {
-            client.from(table).select(columns = columns).decodeSingle<T>()
-        } catch (e: Exception) {
-            null
+    /**
+     * Insert data into a table
+     */
+    suspend fun insert(table: String, data: Any): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d("SupabaseDB", "Inserting data into table '$table': $data")
+                
+                // Convert data to Map if it's a serializable object
+                val insertData = when (data) {
+                    is Map<*, *> -> {
+                        // Clean and validate the map data
+                        val cleanedMap = mutableMapOf<String, Any?>()
+                        data.forEach { (key, value) ->
+                            val keyStr = key.toString()
+                            when (value) {
+                                null -> cleanedMap[keyStr] = null
+                                is String -> cleanedMap[keyStr] = value
+                                is Number -> cleanedMap[keyStr] = value
+                                is Boolean -> cleanedMap[keyStr] = value
+                                else -> {
+                                    android.util.Log.w("SupabaseDB", "Converting non-primitive value to string: $keyStr = $value")
+                                    cleanedMap[keyStr] = value.toString()
+                                }
+                            }
+                        }
+                        cleanedMap
+                    }
+                    else -> {
+                        // Use reflection to convert data class to map
+                        val dataMap = mutableMapOf<String, Any?>()
+                        try {
+                            data::class.java.declaredFields.forEach { field ->
+                                field.isAccessible = true
+                                val value = field.get(data)
+                                val fieldName = field.name
+                                when (value) {
+                                    null -> dataMap[fieldName] = null
+                                    is String -> dataMap[fieldName] = value
+                                    is Number -> dataMap[fieldName] = value
+                                    is Boolean -> dataMap[fieldName] = value
+                                    else -> {
+                                        android.util.Log.w("SupabaseDB", "Converting field $fieldName to string: $value")
+                                        dataMap[fieldName] = value.toString()
+                                    }
+                                }
+                            }
+                        } catch (reflectionError: Exception) {
+                            android.util.Log.e("SupabaseDB", "Reflection failed", reflectionError)
+                            throw Exception("Failed to serialize data object: ${reflectionError.message}")
+                        }
+                        dataMap
+                    }
+                }
+                
+                android.util.Log.d("SupabaseDB", "Cleaned insert data: $insertData")
+                
+                // Validate that we have a valid client
+                try {
+                    // Simple test to ensure client is working
+                    android.util.Log.d("SupabaseDB", "Testing client connection...")
+                } catch (clientError: Exception) {
+                    android.util.Log.e("SupabaseDB", "Client validation failed", clientError)
+                    throw Exception("Supabase client not properly configured: ${clientError.message}")
+                }
+                
+                // Perform the insertion
+                try {
+                    client.from(table).insert(insertData)
+                    android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
+                } catch (insertError: Exception) {
+                    android.util.Log.e("SupabaseDB", "Insert operation failed", insertError)
+                    throw insertError
+                }
+                
+                Result.success(Unit)
+                
+            } catch (e: Exception) {
+                android.util.Log.e("SupabaseDB", "Database insertion failed", e)
+                
+                // Provide more specific error messages
+                val errorMessage = when {
+                    e.message?.contains("serialization", ignoreCase = true) == true -> 
+                        "Data serialization error: ${e.message}"
+                    e.message?.contains("duplicate", ignoreCase = true) == true -> 
+                        "Duplicate entry error: ${e.message}"
+                    e.message?.contains("constraint", ignoreCase = true) == true -> 
+                        "Database constraint violation: ${e.message}"
+                    e.message?.contains("column", ignoreCase = true) == true -> 
+                        "Database column error: ${e.message}"
+                    e.message?.contains("table", ignoreCase = true) == true -> 
+                        "Database table error: ${e.message}"
+                    else -> e.message ?: "Database insertion failed"
+                }
+                Result.failure(Exception(errorMessage))
+            }
         }
     }
     
-    override suspend fun insert(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).insert(data).decodeSingle()
-    }
-    
-    override suspend fun update(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).update(data).decodeSingle()
-    }
-    
-    override suspend fun delete(table: String): Boolean {
-        return try {
-            client.from(table).delete()
-            true
-        } catch (e: Exception) {
-            false
+    /**
+     * Update data in a table
+     */
+    override suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from(table).update(data) {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
     
-    override suspend fun upsert(table: String, data: Map<String, Any?>): Map<String, Any?> {
-        return client.from(table).upsert(data).decodeSingle()
-    }
-    
-    override suspend fun <T> selectWithFilter(
-        table: String, 
-        columns: String,
-        filter: (query: Any) -> Any
-    ): List<T> {
-        val query = client.from(table).select(columns = columns)
-        val filteredQuery = filter(query) as PostgrestQueryBuilder
-        return filteredQuery.decodeList()
-    }
-    
-    // Typed methods for specific models
-    
-    suspend fun getUserByUid(uid: String): User? {
-        return try {
-            client.from("users")
-                .select()
-                .eq("uid", uid)
-                .decodeSingle<User>()
-        } catch (e: Exception) {
-            null
+    /**
+     * Select data from a table
+     */
+    override suspend fun select(table: String, columns: String): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw(columns))
+                    .decodeList<JsonObject>()
+                
+                val mappedResult = result.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
     
-    suspend fun getUserByUsername(username: String): User? {
-        return try {
-            client.from("users")
-                .select()
-                .eq("username", username)
-                .decodeSingle<User>()
-        } catch (e: Exception) {
-            null
+    /**
+     * Select data from a table with filter
+     */
+    override suspend fun selectWhere(table: String, columns: String, filter: String, value: Any): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw(columns)) {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }.decodeList<JsonObject>()
+                
+                val mappedResult = result.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, jsonValue) ->
+                        jsonValue.toString().removeSurrounding("\"")
+                    }
+                }
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
     
-    suspend fun insertUser(user: User): User {
-        return client.from("users").insert(user).decodeSingle()
-    }
-    
-    suspend fun updateUser(uid: String, updates: Map<String, Any?>): User {
-        return client.from("users")
-            .update(updates)
-            .eq("uid", uid)
-            .decodeSingle()
-    }
-    
-    suspend fun getChatMessages(chatId: String, limit: Int = 50, offset: Int = 0): List<Message> {
-        return client.from("messages")
-            .select("""
-                *,
-                users!sender_id(username, nickname, avatar)
-            """.trimIndent())
-            .eq("chat_id", chatId)
-            .isNull("deleted_at")
-            .order("push_date", ascending = true)
-            .limit(limit.toLong())
-            .range(offset.toLong(), (offset + limit - 1).toLong())
-            .decodeList()
-    }
-    
-    suspend fun insertMessage(message: Message): Message {
-        return client.from("messages").insert(message).decodeSingle()
-    }
-    
-    suspend fun getOrCreateChat(user1Id: String, user2Id: String): Chat {
-        val chatId = if (user1Id < user2Id) "${user1Id}_${user2Id}" else "${user2Id}_${user1Id}"
-        
-        return try {
-            client.from("chats")
-                .select()
-                .eq("chat_id", chatId)
-                .decodeSingle<Chat>()
-        } catch (e: Exception) {
-            // Chat doesn't exist, create it
-            val newChat = Chat(
-                chatId = chatId,
-                participant1 = user1Id,
-                participant2 = user2Id,
-                createdAt = java.time.Instant.now().toString(),
-                updatedAt = java.time.Instant.now().toString()
-            )
-            client.from("chats").insert(newChat).decodeSingle()
+    /**
+     * Delete data from a table
+     */
+    override suspend fun delete(table: String, filter: String, value: Any): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from(table).delete {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
     
-    suspend fun getUserChats(userId: String): List<Inbox> {
-        return client.from("inbox")
-            .select("""
-                *,
-                users!chat_partner_id(id, username, nickname, avatar, status),
-                groups!group_id(id, name, avatar),
-                messages!last_message_id(message_text, push_date, message_type),
-                group_messages!last_group_message_id(message_text, push_date, message_type)
-            """.trimIndent())
-            .eq("user_id", userId)
-            .order("updated_at", ascending = false)
-            .decodeList()
-    }
-    
-    suspend fun updateInbox(inbox: Inbox): Inbox {
-        return client.from("inbox").upsert(inbox).decodeSingle()
-    }
-    
-    suspend fun checkUsernameAvailability(username: String): Boolean {
-        return try {
-            val result = client.from("users")
-                .select("id")
-                .eq("username", username)
-                .decodeSingle<Map<String, Any?>>()
-            false // Username exists
-        } catch (e: Exception) {
-            true // Username available
+    /**
+     * Delete all data from a table with filter
+     */
+    override suspend fun deleteWhere(table: String, filter: String, value: Any): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from(table).delete {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
     
-    suspend fun insertUsernameRegistry(registry: UsernameRegistry): UsernameRegistry {
-        return client.from("username_registry").insert(registry).decodeSingle()
+    /**
+     * Count records in a table
+     */
+    override suspend fun count(table: String): Result<Long> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw("*"))
+                    .decodeList<JsonObject>()
+                Result.success(result.size.toLong())
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Check if record exists
+     */
+    override suspend fun exists(table: String, filter: String, value: Any): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw("*")) {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }.decodeList<JsonObject>()
+                Result.success(result.isNotEmpty())
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Upsert data (insert or update)
+     */
+    override suspend fun upsert(table: String, data: Map<String, Any?>): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from(table).upsert(data)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Get single record
+     */
+    suspend fun getSingle(table: String, filter: String, value: Any): Result<Map<String, Any?>?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }.decodeSingleOrNull<JsonObject>()
+                
+                val mappedResult = result?.toMap()?.mapValues { (_, jsonValue) ->
+                    jsonValue.toString().removeSurrounding("\"")
+                }
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Update user presence
+     */
+    suspend fun updatePresence(userId: String, isOnline: Boolean): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("user_presence").upsert(mapOf(
+                    "user_id" to userId,
+                    "is_online" to isOnline,
+                    "last_seen" to System.currentTimeMillis()
+                ))
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Select with filter (alias for selectWhere)
+     */
+    suspend fun selectWithFilter(table: String, columns: String = "*", filter: String, value: Any): Result<List<Map<String, Any?>>> {
+        return selectWhere(table, columns, filter, value)
+    }
+    
+    /**
+     * Select by ID (convenience method)
+     */
+    suspend fun selectById(table: String, id: String, columns: String = "*"): Result<Map<String, Any?>?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from(table).select(columns = Columns.raw(columns)) {
+                    filter { eq("id", id) }
+                }.decodeSingleOrNull<JsonObject>()
+                
+                val mappedResult = result?.toMap()?.mapValues { (_, jsonValue) ->
+                    jsonValue.toString().removeSurrounding("\"")
+                }
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
 }

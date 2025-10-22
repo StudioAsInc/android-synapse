@@ -28,7 +28,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
+// Firebase removed - using Supabase
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -56,7 +56,8 @@ import android.os.Build;
 import androidx.core.content.ContextCompat;
 import java.util.Timer;
 import java.util.TimerTask;
-import com.synapse.social.studioasinc.permissionreq.AskPermission;
+import com.synapse.social.studioasinc.permissionreq.AskPermission;
+
 
 public class CheckpermissionActivity extends AppCompatActivity {
 	
@@ -72,7 +73,7 @@ public class CheckpermissionActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.activity_checkpermission);
 		initialize(_savedInstanceState);
-		FirebaseApp.initializeApp(this);
+		// Firebase removed - using Supabase
 		initializeLogic();
 	}
 	
@@ -91,5 +92,6 @@ public class CheckpermissionActivity extends AppCompatActivity {
 	public void onBackPressed() {
 		
 	}
-	
-}
+	
+
+}

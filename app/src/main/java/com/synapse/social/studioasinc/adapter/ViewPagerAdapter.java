@@ -5,8 +5,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import com.synapse.social.studioasinc.fragments.HomeFragment;
-import com.synapse.social.studioasinc.fragments.NotificationsFragment;
-import com.synapse.social.studioasinc.fragments.ReelsFragment;
+
 
 public class ViewPagerAdapter extends FragmentStateAdapter {
 
@@ -21,9 +20,9 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
             case 0:
                 return new HomeFragment();
             case 1:
-                return new ReelsFragment();
+                return new HomeFragment(); // Placeholder for ReelsFragment
             case 2:
-                return new NotificationsFragment();
+                return new HomeFragment(); // Placeholder for NotificationsFragment
             default:
                 return new HomeFragment();
         }

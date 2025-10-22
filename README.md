@@ -47,7 +47,7 @@
 
 ## 🛠️ Tech Stack
 - **Frontend**: Kotlin/Java (Android), HTML/CSS (Web)
-- **Backend**: Node.js, Firebase (Storage)
+- **Backend**: Supabase (Database, Auth, Storage)
 
 ---
 

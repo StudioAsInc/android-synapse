@@ -10,8 +10,6 @@ import kotlinx.coroutines.launch
  */
 class UserDataPusher {
 
-    private val supabaseUserDataPusher = SupabaseUserDataPusher()
-
     fun pushData(
         username: String,
         nickname: String,
@@ -23,16 +21,21 @@ class UserDataPusher {
         onComplete: (Boolean, String?) -> Unit
     ) {
         CoroutineScope(Dispatchers.Main).launch {
-            supabaseUserDataPusher.pushData(
-                username = username,
-                nickname = nickname,
-                biography = biography,
-                thedpurl = thedpurl,
-                googleLoginAvatarUri = googleLoginAvatarUri,
-                email = email,
-                uid = uid,
-                onComplete = onComplete
-            )
+            try {
+                val userData = mapOf(
+                    "username" to username,
+                    "nickname" to nickname,
+                    "biography" to biography,
+                    "profile_image_url" to thedpurl,
+                    "google_avatar_url" to googleLoginAvatarUri,
+                    "email" to email
+                )
+                
+                SupabaseUserDataPusher.updateUserProfile(uid, userData)
+                onComplete(true, null)
+            } catch (e: Exception) {
+                onComplete(false, e.message)
+            }
         }
     }
 }

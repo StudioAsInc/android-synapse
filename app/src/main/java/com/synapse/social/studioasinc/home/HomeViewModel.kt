@@ -1,71 +1,55 @@
 package com.synapse.social.studioasinc.home
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import androidx.lifecycle.viewModelScope
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.model.Post
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val postRepository: PostRepository = PostRepository()
+) : ViewModel() {
 
-    private val _posts = MutableLiveData<State<List<Post>>>()
-    val posts: LiveData<State<List<Post>>> = _posts
+    private val _posts = MutableStateFlow<List<Post>>(emptyList())
+    val posts: StateFlow<List<Post>> = _posts.asStateFlow()
 
-    private val _stories = MutableLiveData<State<List<Story>>>()
-    val stories: LiveData<State<List<Story>>> = _stories
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val database = FirebaseDatabase.getInstance()
-    private val postsRef = database.getReference("skyline/posts")
-    private val storiesDbRef = database.getReference("skyline/stories")
-    private val currentUser = FirebaseAuth.getInstance().currentUser
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun fetchPosts() {
-        _posts.value = State.Loading
-        postsRef.orderByChild("publish_date").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val postList = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    _posts.value = State.Success(postList.sortedByDescending { it.publish_date })
-                } else {
-                    _posts.value = State.Success(emptyList())
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                _posts.value = State.Error(error.message)
-            }
-        })
+    init {
+        loadPosts()
     }
 
-    fun fetchStories() {
-        _stories.value = State.Loading
-        storiesDbRef.orderByChild("publish_date").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val storiesList = mutableListOf<Story>()
-
-                currentUser?.uid?.let {
-                    storiesList.add(Story(uid = it)) // "My Story" placeholder
+    fun loadPosts() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            
+            postRepository.getPosts()
+                .onSuccess { postList ->
+                    _posts.value = postList
                 }
-
-                if (snapshot.exists()) {
-                    val fetchedStories = snapshot.children.mapNotNull { it.getValue(Story::class.java) }
-                    storiesList.addAll(fetchedStories.filter { it.uid != currentUser?.uid })
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to load posts"
                 }
-                _stories.value = State.Success(storiesList)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                _stories.value = State.Error(error.message)
-            }
-        })
+            
+            _isLoading.value = false
+        }
     }
 
-    sealed class State<out T> {
-        object Loading : State<Nothing>()
-        data class Success<out T>(val data: T) : State<T>()
-        data class Error(val message: String) : State<Nothing>()
+    fun refreshPosts() {
+        loadPosts()
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }

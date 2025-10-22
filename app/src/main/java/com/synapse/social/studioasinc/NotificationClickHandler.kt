@@ -8,7 +8,7 @@ import com.onesignal.notifications.INotificationClickEvent
 
 /**
  * Handles notification clicks and routes users to the appropriate screens within the app.
- * This implements deep linking functionality for different types of notifications.
+ * This implements deep linking functionality for different types of notifications with Supabase integration.
  */
 class NotificationClickHandler : INotificationClickListener {
     
@@ -17,28 +17,35 @@ class NotificationClickHandler : INotificationClickListener {
     }
     
     override fun onClick(event: INotificationClickEvent) {
-        val context = SynapseApp.getContext()
-        val notification = event.notification
-        val additionalData = notification.additionalData
-        
-        Log.d(TAG, "Notification clicked with data: $additionalData")
-        
-        // Parse notification data
-        val notificationType = additionalData?.optString("type") ?: ""
-        val senderUid = additionalData?.optString("sender_uid")
-        val chatId = additionalData?.optString("chat_id")
-        val postId = additionalData?.optString("postId")
-        val commentId = additionalData?.optString("commentId")
-        
-        // Handle different notification types
-        when (notificationType) {
-            "chat_message" -> handleChatNotification(context, senderUid, chatId)
-            NotificationConfig.NOTIFICATION_TYPE_NEW_POST -> handlePostNotification(context, senderUid, postId)
-            NotificationConfig.NOTIFICATION_TYPE_NEW_COMMENT -> handleCommentNotification(context, postId, commentId)
-            NotificationConfig.NOTIFICATION_TYPE_NEW_REPLY -> handleReplyNotification(context, postId, commentId)
-            NotificationConfig.NOTIFICATION_TYPE_NEW_LIKE_POST -> handleLikePostNotification(context, postId)
-            NotificationConfig.NOTIFICATION_TYPE_NEW_LIKE_COMMENT -> handleLikeCommentNotification(context, postId, commentId)
-            else -> handleDefaultNotification(context)
+        try {
+            val context = SynapseApp.getContext()
+            val notification = event.notification
+            val additionalData = notification.additionalData
+            
+            Log.d(TAG, "Notification clicked with data: $additionalData")
+            
+            // Parse notification data
+            val notificationType = additionalData?.optString("type") ?: ""
+            val senderUid = additionalData?.optString("sender_uid")
+            val chatId = additionalData?.optString("chat_id")
+            val postId = additionalData?.optString("postId")
+            val commentId = additionalData?.optString("commentId")
+            
+            // Handle different notification types
+            when (notificationType) {
+                "chat_message" -> handleChatNotification(context, senderUid, chatId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_POST -> handlePostNotification(context, senderUid, postId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_COMMENT -> handleCommentNotification(context, postId, commentId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_REPLY -> handleReplyNotification(context, postId, commentId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_LIKE_POST -> handleLikePostNotification(context, postId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_LIKE_COMMENT -> handleLikeCommentNotification(context, postId, commentId)
+                NotificationConfig.NOTIFICATION_TYPE_MENTION -> handleMentionNotification(context, postId, commentId)
+                NotificationConfig.NOTIFICATION_TYPE_NEW_FOLLOWER -> handleFollowNotification(context, senderUid)
+                else -> handleDefaultNotification(context)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling notification click: ${e.message}")
+            handleDefaultNotification(SynapseApp.getContext())
         }
     }
     
@@ -53,6 +60,7 @@ class NotificationClickHandler : INotificationClickListener {
         }
         
         val intent = Intent(context, ChatActivity::class.java).apply {
+            putExtra("uid", senderUid) // Use "uid" for consistency with existing code
             putExtra("recipientUid", senderUid)
             if (!chatId.isNullOrBlank()) {
                 putExtra("chatId", chatId)
@@ -78,11 +86,12 @@ class NotificationClickHandler : INotificationClickListener {
             putExtra("uid", senderUid)
             if (!postId.isNullOrBlank()) {
                 putExtra("postId", postId)
+                putExtra("scrollToPost", true)
             }
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         
-        Log.d(TAG, "Opening profile for user: $senderUid")
+        Log.d(TAG, "Opening profile for user: $senderUid with post: $postId")
         context.startActivity(intent)
     }
     
@@ -96,10 +105,10 @@ class NotificationClickHandler : INotificationClickListener {
             return
         }
         
-        // For now, open the home activity and let the user navigate to the post
-        // In a future update, you could implement a specific post viewer activity
+        // Open home activity and navigate to the specific post
         val intent = Intent(context, HomeActivity::class.java).apply {
             putExtra("openPost", postId)
+            putExtra("showComments", true)
             if (!commentId.isNullOrBlank()) {
                 putExtra("highlightComment", commentId)
             }
@@ -115,7 +124,24 @@ class NotificationClickHandler : INotificationClickListener {
      */
     private fun handleReplyNotification(context: Context, postId: String?, commentId: String?) {
         // Similar to comment notification but with reply context
-        handleCommentNotification(context, postId, commentId)
+        if (postId.isNullOrBlank()) {
+            Log.w(TAG, "Reply notification missing post ID")
+            handleDefaultNotification(context)
+            return
+        }
+        
+        val intent = Intent(context, HomeActivity::class.java).apply {
+            putExtra("openPost", postId)
+            putExtra("showComments", true)
+            putExtra("expandReplies", true)
+            if (!commentId.isNullOrBlank()) {
+                putExtra("highlightComment", commentId)
+            }
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        
+        Log.d(TAG, "Opening post: $postId with reply to comment: $commentId")
+        context.startActivity(intent)
     }
     
     /**
@@ -130,6 +156,33 @@ class NotificationClickHandler : INotificationClickListener {
      */
     private fun handleLikeCommentNotification(context: Context, postId: String?, commentId: String?) {
         handleCommentNotification(context, postId, commentId)
+    }
+    
+    /**
+     * Handle mention notifications - open the post where user was mentioned
+     */
+    private fun handleMentionNotification(context: Context, postId: String?, commentId: String?) {
+        handleCommentNotification(context, postId, commentId)
+    }
+    
+    /**
+     * Handle follow notifications - open the follower's profile
+     */
+    private fun handleFollowNotification(context: Context, followerUid: String?) {
+        if (followerUid.isNullOrBlank()) {
+            Log.w(TAG, "Follow notification missing follower UID")
+            handleDefaultNotification(context)
+            return
+        }
+        
+        val intent = Intent(context, ProfileActivity::class.java).apply {
+            putExtra("uid", followerUid)
+            putExtra("showFollowButton", true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        
+        Log.d(TAG, "Opening follower profile: $followerUid")
+        context.startActivity(intent)
     }
     
     /**

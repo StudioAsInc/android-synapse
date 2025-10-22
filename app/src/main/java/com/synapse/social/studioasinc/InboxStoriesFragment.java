@@ -27,7 +27,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.gridlayout.*;
-import com.google.firebase.FirebaseApp;
+// Firebase completely removed - using Supabase
 import com.theartofdev.edmodo.cropper.*;
 import com.yalantis.ucrop.*;
 import java.io.*;
@@ -47,7 +47,7 @@ public class InboxStoriesFragment extends Fragment {
 	public View onCreateView(@NonNull LayoutInflater _inflater, @Nullable ViewGroup _container, @Nullable Bundle _savedInstanceState) {
 		View _view = _inflater.inflate(R.layout.fragment_inbox_stories, _container, false);
 		initialize(_savedInstanceState, _view);
-		FirebaseApp.initializeApp(getContext());
+		// Firebase removed - using Supabase
 		initializeLogic();
 		return _view;
 	}
@@ -61,4 +61,4 @@ public class InboxStoriesFragment extends Fragment {
 	private void initializeLogic() {
 	}
 	
-}
+}
