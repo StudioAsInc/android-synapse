@@ -5,7 +5,12 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
-
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.storage
+import io.ktor.client.plugins.addDefaultResponseValidation
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 /**
  * Supabase client singleton for the application
@@ -32,6 +37,7 @@ object SupabaseClient {
                     install(Auth)
                     install(Postgrest)
                     install(Realtime)
+                    install(Storage)
                 }
             } else {
                 createSupabaseClient(
@@ -41,6 +47,10 @@ object SupabaseClient {
                     install(Auth)
                     install(Postgrest)
                     install(Realtime)
+                    install(Storage) {
+                        customUrl = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_URL
+                    }
+                    // httpEngine = OkHttp.create {}
                 }
             }
         } catch (e: Exception) {
