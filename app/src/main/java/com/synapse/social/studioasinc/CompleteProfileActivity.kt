@@ -296,34 +296,31 @@ class CompleteProfileActivity : AppCompatActivity() {
                     profile_image_url = imageUrl
                 )
 
-                // Convert UserProfile to Map for insertion with proper null handling
-                val userProfileMap = mutableMapOf<String, Any?>()
-                userProfileMap["uid"] = userProfile.uid
-                userProfileMap["username"] = userProfile.username
-                userProfileMap["display_name"] = userProfile.display_name
-                userProfileMap["email"] = userProfile.email
-                userProfileMap["bio"] = userProfile.bio
-                userProfileMap["followers_count"] = userProfile.followers_count
-                userProfileMap["following_count"] = userProfile.following_count
-                userProfileMap["posts_count"] = userProfile.posts_count
-                
-                // Only add profile_image_url if it's not null
-                if (userProfile.profile_image_url != null) {
-                    userProfileMap["profile_image_url"] = userProfile.profile_image_url
-                }
+                // Create serializable user data for insertion
+                val userInsert = com.synapse.social.studioasinc.model.UserInsert(
+                    uid = userProfile.uid,
+                    username = userProfile.username,
+                    display_name = userProfile.display_name,
+                    email = userProfile.email,
+                    bio = userProfile.bio,
+                    profile_image_url = userProfile.profile_image_url,
+                    followers_count = userProfile.followers_count,
+                    following_count = userProfile.following_count,
+                    posts_count = userProfile.posts_count
+                )
                 
                 // Debug logging
-                android.util.Log.d("CompleteProfile", "Inserting user profile: $userProfileMap")
+                android.util.Log.d("CompleteProfile", "Inserting user profile: $userInsert")
 
                 // Insert user profile into Supabase
-                dbService.insert("users", userProfileMap).onSuccess {
+                dbService.insert("users", userInsert).onSuccess {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->
                     android.util.Log.e("CompleteProfile", "=== DATABASE INSERTION FAILED ===")
                     android.util.Log.e("CompleteProfile", "Error message: ${error.message}")
                     android.util.Log.e("CompleteProfile", "Error type: ${error.javaClass.simpleName}")
-                    android.util.Log.e("CompleteProfile", "Failed data: $userProfileMap")
+                    android.util.Log.e("CompleteProfile", "Failed data: $userInsert")
                     android.util.Log.e("CompleteProfile", "Stack trace:", error)
                     
                     // Show the actual error message - this should NOT be "Data format error"
