@@ -14,52 +14,28 @@ class SupabaseStorageService(private val storage: Storage) {
             try {
                 android.util.Log.d("SupabaseStorage", "Starting image upload for URI: $uri")
                 
-                val inputStream = context.contentResolver.openInputStream(uri)
-                if (inputStream == null) {
-                    android.util.Log.e("SupabaseStorage", "Failed to open input stream for URI: $uri")
-                    return@withContext Result.failure(Exception("Cannot access image file. Please try selecting the image again."))
+                // Process and clean the image to fix corruption issues
+                val cleanedImageData = processAndCleanImage(context, uri)
+                if (cleanedImageData == null) {
+                    return@withContext Result.failure(Exception("Failed to process image. Please try a different image."))
                 }
                 
-                val mimeType = context.contentResolver.getType(uri)
-                android.util.Log.d("SupabaseStorage", "Image MIME type: $mimeType")
-                
-                val fileExtension = when {
-                    mimeType?.contains("jpeg") == true || mimeType?.contains("jpg") == true -> "jpg"
-                    mimeType?.contains("png") == true -> "png"
-                    mimeType?.contains("webp") == true -> "webp"
-                    else -> "jpg" // Default fallback
-                }
-                
-                val fileName = "${UUID.randomUUID()}.$fileExtension"
+                val fileName = "${UUID.randomUUID()}.jpg" // Always use JPG for consistency
                 android.util.Log.d("SupabaseStorage", "Generated filename: $fileName")
                 
-                // Try to get the bucket - this might fail if bucket doesn't exist
+                // Try to get the bucket
                 val bucket = try {
                     storage["avatars"]
                 } catch (e: Exception) {
                     android.util.Log.e("SupabaseStorage", "Failed to access 'avatars' bucket", e)
                     return@withContext Result.failure(Exception("Storage bucket 'avatars' not found. Please check Supabase storage configuration."))
                 }
-
-                val data = try {
-                    inputStream.readBytes()
-                } catch (e: Exception) {
-                    android.util.Log.e("SupabaseStorage", "Failed to read image data", e)
-                    return@withContext Result.failure(Exception("Failed to read image data: ${e.message}"))
-                } finally {
-                    inputStream.close()
-                }
                 
-                if (data.isEmpty()) {
-                    android.util.Log.e("SupabaseStorage", "Image data is empty")
-                    return@withContext Result.failure(Exception("Image file is empty or corrupted"))
-                }
+                android.util.Log.d("SupabaseStorage", "Cleaned image data size: ${cleanedImageData.size} bytes")
                 
-                android.util.Log.d("SupabaseStorage", "Image data size: ${data.size} bytes")
-                
-                // Upload the file
+                // Upload the cleaned file
                 try {
-                    bucket.upload(fileName, data)
+                    bucket.upload(fileName, cleanedImageData)
                     android.util.Log.d("SupabaseStorage", "File uploaded successfully: $fileName")
                 } catch (e: Exception) {
                     android.util.Log.e("SupabaseStorage", "Failed to upload file", e)
@@ -81,6 +57,65 @@ class SupabaseStorageService(private val storage: Storage) {
                 android.util.Log.e("SupabaseStorage", "Unexpected error during image upload", e)
                 Result.failure(Exception("Image upload failed: ${e.message}"))
             }
+        }
+    }
+    
+    private suspend fun processAndCleanImage(context: Context, uri: Uri): ByteArray? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            if (inputStream == null) {
+                android.util.Log.e("SupabaseStorage", "Failed to open input stream")
+                return null
+            }
+            
+            // Decode the bitmap to clean any corruption
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+            
+            if (bitmap == null) {
+                android.util.Log.e("SupabaseStorage", "Failed to decode bitmap - image may be corrupted")
+                return null
+            }
+            
+            android.util.Log.d("SupabaseStorage", "Original bitmap: ${bitmap.width}x${bitmap.height}")
+            
+            // Resize if too large (max 1024x1024 for profile images)
+            val maxSize = 1024
+            val scaledBitmap = if (bitmap.width > maxSize || bitmap.height > maxSize) {
+                val scale = minOf(maxSize.toFloat() / bitmap.width, maxSize.toFloat() / bitmap.height)
+                val newWidth = (bitmap.width * scale).toInt()
+                val newHeight = (bitmap.height * scale).toInt()
+                android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            } else {
+                bitmap
+            }
+            
+            android.util.Log.d("SupabaseStorage", "Scaled bitmap: ${scaledBitmap.width}x${scaledBitmap.height}")
+            
+            // Compress to clean JPEG format
+            val outputStream = java.io.ByteArrayOutputStream()
+            val compressed = scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
+            
+            if (!compressed) {
+                android.util.Log.e("SupabaseStorage", "Failed to compress bitmap")
+                return null
+            }
+            
+            val cleanedData = outputStream.toByteArray()
+            outputStream.close()
+            
+            // Clean up bitmaps
+            if (scaledBitmap != bitmap) {
+                scaledBitmap.recycle()
+            }
+            bitmap.recycle()
+            
+            android.util.Log.d("SupabaseStorage", "Image processed successfully: ${cleanedData.size} bytes")
+            cleanedData
+            
+        } catch (e: Exception) {
+            android.util.Log.e("SupabaseStorage", "Failed to process image", e)
+            null
         }
     }
 }

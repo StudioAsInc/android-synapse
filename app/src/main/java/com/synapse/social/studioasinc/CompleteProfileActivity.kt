@@ -255,17 +255,20 @@ class CompleteProfileActivity : AppCompatActivity() {
                         android.util.Log.d("CompleteProfile", "Image uploaded successfully: $url")
                     }.onFailure { error ->
                         android.util.Log.e("CompleteProfile", "Image upload failed", error)
+                        
+                        // Show error but allow user to continue without image
                         val errorMessage = when {
                             error.message?.contains("bucket", ignoreCase = true) == true -> 
-                                "Storage bucket not found. Please check configuration."
+                                "Storage bucket not found. Continuing without profile image."
                             error.message?.contains("permission", ignoreCase = true) == true -> 
-                                "Permission denied. Please check storage permissions."
+                                "Permission denied. Continuing without profile image."
                             error.message?.contains("network", ignoreCase = true) == true -> 
-                                "Network error during upload. Please try again."
-                            else -> "Failed to upload image: ${error.message}"
+                                "Network error during upload. Continuing without profile image."
+                            else -> "Failed to upload image. Continuing without profile image."
                         }
-                        Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
-                        return@launch
+                        Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                        // Don't return@launch - continue with profile creation without image
+                        imageUrl = null
                     }
                 }
 
@@ -314,7 +317,11 @@ class CompleteProfileActivity : AppCompatActivity() {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->
-                    android.util.Log.e("CompleteProfile", "Database insertion failed", error)
+                    android.util.Log.e("CompleteProfile", "Database insertion failed: ${error.message}", error)
+                    
+                    // Log the exact data that failed to insert for debugging
+                    android.util.Log.e("CompleteProfile", "Failed data: $userProfileMap")
+                    
                     val errorMessage = when {
                         error.message?.contains("duplicate", ignoreCase = true) == true -> 
                             "Username already exists. Please choose a different username."
@@ -324,7 +331,13 @@ class CompleteProfileActivity : AppCompatActivity() {
                             "Data format error. Please try again."
                         error.message?.contains("constraint", ignoreCase = true) == true -> 
                             "Database constraint error. Please check your data."
-                        else -> "Failed to create profile: ${error.message}"
+                        error.message?.contains("column", ignoreCase = true) == true -> 
+                            "Database column mismatch. Please check table structure."
+                        error.message?.contains("table", ignoreCase = true) == true -> 
+                            "Database table not found. Please check configuration."
+                        error.message?.contains("permission", ignoreCase = true) == true -> 
+                            "Database permission denied. Please check RLS policies."
+                        else -> "Failed to create profile. Error: ${error.message}"
                     }
                     Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
                 }

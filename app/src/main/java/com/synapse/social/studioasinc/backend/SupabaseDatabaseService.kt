@@ -73,9 +73,20 @@ class SupabaseDatabaseService : IDatabaseService {
                 
                 android.util.Log.d("SupabaseDB", "Cleaned insert data: $insertData")
                 
+                // Validate that we have a valid client
+                if (!SupabaseClient.isConfigured()) {
+                    throw Exception("Supabase client not configured")
+                }
+                
                 // Perform the insertion
-                client.from(table).insert(insertData)
-                android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
+                try {
+                    client.from(table).insert(insertData)
+                    android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
+                } catch (insertError: Exception) {
+                    android.util.Log.e("SupabaseDB", "Insert operation failed", insertError)
+                    throw insertError
+                }
+                
                 Result.success(Unit)
                 
             } catch (e: Exception) {
