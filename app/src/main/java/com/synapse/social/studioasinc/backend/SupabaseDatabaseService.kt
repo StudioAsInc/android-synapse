@@ -22,17 +22,27 @@ class SupabaseDatabaseService : IDatabaseService {
     suspend fun insert(table: String, data: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                android.util.Log.d("SupabaseDB", "Inserting data into table '$table': $data")
+                
                 // Convert data to Map if it's a serializable object
                 val insertData = when (data) {
                     is Map<*, *> -> {
-                        // Ensure all values are serializable
-                        data.mapValues { (_, value) ->
+                        // Clean and validate the map data
+                        val cleanedMap = mutableMapOf<String, Any?>()
+                        data.forEach { (key, value) ->
+                            val keyStr = key.toString()
                             when (value) {
-                                null -> null
-                                is String, is Number, is Boolean -> value
-                                else -> value.toString()
+                                null -> cleanedMap[keyStr] = null
+                                is String -> cleanedMap[keyStr] = value
+                                is Number -> cleanedMap[keyStr] = value
+                                is Boolean -> cleanedMap[keyStr] = value
+                                else -> {
+                                    android.util.Log.w("SupabaseDB", "Converting non-primitive value to string: $keyStr = $value")
+                                    cleanedMap[keyStr] = value.toString()
+                                }
                             }
                         }
+                        cleanedMap
                     }
                     else -> {
                         // Use reflection to convert data class to map
@@ -41,22 +51,36 @@ class SupabaseDatabaseService : IDatabaseService {
                             data::class.java.declaredFields.forEach { field ->
                                 field.isAccessible = true
                                 val value = field.get(data)
+                                val fieldName = field.name
                                 when (value) {
-                                    null -> dataMap[field.name] = null
-                                    is String, is Number, is Boolean -> dataMap[field.name] = value
-                                    else -> dataMap[field.name] = value.toString()
+                                    null -> dataMap[fieldName] = null
+                                    is String -> dataMap[fieldName] = value
+                                    is Number -> dataMap[fieldName] = value
+                                    is Boolean -> dataMap[fieldName] = value
+                                    else -> {
+                                        android.util.Log.w("SupabaseDB", "Converting field $fieldName to string: $value")
+                                        dataMap[fieldName] = value.toString()
+                                    }
                                 }
                             }
                         } catch (reflectionError: Exception) {
+                            android.util.Log.e("SupabaseDB", "Reflection failed", reflectionError)
                             throw Exception("Failed to serialize data object: ${reflectionError.message}")
                         }
                         dataMap
                     }
                 }
                 
+                android.util.Log.d("SupabaseDB", "Cleaned insert data: $insertData")
+                
+                // Perform the insertion
                 client.from(table).insert(insertData)
+                android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
                 Result.success(Unit)
+                
             } catch (e: Exception) {
+                android.util.Log.e("SupabaseDB", "Database insertion failed", e)
+                
                 // Provide more specific error messages
                 val errorMessage = when {
                     e.message?.contains("serialization", ignoreCase = true) == true -> 
@@ -65,6 +89,10 @@ class SupabaseDatabaseService : IDatabaseService {
                         "Duplicate entry error: ${e.message}"
                     e.message?.contains("constraint", ignoreCase = true) == true -> 
                         "Database constraint violation: ${e.message}"
+                    e.message?.contains("column", ignoreCase = true) == true -> 
+                        "Database column error: ${e.message}"
+                    e.message?.contains("table", ignoreCase = true) == true -> 
+                        "Database table error: ${e.message}"
                     else -> e.message ?: "Database insertion failed"
                 }
                 Result.failure(Exception(errorMessage))

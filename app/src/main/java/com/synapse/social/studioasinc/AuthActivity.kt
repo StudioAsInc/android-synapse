@@ -422,9 +422,11 @@ class AuthActivity : AppCompatActivity() {
             
             lifecycleScope.launch {
                 try {
+                    android.util.Log.d("AuthActivity", "Starting sign up for email: $email")
                     val result = authService.signUp(email, password)
                     result.fold(
                         onSuccess = { authResult ->
+                            android.util.Log.d("AuthActivity", "Sign up successful: needsVerification=${authResult.needsEmailVerification}")
                             if (authResult.needsEmailVerification) {
                                 // Email verification required - navigate to EmailVerificationActivity
                                 Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
@@ -437,10 +439,13 @@ class AuthActivity : AppCompatActivity() {
                             }
                         },
                         onFailure = { error ->
+                            android.util.Log.e("AuthActivity", "Sign up failed: ${error.message}", error)
+                            
                             // Check if this is actually a successful creation with verification needed
                             if (error.message?.contains("email not confirmed", ignoreCase = true) == true ||
                                 error.message?.contains("Email not confirmed", ignoreCase = true) == true) {
                                 // Account was created but needs verification
+                                android.util.Log.d("AuthActivity", "Account created but needs email verification")
                                 Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
                                 navigateToEmailVerification(email, password)
                                 return@launch
@@ -464,6 +469,7 @@ class AuthActivity : AppCompatActivity() {
                                 AuthError.NETWORK_ERROR -> "Network connection error. Please check your internet and try again."
                                 else -> error.message ?: "Sign up failed"
                             }
+                            android.util.Log.e("AuthActivity", "Showing error to user: $errorMessage")
                             updateUIState(AuthUIState.Error(authError, errorMessage))
                         }
                     )

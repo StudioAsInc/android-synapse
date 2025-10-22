@@ -379,47 +379,59 @@ class SupabaseAuthenticationService : com.synapse.social.studioasinc.backend.int
                     }
                 }
                 
-                // Check if user was created
+                // Sign up was successful - Supabase creates user even if email verification is needed
+                debugLog("Sign up request completed successfully")
+                
+                // Try to get the user, but don't fail if not immediately available
                 val supabaseUser = client.auth.currentUserOrNull()
-                if (supabaseUser != null && supabaseUser.id.isNotEmpty()) {
-                    val user = User(
+                
+                // Create user object from sign up result or current user
+                val user = if (supabaseUser != null && supabaseUser.id.isNotEmpty()) {
+                    User(
                         id = supabaseUser.id,
                         email = supabaseUser.email ?: email,
                         emailConfirmed = supabaseUser.emailConfirmedAt != null,
                         createdAt = supabaseUser.createdAt?.toString()
                     )
-                    
-                    debugLog("User created successfully: ${user.id}")
-                    
-                    // Check if email verification should be bypassed in development mode
-                    val needsVerification = if (authConfig.shouldBypassEmailVerification()) {
-                        debugLog("Email verification bypassed in development mode")
-                        false
-                    } else {
-                        supabaseUser.emailConfirmedAt == null
-                    }
-                    
-                    // Log verification attempt
-                    AuthErrorHandler.logVerificationAttempt(email, !needsVerification)
-                    logAuthenticationStep("Sign up completed", email, true)
-                    
-                    val message = if (needsVerification) {
-                        "Please check your email and click the verification link to activate your account."
-                    } else if (authConfig.shouldBypassEmailVerification()) {
-                        "Account created successfully. Email verification bypassed in development mode."
-                    } else {
-                        null
-                    }
-                    
-                    Result.success(AuthResult(
-                        user = user,
-                        needsEmailVerification = needsVerification,
-                        message = message
-                    ))
                 } else {
-                    logAuthenticationStep("Sign up failed - no user created", email, false)
-                    Result.failure(Exception("Account creation failed"))
+                    // Even if we can't get current user, the sign up was successful
+                    // This happens when email verification is required
+                    User(
+                        id = "pending", // Temporary ID until verification
+                        email = email,
+                        emailConfirmed = false,
+                        createdAt = System.currentTimeMillis().toString()
+                    )
                 }
+                
+                debugLog("User created successfully: ${user.id}")
+                
+                // Check if email verification should be bypassed in development mode
+                val needsVerification = if (authConfig.shouldBypassEmailVerification()) {
+                    debugLog("Email verification bypassed in development mode")
+                    false
+                } else {
+                    // If we have a user and they're not confirmed, or if we don't have a user (pending verification)
+                    supabaseUser?.emailConfirmedAt == null
+                }
+                
+                // Log verification attempt
+                AuthErrorHandler.logVerificationAttempt(email, !needsVerification)
+                logAuthenticationStep("Sign up completed successfully", email, true)
+                
+                val message = if (needsVerification) {
+                    "Please check your email and click the verification link to activate your account."
+                } else if (authConfig.shouldBypassEmailVerification()) {
+                    "Account created successfully. Email verification bypassed in development mode."
+                } else {
+                    "Account created successfully!"
+                }
+                
+                Result.success(AuthResult(
+                    user = user,
+                    needsEmailVerification = needsVerification,
+                    message = message
+                ))
             } catch (e: Exception) {
                 logAuthenticationStep("Sign up failed with exception", email, false)
                 debugLog("Sign up failed", e)

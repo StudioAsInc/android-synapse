@@ -249,10 +249,22 @@ class CompleteProfileActivity : AppCompatActivity() {
 
                 var imageUrl: String? = null
                 selectedImageUri?.let { uri ->
-                    storageService.uploadImage(this@CompleteProfileActivity, uri).onSuccess {
-                        imageUrl = it
-                    }.onFailure {
-                        Toast.makeText(this@CompleteProfileActivity, "Failed to upload image", Toast.LENGTH_SHORT).show()
+                    android.util.Log.d("CompleteProfile", "Starting image upload for URI: $uri")
+                    storageService.uploadImage(this@CompleteProfileActivity, uri).onSuccess { url ->
+                        imageUrl = url
+                        android.util.Log.d("CompleteProfile", "Image uploaded successfully: $url")
+                    }.onFailure { error ->
+                        android.util.Log.e("CompleteProfile", "Image upload failed", error)
+                        val errorMessage = when {
+                            error.message?.contains("bucket", ignoreCase = true) == true -> 
+                                "Storage bucket not found. Please check configuration."
+                            error.message?.contains("permission", ignoreCase = true) == true -> 
+                                "Permission denied. Please check storage permissions."
+                            error.message?.contains("network", ignoreCase = true) == true -> 
+                                "Network error during upload. Please try again."
+                            else -> "Failed to upload image: ${error.message}"
+                        }
+                        Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
                         return@launch
                     }
                 }
@@ -278,18 +290,21 @@ class CompleteProfileActivity : AppCompatActivity() {
                     profile_image_url = imageUrl
                 )
 
-                // Convert UserProfile to Map for insertion
-                val userProfileMap = mapOf(
-                    "uid" to userProfile.uid,
-                    "username" to userProfile.username,
-                    "display_name" to userProfile.display_name,
-                    "email" to userProfile.email,
-                    "bio" to userProfile.bio,
-                    "profile_image_url" to userProfile.profile_image_url,
-                    "followers_count" to userProfile.followers_count,
-                    "following_count" to userProfile.following_count,
-                    "posts_count" to userProfile.posts_count
-                )
+                // Convert UserProfile to Map for insertion with proper null handling
+                val userProfileMap = mutableMapOf<String, Any?>()
+                userProfileMap["uid"] = userProfile.uid
+                userProfileMap["username"] = userProfile.username
+                userProfileMap["display_name"] = userProfile.display_name
+                userProfileMap["email"] = userProfile.email
+                userProfileMap["bio"] = userProfile.bio
+                userProfileMap["followers_count"] = userProfile.followers_count
+                userProfileMap["following_count"] = userProfile.following_count
+                userProfileMap["posts_count"] = userProfile.posts_count
+                
+                // Only add profile_image_url if it's not null
+                if (userProfile.profile_image_url != null) {
+                    userProfileMap["profile_image_url"] = userProfile.profile_image_url
+                }
                 
                 // Debug logging
                 android.util.Log.d("CompleteProfile", "Inserting user profile: $userProfileMap")
@@ -299,6 +314,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->
+                    android.util.Log.e("CompleteProfile", "Database insertion failed", error)
                     val errorMessage = when {
                         error.message?.contains("duplicate", ignoreCase = true) == true -> 
                             "Username already exists. Please choose a different username."
@@ -306,6 +322,8 @@ class CompleteProfileActivity : AppCompatActivity() {
                             "Network error. Please check your connection and try again."
                         error.message?.contains("serialization", ignoreCase = true) == true -> 
                             "Data format error. Please try again."
+                        error.message?.contains("constraint", ignoreCase = true) == true -> 
+                            "Database constraint error. Please check your data."
                         else -> "Failed to create profile: ${error.message}"
                     }
                     Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
