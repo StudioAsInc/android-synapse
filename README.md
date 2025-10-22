@@ -33,6 +33,9 @@
 ## 🚀 Introduction  
 **Synapse** is a revolutionary open-source social platform combining speed, privacy, and customization. Our mission is to provide a secure and ad-free environment where users can connect and express themselves freely.
 
+> [!WARNING]
+> The project is currently unstable due to a recent migration of its Backend-as-a-Service (BaaS) from Firebase to Supabase. We are actively working to resolve any resulting issues.
+
 ---
 
 ## ✨ Features
@@ -101,6 +104,42 @@ Synapse is distributed under a [custom open-source license](Docs/LICENSE.md). Se
 - Our **core team** at StudioAs Inc.  
 - **Open-source contributors** worldwide  
 - **Early testers** shaping Synapse's future  
+
+---
+
+## ❓ FAQ
+
+**1. Is Synapse completely free to use?**
+Yes, Synapse is free and operates on a non-profit model. We do not have ads or premium features that require payment.
+
+**2. What makes Synapse different from other social platforms?**
+Synapse prioritizes user privacy and experience. We offer an ad-free environment, end-to-end encrypted chats, generous free storage (35GB+), and our platform is fully open-source.
+
+**3. What platforms is Synapse currently available on?**
+Synapse is available for Android and has a web version. You can find links to both on our official [website](https://dl-synapse.pages.dev).
+
+**4. How is my privacy protected on Synapse?**
+We use end-to-end encryption for all private chats, meaning only you and the recipient can read the messages. We are committed to minimizing data collection.
+
+**5. Is the project stable?**
+Currently, the project is undergoing a major backend migration from Firebase to Supabase, which may cause some instability. We are working hard to stabilize it.
+
+**6. Can I contribute to the project?**
+Absolutely! We welcome contributions from everyone. Please check out our [Contribution Guide](Docs/CONTRIBUTE.md) to get started.
+
+**7. What technology does Synapse use?**
+The Android app is built with Kotlin and Java, while the backend is powered by Supabase, which handles our database, authentication, and storage needs.
+
+**8. Can I host my own instance of Synapse?**
+While self-hosting is a goal for the future, it is not officially supported at this time. The project's open-source nature, however, allows for community experimentation.
+
+**9. Who is behind Synapse?**
+Synapse is a project developed and maintained by [StudioAs Inc.](https://studioas.dev) and a dedicated community of open-source contributors.
+
+**10. Where can I report a bug or suggest a feature?**
+You can report bugs or request new features by creating an issue on our [GitHub repository](https://github.com/StudioAsInc/android-synapse/issues).
+
+---
 
 <div align="center">
   
