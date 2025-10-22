@@ -1053,3 +1053,14 @@ ON CONFLICT DO NOTHING;
 --
 -- To verify the fix worked, you can test with:
 -- SELECT * FROM pg_policies WHERE tablename = 'users' AND policyname = 'Allow user registration';
+
+
+
+CREATE POLICY "Users can view chats they are part of" ON chats
+FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM chat_participants
+        WHERE chat_participants.chat_id = chats.chat_id
+        AND chat_participants.user_id = auth.uid()::text
+    )
+);
