@@ -230,9 +230,12 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private fun completeProfile() {
+        android.util.Log.d("CompleteProfile", "=== COMPLETE PROFILE FUNCTION STARTED ===")
         val username = usernameInput.text.toString().trim()
         val nickname = nicknameInput.text.toString().trim().ifEmpty { username }
         val bio = biographyInput.text.toString().trim()
+
+        android.util.Log.d("CompleteProfile", "Username: $username, Nickname: $nickname, Bio: $bio")
 
         if (!isUsernameValid) {
             Toast.makeText(this, "Please enter a valid username", Toast.LENGTH_SHORT).show()
@@ -317,29 +320,17 @@ class CompleteProfileActivity : AppCompatActivity() {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->
-                    android.util.Log.e("CompleteProfile", "Database insertion failed: ${error.message}", error)
-                    
-                    // Log the exact data that failed to insert for debugging
+                    android.util.Log.e("CompleteProfile", "=== DATABASE INSERTION FAILED ===")
+                    android.util.Log.e("CompleteProfile", "Error message: ${error.message}")
+                    android.util.Log.e("CompleteProfile", "Error type: ${error.javaClass.simpleName}")
                     android.util.Log.e("CompleteProfile", "Failed data: $userProfileMap")
+                    android.util.Log.e("CompleteProfile", "Stack trace:", error)
                     
-                    val errorMessage = when {
-                        error.message?.contains("duplicate", ignoreCase = true) == true -> 
-                            "Username already exists. Please choose a different username."
-                        error.message?.contains("network", ignoreCase = true) == true -> 
-                            "Network error. Please check your connection and try again."
-                        error.message?.contains("serialization", ignoreCase = true) == true -> 
-                            "Data format error. Please try again."
-                        error.message?.contains("constraint", ignoreCase = true) == true -> 
-                            "Database constraint error. Please check your data."
-                        error.message?.contains("column", ignoreCase = true) == true -> 
-                            "Database column mismatch. Please check table structure."
-                        error.message?.contains("table", ignoreCase = true) == true -> 
-                            "Database table not found. Please check configuration."
-                        error.message?.contains("permission", ignoreCase = true) == true -> 
-                            "Database permission denied. Please check RLS policies."
-                        else -> "Failed to create profile. Error: ${error.message}"
-                    }
-                    Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
+                    // Show the actual error message - this should NOT be "Data format error"
+                    val actualError = error.message ?: "Unknown database error"
+                    android.util.Log.e("CompleteProfile", "Showing toast with message: $actualError")
+                    
+                    Toast.makeText(this@CompleteProfileActivity, "NEW ERROR: $actualError", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@CompleteProfileActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
