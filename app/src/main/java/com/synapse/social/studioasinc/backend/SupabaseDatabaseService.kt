@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.backend.interfaces.IDatabaseService
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
@@ -11,14 +12,14 @@ import kotlinx.serialization.json.JsonObject
  * Supabase Database Service
  * Handles database operations using Supabase Postgrest
  */
-class SupabaseDatabaseService {
+class SupabaseDatabaseService : IDatabaseService {
     
     private val client = SupabaseClient.client
     
     /**
      * Insert data into a table
      */
-    suspend fun <T : Any> insert(table: String, data: T): Result<Unit> {
+    suspend fun insert(table: String, data: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 client.from(table).insert(data)
@@ -32,7 +33,7 @@ class SupabaseDatabaseService {
     /**
      * Update data in a table
      */
-    suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
+    override suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 client.from(table).update(data) {

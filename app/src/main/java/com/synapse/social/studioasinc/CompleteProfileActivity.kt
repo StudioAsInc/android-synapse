@@ -13,6 +13,8 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.SupabaseStorageService
+import io.github.jan.supabase.storage.storage
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.appbar.MaterialToolbar
 import android.widget.ImageView
@@ -165,7 +167,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                 }
                 
                 val emailVerificationView = findViewById<View>(R.id.email_verification)
-                if (currentUser.emailConfirmedAt != null) {
+                if (currentUser.emailConfirmed) {
                     emailVerificationView.visibility = View.GONE
                 } else {
                     emailVerificationView.visibility = View.VISIBLE
@@ -205,7 +207,7 @@ class CompleteProfileActivity : AppCompatActivity() {
     private fun checkUsernameAvailability(username: String) {
         lifecycleScope.launch {
             try {
-                val result = dbService.selectWithFilter(
+                val result = dbService.selectWhere(
                     table = "users",
                     columns = "username",
                     filter = "username",
@@ -247,7 +249,7 @@ class CompleteProfileActivity : AppCompatActivity() {
 
                 var imageUrl: String? = null
                 selectedImageUri?.let { uri ->
-                    storageService.uploadImage(this, uri).onSuccess {
+                    storageService.uploadImage(this@CompleteProfileActivity, uri).onSuccess {
                         imageUrl = it
                     }.onFailure {
                         Toast.makeText(this@CompleteProfileActivity, "Failed to upload image", Toast.LENGTH_SHORT).show()
