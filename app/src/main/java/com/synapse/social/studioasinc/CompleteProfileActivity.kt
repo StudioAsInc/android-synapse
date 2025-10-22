@@ -257,22 +257,58 @@ class CompleteProfileActivity : AppCompatActivity() {
                     }
                 }
 
+                // Validate required fields
+                if (currentUser.id.isEmpty()) {
+                    Toast.makeText(this@CompleteProfileActivity, "User ID is missing. Please sign in again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                if (currentUser.email.isNullOrEmpty()) {
+                    Toast.makeText(this@CompleteProfileActivity, "User email is missing. Please sign in again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
                 // Create user profile data
                 val userProfile = UserProfile(
                     uid = currentUser.id,
                     username = username,
                     display_name = nickname,
-                    email = currentUser.email ?: "",
+                    email = currentUser.email,
                     bio = bio,
                     profile_image_url = imageUrl
                 )
 
+                // Convert UserProfile to Map for insertion
+                val userProfileMap = mapOf(
+                    "uid" to userProfile.uid,
+                    "username" to userProfile.username,
+                    "display_name" to userProfile.display_name,
+                    "email" to userProfile.email,
+                    "bio" to userProfile.bio,
+                    "profile_image_url" to userProfile.profile_image_url,
+                    "followers_count" to userProfile.followers_count,
+                    "following_count" to userProfile.following_count,
+                    "posts_count" to userProfile.posts_count
+                )
+                
+                // Debug logging
+                android.util.Log.d("CompleteProfile", "Inserting user profile: $userProfileMap")
+
                 // Insert user profile into Supabase
-                dbService.insert("users", userProfile).onSuccess {
+                dbService.insert("users", userProfileMap).onSuccess {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 }.onFailure { error ->
-                    Toast.makeText(this@CompleteProfileActivity, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                    val errorMessage = when {
+                        error.message?.contains("duplicate", ignoreCase = true) == true -> 
+                            "Username already exists. Please choose a different username."
+                        error.message?.contains("network", ignoreCase = true) == true -> 
+                            "Network error. Please check your connection and try again."
+                        error.message?.contains("serialization", ignoreCase = true) == true -> 
+                            "Data format error. Please try again."
+                        else -> "Failed to create profile: ${error.message}"
+                    }
+                    Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@CompleteProfileActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()

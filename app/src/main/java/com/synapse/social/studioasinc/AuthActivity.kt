@@ -427,17 +427,26 @@ class AuthActivity : AppCompatActivity() {
                         onSuccess = { authResult ->
                             if (authResult.needsEmailVerification) {
                                 // Email verification required - navigate to EmailVerificationActivity
-                                Toast.makeText(this@AuthActivity, "Account created! Please check your email for verification.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
                                 navigateToEmailVerification(email, password)
                             } else {
                                 // Account created and verified - proceed to complete profile
-                                Toast.makeText(this@AuthActivity, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@AuthActivity, "✅ Account created successfully!", Toast.LENGTH_SHORT).show()
                                 clearSavedEmail()
                                 navigateToCompleteProfile()
                             }
                         },
                         onFailure = { error ->
-                            // Clean up session on sign up failure
+                            // Check if this is actually a successful creation with verification needed
+                            if (error.message?.contains("email not confirmed", ignoreCase = true) == true ||
+                                error.message?.contains("Email not confirmed", ignoreCase = true) == true) {
+                                // Account was created but needs verification
+                                Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
+                                navigateToEmailVerification(email, password)
+                                return@launch
+                            }
+                            
+                            // Clean up session on actual sign up failure
                             cleanupFailedSession()
                             
                             val authError = when {
@@ -459,7 +468,16 @@ class AuthActivity : AppCompatActivity() {
                         }
                     )
                 } catch (e: Exception) {
-                    // Clean up session on exception
+                    // Check if this is actually a successful creation with verification needed
+                    if (e.message?.contains("email not confirmed", ignoreCase = true) == true ||
+                        e.message?.contains("Email not confirmed", ignoreCase = true) == true) {
+                        // Account was created but needs verification
+                        Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
+                        navigateToEmailVerification(email, password)
+                        return@launch
+                    }
+                    
+                    // Clean up session on actual exception
                     cleanupFailedSession()
                     
                     val authError = when {

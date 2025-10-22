@@ -22,10 +22,52 @@ class SupabaseDatabaseService : IDatabaseService {
     suspend fun insert(table: String, data: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                client.from(table).insert(data)
+                // Convert data to Map if it's a serializable object
+                val insertData = when (data) {
+                    is Map<*, *> -> {
+                        // Ensure all values are serializable
+                        data.mapValues { (_, value) ->
+                            when (value) {
+                                null -> null
+                                is String, is Number, is Boolean -> value
+                                else -> value.toString()
+                            }
+                        }
+                    }
+                    else -> {
+                        // Use reflection to convert data class to map
+                        val dataMap = mutableMapOf<String, Any?>()
+                        try {
+                            data::class.java.declaredFields.forEach { field ->
+                                field.isAccessible = true
+                                val value = field.get(data)
+                                when (value) {
+                                    null -> dataMap[field.name] = null
+                                    is String, is Number, is Boolean -> dataMap[field.name] = value
+                                    else -> dataMap[field.name] = value.toString()
+                                }
+                            }
+                        } catch (reflectionError: Exception) {
+                            throw Exception("Failed to serialize data object: ${reflectionError.message}")
+                        }
+                        dataMap
+                    }
+                }
+                
+                client.from(table).insert(insertData)
                 Result.success(Unit)
             } catch (e: Exception) {
-                Result.failure(e)
+                // Provide more specific error messages
+                val errorMessage = when {
+                    e.message?.contains("serialization", ignoreCase = true) == true -> 
+                        "Data serialization error: ${e.message}"
+                    e.message?.contains("duplicate", ignoreCase = true) == true -> 
+                        "Duplicate entry error: ${e.message}"
+                    e.message?.contains("constraint", ignoreCase = true) == true -> 
+                        "Database constraint violation: ${e.message}"
+                    else -> e.message ?: "Database insertion failed"
+                }
+                Result.failure(Exception(errorMessage))
             }
         }
     }
