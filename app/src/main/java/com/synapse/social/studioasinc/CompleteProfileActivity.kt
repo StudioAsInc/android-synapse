@@ -18,7 +18,11 @@ import com.google.android.material.appbar.MaterialToolbar
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.cardview.widget.CardView
+import com.synapse.social.studioasinc.model.UserProfile
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import android.view.View
+import kotlinx.serialization.json.jsonObject
 
 /**
  * CompleteProfileActivity - Migrated to Supabase
@@ -28,6 +32,7 @@ class CompleteProfileActivity : AppCompatActivity() {
 
     private lateinit var authService: SupabaseAuthenticationService
     private lateinit var dbService: SupabaseDatabaseService
+    private lateinit var storageService: SupabaseStorageService
     
     private lateinit var toolbar: MaterialToolbar
     private lateinit var profileImageCard: CardView
@@ -89,6 +94,7 @@ class CompleteProfileActivity : AppCompatActivity() {
     private fun initializeServices() {
         authService = SupabaseAuthenticationService()
         dbService = SupabaseDatabaseService()
+        storageService = SupabaseStorageService(SupabaseClient.client.storage)
     }
 
     private fun setupToolbar() {
@@ -158,9 +164,11 @@ class CompleteProfileActivity : AppCompatActivity() {
                     return@launch
                 }
                 
-                // Pre-fill email if available
-                currentUser.email?.let { email ->
-                    // You can display email in a TextView if needed
+                val emailVerificationView = findViewById<View>(R.id.email_verification)
+                if (currentUser.isEmailConfirmed) {
+                    emailVerificationView.visibility = View.GONE
+                } else {
+                    emailVerificationView.visibility = View.VISIBLE
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@CompleteProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -237,23 +245,29 @@ class CompleteProfileActivity : AppCompatActivity() {
                     return@launch
                 }
 
+                var imageUrl: String? = null
+                selectedImageUri?.let { uri ->
+                    val result = storageService.uploadImage(this, uri)
+                    result.onSuccess {
+                        imageUrl = it
+                    }.onFailure {
+                        Toast.makeText(this@CompleteProfileActivity, "Failed to upload image", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                }
+
                 // Create user profile data
-                val profileData = mapOf(
-                    "uid" to currentUser.id,
-                    "username" to username,
-                    "display_name" to nickname,
-                    "email" to (currentUser.email ?: ""),
-                    "bio" to bio,
-                    "profile_image_url" to (selectedImageUri?.toString() ?: ""),
-                    "followers_count" to 0,
-                    "following_count" to 0,
-                    "posts_count" to 0,
-                    "created_at" to System.currentTimeMillis(),
-                    "updated_at" to System.currentTimeMillis()
+                val userProfile = UserProfile(
+                    uid = currentUser.id,
+                    username = username,
+                    display_name = nickname,
+                    email = currentUser.email ?: "",
+                    bio = bio,
+                    profile_image_url = imageUrl
                 )
 
                 // Insert user profile into Supabase
-                val result = dbService.insert("users", profileData)
+                val result = dbService.insert("users", userProfile)
                 
                 result.onSuccess {
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()

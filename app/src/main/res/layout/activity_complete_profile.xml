@@ -71,10 +71,9 @@
 				android:layout_marginBottom="24dp"
 				android:padding="16dp"
 				android:background="@drawable/edit_text_background_selector"
-				android:text="Handle"
+				android:hint="Username"
 				android:textSize="18sp"
 				android:textColor="?attr/colorOnSurface"
-				android:hint="Username"
 				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:singleLine="true"
 				android:imeOptions="actionNext"
@@ -88,9 +87,9 @@
 				android:layout_marginBottom="24dp"
 				android:padding="16dp"
 				android:background="@drawable/edit_text_background_selector"
+				android:hint="Display Name"
 				android:textSize="18sp"
 				android:textColor="?attr/colorOnSurface"
-				android:hint="Username"
 				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:singleLine="true"
 				android:imeOptions="actionNext"
@@ -103,13 +102,12 @@
 				android:layout_height="wrap_content"
 				android:padding="16dp"
 				android:background="@drawable/edit_text_background_selector"
+				android:hint="Bio"
 				android:textSize="18sp"
 				android:textColor="?attr/colorOnSurface"
 				android:textColorHint="?attr/colorOnSurfaceVariant"
 				android:imeOptions="actionDone"
 				android:maxHeight="150dp"
-				tools:replace="android:hint"
-				android:hint="@string/biography"
 				app:layout_constraintTop_toBottomOf="@id/nickname_input"
 				app:layout_constraintStart_toStartOf="parent"
 				app:layout_constraintEnd_toEndOf="parent"/>
@@ -139,78 +137,25 @@
 					app:layout_constraintStart_toStartOf="parent"/>
 
 				<TextView
-					android:id="@+id/email_verification_subtitle"
-					android:layout_width="0dp"
-					android:layout_height="wrap_content"
-					android:layout_marginBottom="18dp"
-					android:text="Verify the email address through the link we have sent in your mail box."
-					android:textSize="14sp"
-					android:textColor="?attr/colorOnSurfaceVariant"
-					app:layout_constraintTop_toBottomOf="@id/email_verification_title"
-					app:layout_constraintStart_toStartOf="parent"
-					app:layout_constraintEnd_toEndOf="parent"/>
-
-				<ImageView
-					android:id="@+id/email_verification_error_ic"
-					android:layout_width="24dp"
-					android:layout_height="24dp"
-					android:layout_marginRight="12dp"
-					android:padding="2dp"
-					android:src="@drawable/icon_report_problem_round"
-					android:scaleType="fitCenter"
-					app:layout_constraintTop_toBottomOf="@id/email_verification_subtitle"
-					app:layout_constraintStart_toStartOf="parent"/>
-
-				<ImageView
-					android:id="@+id/email_verification_verified_ic"
-					android:layout_width="24dp"
-					android:layout_height="24dp"
-					android:layout_marginRight="12dp"
-					android:padding="2dp"
-					android:src="@drawable/icon_check_circle_round"
-					android:scaleType="fitCenter"
-					app:layout_constraintTop_toBottomOf="@id/email_verification_subtitle"
-					app:layout_constraintStart_toStartOf="parent"/>
-
-				<TextView
 					android:id="@+id/email_verification_status"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
+					android:layout_marginTop="8dp"
 					android:text="Email not verified"
 					android:textSize="18sp"
 					android:textColor="?attr/colorError"
-					app:layout_constraintTop_toTopOf="@id/email_verification_error_ic"
-					app:layout_constraintBottom_toBottomOf="@id/email_verification_error_ic"
-					app:layout_constraintStart_toEndOf="@id/email_verification_error_ic"
-					app:layout_constraintEnd_toStartOf="@id/email_verification_status_refresh"/>
+					app:layout_constraintTop_toBottomOf="@id/email_verification_title"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toStartOf="@id/email_verification_send"/>
 
-				<ImageView
-					android:id="@+id/email_verification_status_refresh"
-					android:layout_width="24dp"
-					android:layout_height="24dp"
-					android:padding="2dp"
-					android:src="@drawable/icon_autorenew_round"
-					android:scaleType="fitCenter"
-					app:layout_constraintTop_toTopOf="@id/email_verification_status"
-					app:layout_constraintBottom_toBottomOf="@id/email_verification_status"
-					app:layout_constraintEnd_toEndOf="parent"/>
-
-				<TextView
+				<com.google.android.material.button.MaterialButton
 					android:id="@+id/email_verification_send"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginTop="8dp"
-					android:paddingLeft="20dp"
-					android:paddingTop="10dp"
-					android:paddingRight="20dp"
-					android:paddingBottom="10dp"
-					android:background="?attr/colorPrimary"
-					android:gravity="center_horizontal|center_vertical"
-					android:textSize="16sp"
-					android:textColor="?attr/colorOnPrimary"
-					tools:replace="android:text"
 					android:text="@string/send"
-					app:layout_constraintTop_toBottomOf="@id/email_verification_status"
+					style="@style/Widget.Material3.Button.TextButton"
+					app:layout_constraintTop_toTopOf="@id/email_verification_status"
+					app:layout_constraintBottom_toBottomOf="@id/email_verification_status"
 					app:layout_constraintEnd_toEndOf="parent"/>
 			</androidx.constraintlayout.widget.ConstraintLayout>
 			<androidx.constraintlayout.widget.ConstraintLayout
