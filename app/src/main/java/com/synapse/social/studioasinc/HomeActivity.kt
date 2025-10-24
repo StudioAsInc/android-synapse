@@ -14,8 +14,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.synapse.social.studioasinc.adapter.ViewPagerAdapter
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.launch
 
 class HomeActivity : AppCompatActivity() {
@@ -24,8 +26,7 @@ class HomeActivity : AppCompatActivity() {
         private const val REELS_TAB_POSITION = 1
     }
 
-    private lateinit var authService: SupabaseAuthenticationService
-    private lateinit var databaseService: SupabaseDatabaseService
+    // Using Supabase client directly
     private lateinit var settingsButton: ImageView
     private lateinit var navSearchIc: ImageView
     private lateinit var navInboxIc: ImageView
@@ -44,15 +45,14 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val currentUserId = authService.getCurrentUserId()
-        if (currentUserId != null) {
-            PresenceManager.setActivity(currentUserId, "In Home")
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        if (currentUser != null) {
+            PresenceManager.setActivity(currentUser.id, "In Home")
         }
     }
 
     private fun initialize() {
-        authService = SupabaseAuthenticationService()
-        databaseService = SupabaseDatabaseService()
+        // Using Supabase client directly
 
         tabLayout = findViewById(R.id.tab_layout)
         viewPager = findViewById(R.id.view_pager)
@@ -111,10 +111,10 @@ class HomeActivity : AppCompatActivity() {
         }
 
         navProfileIc.setOnClickListener {
-            val currentUserId = authService.getCurrentUserId()
-            if (currentUserId != null) {
+            val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+            if (currentUser != null) {
                 val intent = Intent(applicationContext, ProfileActivity::class.java)
-                intent.putExtra("uid", currentUserId)
+                intent.putExtra("uid", currentUser.id)
                 startActivity(intent)
             }
         }
@@ -128,30 +128,29 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun loadUserProfileImage() {
-        val currentUserId = authService.getCurrentUserId()
-        if (currentUserId != null) {
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        if (currentUser != null) {
             lifecycleScope.launch {
                 try {
-                    val result = databaseService.selectById("users", currentUserId, "avatar,profile_image_url")
+                    val userData = SupabaseClient.client.from("users")
+                        .select(columns = Columns.raw("avatar,profile_image_url")) {
+                            filter { eq("id", currentUser.id) }
+                        }.decodeSingleOrNull<JsonObject>()
                     
-                    result.onSuccess { userData ->
-                        if (userData != null) {
-                            val avatar = userData["avatar"] as? String
-                            val profileImageUrl = userData["profile_image_url"] as? String
-                            val imageUrl = avatar ?: profileImageUrl
-                            
-                            if (!imageUrl.isNullOrEmpty() && imageUrl != "null") {
-                                Glide.with(applicationContext)
-                                    .load(Uri.parse(imageUrl))
-                                    .circleCrop()
-                                    .into(navProfileIc)
-                            } else {
-                                navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
-                            }
+                    if (userData != null) {
+                        val avatar = userData["avatar"]?.toString()?.removeSurrounding("\"")
+                        val profileImageUrl = userData["profile_image_url"]?.toString()?.removeSurrounding("\"")
+                        val imageUrl = avatar ?: profileImageUrl
+                        
+                        if (!imageUrl.isNullOrEmpty() && imageUrl != "null") {
+                            Glide.with(applicationContext)
+                                .load(Uri.parse(imageUrl))
+                                .circleCrop()
+                                .into(navProfileIc)
                         } else {
                             navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
                         }
-                    }.onFailure {
+                    } else {
                         navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
                     }
                 } catch (e: Exception) {

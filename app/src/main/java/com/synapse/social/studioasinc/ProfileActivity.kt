@@ -12,8 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
@@ -52,8 +54,8 @@ class ProfileActivity : AppCompatActivity() {
 
         // Get user ID from intent
         val userId = intent.getStringExtra("uid") ?: return
-        val authService = SupabaseAuthenticationService()
-        val currentUid = authService.getCurrentUserId() ?: ""
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id ?: ""
 
         // Load user profile
         loadUserProfile(userId, currentUid)
@@ -233,18 +235,14 @@ class ProfileActivity : AppCompatActivity() {
             .setView(dialogBinding.root)
             .create()
 
-        val dbService = SupabaseDatabaseService()
         lifecycleScope.launch {
             try {
-                val users = dbService.selectWithFilter(
-                    table = "users",
-                    columns = "*",
-                    filter = "uid",
-                    value = userId
-                ).getOrNull() ?: emptyList()
+                val userData = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("*")) {
+                        filter { eq("uid", userId) }
+                    }.decodeSingleOrNull<JsonObject>()
                 
-                if (users.isNotEmpty()) {
-                    val userData = users.first()
+                if (userData != null) {
                     val avatar = userData["avatar"] as? String
                     if (avatar != null && avatar != "null") {
                         com.bumptech.glide.Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
@@ -262,9 +260,8 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun saveToHistory(imageUrl: String) {
-        val authService = SupabaseAuthenticationService()
-        val currentUid = authService.getCurrentUserId() ?: return
-        val dbService = SupabaseDatabaseService()
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id ?: return
         
         lifecycleScope.launch {
             try {
@@ -275,7 +272,8 @@ class ProfileActivity : AppCompatActivity() {
                     "type" to "url"
                 )
                 
-                dbService.insert("profile_history", historyItem)
+                // TODO: Implement direct Supabase insert
+                // SupabaseClient.client.from("profile_history").insert(historyItem)
                 runOnUiThread {
                     Toast.makeText(this@ProfileActivity, "Saved to History", Toast.LENGTH_SHORT).show()
                 }

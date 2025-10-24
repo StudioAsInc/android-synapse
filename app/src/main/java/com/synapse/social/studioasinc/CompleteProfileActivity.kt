@@ -11,11 +11,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseStorageService
-import io.github.jan.supabase.storage.storage
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.storage.storage
 import kotlinx.serialization.json.JsonObject
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.appbar.MaterialToolbar
@@ -32,8 +31,7 @@ import android.view.View
  */
 class CompleteProfileActivity : AppCompatActivity() {
 
-    private lateinit var authService: SupabaseAuthenticationService
-    private lateinit var storageService: SupabaseStorageService
+    // No wrapper services needed - using Supabase client directly
     
     private lateinit var toolbar: MaterialToolbar
     private lateinit var profileImageCard: CardView
@@ -60,13 +58,14 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
             initializeLogic()
         } else {
-            Toast.makeText(this, "Storage permissions are required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Storage permission is required for profile images", Toast.LENGTH_SHORT).show()
+            // Continue without permission - user can still complete profile without image
+            initializeLogic()
         }
     }
 
@@ -75,7 +74,7 @@ class CompleteProfileActivity : AppCompatActivity() {
         setContentView(R.layout.activity_complete_profile)
         
         initializeViews()
-        initializeServices()
+        // No services to initialize - using Supabase client directly
         setupToolbar()
         setupListeners()
         checkPermissions()
@@ -92,10 +91,7 @@ class CompleteProfileActivity : AppCompatActivity() {
         completeButton = findViewById(R.id.complete_button)
     }
 
-    private fun initializeServices() {
-        authService = SupabaseAuthenticationService()
-        storageService = SupabaseStorageService(SupabaseClient.client.storage)
-    }
+    // Removed - using Supabase client directly
 
     private fun setupToolbar() {
         setSupportActionBar(toolbar)
@@ -138,26 +134,20 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
+        // Only request READ_EXTERNAL_STORAGE for image selection
+        val permission = Manifest.permission.READ_EXTERNAL_STORAGE
         
-        val allGranted = permissions.all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }
-        
-        if (allGranted) {
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
             initializeLogic()
         } else {
-            permissionLauncher.launch(permissions)
+            permissionLauncher.launch(permission)
         }
     }
 
     private fun initializeLogic() {
         lifecycleScope.launch {
             try {
-                val currentUser = authService.getCurrentUser()
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
                 if (currentUser == null) {
                     Toast.makeText(this@CompleteProfileActivity, "Please sign in first", Toast.LENGTH_SHORT).show()
                     finish()
@@ -165,7 +155,7 @@ class CompleteProfileActivity : AppCompatActivity() {
                 }
                 
                 val emailVerificationView = findViewById<View>(R.id.email_verification)
-                if (currentUser.emailConfirmed) {
+                if (currentUser.emailConfirmedAt != null) {
                     emailVerificationView.visibility = View.GONE
                 } else {
                     emailVerificationView.visibility = View.VISIBLE
@@ -241,7 +231,7 @@ class CompleteProfileActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val currentUser = authService.getCurrentUser()
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
                 if (currentUser == null) {
                     Toast.makeText(this@CompleteProfileActivity, "User not found", Toast.LENGTH_SHORT).show()
                     return@launch
@@ -250,13 +240,24 @@ class CompleteProfileActivity : AppCompatActivity() {
                 var imageUrl: String? = null
                 selectedImageUri?.let { uri ->
                     android.util.Log.d("CompleteProfile", "Starting image upload for URI: $uri")
-                    storageService.uploadImage(this@CompleteProfileActivity, uri).onSuccess { url ->
-                        imageUrl = url
-                        android.util.Log.d("CompleteProfile", "Image uploaded successfully: $url")
-                    }.onFailure { error ->
+                    try {
+                        // Upload image directly using Supabase storage
+                        val fileName = "profile_${currentUser.id}_${System.currentTimeMillis()}.jpg"
+                        val bucket = SupabaseClient.client.storage.from("avatars")
+                        
+                        // Convert URI to byte array for upload
+                        val inputStream = contentResolver.openInputStream(uri)
+                        val bytes = inputStream?.readBytes()
+                        inputStream?.close()
+                        
+                        if (bytes != null) {
+                            bucket.upload(fileName, bytes)
+                            imageUrl = bucket.publicUrl(fileName)
+                            android.util.Log.d("CompleteProfile", "Image uploaded successfully: $imageUrl")
+                        }
+                    } catch (error: Exception) {
                         android.util.Log.e("CompleteProfile", "Image upload failed", error)
                         
-                        // Show error but allow user to continue without image
                         val errorMessage = when {
                             error.message?.contains("bucket", ignoreCase = true) == true -> 
                                 "Storage bucket not found. Continuing without profile image."
@@ -267,7 +268,6 @@ class CompleteProfileActivity : AppCompatActivity() {
                             else -> "Failed to upload image. Continuing without profile image."
                         }
                         Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_SHORT).show()
-                        // Don't return@launch - continue with profile creation without image
                         imageUrl = null
                     }
                 }
@@ -284,11 +284,12 @@ class CompleteProfileActivity : AppCompatActivity() {
                 }
 
                 // Create user profile data
+                val userEmail = currentUser.email ?: ""
                 val userProfile = UserProfile(
                     uid = currentUser.id,
                     username = username,
                     display_name = nickname,
-                    email = currentUser.email,
+                    email = userEmail,
                     bio = bio,
                     profile_image_url = imageUrl
                 )
