@@ -24,6 +24,7 @@ data class Post(
     val likesCount: Int = 0,
     val commentsCount: Int = 0,
     val viewsCount: Int = 0,
+    @kotlinx.serialization.Transient
     var mediaItems: MutableList<MediaItem>? = null
 ) {
     /**

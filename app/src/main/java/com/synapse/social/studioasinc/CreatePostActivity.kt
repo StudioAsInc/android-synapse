@@ -336,7 +336,7 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun savePostToDatabase(post: Post) {
-        val postKey = post.key ?: return
+        val postKey = post.key ?: post.id
         
         // Use PostRepository for Supabase operations
         lifecycleScope.launch {

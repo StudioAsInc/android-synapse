@@ -76,21 +76,20 @@ class PostRepository {
         } catch (e: Exception) {
             android.util.Log.e("PostRepository", "Failed to fetch posts: ${e.message}", e)
             
-            // If serialization fails, try to fetch as raw data
-            try {
-                android.util.Log.d("PostRepository", "Trying to fetch posts as raw data...")
-                val rawPosts = client.from("posts")
-                    .select() {
-                        limit(limit.toLong())
-                    }
-                    .decodeList<kotlinx.serialization.json.JsonObject>()
-                
-                android.util.Log.d("PostRepository", "Raw posts data: $rawPosts")
-                Result.success(emptyList()) // Return empty list for now
-            } catch (rawException: Exception) {
-                android.util.Log.e("PostRepository", "Raw fetch also failed: ${rawException.message}", rawException)
-                Result.failure(e)
+            // Provide more specific error messages
+            val errorMessage = when {
+                e.message?.contains("relation \"posts\" does not exist", ignoreCase = true) == true -> 
+                    "Database table 'posts' does not exist. Please create the posts table in your Supabase database."
+                e.message?.contains("connection", ignoreCase = true) == true -> 
+                    "Cannot connect to Supabase. Check your internet connection and Supabase configuration."
+                e.message?.contains("unauthorized", ignoreCase = true) == true -> 
+                    "Unauthorized access to Supabase. Check your API key and RLS policies."
+                e.message?.contains("serialization", ignoreCase = true) == true -> 
+                    "Data format error. The database schema might not match the expected format."
+                else -> "Database error: ${e.message}"
             }
+            
+            Result.failure(Exception(errorMessage))
         }
     }
     
