@@ -45,7 +45,7 @@ class PostRepository {
     
     suspend fun updatePost(postId: String, updates: Map<String, Any?>): Result<Post> {
         return try {
-            val post = Post(postId = postId, authorId = "")
+            val post = Post(id = postId, authorUid = "")
             Result.success(post)
         } catch (e: Exception) {
             Result.failure(e)

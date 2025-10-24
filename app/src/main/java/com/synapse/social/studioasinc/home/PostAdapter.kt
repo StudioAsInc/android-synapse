@@ -52,10 +52,10 @@ class PostAdapter(
 
         fun bind(post: Post) {
             // Set post content
-            postContent.text = post.content ?: ""
+            postContent.text = post.postText ?: ""
             
             // Load post image if available
-            post.imageUrl?.let { imageUrl ->
+            post.postImage?.let { imageUrl ->
                 postImage.visibility = View.VISIBLE
                 Glide.with(context)
                     .load(imageUrl)
@@ -66,7 +66,7 @@ class PostAdapter(
 
             // Load author information
             lifecycleOwner.lifecycleScope.launch {
-                userRepository.getUserById(post.authorId)
+                userRepository.getUserById(post.authorUid)
                     .onSuccess { user ->
                         authorName.text = user?.username ?: "Unknown User"
                     }

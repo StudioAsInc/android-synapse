@@ -152,6 +152,9 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
+        // Test Supabase configuration
+        SupabaseConfigTest.testConfiguration()
+        
         lifecycleScope.launch {
             try {
                 val currentUser = SupabaseClient.client.auth.currentUserOrNull()
@@ -335,28 +338,15 @@ class CompleteProfileActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                // Create user profile data
+                // Create user profile data for insertion
                 val userEmail = currentUser.email ?: ""
                 val userProfile = UserProfile(
                     uid = currentUser.id,
                     username = username,
                     display_name = nickname,
                     email = userEmail,
-                    bio = bio,
+                    bio = bio.ifEmpty { null },
                     profile_image_url = imageUrl
-                )
-
-                // Create serializable user data for insertion
-                val userInsert = com.synapse.social.studioasinc.model.UserInsert(
-                    uid = userProfile.uid,
-                    username = userProfile.username,
-                    display_name = userProfile.display_name,
-                    email = userProfile.email,
-                    bio = userProfile.bio,
-                    profile_image_url = userProfile.profile_image_url,
-                    followers_count = userProfile.followers_count,
-                    following_count = userProfile.following_count,
-                    posts_count = userProfile.posts_count
                 )
                 
                 // Check if user profile already exists for this UID
@@ -394,18 +384,18 @@ class CompleteProfileActivity : AppCompatActivity() {
                 }
 
                 // Debug logging
-                android.util.Log.d("CompleteProfile", "Inserting user profile: $userInsert")
+                android.util.Log.d("CompleteProfile", "Inserting user profile: $userProfile")
 
                 // Insert user profile directly into Supabase
                 try {
-                    SupabaseClient.client.from("users").insert(userInsert)
+                    SupabaseClient.client.from("users").insert(userProfile)
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
                 } catch (error: Exception) {
                     android.util.Log.e("CompleteProfile", "=== DATABASE INSERTION FAILED ===")
                     android.util.Log.e("CompleteProfile", "Error message: ${error.message}")
                     android.util.Log.e("CompleteProfile", "Error type: ${error.javaClass.simpleName}")
-                    android.util.Log.e("CompleteProfile", "Failed data: $userInsert")
+                    android.util.Log.e("CompleteProfile", "Failed data: $userProfile")
                     android.util.Log.e("CompleteProfile", "Stack trace:", error)
                     
                     // Handle specific error cases
@@ -460,6 +450,7 @@ class CompleteProfileActivity : AppCompatActivity() {
         finish()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // Prevent going back to auth screen
         finishAffinity()

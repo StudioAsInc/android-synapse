@@ -138,7 +138,7 @@ class ProfileActivity : AppCompatActivity() {
     private fun showCommentsDialog(post: Post) {
         val bundle = Bundle()
         bundle.putString("postKey", post.key)
-        bundle.putString("postPublisherUID", post.uid)
+        bundle.putString("postPublisherUID", post.authorUid)
         val commentsDialog = PostCommentsBottomSheetDialog()
         commentsDialog.arguments = bundle
         commentsDialog.show(supportFragmentManager, commentsDialog.tag)

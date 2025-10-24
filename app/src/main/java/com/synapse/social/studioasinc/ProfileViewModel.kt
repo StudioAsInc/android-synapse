@@ -81,7 +81,7 @@ class ProfileViewModel : ViewModel() {
                     Post(
                         id = result["id"] as? String ?: "",
                         authorUid = result["author_uid"] as? String ?: "",
-                        content = result["content"] as? String ?: "",
+                        postText = result["content"] as? String ?: result["post_text"] as? String,
                         timestamp = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
                         likesCount = (result["likes_count"] as? String)?.toIntOrNull() ?: 0,
                         commentsCount = (result["comments_count"] as? String)?.toIntOrNull() ?: 0

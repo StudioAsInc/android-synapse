@@ -274,7 +274,7 @@ class CreatePostActivity : AppCompatActivity() {
         
         // Create post object
         val postKey = "post_${System.currentTimeMillis()}_${(1000..9999).random()}"
-        val post = Post(
+        var post = Post(
             key = postKey,
             authorUid = currentUser.id,
             postText = if (postText.isNotEmpty()) postText else null,

@@ -51,9 +51,9 @@ class PostsAdapter(
         fun bind(post: Post) {
             // Set content with markdown support if available
             if (markwon != null) {
-                markwon.setMarkdown(contentText, post.content)
+                markwon.setMarkdown(contentText, post.postText ?: "")
             } else {
-                contentText.text = post.content
+                contentText.text = post.postText ?: ""
             }
 
             // Set author info
