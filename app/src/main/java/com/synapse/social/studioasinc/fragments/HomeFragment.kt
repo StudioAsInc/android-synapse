@@ -44,8 +44,8 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeViews(view)
-        setupViewModel()
         setupRecyclerView()
+        setupViewModel()
         setupListeners()
 
         viewModel.loadPosts()
