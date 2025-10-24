@@ -64,6 +64,9 @@ class ProfileActivity : AppCompatActivity() {
         viewModel.fetchInitialFollowState(userId)
         viewModel.fetchInitialProfileLikeState(userId)
 
+        // Observe user profile data
+        observeUserProfile()
+
         // Observe user posts
         observeUserPosts(userId)
 
@@ -146,6 +149,77 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
+     * Observes the user profile data from the ViewModel and updates the UI.
+     */
+    private fun observeUserProfile() {
+        viewModel.userProfile.observe(this) { state ->
+            when (state) {
+                is ProfileViewModel.State.Loading -> {
+                    // Show loading state if needed
+                }
+                is ProfileViewModel.State.Success -> {
+                    val user = state.data
+                    
+                    // Update UI with user data
+                    binding.ProfilePageTabUserInfoNickname.text = user.displayName ?: user.username ?: "Unknown"
+                    binding.ProfilePageTabUserInfoBioLayoutText.text = user.bio ?: "No bio available"
+                    binding.ProfilePageTabUserInfoUsername.text = "@${user.username ?: "unknown"}"
+                    binding.ProfilePageTabUserInfoStatus.text = user.status ?: "offline"
+                    binding.userUidLayoutText.text = user.uid
+                    
+                    // Format and display creation date
+                    val creationDate = user.joinDate ?: user.createdAt
+                    if (creationDate != null) {
+                        binding.joinDateLayoutText.text = formatDate(creationDate)
+                    } else {
+                        binding.joinDateLayoutText.text = "Unknown"
+                    }
+                    
+                    // Update follower counts
+                    binding.ProfilePageTabUserInfoFollowersCount.text = "${user.followersCount} followers"
+                    binding.ProfilePageTabUserInfoFollowingCount.text = "${user.followingCount} following"
+                    
+                    // Load profile image if available
+                    user.profileImageUrl?.let { imageUrl ->
+                        com.bumptech.glide.Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.ph_imgbluredsqure)
+                            .into(binding.ProfilePageTabUserInfoProfileImage)
+                    }
+                }
+                is ProfileViewModel.State.Error -> {
+                    // Handle error state
+                    binding.joinDateLayoutText.text = "Error loading data"
+                }
+            }
+        }
+    }
+
+    /**
+     * Formats a date string for display
+     */
+    private fun formatDate(dateString: String): String {
+        return try {
+            // Try to parse as timestamp first
+            val timestamp = dateString.toLongOrNull()
+            if (timestamp != null) {
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = timestamp
+                val year = calendar.get(Calendar.YEAR)
+                val month = calendar.get(Calendar.MONTH) + 1
+                val day = calendar.get(Calendar.DAY_OF_MONTH)
+                "$day/$month/$year"
+            } else {
+                // If not a timestamp, try to format the string directly
+                // Assuming it's in ISO format or similar
+                dateString.substring(0, minOf(10, dateString.length))
+            }
+        } catch (e: Exception) {
+            dateString
+        }
+    }
+
+    /**
      * Observes the LiveData streams from the [ProfileViewModel] to provide UI feedback.
      */
     private fun observeUIFeedback() {
@@ -168,6 +242,11 @@ class ProfileActivity : AppCompatActivity() {
      * @param currentUid The ID of the current user.
      */
     private fun setupUIListeners(userId: String, currentUid: String) {
+        // Show/hide buttons based on whether this is the current user's profile
+        val isOwnProfile = userId == currentUid
+        binding.btnEditProfile.visibility = if (isOwnProfile) View.VISIBLE else View.GONE
+        binding.btnFollow.visibility = if (isOwnProfile) View.GONE else View.VISIBLE
+        binding.btnMessage.visibility = if (isOwnProfile) View.GONE else View.VISIBLE
         binding.ProfilePageTopBarBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -187,7 +266,17 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         binding.btnEditProfile.setOnClickListener {
-            // Navigate to edit profile - placeholder for now
+            // Only allow editing if this is the current user's profile
+            if (userId == currentUid) {
+                try {
+                    val intent = Intent(this, ProfileEditActivity::class.java)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error opening profile editor: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(this, "You can only edit your own profile", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnMessage.setOnClickListener {

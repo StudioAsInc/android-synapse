@@ -53,6 +53,8 @@ class ProfileViewModel : ViewModel() {
                         displayName = result["display_name"] as? String ?: "",
                         profileImageUrl = result["profile_image_url"] as? String,
                         bio = result["bio"] as? String,
+                        joinDate = result["join_date"] as? String,
+                        createdAt = result["created_at"] as? String,
                         followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
                         followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
                         postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
