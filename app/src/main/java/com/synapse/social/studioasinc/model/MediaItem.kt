@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 /**
  * Represents a media item (image or video) for upload
  */
+@Serializable
 data class MediaItem(
     val id: String = "",
     val url: String,
@@ -18,6 +19,7 @@ data class MediaItem(
 /**
  * Types of media supported
  */
+@Serializable
 enum class MediaType {
     IMAGE,
     VIDEO

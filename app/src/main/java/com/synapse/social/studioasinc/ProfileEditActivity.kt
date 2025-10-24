@@ -439,19 +439,21 @@ class ProfileEditActivity : AppCompatActivity() {
                     else -> "hidden"
                 }
                 
-                val profileData = mapOf(
-                    "uid" to currentUserId,
-                    "email" to currentUser.email,
-                    "avatar" to userLastProfileUri,
-                    "profile_cover_image" to userLastCoverUri,
-                    "username" to mUsernameInput.text.toString().trim(),
-                    "nickname" to if (mNicknameInput.text.toString().trim().isEmpty()) "null" else mNicknameInput.text.toString().trim(),
-                    "biography" to if (mBiographyInput.text.toString().trim().isEmpty()) "null" else mBiographyInput.text.toString().trim(),
-                    "gender" to selectedGender
+                // Create User object with updated data
+                val updatedUser = com.synapse.social.studioasinc.model.User(
+                    uid = currentUserId,
+                    email = currentUser.email,
+                    avatar = userLastProfileUri.takeIf { it.isNotEmpty() },
+                    profileCoverImage = userLastCoverUri.takeIf { it.isNotEmpty() },
+                    username = mUsernameInput.text.toString().trim(),
+                    nickname = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    biography = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    gender = selectedGender,
+                    updatedAt = System.currentTimeMillis().toString()
                 )
                 
-                // Update user profile
-                val updateResult = databaseService.update("users", profileData, "uid", currentUserId)
+                // Update user profile using the new method
+                val updateResult = databaseService.updateWithObject("users", updatedUser, "uid", currentUserId)
                 
                 updateResult.fold(
                     onSuccess = {

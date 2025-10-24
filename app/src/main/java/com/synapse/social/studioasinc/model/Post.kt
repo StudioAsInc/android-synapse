@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 /**
  * Post model for Supabase
  */
+@Serializable
 data class Post(
     val id: String = "",
     @SerialName("post_id")
@@ -95,7 +96,17 @@ fun Post.toHashMap(): HashMap<String, Any?> {
         "postType" to postType,
         "postText" to postText,
         "postImage" to postImage,
-        "mediaItems" to mediaItems,
+        "mediaItems" to mediaItems?.map { mediaItem ->
+            mapOf(
+                "id" to mediaItem.id,
+                "url" to mediaItem.url,
+                "type" to mediaItem.type.name,
+                "thumbnailUrl" to mediaItem.thumbnailUrl,
+                "duration" to mediaItem.duration,
+                "size" to mediaItem.size,
+                "mimeType" to mediaItem.mimeType
+            )
+        },
         "postHideViewsCount" to postHideViewsCount,
         "postHideLikeCount" to postHideLikeCount,
         "postHideCommentsCount" to postHideCommentsCount,

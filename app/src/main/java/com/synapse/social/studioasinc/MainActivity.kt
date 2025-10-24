@@ -104,10 +104,10 @@ class MainActivity : AppCompatActivity() {
     private fun setupObservers() {
         // Check if Supabase is configured first
         if (!com.synapse.social.studioasinc.SupabaseClient.isConfigured()) {
-            showErrorDialog("Supabase Configuration Missing\n\nPlease configure your Supabase credentials in gradle.properties:\n\n" +
-                    "SUPABASE_URL=https://your-project.supabase.co\n" +
-                    "SUPABASE_ANON_KEY=your-anon-key-here\n\n" +
-                    "Contact the developer for proper setup.")
+            // Log the configuration issue for debugging
+            android.util.Log.e("MainActivity", "Supabase not configured - URL: ${BuildConfig.SUPABASE_URL}, Key length: ${BuildConfig.SUPABASE_ANON_KEY.length}")
+            
+            showErrorDialog("Supabase Configuration Missing\n\nThe app is not properly configured. Please contact the developer to set up the backend services.\n\nConfiguration needed:\n• Supabase URL\n• Supabase API Key\n\nThis is a development/deployment issue that needs to be resolved by the app developer.")
             return
         }
         
@@ -195,7 +195,12 @@ class MainActivity : AppCompatActivity() {
 
         dialogBinding.okButton.setOnClickListener {
             dialog.dismiss()
-            viewModel.checkUserAuthentication()
+            // If Supabase is not configured, close the app instead of retrying
+            if (!com.synapse.social.studioasinc.SupabaseClient.isConfigured()) {
+                finishAffinity()
+            } else {
+                viewModel.checkUserAuthentication()
+            }
         }
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)

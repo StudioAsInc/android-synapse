@@ -28,7 +28,7 @@ import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.model.toHashMap
+
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import com.synapse.social.studioasinc.util.UserMention
 import com.synapse.social.studioasinc.util.FileUtil
@@ -341,7 +341,7 @@ class CreatePostActivity : AppCompatActivity() {
         // Use coroutines for Supabase operations
         lifecycleScope.launch {
             try {
-                val result = databaseService.insert("posts", post.toHashMap())
+                val result = databaseService.insert("posts", post)
                 result.fold(
                     onSuccess = {
                         runOnUiThread {

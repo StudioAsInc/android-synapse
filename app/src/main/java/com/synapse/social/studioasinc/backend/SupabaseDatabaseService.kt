@@ -76,6 +76,41 @@ class SupabaseDatabaseService : IDatabaseService {
     }
     
     /**
+     * Update data in a table with serializable object
+     */
+    suspend fun updateWithObject(table: String, data: Any, filter: String, value: Any): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d("SupabaseDB", "Updating data in table '$table' with filter '$filter'='$value': $data")
+                
+                client.from(table).update(data) {
+                    filter { 
+                        eq(filter, value)
+                    }
+                }
+                android.util.Log.d("SupabaseDB", "Data updated successfully in table '$table'")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                android.util.Log.e("SupabaseDB", "Database update failed", e)
+                
+                // Provide more specific error messages
+                val errorMessage = when {
+                    e.message?.contains("serialization", ignoreCase = true) == true -> 
+                        "Data serialization error: ${e.message}"
+                    e.message?.contains("constraint", ignoreCase = true) == true -> 
+                        "Database constraint violation: ${e.message}"
+                    e.message?.contains("column", ignoreCase = true) == true -> 
+                        "Database column error: ${e.message}"
+                    e.message?.contains("table", ignoreCase = true) == true -> 
+                        "Database table error: ${e.message}"
+                    else -> e.message ?: "Database update failed"
+                }
+                Result.failure(Exception(errorMessage))
+            }
+        }
+    }
+    
+    /**
      * Select data from a table
      */
     override suspend fun select(table: String, columns: String): Result<List<Map<String, Any?>>> {
