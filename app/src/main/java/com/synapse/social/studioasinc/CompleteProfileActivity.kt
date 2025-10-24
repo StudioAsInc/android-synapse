@@ -12,9 +12,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.SupabaseStorageService
 import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonObject
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.appbar.MaterialToolbar
 import android.widget.ImageView
@@ -22,9 +24,7 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import com.synapse.social.studioasinc.model.UserProfile
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import android.view.View
-import kotlinx.serialization.json.jsonObject
 
 /**
  * CompleteProfileActivity - Migrated to Supabase
@@ -33,7 +33,6 @@ import kotlinx.serialization.json.jsonObject
 class CompleteProfileActivity : AppCompatActivity() {
 
     private lateinit var authService: SupabaseAuthenticationService
-    private lateinit var dbService: SupabaseDatabaseService
     private lateinit var storageService: SupabaseStorageService
     
     private lateinit var toolbar: MaterialToolbar
@@ -95,7 +94,6 @@ class CompleteProfileActivity : AppCompatActivity() {
 
     private fun initializeServices() {
         authService = SupabaseAuthenticationService()
-        dbService = SupabaseDatabaseService()
         storageService = SupabaseStorageService(SupabaseClient.client.storage)
     }
 
@@ -207,24 +205,23 @@ class CompleteProfileActivity : AppCompatActivity() {
     private fun checkUsernameAvailability(username: String) {
         lifecycleScope.launch {
             try {
-                val result = dbService.selectWhere(
-                    table = "users",
-                    columns = "username",
-                    filter = "username",
-                    value = username
-                )
+                val users = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("username")) {
+                        filter { 
+                            eq("username", username)
+                        }
+                    }.decodeList<JsonObject>()
                 
-                result.onSuccess { users ->
-                    if (users.isNotEmpty()) {
-                        usernameInput.error = "Username already taken"
-                        isUsernameValid = false
-                    } else {
-                        usernameInput.error = null
-                        isUsernameValid = true
-                    }
+                if (users.isNotEmpty()) {
+                    usernameInput.error = "Username already taken"
+                    isUsernameValid = false
+                } else {
+                    usernameInput.error = null
+                    isUsernameValid = true
                 }
             } catch (e: Exception) {
                 // Handle error silently or show message
+                android.util.Log.w("CompleteProfile", "Username check failed: ${e.message}")
             }
         }
     }
@@ -312,22 +309,22 @@ class CompleteProfileActivity : AppCompatActivity() {
                 // Debug logging
                 android.util.Log.d("CompleteProfile", "Inserting user profile: $userInsert")
 
-                // Insert user profile into Supabase
-                dbService.insert("users", userInsert).onSuccess {
+                // Insert user profile directly into Supabase
+                try {
+                    SupabaseClient.client.from("users").insert(userInsert)
                     Toast.makeText(this@CompleteProfileActivity, "Profile created successfully!", Toast.LENGTH_SHORT).show()
                     navigateToMain()
-                }.onFailure { error ->
+                } catch (error: Exception) {
                     android.util.Log.e("CompleteProfile", "=== DATABASE INSERTION FAILED ===")
                     android.util.Log.e("CompleteProfile", "Error message: ${error.message}")
                     android.util.Log.e("CompleteProfile", "Error type: ${error.javaClass.simpleName}")
                     android.util.Log.e("CompleteProfile", "Failed data: $userInsert")
                     android.util.Log.e("CompleteProfile", "Stack trace:", error)
                     
-                    // Show the actual error message - this should NOT be "Data format error"
                     val actualError = error.message ?: "Unknown database error"
                     android.util.Log.e("CompleteProfile", "Showing toast with message: $actualError")
                     
-                    Toast.makeText(this@CompleteProfileActivity, "NEW ERROR: $actualError", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@CompleteProfileActivity, "Database error: $actualError", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@CompleteProfileActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()

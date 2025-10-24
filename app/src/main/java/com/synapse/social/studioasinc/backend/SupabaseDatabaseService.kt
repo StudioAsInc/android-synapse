@@ -24,67 +24,9 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 android.util.Log.d("SupabaseDB", "Inserting data into table '$table': $data")
                 
-                // Convert data to Map if it's a serializable object
-                val insertData = when (data) {
-                    is Map<*, *> -> {
-                        // Clean and validate the map data
-                        val cleanedMap = mutableMapOf<String, Any?>()
-                        data.forEach { (key, value) ->
-                            val keyStr = key.toString()
-                            when (value) {
-                                null -> cleanedMap[keyStr] = null
-                                is String -> cleanedMap[keyStr] = value
-                                is Number -> cleanedMap[keyStr] = value
-                                is Boolean -> cleanedMap[keyStr] = value
-                                else -> {
-                                    android.util.Log.w("SupabaseDB", "Converting non-primitive value to string: $keyStr = $value")
-                                    cleanedMap[keyStr] = value.toString()
-                                }
-                            }
-                        }
-                        cleanedMap
-                    }
-                    else -> {
-                        // Use reflection to convert data class to map
-                        val dataMap = mutableMapOf<String, Any?>()
-                        try {
-                            data::class.java.declaredFields.forEach { field ->
-                                field.isAccessible = true
-                                val value = field.get(data)
-                                val fieldName = field.name
-                                when (value) {
-                                    null -> dataMap[fieldName] = null
-                                    is String -> dataMap[fieldName] = value
-                                    is Number -> dataMap[fieldName] = value
-                                    is Boolean -> dataMap[fieldName] = value
-                                    else -> {
-                                        android.util.Log.w("SupabaseDB", "Converting field $fieldName to string: $value")
-                                        dataMap[fieldName] = value.toString()
-                                    }
-                                }
-                            }
-                        } catch (reflectionError: Exception) {
-                            android.util.Log.e("SupabaseDB", "Reflection failed", reflectionError)
-                            throw Exception("Failed to serialize data object: ${reflectionError.message}")
-                        }
-                        dataMap
-                    }
-                }
-                
-                android.util.Log.d("SupabaseDB", "Cleaned insert data: $insertData")
-                
-                // Validate that we have a valid client
+                // Perform the insertion directly with the serializable object
                 try {
-                    // Simple test to ensure client is working
-                    android.util.Log.d("SupabaseDB", "Testing client connection...")
-                } catch (clientError: Exception) {
-                    android.util.Log.e("SupabaseDB", "Client validation failed", clientError)
-                    throw Exception("Supabase client not properly configured: ${clientError.message}")
-                }
-                
-                // Perform the insertion
-                try {
-                    client.from(table).insert(insertData)
+                    client.from(table).insert(data)
                     android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
                 } catch (insertError: Exception) {
                     android.util.Log.e("SupabaseDB", "Insert operation failed", insertError)
