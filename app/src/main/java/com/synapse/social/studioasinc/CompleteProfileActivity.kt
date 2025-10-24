@@ -152,9 +152,6 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
-        // Test Supabase configuration
-        SupabaseConfigTest.testConfiguration()
-        
         lifecycleScope.launch {
             try {
                 val currentUser = SupabaseClient.client.auth.currentUserOrNull()

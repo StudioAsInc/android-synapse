@@ -1,75 +1,99 @@
 package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.SupabaseClient
-import com.synapse.social.studioasinc.model.User
+import com.synapse.social.studioasinc.model.UserProfile
 import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 
 class UserRepository {
     
     private val client = SupabaseClient.client
     
-    private fun isSupabaseConfigured(): Boolean = SupabaseClient.isConfigured()
-    
-    suspend fun createUser(user: User): Result<User> {
+    suspend fun getUserById(userId: String): Result<UserProfile?> {
         return try {
-            if (!isSupabaseConfigured()) {
-                return Result.failure(Exception("Supabase not configured"))
-            }
-            val result = client.from("users").insert(user)
+            val user = client.from("users")
+                .select() {
+                    filter {
+                        eq("uid", userId)
+                    }
+                }
+                .decodeSingleOrNull<UserProfile>()
+            
             Result.success(user)
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "Failed to fetch user by ID: $userId", e)
             Result.failure(e)
         }
     }
     
-    suspend fun getUserById(userId: String): Result<User?> {
+    suspend fun getUserByUsername(username: String): Result<UserProfile?> {
         return try {
-            if (!isSupabaseConfigured()) {
-                return Result.success(null)
-            }
-            // Simplified query - will need proper implementation with actual Supabase setup
-            Result.success(null)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    suspend fun getUserByUsername(username: String): Result<User?> {
-        return try {
-            Result.success(null)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    suspend fun updateUser(userId: String, updates: Map<String, Any?>): Result<User> {
-        return try {
-            val user = User(uid = userId, email = "", username = "")
+            val user = client.from("users")
+                .select() {
+                    filter {
+                        eq("username", username)
+                    }
+                }
+                .decodeSingleOrNull<UserProfile>()
+            
             Result.success(user)
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "Failed to fetch user by username: $username", e)
             Result.failure(e)
         }
     }
     
-    suspend fun updateUserStatus(userId: String, status: String): Result<Unit> {
+    suspend fun updateUser(user: UserProfile): Result<UserProfile> {
         return try {
-            Result.success(Unit)
+            client.from("users")
+                .update(user) {
+                    filter {
+                        eq("uid", user.uid)
+                    }
+                }
+            
+            Result.success(user)
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "Failed to update user: ${user.uid}", e)
             Result.failure(e)
         }
     }
     
-    suspend fun searchUsers(query: String): Result<List<User>> {
+    suspend fun searchUsers(query: String, limit: Int = 20): Result<List<UserProfile>> {
         return try {
-            Result.success(emptyList())
+            val users = client.from("users")
+                .select() {
+                    filter {
+                        or {
+                            ilike("username", "%$query%")
+                            ilike("display_name", "%$query%")
+                        }
+                    }
+                    limit(limit.toLong())
+                }
+                .decodeList<UserProfile>()
+            
+            Result.success(users)
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "Failed to search users with query: $query", e)
             Result.failure(e)
         }
     }
     
-    fun observeUser(userId: String): Flow<User?> = flow {
-        emit(null)
+    suspend fun checkUsernameAvailability(username: String): Result<Boolean> {
+        return try {
+            val existingUser = client.from("users")
+                .select() {
+                    filter {
+                        eq("username", username)
+                    }
+                }
+                .decodeSingleOrNull<UserProfile>()
+            
+            // Return true if username is available (no existing user found)
+            Result.success(existingUser == null)
+        } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "Failed to check username availability: $username", e)
+            Result.failure(e)
+        }
     }
 }

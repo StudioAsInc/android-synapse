@@ -21,24 +21,70 @@ class PostRepository {
     
     suspend fun getPost(postId: String): Result<Post?> {
         return try {
-            Result.success(null)
+            val post = client.from("posts")
+                .select() {
+                    filter {
+                        eq("id", postId)
+                    }
+                }
+                .decodeSingleOrNull<Post>()
+            
+            Result.success(post)
         } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to fetch post", e)
             Result.failure(e)
         }
     }
     
     suspend fun getPosts(limit: Int = 20, offset: Int = 0): Result<List<Post>> {
         return try {
-            Result.success(emptyList())
+            android.util.Log.d("PostRepository", "Fetching posts from Supabase...")
+            
+            val posts = client.from("posts")
+                .select() {
+                    limit(limit.toLong())
+                }
+                .decodeList<Post>()
+                .sortedByDescending { it.timestamp }
+            
+            android.util.Log.d("PostRepository", "Successfully fetched ${posts.size} posts")
+            Result.success(posts)
         } catch (e: Exception) {
-            Result.failure(e)
+            android.util.Log.e("PostRepository", "Failed to fetch posts: ${e.message}", e)
+            
+            // If serialization fails, try to fetch as raw data
+            try {
+                android.util.Log.d("PostRepository", "Trying to fetch posts as raw data...")
+                val rawPosts = client.from("posts")
+                    .select() {
+                        limit(limit.toLong())
+                    }
+                    .decodeList<kotlinx.serialization.json.JsonObject>()
+                
+                android.util.Log.d("PostRepository", "Raw posts data: $rawPosts")
+                Result.success(emptyList()) // Return empty list for now
+            } catch (rawException: Exception) {
+                android.util.Log.e("PostRepository", "Raw fetch also failed: ${rawException.message}", rawException)
+                Result.failure(e)
+            }
         }
     }
     
     suspend fun getUserPosts(userId: String, limit: Int = 20): Result<List<Post>> {
         return try {
-            Result.success(emptyList())
+            val posts = client.from("posts")
+                .select() {
+                    filter {
+                        eq("authorUid", userId)
+                    }
+                    limit(limit.toLong())
+                }
+                .decodeList<Post>()
+                .sortedByDescending { it.timestamp }
+            
+            Result.success(posts)
         } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to fetch user posts", e)
             Result.failure(e)
         }
     }

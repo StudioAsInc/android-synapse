@@ -133,14 +133,13 @@ class HomeActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val userData = SupabaseClient.client.from("users")
-                        .select(columns = Columns.raw("avatar,profile_image_url")) {
-                            filter { eq("id", currentUser.id) }
+                        .select(columns = Columns.raw("profile_image_url")) {
+                            filter { eq("uid", currentUser.id) }
                         }.decodeSingleOrNull<JsonObject>()
                     
                     if (userData != null) {
-                        val avatar = userData["avatar"]?.toString()?.removeSurrounding("\"")
                         val profileImageUrl = userData["profile_image_url"]?.toString()?.removeSurrounding("\"")
-                        val imageUrl = avatar ?: profileImageUrl
+                        val imageUrl = profileImageUrl
                         
                         if (!imageUrl.isNullOrEmpty() && imageUrl != "null") {
                             Glide.with(applicationContext)
@@ -162,6 +161,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         MaterialAlertDialogBuilder(this@HomeActivity)
             .setTitle("Exit Synapse")

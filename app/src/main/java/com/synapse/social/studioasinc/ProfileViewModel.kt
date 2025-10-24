@@ -44,25 +44,31 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _userProfile.value = State.Loading
-                val result = dbService.selectById("users", uid, "*").getOrNull()
-                if (result != null) {
-                    val user = User(
-                        uid = result["uid"] as? String ?: "",
-                        username = result["username"] as? String ?: "",
-                        email = result["email"] as? String ?: "",
-                        displayName = result["display_name"] as? String ?: "",
-                        profileImageUrl = result["profile_image_url"] as? String,
-                        bio = result["bio"] as? String,
-                        joinDate = result["join_date"] as? String,
-                        createdAt = result["created_at"] as? String,
-                        followersCount = (result["followers_count"] as? String)?.toIntOrNull() ?: 0,
-                        followingCount = (result["following_count"] as? String)?.toIntOrNull() ?: 0,
-                        postsCount = (result["posts_count"] as? String)?.toIntOrNull() ?: 0
-                    )
-                    _userProfile.value = State.Success(user)
-                } else {
-                    _userProfile.value = State.Error("User not found")
-                }
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                userRepository.getUserById(uid)
+                    .onSuccess { userProfile ->
+                        if (userProfile != null) {
+                            val user = User(
+                                uid = userProfile.uid,
+                                username = userProfile.username,
+                                email = userProfile.email,
+                                displayName = userProfile.display_name,
+                                profileImageUrl = userProfile.profile_image_url,
+                                bio = userProfile.bio,
+                                joinDate = null, // Not in UserProfile model
+                                createdAt = null, // Not in UserProfile model
+                                followersCount = userProfile.followers_count,
+                                followingCount = userProfile.following_count,
+                                postsCount = userProfile.posts_count
+                            )
+                            _userProfile.value = State.Success(user)
+                        } else {
+                            _userProfile.value = State.Error("User not found")
+                        }
+                    }
+                    .onFailure { exception ->
+                        _userProfile.value = State.Error(exception.message ?: "Failed to load user profile")
+                    }
             } catch (e: Exception) {
                 _userProfile.value = State.Error(e.message ?: "Unknown error")
             }
@@ -76,18 +82,14 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _userPosts.value = State.Loading
-                val results = dbService.selectWithFilter("posts", "*", "author_uid", uid).getOrNull() ?: emptyList()
-                val posts = results.map { result ->
-                    Post(
-                        id = result["id"] as? String ?: "",
-                        authorUid = result["author_uid"] as? String ?: "",
-                        postText = result["content"] as? String ?: result["post_text"] as? String,
-                        timestamp = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
-                        likesCount = (result["likes_count"] as? String)?.toIntOrNull() ?: 0,
-                        commentsCount = (result["comments_count"] as? String)?.toIntOrNull() ?: 0
-                    )
-                }
-                _userPosts.value = State.Success(posts)
+                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
+                postRepository.getUserPosts(uid)
+                    .onSuccess { posts ->
+                        _userPosts.value = State.Success(posts)
+                    }
+                    .onFailure { exception ->
+                        _userPosts.value = State.Error(exception.message ?: "Failed to load posts")
+                    }
             } catch (e: Exception) {
                 _userPosts.value = State.Error(e.message ?: "Unknown error")
             }
