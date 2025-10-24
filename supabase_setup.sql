@@ -15,36 +15,26 @@
 -- 1. CORE TABLES
 -- =====================================================
 
--- Users Table - Core user information and profiles
-CREATE TABLE IF NOT EXISTS users (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    uid TEXT UNIQUE NOT NULL,
-    email TEXT,
-    username TEXT UNIQUE,
-    nickname TEXT,
-    display_name TEXT,
-    biography TEXT,
+-- Users Table - Core user information and profiles (Android App Compatible)
+-- Drop existing users table if it has wrong structure
+DROP TABLE IF EXISTS users CASCADE;
+
+CREATE TABLE users (
+    uid TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    display_name TEXT NOT NULL,
+    email TEXT NOT NULL,
     bio TEXT,
-    avatar TEXT,
     profile_image_url TEXT,
-    avatar_history_type TEXT DEFAULT 'local',
-    profile_cover_image TEXT,
-    account_premium BOOLEAN DEFAULT false,
-    user_level_xp INTEGER DEFAULT 500,
-    verify BOOLEAN DEFAULT false,
-    account_type TEXT DEFAULT 'user',
-    gender TEXT DEFAULT 'hidden',
-    banned BOOLEAN DEFAULT false,
-    status TEXT DEFAULT 'offline',
-    join_date TIMESTAMP DEFAULT NOW(),
-    one_signal_player_id TEXT,
-    last_seen TIMESTAMP,
-    chatting_with TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
     followers_count INTEGER DEFAULT 0,
     following_count INTEGER DEFAULT 0,
-    posts_count INTEGER DEFAULT 0
+    posts_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'offline',
+    account_type TEXT DEFAULT 'user',
+    verify BOOLEAN DEFAULT false,
+    banned BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Chats Table - Chat room information
@@ -108,28 +98,35 @@ CREATE TABLE IF NOT EXISTS chat_participants (
 -- 2. SOCIAL FEATURES TABLES
 -- =====================================================
 
--- Posts Table - Social media posts
-CREATE TABLE IF NOT EXISTS posts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    content TEXT,
-    media_urls TEXT[],
-    media_types TEXT[],
-    post_type TEXT DEFAULT 'text',
-    visibility TEXT DEFAULT 'public',
-    location TEXT,
-    tags TEXT[],
-    mentions TEXT[],
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+-- Posts Table - Social media posts (Android App Compatible)
+-- Drop existing posts table if it has wrong structure
+DROP TABLE IF EXISTS posts CASCADE;
+
+CREATE TABLE posts (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    key TEXT,
+    author_uid TEXT NOT NULL,
+    post_text TEXT,
+    post_image TEXT,
+    post_type TEXT DEFAULT 'TEXT',
+    post_hide_views_count TEXT DEFAULT 'false',
+    post_hide_like_count TEXT DEFAULT 'false',
+    post_hide_comments_count TEXT DEFAULT 'false',
+    post_disable_comments TEXT DEFAULT 'false',
+    post_visibility TEXT DEFAULT 'public',
+    publish_date TEXT,
+    timestamp BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
     likes_count INTEGER DEFAULT 0,
     comments_count INTEGER DEFAULT 0,
-    shares_count INTEGER DEFAULT 0,
     views_count INTEGER DEFAULT 0,
-    is_deleted BOOLEAN DEFAULT false,
-    is_edited BOOLEAN DEFAULT false,
-    edit_history JSONB
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Add foreign key constraint for posts table
+ALTER TABLE posts 
+ADD CONSTRAINT posts_author_uid_fkey 
+FOREIGN KEY (author_uid) REFERENCES users(uid) ON DELETE CASCADE;
 
 -- Comments Table - Post comments
 CREATE TABLE IF NOT EXISTS comments (
@@ -423,30 +420,28 @@ CREATE POLICY "Admins can manage chat participants" ON chat_participants
         )
     );
 
--- Posts Policies
+-- Posts Policies (Updated for Android App)
 DROP POLICY IF EXISTS "Users can view public posts" ON posts;
 CREATE POLICY "Users can view public posts" ON posts
     FOR SELECT USING (
-        NOT is_deleted AND (
-            visibility = 'public' OR
-            user_id = auth.uid()::text OR
-            (visibility = 'followers' AND EXISTS (
-                SELECT 1 FROM follows WHERE follower_id = auth.uid()::text AND following_id = user_id
-            ))
-        )
+        post_visibility = 'public' OR
+        author_uid = auth.uid()::text OR
+        (post_visibility = 'followers' AND EXISTS (
+            SELECT 1 FROM follows WHERE follower_id = auth.uid()::text AND following_id = author_uid
+        ))
     );
 
 DROP POLICY IF EXISTS "Users can create their own posts" ON posts;
 CREATE POLICY "Users can create their own posts" ON posts
-    FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+    FOR INSERT WITH CHECK (auth.uid()::text = author_uid);
 
 DROP POLICY IF EXISTS "Users can update their own posts" ON posts;
 CREATE POLICY "Users can update their own posts" ON posts
-    FOR UPDATE USING (auth.uid()::text = user_id);
+    FOR UPDATE USING (auth.uid()::text = author_uid);
 
 DROP POLICY IF EXISTS "Users can delete their own posts" ON posts;
 CREATE POLICY "Users can delete their own posts" ON posts
-    FOR DELETE USING (auth.uid()::text = user_id);
+    FOR DELETE USING (auth.uid()::text = author_uid);
 
 -- Comments Policies
 DROP POLICY IF EXISTS "Users can view comments on visible posts" ON comments;
@@ -574,11 +569,13 @@ CREATE INDEX IF NOT EXISTS idx_chat_participants_chat_id ON chat_participants(ch
 CREATE INDEX IF NOT EXISTS idx_chat_participants_user_id ON chat_participants(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_participants_role ON chat_participants(role);
 
--- Posts Table Indexes
-CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+-- Posts Table Indexes (Updated for Android App)
+CREATE INDEX IF NOT EXISTS idx_posts_author_uid ON posts(author_uid);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_posts_visibility ON posts(visibility);
-CREATE INDEX IF NOT EXISTS idx_posts_user_created ON posts(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_timestamp ON posts(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_visibility ON posts(post_visibility);
+CREATE INDEX IF NOT EXISTS idx_posts_author_created ON posts(author_uid, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_author_timestamp ON posts(author_uid, timestamp DESC);
 
 -- Comments Table Indexes
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
@@ -643,9 +640,9 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_TABLE_NAME = 'posts' THEN
         IF TG_OP = 'INSERT' THEN
-            UPDATE users SET posts_count = posts_count + 1 WHERE uid = NEW.user_id;
+            UPDATE users SET posts_count = posts_count + 1 WHERE uid = NEW.author_uid;
         ELSIF TG_OP = 'DELETE' THEN
-            UPDATE users SET posts_count = posts_count - 1 WHERE uid = OLD.user_id;
+            UPDATE users SET posts_count = posts_count - 1 WHERE uid = OLD.author_uid;
         END IF;
     ELSIF TG_TABLE_NAME = 'follows' THEN
         IF TG_OP = 'INSERT' THEN
@@ -1064,3 +1061,117 @@ FOR SELECT USING (
         AND chat_participants.user_id = auth.uid()::text
     )
 );
+
+-- =====================================================
+-- 14. ANDROID APP SPECIFIC STORAGE BUCKETS
+-- =====================================================
+
+-- Create storage buckets for Android app
+-- Note: These need to be created manually in Supabase Dashboard or via API
+-- 
+-- Required buckets:
+-- 1. 'avatars' - For profile images (public, 5MB limit)
+-- 2. 'post-images' - For post images (public, 10MB limit)  
+-- 3. 'post-videos' - For post videos (public, 50MB limit)
+--
+-- To create these buckets, run these commands in your Supabase Dashboard:
+--
+-- INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+-- VALUES 
+--   ('avatars', 'avatars', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp']),
+--   ('post-images', 'post-images', true, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp']),
+--   ('post-videos', 'post-videos', true, 52428800, ARRAY['video/mp4', 'video/webm', 'video/quicktime'])
+-- ON CONFLICT (id) DO NOTHING;
+
+-- Storage policies for Android app buckets
+DO $ 
+BEGIN
+    -- Avatars bucket policies
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload avatars'
+    ) THEN
+        CREATE POLICY "Users can upload avatars" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'avatars' AND
+                auth.uid()::text IS NOT NULL
+            );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view avatars'
+    ) THEN
+        CREATE POLICY "Anyone can view avatars" ON storage.objects
+            FOR SELECT USING (bucket_id = 'avatars');
+    END IF;
+
+    -- Post images bucket policies
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload post images'
+    ) THEN
+        CREATE POLICY "Users can upload post images" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'post-images' AND
+                auth.uid()::text IS NOT NULL
+            );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view post images'
+    ) THEN
+        CREATE POLICY "Anyone can view post images" ON storage.objects
+            FOR SELECT USING (bucket_id = 'post-images');
+    END IF;
+
+    -- Post videos bucket policies
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Users can upload post videos'
+    ) THEN
+        CREATE POLICY "Users can upload post videos" ON storage.objects
+            FOR INSERT WITH CHECK (
+                bucket_id = 'post-videos' AND
+                auth.uid()::text IS NOT NULL
+            );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'storage' 
+        AND tablename = 'objects' 
+        AND policyname = 'Anyone can view post videos'
+    ) THEN
+        CREATE POLICY "Anyone can view post videos" ON storage.objects
+            FOR SELECT USING (bucket_id = 'post-videos');
+    END IF;
+END $;
+
+-- =====================================================
+-- ANDROID APP SETUP COMPLETE
+-- =====================================================
+
+-- Your Supabase database is now configured for the Android Synapse app!
+-- 
+-- The tables now match the expected structure:
+-- - users table with uid, username, display_name, etc.
+-- - posts table with author_uid, post_text, post_image, etc.
+-- 
+-- Next steps:
+-- 1. Create the storage buckets mentioned above in Supabase Dashboard
+-- 2. Update your gradle.properties with:
+--    SUPABASE_URL=https://your-project.supabase.co
+--    SUPABASE_ANON_KEY=your-anon-key-here
+-- 3. Test the app - it should now work without column errors!

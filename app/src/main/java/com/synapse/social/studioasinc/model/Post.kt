@@ -10,19 +10,32 @@ import kotlinx.serialization.Serializable
 data class Post(
     val id: String = "",
     val key: String? = null,
+    @SerialName("author_uid")
     val authorUid: String = "",
+    @SerialName("post_text")
     val postText: String? = null,
+    @SerialName("post_image")
     var postImage: String? = null,
+    @SerialName("post_type")
     var postType: String? = null,
+    @SerialName("post_hide_views_count")
     val postHideViewsCount: String? = null,
+    @SerialName("post_hide_like_count")
     val postHideLikeCount: String? = null,
+    @SerialName("post_hide_comments_count")
     val postHideCommentsCount: String? = null,
+    @SerialName("post_disable_comments")
     val postDisableComments: String? = null,
+    @SerialName("post_visibility")
     val postVisibility: String? = null,
+    @SerialName("publish_date")
     val publishDate: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    @SerialName("likes_count")
     val likesCount: Int = 0,
+    @SerialName("comments_count")
     val commentsCount: Int = 0,
+    @SerialName("views_count")
     val viewsCount: Int = 0,
     @kotlinx.serialization.Transient
     var mediaItems: MutableList<MediaItem>? = null

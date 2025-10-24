@@ -98,7 +98,7 @@ class PostRepository {
             val posts = client.from("posts")
                 .select() {
                     filter {
-                        eq("authorUid", userId)
+                        eq("author_uid", userId)
                     }
                     limit(limit.toLong())
                 }
