@@ -10,6 +10,14 @@ class UserRepository {
     
     suspend fun getUserById(userId: String): Result<UserProfile?> {
         return try {
+            android.util.Log.d("UserRepository", "Fetching user by ID: $userId")
+            
+            // First check if Supabase is configured
+            if (!SupabaseClient.isConfigured()) {
+                android.util.Log.e("UserRepository", "Supabase is not configured properly")
+                return Result.failure(Exception("Supabase not configured. Please update gradle.properties with your Supabase credentials."))
+            }
+            
             val user = client.from("users")
                 .select() {
                     filter {
@@ -18,10 +26,23 @@ class UserRepository {
                 }
                 .decodeSingleOrNull<UserProfile>()
             
+            android.util.Log.d("UserRepository", "User fetch result: $user")
             Result.success(user)
         } catch (e: Exception) {
             android.util.Log.e("UserRepository", "Failed to fetch user by ID: $userId", e)
-            Result.failure(e)
+            
+            // Provide more specific error messages
+            val errorMessage = when {
+                e.message?.contains("relation \"users\" does not exist", ignoreCase = true) == true -> 
+                    "Database table 'users' does not exist. Please create the users table in your Supabase database."
+                e.message?.contains("connection", ignoreCase = true) == true -> 
+                    "Cannot connect to Supabase. Check your internet connection and Supabase configuration."
+                e.message?.contains("unauthorized", ignoreCase = true) == true -> 
+                    "Unauthorized access to Supabase. Check your API key and RLS policies."
+                else -> "Database error: ${e.message}"
+            }
+            
+            Result.failure(Exception(errorMessage))
         }
     }
     

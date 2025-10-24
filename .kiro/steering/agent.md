@@ -59,9 +59,10 @@ Synapse is an open-source social media platform built with Kotlin for Android, u
 
 ### Communication Guidelines
 - Keep responses concise and actionable
-- Avoid creating unnecessary documentation files
+- **NEVER create .md files without explicit user permission**
 - Focus on code implementation over lengthy explanations
 - Provide specific, technical guidance when needed
+- Avoid creating unnecessary documentation files
 
 ## Dependencies & Libraries
 - Supabase BOM for backend services

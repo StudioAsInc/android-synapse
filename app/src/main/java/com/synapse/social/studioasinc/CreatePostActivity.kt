@@ -338,26 +338,25 @@ class CreatePostActivity : AppCompatActivity() {
     private fun savePostToDatabase(post: Post) {
         val postKey = post.key ?: return
         
-        // Use coroutines for Supabase operations
+        // Use PostRepository for Supabase operations
         lifecycleScope.launch {
             try {
-                val result = databaseService.insert("posts", post)
-                result.fold(
-                    onSuccess = {
+                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
+                postRepository.createPost(post)
+                    .onSuccess {
                         runOnUiThread {
                             showLoading(false)
                             Toast.makeText(this@CreatePostActivity, "Post created successfully!", Toast.LENGTH_SHORT).show()
                             handleMentions(post.postText, postKey)
                             finish()
                         }
-                    },
-                    onFailure = { exception ->
+                    }
+                    .onFailure { exception ->
                         runOnUiThread {
                             showLoading(false)
                             Toast.makeText(this@CreatePostActivity, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
                         }
                     }
-                )
             } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)

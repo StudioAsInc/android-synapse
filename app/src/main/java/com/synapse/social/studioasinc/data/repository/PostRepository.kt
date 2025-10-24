@@ -12,10 +12,34 @@ class PostRepository {
     
     suspend fun createPost(post: Post): Result<Post> {
         return try {
+            android.util.Log.d("PostRepository", "Creating post: $post")
+            
+            // Check if Supabase is configured
+            if (!SupabaseClient.isConfigured()) {
+                android.util.Log.e("PostRepository", "Supabase is not configured properly")
+                return Result.failure(Exception("Supabase not configured. Please update gradle.properties with your Supabase credentials."))
+            }
+            
             client.from("posts").insert(post)
+            android.util.Log.d("PostRepository", "Post created successfully")
             Result.success(post)
         } catch (e: Exception) {
-            Result.failure(e)
+            android.util.Log.e("PostRepository", "Failed to create post", e)
+            
+            // Provide more specific error messages
+            val errorMessage = when {
+                e.message?.contains("relation \"posts\" does not exist", ignoreCase = true) == true -> 
+                    "Database table 'posts' does not exist. Please create the posts table in your Supabase database."
+                e.message?.contains("violates foreign key constraint", ignoreCase = true) == true -> 
+                    "User profile not found. Please complete your profile first."
+                e.message?.contains("connection", ignoreCase = true) == true -> 
+                    "Cannot connect to Supabase. Check your internet connection and Supabase configuration."
+                e.message?.contains("unauthorized", ignoreCase = true) == true -> 
+                    "Unauthorized access to Supabase. Check your API key and RLS policies."
+                else -> "Database error: ${e.message}"
+            }
+            
+            Result.failure(Exception(errorMessage))
         }
     }
     

@@ -128,6 +128,8 @@ class ProfileActivity : AppCompatActivity() {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
+                    android.util.Log.e("ProfileActivity", "Posts load error: ${state.message}")
+                    Toast.makeText(this, "Posts error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
             binding.ProfilePageSwipeLayout.isRefreshing = false
@@ -190,6 +192,8 @@ class ProfileActivity : AppCompatActivity() {
                 is ProfileViewModel.State.Error -> {
                     // Handle error state
                     binding.joinDateLayoutText.text = "Error loading data"
+                    android.util.Log.e("ProfileActivity", "Profile load error: ${state.message}")
+                    Toast.makeText(this, "Profile error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

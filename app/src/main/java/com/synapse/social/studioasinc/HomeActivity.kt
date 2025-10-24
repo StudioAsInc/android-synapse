@@ -65,6 +65,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
+        // Test Supabase configuration on app start
+        testSupabaseConnection()
+        
         viewPager.adapter = ViewPagerAdapter(this)
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
@@ -158,6 +161,38 @@ class HomeActivity : AppCompatActivity() {
             }
         } else {
             navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
+        }
+    }
+
+    private fun testSupabaseConnection() {
+        lifecycleScope.launch {
+            try {
+                android.util.Log.d("HomeActivity", "Testing Supabase connection...")
+                
+                if (!SupabaseClient.isConfigured()) {
+                    android.util.Log.e("HomeActivity", "❌ Supabase not configured")
+                    android.widget.Toast.makeText(this@HomeActivity, 
+                        "Supabase not configured. Please update gradle.properties", 
+                        android.widget.Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                
+                // Try to query users table
+                val result = SupabaseClient.client.from("users")
+                    .select() {
+                        limit(1)
+                    }
+                    .decodeList<kotlinx.serialization.json.JsonObject>()
+                
+                android.util.Log.d("HomeActivity", "✅ Supabase connection successful")
+                android.util.Log.d("HomeActivity", "Found ${result.size} users in database")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("HomeActivity", "❌ Supabase connection failed: ${e.message}")
+                android.widget.Toast.makeText(this@HomeActivity, 
+                    "Database connection failed: ${e.message}", 
+                    android.widget.Toast.LENGTH_LONG).show()
+            }
         }
     }
 
