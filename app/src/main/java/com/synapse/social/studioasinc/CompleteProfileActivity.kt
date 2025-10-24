@@ -44,6 +44,7 @@ class CompleteProfileActivity : AppCompatActivity() {
     
     private var selectedImageUri: Uri? = null
     private var isUsernameValid = false
+    private var isCheckingUsername = false
 
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -120,7 +121,13 @@ class CompleteProfileActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
-                validateUsername(s.toString())
+                val username = s.toString().trim()
+                if (username.isNotEmpty()) {
+                    validateUsername(username)
+                } else {
+                    usernameInput.error = null
+                    isUsernameValid = false
+                }
             }
         })
 
@@ -180,6 +187,18 @@ class CompleteProfileActivity : AppCompatActivity() {
                 usernameInput.error = "Username must be less than 25 characters"
                 isUsernameValid = false
             }
+            username.startsWith("_") || username.startsWith(".") -> {
+                usernameInput.error = "Username cannot start with underscore or dot"
+                isUsernameValid = false
+            }
+            username.endsWith("_") || username.endsWith(".") -> {
+                usernameInput.error = "Username cannot end with underscore or dot"
+                isUsernameValid = false
+            }
+            username.contains("..") || username.contains("__") -> {
+                usernameInput.error = "Username cannot contain consecutive dots or underscores"
+                isUsernameValid = false
+            }
             !username.matches(Regex("[a-z0-9_.]+")) -> {
                 usernameInput.error = "Username can only contain lowercase letters, numbers, dots and underscores"
                 isUsernameValid = false
@@ -193,6 +212,9 @@ class CompleteProfileActivity : AppCompatActivity() {
     }
 
     private fun checkUsernameAvailability(username: String) {
+        if (isCheckingUsername) return
+        
+        isCheckingUsername = true
         lifecycleScope.launch {
             try {
                 val users = SupabaseClient.client.from("users")
@@ -203,7 +225,8 @@ class CompleteProfileActivity : AppCompatActivity() {
                     }.decodeList<JsonObject>()
                 
                 if (users.isNotEmpty()) {
-                    usernameInput.error = "Username already taken"
+                    val suggestions = generateUsernameSuggestions(username)
+                    usernameInput.error = "Username already taken. Try: ${suggestions.joinToString(", ")}"
                     isUsernameValid = false
                 } else {
                     usernameInput.error = null
@@ -212,8 +235,33 @@ class CompleteProfileActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 // Handle error silently or show message
                 android.util.Log.w("CompleteProfile", "Username check failed: ${e.message}")
+                // Don't mark as invalid if check fails - let user proceed
+                usernameInput.error = null
+                isUsernameValid = true
+            } finally {
+                isCheckingUsername = false
             }
         }
+    }
+
+    private fun generateUsernameSuggestions(baseUsername: String): List<String> {
+        val suggestions = mutableListOf<String>()
+        val random = (100..999).random()
+        
+        // Add number suffix
+        suggestions.add("${baseUsername}$random")
+        
+        // Add underscore and number
+        if (!baseUsername.endsWith("_")) {
+            suggestions.add("${baseUsername}_$random")
+        }
+        
+        // Add dot and number if not ending with dot
+        if (!baseUsername.endsWith(".")) {
+            suggestions.add("${baseUsername}.$random")
+        }
+        
+        return suggestions.take(2) // Return max 2 suggestions
     }
 
     private fun completeProfile() {
@@ -224,10 +272,14 @@ class CompleteProfileActivity : AppCompatActivity() {
 
         android.util.Log.d("CompleteProfile", "Username: $username, Nickname: $nickname, Bio: $bio")
 
-        if (!isUsernameValid) {
+        if (!isUsernameValid || username.isEmpty()) {
             Toast.makeText(this, "Please enter a valid username", Toast.LENGTH_SHORT).show()
             return
         }
+
+        // Disable the button to prevent double submission
+        completeButton.isEnabled = false
+        completeButton.text = "Creating Profile..."
 
         lifecycleScope.launch {
             try {
@@ -307,6 +359,40 @@ class CompleteProfileActivity : AppCompatActivity() {
                     posts_count = userProfile.posts_count
                 )
                 
+                // Check if user profile already exists for this UID
+                val existingUserProfile = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("uid")) {
+                        filter { 
+                            eq("uid", currentUser.id)
+                        }
+                    }.decodeList<JsonObject>()
+                
+                if (existingUserProfile.isNotEmpty()) {
+                    Toast.makeText(this@CompleteProfileActivity, "Profile already exists! Redirecting to main app.", Toast.LENGTH_SHORT).show()
+                    navigateToMain()
+                    return@launch
+                }
+
+                // Final username availability check before insertion
+                val existingUsers = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("username")) {
+                        filter { 
+                            eq("username", username)
+                        }
+                    }.decodeList<JsonObject>()
+                
+                if (existingUsers.isNotEmpty()) {
+                    runOnUiThread {
+                        val suggestions = generateUsernameSuggestions(username)
+                        usernameInput.error = "This username is already taken. Try: ${suggestions.joinToString(", ")}"
+                        isUsernameValid = false
+                        completeButton.isEnabled = true
+                        completeButton.text = "Complete Profile"
+                    }
+                    Toast.makeText(this@CompleteProfileActivity, "Username already taken. Please choose a different username.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
                 // Debug logging
                 android.util.Log.d("CompleteProfile", "Inserting user profile: $userInsert")
 
@@ -322,19 +408,55 @@ class CompleteProfileActivity : AppCompatActivity() {
                     android.util.Log.e("CompleteProfile", "Failed data: $userInsert")
                     android.util.Log.e("CompleteProfile", "Stack trace:", error)
                     
-                    val actualError = error.message ?: "Unknown database error"
-                    android.util.Log.e("CompleteProfile", "Showing toast with message: $actualError")
+                    // Handle specific error cases
+                    val errorMessage = when {
+                        error.message?.contains("duplicate key value violates unique constraint \"users_username_key\"", ignoreCase = true) == true -> {
+                            // Username is already taken - update UI to show this
+                            runOnUiThread {
+                                usernameInput.error = "This username is already taken. Please choose a different one."
+                                isUsernameValid = false
+                            }
+                            "Username already taken. Please choose a different username."
+                        }
+                        error.message?.contains("duplicate key", ignoreCase = true) == true && error.message?.contains("username", ignoreCase = true) == true -> {
+                            runOnUiThread {
+                                usernameInput.error = "This username is already taken. Please choose a different one."
+                                isUsernameValid = false
+                            }
+                            "Username already taken. Please choose a different username."
+                        }
+                        error.message?.contains("violates unique constraint", ignoreCase = true) == true -> {
+                            "This username or email is already in use. Please try different values."
+                        }
+                        error.message?.contains("network", ignoreCase = true) == true -> {
+                            "Network error. Please check your connection and try again."
+                        }
+                        error.message?.contains("permission", ignoreCase = true) == true -> {
+                            "Permission denied. Please try signing in again."
+                        }
+                        else -> "Failed to create profile: ${error.message ?: "Unknown error"}"
+                    }
                     
-                    Toast.makeText(this@CompleteProfileActivity, "Database error: $actualError", Toast.LENGTH_LONG).show()
+                    android.util.Log.e("CompleteProfile", "Showing toast with message: $errorMessage")
+                    Toast.makeText(this@CompleteProfileActivity, errorMessage, Toast.LENGTH_LONG).show()
+                    
+                    // Re-enable the button
+                    runOnUiThread {
+                        completeButton.isEnabled = true
+                        completeButton.text = "Complete Profile"
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@CompleteProfileActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                // Re-enable the button
+                completeButton.isEnabled = true
+                completeButton.text = "Complete Profile"
             }
         }
     }
 
     private fun navigateToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, HomeActivity::class.java))
         finish()
     }
 
