@@ -2,6 +2,7 @@
 *.keystore
 keystore.properties
 .env
+mcp.json
 
 # Build artifacts
 build/
