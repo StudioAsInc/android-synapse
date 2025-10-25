@@ -1,6 +1,7 @@
 # Keystores & credentials
 *.keystore
 keystore.properties
+.env
 
 # Build artifacts
 build/

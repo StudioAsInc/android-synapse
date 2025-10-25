@@ -1,31 +1,28 @@
 {
   "mcpServers": {
-    "fetch": {
-      "command": "uvx",
+    "supabase": {
+      "command": "npx",
       "args": [
-        "mcp-server-fetch"
+        "@supabase/mcp-server-supabase"
       ],
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       },
       "disabled": false,
       "autoApprove": [
-        "*",
-        "fetch"
-      ]
-    },
-    "supabase": {
-      "command": "uvx",
-      "args": [
-        "mcp-server-supabase"
-      ],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "INFO"
-      },
-      "disabled": true,
-      "autoApprove": [
         "*"
       ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
+      },
+      "disabled": false
     }
   }
 }
