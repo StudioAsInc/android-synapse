@@ -41,10 +41,10 @@ class ChatActivity : AppCompatActivity() {
     private var isGroup: Boolean = false
     private var replyMessageId: String? = null
     
-    private val messagesList = ArrayList<Map<String, Any?>>()
+    private val messagesList = ArrayList<HashMap<String, Any?>>()
     private var otherUserData: Map<String, Any?>? = null
     private var currentUserId: String? = null
-    private var messagesAdapter: ChatAdapter? = null
+    private var messagesAdapter: SimpleChatAdapter? = null
 
     // UI Components
     private var recyclerView: RecyclerView? = null
