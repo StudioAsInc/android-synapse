@@ -51,7 +51,7 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
       },
-      "disabled": false,
+      "disabled": true,
       "disabledTools": [
         "create_or_update_file",
         "search_repositories",

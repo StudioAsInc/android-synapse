@@ -183,4 +183,13 @@
     <!-- Colors for User Profile Status -->
     <color name="online_green">#2196F3</color>
     <color name="offline_gray">#757575</color>
+    
+    <!-- Follow feature colors -->
+    <color name="primary">@color/md_theme_primary</color>
+    <color name="primary_dark">@color/md_theme_primary_mediumContrast</color>
+    <color name="background">@color/md_theme_background</color>
+    <color name="surface">@color/md_theme_surface</color>
+    <color name="text_primary">@color/md_theme_onBackground</color>
+    <color name="text_secondary">@color/md_theme_onSurfaceVariant</color>
+    <color name="gray_light">@color/md_theme_surfaceVariant</color>
 </resources>

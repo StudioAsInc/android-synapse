@@ -85,6 +85,7 @@ class InboxChatsFragment : Fragment() {
                         }
                     },
                     onFailure = { error ->
+                        android.util.Log.e("InboxChatsFragment", "Failed to load chats", error)
                         showLoading(false)
                         showEmpty("Failed to load chats: ${error.message}")
                     }

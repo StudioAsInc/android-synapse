@@ -150,6 +150,81 @@ class ProfileActivity : AppCompatActivity() {
         // More options dialog - placeholder for now
     }
 
+    private fun showFollowOptionsDialog(userId: String) {
+        val options = arrayOf("Followers", "Following")
+        AlertDialog.Builder(this)
+            .setTitle("View")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Show followers
+                        val intent = Intent(this, FollowListActivity::class.java)
+                        intent.putExtra(FollowListActivity.EXTRA_USER_ID, userId)
+                        intent.putExtra(FollowListActivity.EXTRA_LIST_TYPE, FollowListActivity.TYPE_FOLLOWERS)
+                        startActivity(intent)
+                    }
+                    1 -> {
+                        // Show following
+                        val intent = Intent(this, FollowListActivity::class.java)
+                        intent.putExtra(FollowListActivity.EXTRA_USER_ID, userId)
+                        intent.putExtra(FollowListActivity.EXTRA_LIST_TYPE, FollowListActivity.TYPE_FOLLOWING)
+                        startActivity(intent)
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun startDirectChat(targetUserId: String, currentUserId: String) {
+        if (targetUserId == currentUserId) {
+            Toast.makeText(this, "You cannot message yourself", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                // Show loading
+                val progressDialog = android.app.ProgressDialog(this@ProfileActivity).apply {
+                    setMessage("Starting chat...")
+                    setCancelable(false)
+                    show()
+                }
+
+                val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
+                val result = chatService.getOrCreateDirectChat(currentUserId, targetUserId)
+                
+                result.fold(
+                    onSuccess = { chatId ->
+                        progressDialog.dismiss()
+                        
+                        // Navigate to ChatActivity
+                        val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
+                        intent.putExtra("chatId", chatId)
+                        intent.putExtra("uid", targetUserId)
+                        intent.putExtra("isGroup", false)
+                        startActivity(intent)
+                    },
+                    onFailure = { error ->
+                        progressDialog.dismiss()
+                        android.util.Log.e("ProfileActivity", "Failed to create chat", error)
+                        Toast.makeText(
+                            this@ProfileActivity, 
+                            "Failed to start chat: ${error.message}", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileActivity", "Error starting chat", e)
+                Toast.makeText(
+                    this@ProfileActivity, 
+                    "Error starting chat: ${e.message}", 
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     /**
      * Observes the user profile data from the ViewModel and updates the UI.
      */
@@ -294,11 +369,11 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         binding.btnMessage.setOnClickListener {
-            // Navigate to chat - placeholder for now
+            startDirectChat(userId, currentUid)
         }
 
         binding.ProfilePageTabUserInfoFollowsDetails.setOnClickListener {
-            // Navigate to follows list - placeholder for now
+            showFollowOptionsDialog(userId)
         }
 
         binding.ProfilePageTabUserInfoProfileImage.setOnClickListener {

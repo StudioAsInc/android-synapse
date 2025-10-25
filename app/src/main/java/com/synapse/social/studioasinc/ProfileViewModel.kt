@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseFollowService
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.model.Post
 import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
@@ -18,6 +19,7 @@ class ProfileViewModel : ViewModel() {
 
     private val dbService = SupabaseDatabaseService()
     private val authService = SupabaseAuthenticationService()
+    private val followService = SupabaseFollowService()
 
     private val _userProfile = MutableLiveData<State<User>>()
     val userProfile: LiveData<State<User>> = _userProfile
@@ -108,22 +110,24 @@ class ProfileViewModel : ViewModel() {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 val isCurrentlyFollowing = _isFollowing.value ?: false
                 
-                if (isCurrentlyFollowing) {
-                    // Unfollow
-                    dbService.delete("follows", "follower_uid", currentUid)
+                val result = if (isCurrentlyFollowing) {
+                    followService.unfollowUser(currentUid, targetUid)
                 } else {
-                    // Follow
-                    val followData = mapOf(
-                        "follower_uid" to currentUid,
-                        "following_uid" to targetUid,
-                        "created_at" to System.currentTimeMillis().toString()
-                    )
-                    dbService.insert("follows", followData)
+                    followService.followUser(currentUid, targetUid)
                 }
                 
-                _isFollowing.value = !isCurrentlyFollowing
+                result.fold(
+                    onSuccess = {
+                        _isFollowing.value = !isCurrentlyFollowing
+                        // Refresh user profile to update follower counts
+                        loadUserProfile(targetUid)
+                    },
+                    onFailure = { error ->
+                        android.util.Log.e("ProfileViewModel", "Failed to toggle follow", error)
+                    }
+                )
             } catch (e: Exception) {
-                // Handle error
+                android.util.Log.e("ProfileViewModel", "Error toggling follow", e)
             }
         }
     }
@@ -222,9 +226,18 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
-                val follows = dbService.selectWithFilter("follows", "*", "follower_uid", currentUid).getOrNull() ?: emptyList()
-                _isFollowing.value = follows.isNotEmpty()
+                val result = followService.isFollowing(currentUid, targetUid)
+                result.fold(
+                    onSuccess = { isFollowing ->
+                        _isFollowing.value = isFollowing
+                    },
+                    onFailure = { error ->
+                        android.util.Log.e("ProfileViewModel", "Failed to check follow state", error)
+                        _isFollowing.value = false
+                    }
+                )
             } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error fetching follow state", e)
                 _isFollowing.value = false
             }
         }

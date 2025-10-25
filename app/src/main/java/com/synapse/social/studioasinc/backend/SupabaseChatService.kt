@@ -23,6 +23,10 @@ class SupabaseChatService {
     suspend fun getOrCreateDirectChat(userId1: String, userId2: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
+                // Check if Supabase is properly configured
+                if (!SupabaseClient.isConfigured()) {
+                    return@withContext Result.failure(Exception("Supabase not configured"))
+                }
                 // Generate consistent chat ID for direct chats
                 val chatId = if (userId1 < userId2) {
                     "dm_${userId1}_${userId2}"
@@ -97,6 +101,10 @@ class SupabaseChatService {
     ): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
+                // Check if Supabase is properly configured
+                if (!SupabaseClient.isConfigured()) {
+                    return@withContext Result.failure(Exception("Supabase not configured"))
+                }
                 val messageId = UUID.randomUUID().toString()
                 val timestamp = System.currentTimeMillis()
                 
@@ -157,6 +165,10 @@ class SupabaseChatService {
     suspend fun getMessages(chatId: String, limit: Int = 50): Result<List<Map<String, Any?>>> {
         return withContext(Dispatchers.IO) {
             try {
+                // Check if Supabase is properly configured
+                if (!SupabaseClient.isConfigured()) {
+                    return@withContext Result.success(emptyList())
+                }
                 val result = client.from("messages")
                     .select(columns = Columns.raw("*")) {
                         filter {
@@ -187,6 +199,14 @@ class SupabaseChatService {
     suspend fun getUserChats(userId: String): Result<List<Map<String, Any?>>> {
         return withContext(Dispatchers.IO) {
             try {
+                android.util.Log.d("SupabaseChatService", "Getting chats for user: $userId")
+                
+                // Check if Supabase is properly configured
+                if (!SupabaseClient.isConfigured()) {
+                    android.util.Log.w("SupabaseChatService", "Supabase not configured, returning empty chat list")
+                    return@withContext Result.success(emptyList())
+                }
+                
                 // Get chat IDs where user is a participant
                 val participantResult = client.from("chat_participants")
                     .select(columns = Columns.raw("chat_id")) {
@@ -194,13 +214,18 @@ class SupabaseChatService {
                     }
                     .decodeList<JsonObject>()
                 
+                android.util.Log.d("SupabaseChatService", "Found ${participantResult.size} participant records")
+                
                 val chatIds = participantResult.map { 
                     it["chat_id"].toString().removeSurrounding("\"") 
                 }
                 
                 if (chatIds.isEmpty()) {
+                    android.util.Log.d("SupabaseChatService", "No chats found for user")
                     return@withContext Result.success(emptyList())
                 }
+                
+                android.util.Log.d("SupabaseChatService", "Chat IDs: $chatIds")
                 
                 // Get chat details
                 val chatsResult = client.from("chats")
@@ -209,9 +234,10 @@ class SupabaseChatService {
                             isIn("chat_id", chatIds)
                             eq("is_active", true)
                         }
-
                     }
                     .decodeList<JsonObject>()
+                
+                android.util.Log.d("SupabaseChatService", "Found ${chatsResult.size} active chats")
                 
                 val chats = chatsResult.map { jsonObject ->
                     jsonObject.toMap().mapValues { (_, value) ->
@@ -221,6 +247,7 @@ class SupabaseChatService {
                 
                 Result.success(chats)
             } catch (e: Exception) {
+                android.util.Log.e("SupabaseChatService", "Failed to load chats", e)
                 Result.failure(e)
             }
         }
