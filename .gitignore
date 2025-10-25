@@ -2,7 +2,7 @@
 *.keystore
 keystore.properties
 .env
-mcp.json
+.kiro/settings/mcp.json
 
 # Build artifacts
 build/
