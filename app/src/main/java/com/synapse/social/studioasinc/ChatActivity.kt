@@ -75,13 +75,26 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
-        // Initialize UI components - create minimal UI if layout is missing
+        // Initialize UI components from layout
         try {
-            recyclerView = RecyclerView(this)
-            messageInput = EditText(this)
-            sendButton = ImageButton(this)
+            recyclerView = findViewById(R.id.ChatMessagesListRecycler)
+            messageInput = findViewById(R.id.message_et)
+            sendButton = findViewById(R.id.btn_sendMessage)
+            backButton = findViewById(R.id.back)
+            chatNameText = findViewById(R.id.topProfileLayoutUsername)
+            chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
+            
+            // Setup RecyclerView
+            recyclerView?.layoutManager = LinearLayoutManager(this).apply {
+                stackFromEnd = true
+            }
+            
+            // Initialize adapter
+            messagesAdapter = SimpleChatAdapter(messagesList)
+            recyclerView?.adapter = messagesAdapter
+            
         } catch (e: Exception) {
-            // Handle missing UI components gracefully
+            android.util.Log.e("ChatActivity", "UI initialization error: ${e.message}")
             Toast.makeText(this, "UI initialization error", Toast.LENGTH_SHORT).show()
         }
     }
@@ -91,6 +104,19 @@ class ChatActivity : AppCompatActivity() {
         sendButton?.setOnClickListener {
             sendMessage()
         }
+        
+        backButton?.setOnClickListener {
+            onBackPressed()
+        }
+        
+        // Setup message input listener
+        messageInput?.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                sendButton?.isEnabled = !s.isNullOrEmpty()
+            }
+        })
     }
 
     private fun loadChatData() {
@@ -136,9 +162,27 @@ class ChatActivity : AppCompatActivity() {
                 result.fold(
                     onSuccess = { messages ->
                         messagesList.clear()
-                        messagesList.addAll(messages)
+                        // Convert messages to HashMap format for adapter
+                        messages.forEach { message ->
+                            val messageMap = HashMap<String, Any?>()
+                            messageMap["id"] = message["id"]
+                            messageMap["chat_id"] = message["chat_id"]
+                            messageMap["sender_id"] = message["sender_id"]
+                            messageMap["uid"] = message["sender_id"] // For compatibility
+                            messageMap["content"] = message["content"]
+                            messageMap["message_text"] = message["content"] // For compatibility
+                            messageMap["message_type"] = message["message_type"]
+                            messageMap["created_at"] = message["created_at"]
+                            messageMap["push_date"] = message["created_at"] // For compatibility
+                            messageMap["is_deleted"] = message["is_deleted"]
+                            messageMap["is_edited"] = message["is_edited"]
+                            messagesList.add(messageMap)
+                        }
+                        
                         messagesAdapter?.notifyDataSetChanged()
-                        recyclerView?.scrollToPosition(messagesList.size - 1)
+                        if (messagesList.isNotEmpty()) {
+                            recyclerView?.scrollToPosition(messagesList.size - 1)
+                        }
                         
                         // Mark messages as read
                         if (currentUserId != null) {
@@ -244,10 +288,6 @@ class ChatActivity : AppCompatActivity() {
                 )
             } catch (e: Exception) {
                 showError("Error sending message: ${e.message}")
-                messageInput?.setText("")
-                Toast.makeText(this@ChatActivity, "Message sending not implemented yet", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                showError("Failed to send message: ${e.message}")
             }
         }
     }

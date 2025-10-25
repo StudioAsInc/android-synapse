@@ -1,127 +1,31 @@
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	android:id="@+id/_main">
-
-	<LinearLayout
-		android:id="@+id/linear2"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:background="?attr/colorSurface"
-		android:orientation="vertical">
-
-		<HorizontalScrollView
-			android:id="@+id/hscroll1"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:scrollbars="none">
-
-			<com.google.android.material.chip.ChipGroup
-				android:id="@+id/linear9"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:background="@android:color/transparent"
-				android:orientation="horizontal"
-				app:singleSelection="true"
-				android:animateLayoutChanges="true">
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/chip_all"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="All"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="true" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear10"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Chats"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear29"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Groups"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear30"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Channels"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear31"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Bots"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear32"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="Community"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false" />
-
-				<com.google.android.material.chip.Chip
-					android:id="@+id/linear33"
-					android:layout_width="wrap_content"
-					android:layout_height="match_parent"
-					android:layout_marginLeft="8dp"
-					android:layout_marginBottom="3dp"
-					android:orientation="vertical"
-					android:text="AI"
-					style="@style/Widget.Material3.Chip.Filter"
-					android:checked="false"
-					android:animateLayoutChanges="true" />
-			</com.google.android.material.chip.ChipGroup>
-		</HorizontalScrollView>
-
-		<androidx.recyclerview.widget.RecyclerView
-			android:id="@+id/inboxListRecyclerView"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:background="@android:color/transparent"
-			tools:listitem="@layout/inbox_msg_list_cv_synapse" />
-	</LinearLayout>
-
-	<com.google.android.material.floatingactionbutton.FloatingActionButton
-		android:id="@+id/fab_new_group"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_gravity="bottom|end"
-		android:layout_margin="16dp"
-		app:srcCompat="@drawable/ic_add_48px" />
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chatsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp" />
+    
+    <TextView
+        android:id="@+id/emptyView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="No chats yet"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="16sp"
+        android:visibility="gone" />
+    
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+</FrameLayout>
