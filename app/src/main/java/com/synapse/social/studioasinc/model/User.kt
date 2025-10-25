@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * User model for Supabase
+ * User model for Supabase - matches the actual database schema
  */
 @Serializable
 data class User(
@@ -13,10 +13,12 @@ data class User(
     val email: String? = null,
     val username: String? = null,
     val nickname: String? = null,
+    @SerialName("display_name")
     val displayName: String? = null,
     val biography: String? = null,
     val bio: String? = null,
     val avatar: String? = null,
+    @SerialName("profile_image_url")
     val profileImageUrl: String? = null,
     @SerialName("avatar_history_type")
     val avatarHistoryType: String = "local",
@@ -44,8 +46,10 @@ data class User(
     val createdAt: String? = null,
     @SerialName("updated_at")
     val updatedAt: String? = null,
-    // Additional properties for compatibility
+    @SerialName("followers_count")
     val followersCount: Int = 0,
+    @SerialName("following_count")
     val followingCount: Int = 0,
+    @SerialName("posts_count")
     val postsCount: Int = 0
 )

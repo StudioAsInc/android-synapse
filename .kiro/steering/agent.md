@@ -4,78 +4,103 @@ inclusion: always
 
 # Synapse Android Development Guidelines
 
-## Project Overview
-Synapse is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. The app focuses on privacy, real-time communication, and a lightweight user experience.
+Synapse is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. Focus on privacy, real-time communication, and lightweight user experience.
 
-## Code Style & Architecture
+## Build Configuration
 
-### Kotlin Conventions
-- Use Kotlin idioms and modern language features
-- Prefer data classes for model objects
-- Use coroutines for asynchronous operations
-- Follow Android KTX extensions where applicable
-- Use sealed classes for state management
+- Target SDK 32, Min SDK 26, Compile SDK 36
+- Use Gradle Kotlin DSL where applicable
+- Maintain separate debug and release configurations
+- Apply ProGuard rules for release builds
+- Supabase credentials managed through BuildConfig (never hardcode)
 
-### Architecture Patterns
-- Follow MVVM architecture with ViewModels and LiveData/StateFlow
-- Use Repository pattern for data layer abstraction
-- Implement dependency injection where appropriate
+## Architecture
+
+**Pattern**: MVVM with Repository pattern
+- ViewModels manage UI state using StateFlow/LiveData
+- Repositories abstract data layer (Supabase, local storage)
 - Separate UI logic from business logic
 
-### Android Development Standards
-- Target SDK 32, Min SDK 26, Compile SDK 36
-- Use ViewBinding for UI components
-- Follow Material Design guidelines
-- Implement proper lifecycle management
+
+**File Organization**:
+- Group by feature, not layer (e.g., `auth/`, `profile/`, `feed/`)
+- Standard Android project structure under `app/src/main/`
+- Resources named with feature prefix: `activity_profile_edit.xml`, `ic_profile_avatar.png`
+
+## Kotlin Style
+
+- Use data classes for models
+- Prefer sealed classes for state management
+- Use coroutines for async operations (avoid callbacks)
+- Leverage Kotlin extensions and Android KTX
+- Null safety: use `?.`, `?:`, and `!!` sparingly with justification
+
+## Android UI
+
+- Use ViewBinding (no findViewById or synthetic imports)
+- Follow Material Design 3 guidelines
+- Implement proper lifecycle awareness (collect flows in lifecycleScope)
 - Use Navigation Component for app navigation
+- Handle configuration changes properly
 
-## Backend Integration
+## Supabase Integration
 
-### Supabase Configuration
-- All Supabase credentials are managed through BuildConfig
-- Use environment variables for sensitive configuration
-- Implement proper error handling for network operations
+**Client Initialization**:
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = BuildConfig.SUPABASE_URL,
+    supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+) {
+    install(GoTrue)
+    install(Postgrest)
+    install(Storage)
+    install(Realtime)
+}
+```
+
+**Authentication**:
+- Use GoTrue for auth (signInWith, signOut, currentSession)
+- Handle session state changes with auth.sessionStatus flow
+- Store tokens securely (never in SharedPreferences)
+- Implement proper error handling for network failures
+
+**Data Operations**:
 - Use Kotlin serialization for JSON parsing
+- Implement retry logic for network operations
+- Handle Supabase errors gracefully with user-friendly messages
+- Use Postgrest for database queries with proper error handling
 
-### Authentication
-- Leverage Supabase GoTrue for user authentication
-- Handle different auth states (debug vs release)
-- Implement proper session management
-- Follow security best practices for token handling
+**Storage**:
+- Use Supabase Storage for media uploads
+- Implement progress tracking for large uploads
+- Handle file compression before upload
+- Use signed URLs for private content
 
-## Development Practices
+## Dependencies
 
-### Build Configuration
-- Use Gradle Kotlin DSL where possible
-- Maintain separate debug and release configurations
-- Keep dependencies up to date
-- Use ProGuard rules for release builds
+Core libraries in use:
+- Supabase BOM (auth, database, storage, realtime)
+- AndroidX (lifecycle, navigation, viewmodel)
+- Kotlin Coroutines
+- Glide (image loading)
+- Material Components
+- Markwon (markdown rendering)
+- Media3 (media playback)
 
-### File Organization
-- Follow standard Android project structure
-- Group related functionality in packages
-- Use meaningful naming conventions
-- Keep resources organized and named consistently
+## Security
 
-### Communication Guidelines
-- Keep responses concise and actionable
-- **NEVER create .md files without explicit user permission**
-- Focus on code implementation over lengthy explanations
-- Provide specific, technical guidance when needed
-- Avoid creating unnecessary documentation files
+- Never commit credentials or API keys
+- Use BuildConfig for environment-specific values
+- Implement proper permission handling (runtime permissions)
+- Validate user input before sending to backend
+- Use HTTPS for all network requests
+- Follow Android security best practices for data storage
 
-## Dependencies & Libraries
-- Supabase BOM for backend services
-- AndroidX libraries for modern Android development
-- Glide for image loading
-- Material Components for UI
-- Kotlin Coroutines for async operations
-- Markwon for markdown rendering
-- Media3 for media playback
+## AI Assistant Guidelines
 
-## Security & Privacy
-- Implement end-to-end encryption for sensitive data
-- Follow Android security best practices
-- Properly handle user permissions
-- Secure storage for sensitive information
-- Regular security audits and updates
+- Provide concise, actionable responses
+- Focus on code implementation over explanations
+- **Never create .md files without explicit permission**
+- When suggesting changes, provide specific file paths and code snippets
+- Check for syntax errors before suggesting code
+- Consider Android lifecycle and memory leaks in solutions

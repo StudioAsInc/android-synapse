@@ -268,8 +268,7 @@ class ProfilePhotoHistoryActivity : AppCompatActivity() {
                     // If this is the current avatar, reset it
                     if (uri == currentAvatarUri) {
                         val userData = mapOf(
-                            "avatar" to "null",
-                            "avatar_history_type" to "local"
+                            "avatar" to "null"
                         )
                         databaseService.update("users", userData, "uid", currentUserId)
                         currentAvatarUri = "null"
@@ -389,16 +388,14 @@ class ProfilePhotoHistoryActivity : AppCompatActivity() {
                         if (imageUrl == currentAvatarUri) {
                             // Remove current avatar
                             val userData: Map<String, Any?> = mapOf(
-                                "avatar" to "null",
-                                "avatar_history_type" to "local"
+                                "avatar" to "null"
                             )
                             databaseService.update("users", userData, "uid", currentUserId)
                             currentAvatarUri = "null"
                         } else {
                             // Set as current avatar
                             val userData: Map<String, Any?> = mapOf(
-                                "avatar" to imageUrl,
-                                "avatar_history_type" to (item["type"]?.toString() ?: "url")
+                                "avatar" to imageUrl
                             )
                             databaseService.update("users", userData, "uid", currentUserId)
                             currentAvatarUri = imageUrl

@@ -31,8 +31,9 @@ import java.util.*
 
 class ChatActivity : AppCompatActivity() {
 
-    // Using Supabase client directly
-    private val chatHelper = ChatHelper(this)
+    // Supabase services
+    private val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
+    private val databaseService = com.synapse.social.studioasinc.backend.SupabaseDatabaseService()
     
     private var synapseLoadingDialog: ProgressDialog? = null
     private var chatId: String? = null
@@ -40,14 +41,18 @@ class ChatActivity : AppCompatActivity() {
     private var isGroup: Boolean = false
     private var replyMessageId: String? = null
     
-    private val messagesList = ArrayList<HashMap<String, Any?>>()
+    private val messagesList = ArrayList<Map<String, Any?>>()
     private var otherUserData: Map<String, Any?>? = null
     private var currentUserId: String? = null
+    private var messagesAdapter: ChatAdapter? = null
 
     // UI Components
     private var recyclerView: RecyclerView? = null
     private var messageInput: EditText? = null
     private var sendButton: ImageButton? = null
+    private var backButton: ImageView? = null
+    private var chatNameText: TextView? = null
+    private var chatAvatarImage: ImageView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,10 +100,19 @@ class ChatActivity : AppCompatActivity() {
                 
                 // Create or get chat if needed
                 if (chatId == null && otherUserId != null && currentUserId != null) {
-                    // TODO: Implement direct Supabase chat room creation
-                    chatId = "${currentUserId}_${otherUserId}" // Temporary chat ID
-                    loadMessages()
-                    loadUserData()
+                    // Create or get direct chat
+                    val result = chatService.getOrCreateDirectChat(currentUserId!!, otherUserId!!)
+                    result.fold(
+                        onSuccess = { createdChatId ->
+                            chatId = createdChatId
+                            loadMessages()
+                            loadUserData()
+                        },
+                        onFailure = { error ->
+                            showError("Failed to create chat: ${error.message}")
+                            loadingDialog(false)
+                        }
+                    )
                 } else if (chatId != null) {
                     loadMessages()
                     loadUserData()
@@ -114,14 +128,72 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadMessages() {
-        // TODO: Implement direct Supabase message loading
-        messagesList.clear()
-        loadingDialog(false)
+        lifecycleScope.launch {
+            try {
+                if (chatId == null) return@launch
+                
+                val result = chatService.getMessages(chatId!!)
+                result.fold(
+                    onSuccess = { messages ->
+                        messagesList.clear()
+                        messagesList.addAll(messages)
+                        messagesAdapter?.notifyDataSetChanged()
+                        recyclerView?.scrollToPosition(messagesList.size - 1)
+                        
+                        // Mark messages as read
+                        if (currentUserId != null) {
+                            chatService.markMessagesAsRead(chatId!!, currentUserId!!)
+                        }
+                        
+                        loadingDialog(false)
+                    },
+                    onFailure = { error ->
+                        showError("Failed to load messages: ${error.message}")
+                        loadingDialog(false)
+                    }
+                )
+            } catch (e: Exception) {
+                showError("Error loading messages: ${e.message}")
+                loadingDialog(false)
+            }
+        }
     }
     
     private fun loadUserData() {
-        // TODO: Implement direct Supabase user data loading
-        loadingDialog(false)
+        lifecycleScope.launch {
+            try {
+                if (otherUserId == null) return@launch
+                
+                val result = databaseService.selectWhere("users", "*", "uid", otherUserId!!)
+                result.fold(
+                    onSuccess = { users ->
+                        otherUserData = users.firstOrNull()
+                        updateChatHeader()
+                    },
+                    onFailure = { error ->
+                        android.util.Log.e("ChatActivity", "Failed to load user data: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error loading user data: ${e.message}")
+            }
+        }
+    }
+    
+    private fun updateChatHeader() {
+        otherUserData?.let { userData ->
+            chatNameText?.text = userData["username"]?.toString() ?: "User"
+            
+            val avatarUrl = userData["avatar"]?.toString()
+            if (!avatarUrl.isNullOrEmpty() && avatarUrl != "null") {
+                chatAvatarImage?.let { imageView ->
+                    Glide.with(this)
+                        .load(Uri.parse(avatarUrl))
+                        .circleCrop()
+                        .into(imageView)
+                }
+            }
+        }
     }
     
     private fun showError(message: String) {
@@ -145,9 +217,33 @@ class ChatActivity : AppCompatActivity() {
         val messageText = messageInput?.text?.toString()?.trim()
         if (messageText.isNullOrEmpty()) return
         
+        if (chatId == null || currentUserId == null) {
+            showError("Chat not initialized")
+            return
+        }
+        
         lifecycleScope.launch {
             try {
-                // TODO: Implement direct Supabase message sending
+                val result = chatService.sendMessage(
+                    chatId = chatId!!,
+                    senderId = currentUserId!!,
+                    content = messageText,
+                    messageType = "text",
+                    replyToId = replyMessageId
+                )
+                
+                result.fold(
+                    onSuccess = {
+                        messageInput?.text?.clear()
+                        replyMessageId = null
+                        loadMessages() // Reload to show new message
+                    },
+                    onFailure = { error ->
+                        showError("Failed to send message: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                showError("Error sending message: ${e.message}")
                 messageInput?.setText("")
                 Toast.makeText(this@ChatActivity, "Message sending not implemented yet", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {

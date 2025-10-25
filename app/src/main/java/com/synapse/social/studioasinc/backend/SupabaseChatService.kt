@@ -1,295 +1,265 @@
 package com.synapse.social.studioasinc.backend
 
-import com.synapse.social.studioasinc.model.Chat
-import com.synapse.social.studioasinc.model.Message
-import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import java.util.*
 
 /**
  * Supabase Chat Service
- * Handles all chat-related operations using Supabase Realtime and Database
+ * Handles chat and messaging operations
  */
 class SupabaseChatService {
-
-    private val dbService = SupabaseDatabaseService()
-    private val authService = SupabaseAuthenticationService()
-
+    
+    private val client = SupabaseClient.client
+    private val databaseService = SupabaseDatabaseService()
+    
     /**
-     * Creates a new chat between users
+     * Create or get existing chat between two users
      */
-    suspend fun createChat(participantUids: List<String>, chatName: String? = null): Result<String> {
-        return try {
-            val currentUid = authService.getCurrentUserId() ?: return Result.failure(Exception("Not authenticated"))
-            
-            val chatData = mapOf(
-                "id" to generateChatId(),
-                "name" to chatName,
-                "created_by" to currentUid,
-                "created_at" to System.currentTimeMillis().toString(),
-                "updated_at" to System.currentTimeMillis().toString(),
-                "is_group" to (participantUids.size > 2).toString(),
-                "participant_count" to participantUids.size.toString()
-            )
-            
-            val chatId = chatData["id"] as String
-            dbService.insert("chats", chatData)
-            
-            // Add participants
-            participantUids.forEach { uid ->
-                val participantData = mapOf(
-                    "chat_id" to chatId,
-                    "user_id" to uid,
-                    "joined_at" to System.currentTimeMillis().toString(),
-                    "role" to if (uid == currentUid) "admin" else "member"
+    suspend fun getOrCreateDirectChat(userId1: String, userId2: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Generate consistent chat ID for direct chats
+                val chatId = if (userId1 < userId2) {
+                    "dm_${userId1}_${userId2}"
+                } else {
+                    "dm_${userId2}_${userId1}"
+                }
+                
+                // Check if chat exists
+                val existingChat = databaseService.selectWhere("chats", "*", "chat_id", chatId)
+                
+                existingChat.fold(
+                    onSuccess = { chats ->
+                        if (chats.isNotEmpty()) {
+                            // Chat exists
+                            Result.success(chatId)
+                        } else {
+                            // Create new chat
+                            val chatData = mapOf(
+                                "chat_id" to chatId,
+                                "is_group" to false,
+                                "created_by" to userId1,
+                                "participants_count" to 2,
+                                "is_active" to true
+                            )
+                            
+                            databaseService.insert("chats", chatData).fold(
+                                onSuccess = {
+                                    // Add participants
+                                    addChatParticipant(chatId, userId1)
+                                    addChatParticipant(chatId, userId2)
+                                    Result.success(chatId)
+                                },
+                                onFailure = { error -> Result.failure(error) }
+                            )
+                        }
+                    },
+                    onFailure = { error -> Result.failure(error) }
                 )
-                dbService.insert("chat_participants", participantData)
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-            
-            Result.success(chatId)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
-
+    
     /**
-     * Sends a message in a chat
+     * Add participant to chat
      */
-    suspend fun sendMessage(
-        chatId: String,
-        content: String,
-        messageType: String = "text",
-        mediaUrl: String? = null
-    ): Result<String> {
-        return try {
-            val currentUid = authService.getCurrentUserId() ?: return Result.failure(Exception("Not authenticated"))
-            
-            val messageData = mapOf(
-                "id" to generateMessageId(),
-                "chat_id" to chatId,
-                "sender_id" to currentUid,
-                "content" to content,
-                "message_type" to messageType,
-                "media_url" to mediaUrl,
-                "created_at" to System.currentTimeMillis().toString(),
-                "updated_at" to System.currentTimeMillis().toString(),
-                "is_deleted" to "false",
-                "is_edited" to "false"
-            )
-            
-            val messageId = messageData["id"] as String
-            dbService.insert("messages", messageData)
-            
-            // Update chat's last message
-            val chatUpdateData = mapOf(
-                "last_message_id" to messageId,
-                "last_message_at" to System.currentTimeMillis().toString(),
-                "updated_at" to System.currentTimeMillis().toString()
-            )
-            dbService.update("chats", chatUpdateData, "id", chatId)
-            
-            Result.success(messageId)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Gets messages for a chat
-     */
-    suspend fun getMessages(chatId: String, limit: Int = 50, offset: Int = 0): Result<List<Message>> {
-        return try {
-            val results = dbService.select("messages", "*").getOrNull() ?: emptyList()
-            
-            val messages = results
-                .filter { (it["chat_id"] as? String) == chatId && (it["is_deleted"] as? String) != "true" }
-                .sortedByDescending { (it["created_at"] as? String)?.toLongOrNull() ?: 0L }
-                .drop(offset)
-                .take(limit)
-                .map { result ->
-                    Message(
-                        id = result["id"] as? String ?: "",
-                        chatId = result["chat_id"] as? String ?: "",
-                        senderId = result["sender_id"] as? String ?: "",
-                        content = result["content"] as? String ?: "",
-                        messageType = result["message_type"] as? String ?: "text",
-                        mediaUrl = result["media_url"] as? String,
-                        createdAt = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
-                        updatedAt = (result["updated_at"] as? String)?.toLongOrNull() ?: 0L,
-                        isDeleted = (result["is_deleted"] as? String) == "true",
-                        isEdited = (result["is_edited"] as? String) == "true"
-                    )
-                }
-            
-            Result.success(messages)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Gets user's chats
-     */
-    suspend fun getUserChats(userId: String): Result<List<Chat>> {
-        return try {
-            // Get chat IDs where user is a participant
-            val participantResults = dbService.selectWithFilter("chat_participants", "*", "user_id", userId).getOrNull() ?: emptyList()
-            val chatIds = participantResults.mapNotNull { it["chat_id"] as? String }
-            
-            if (chatIds.isEmpty()) {
-                return Result.success(emptyList())
-            }
-            
-            // Get chat details
-            val chatResults = dbService.select("chats", "*").getOrNull() ?: emptyList()
-            val chats = chatResults
-                .filter { chatIds.contains(it["id"] as? String) }
-                .map { result ->
-                    Chat(
-                        id = result["id"] as? String ?: "",
-                        name = result["name"] as? String,
-                        createdBy = result["created_by"] as? String ?: "",
-                        createdAt = (result["created_at"] as? String)?.toLongOrNull() ?: 0L,
-                        updatedAt = (result["updated_at"] as? String)?.toLongOrNull() ?: 0L,
-                        isGroup = (result["is_group"] as? String) == "true",
-                        participantCount = (result["participant_count"] as? String)?.toIntOrNull() ?: 0,
-                        lastMessageId = result["last_message_id"] as? String,
-                        lastMessageAt = (result["last_message_at"] as? String)?.toLongOrNull()
-                    )
-                }
-                .sortedByDescending { it.lastMessageAt ?: it.updatedAt }
-            
-            Result.success(chats)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Deletes a message
-     */
-    suspend fun deleteMessage(messageId: String): Result<Unit> {
-        return try {
-            val updateData = mapOf(
-                "is_deleted" to "true",
-                "updated_at" to System.currentTimeMillis().toString()
-            )
-            dbService.update("messages", updateData, "id", messageId)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Edits a message
-     */
-    suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
-        return try {
-            val updateData = mapOf(
-                "content" to newContent,
-                "is_edited" to "true",
-                "updated_at" to System.currentTimeMillis().toString()
-            )
-            dbService.update("messages", updateData, "id", messageId)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Gets chat participants
-     */
-    suspend fun getChatParticipants(chatId: String): Result<List<String>> {
-        return try {
-            val results = dbService.selectWithFilter("chat_participants", "*", "chat_id", chatId).getOrNull() ?: emptyList()
-            val participantIds = results.mapNotNull { it["user_id"] as? String }
-            Result.success(participantIds)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Adds a participant to a chat
-     */
-    suspend fun addParticipant(chatId: String, userId: String): Result<Unit> {
+    private suspend fun addChatParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
             val participantData = mapOf(
                 "chat_id" to chatId,
                 "user_id" to userId,
-                "joined_at" to System.currentTimeMillis().toString(),
-                "role" to "member"
+                "role" to "member",
+                "is_admin" to false,
+                "can_send_messages" to true
             )
-            dbService.insert("chat_participants", participantData)
-            
-            // Update participant count
-            val participants = getChatParticipants(chatId).getOrNull() ?: emptyList()
-            val updateData = mapOf(
-                "participant_count" to participants.size.toString(),
-                "updated_at" to System.currentTimeMillis().toString()
-            )
-            dbService.update("chats", updateData, "id", chatId)
-            
-            Result.success(Unit)
+            databaseService.insert("chat_participants", participantData)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
-
+    
     /**
-     * Removes a participant from a chat
+     * Send a message
      */
-    suspend fun removeParticipant(chatId: String, userId: String): Result<Unit> {
+    suspend fun sendMessage(
+        chatId: String,
+        senderId: String,
+        content: String,
+        messageType: String = "text",
+        replyToId: String? = null
+    ): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val messageId = UUID.randomUUID().toString()
+                val timestamp = System.currentTimeMillis()
+                
+                val messageData = mutableMapOf<String, Any?>(
+                    "chat_id" to chatId,
+                    "sender_id" to senderId,
+                    "content" to content,
+                    "message_type" to messageType,
+                    "created_at" to timestamp,
+                    "updated_at" to timestamp,
+                    "delivery_status" to "sent",
+                    "is_deleted" to false,
+                    "is_edited" to false
+                )
+                
+                if (replyToId != null) {
+                    messageData["reply_to_id"] = replyToId
+                }
+                
+                databaseService.insert("messages", messageData).fold(
+                    onSuccess = {
+                        // Update chat's last message
+                        updateChatLastMessage(chatId, content, timestamp, senderId)
+                        Result.success(messageId)
+                    },
+                    onFailure = { error -> Result.failure(error) }
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Update chat's last message info
+     */
+    private suspend fun updateChatLastMessage(
+        chatId: String,
+        lastMessage: String,
+        timestamp: Long,
+        senderId: String
+    ): Result<Unit> {
         return try {
-            dbService.delete("chat_participants", "chat_id", chatId)
-            
-            // Update participant count
-            val participants = getChatParticipants(chatId).getOrNull() ?: emptyList()
             val updateData = mapOf(
-                "participant_count" to participants.size.toString(),
-                "updated_at" to System.currentTimeMillis().toString()
+                "last_message" to lastMessage,
+                "last_message_time" to timestamp,
+                "last_message_sender" to senderId
             )
-            dbService.update("chats", updateData, "id", chatId)
-            
-            Result.success(Unit)
+            databaseService.update("chats", updateData, "chat_id", chatId)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
-
+    
     /**
-     * Observes messages in a chat (real-time)
+     * Get messages for a chat
      */
-    fun observeMessages(chatId: String): Flow<List<Message>> = flow {
-        // For now, we'll poll for messages
-        // In a full implementation, you'd use Supabase Realtime subscriptions
-        while (true) {
-            val messages = getMessages(chatId).getOrNull() ?: emptyList()
-            emit(messages)
-            kotlinx.coroutines.delay(1000) // Poll every second
+    suspend fun getMessages(chatId: String, limit: Int = 50): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val result = client.from("messages")
+                    .select(columns = Columns.raw("*")) {
+                        filter {
+                            eq("chat_id", chatId)
+                            eq("is_deleted", false)
+                        }
+
+                        limit(limit.toLong())
+                    }
+                    .decodeList<JsonObject>()
+                
+                val messages = result.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }.reversed() // Reverse to show oldest first
+                
+                Result.success(messages)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
-
+    
     /**
-     * Observes user's chats (real-time)
+     * Get user's chats
      */
-    fun observeUserChats(userId: String): Flow<List<Chat>> = flow {
-        // For now, we'll poll for chats
-        // In a full implementation, you'd use Supabase Realtime subscriptions
-        while (true) {
-            val chats = getUserChats(userId).getOrNull() ?: emptyList()
-            emit(chats)
-            kotlinx.coroutines.delay(2000) // Poll every 2 seconds
+    suspend fun getUserChats(userId: String): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Get chat IDs where user is a participant
+                val participantResult = client.from("chat_participants")
+                    .select(columns = Columns.raw("chat_id")) {
+                        filter { eq("user_id", userId) }
+                    }
+                    .decodeList<JsonObject>()
+                
+                val chatIds = participantResult.map { 
+                    it["chat_id"].toString().removeSurrounding("\"") 
+                }
+                
+                if (chatIds.isEmpty()) {
+                    return@withContext Result.success(emptyList())
+                }
+                
+                // Get chat details
+                val chatsResult = client.from("chats")
+                    .select(columns = Columns.raw("*")) {
+                        filter {
+                            isIn("chat_id", chatIds)
+                            eq("is_active", true)
+                        }
+
+                    }
+                    .decodeList<JsonObject>()
+                
+                val chats = chatsResult.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }
+                
+                Result.success(chats)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
-
-    private fun generateChatId(): String {
-        return "chat_${System.currentTimeMillis()}_${(1000..9999).random()}"
+    
+    /**
+     * Mark messages as read
+     */
+    suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Update last_read_at for the participant
+                val updateData = mapOf(
+                    "last_read_at" to System.currentTimeMillis()
+                )
+                
+                client.from("chat_participants").update(updateData) {
+                    filter {
+                        eq("chat_id", chatId)
+                        eq("user_id", userId)
+                    }
+                }
+                
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
-
-    private fun generateMessageId(): String {
-        return "msg_${System.currentTimeMillis()}_${(1000..9999).random()}"
+    
+    /**
+     * Delete a message
+     */
+    suspend fun deleteMessage(messageId: String): Result<Unit> {
+        return try {
+            val updateData = mapOf("is_deleted" to true)
+            databaseService.update("messages", updateData, "id", messageId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

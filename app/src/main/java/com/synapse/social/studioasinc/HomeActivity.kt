@@ -108,9 +108,8 @@ class HomeActivity : AppCompatActivity() {
         }
 
         navInboxIc.setOnClickListener {
-            // TODO: Enable when InboxActivity is migrated
-            // val intent = Intent(applicationContext, InboxActivity::class.java)
-            // startActivity(intent)
+            val intent = Intent(applicationContext, InboxActivity::class.java)
+            startActivity(intent)
         }
 
         navProfileIc.setOnClickListener {

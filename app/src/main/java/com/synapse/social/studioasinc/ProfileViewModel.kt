@@ -45,27 +45,30 @@ class ProfileViewModel : ViewModel() {
             try {
                 _userProfile.value = State.Loading
                 val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
-                userRepository.getUserById(uid)
-                    .onSuccess { userProfile ->
-                        if (userProfile != null) {
-                            val user = User(
-                                uid = userProfile.uid,
-                                username = userProfile.username,
-                                email = userProfile.email,
-                                displayName = userProfile.display_name,
-                                profileImageUrl = userProfile.profile_image_url,
-                                bio = userProfile.bio,
-                                joinDate = null, // Not in UserProfile model
-                                createdAt = null, // Not in UserProfile model
-                                followersCount = userProfile.followers_count,
-                                followingCount = userProfile.following_count,
-                                postsCount = userProfile.posts_count
-                            )
-                            _userProfile.value = State.Success(user)
-                        } else {
-                            _userProfile.value = State.Error("User not found")
-                        }
+                // Fetch user data directly to get all fields including join_date
+                val result = dbService.selectWhere("users", "*", "uid", uid)
+                result.onSuccess { users ->
+                    val userProfile = users.firstOrNull()
+                    if (userProfile != null) {
+                        val user = User(
+                            uid = userProfile["uid"]?.toString() ?: uid,
+                            username = userProfile["username"]?.toString(),
+                            email = userProfile["email"]?.toString(),
+                            displayName = userProfile["display_name"]?.toString() ?: userProfile["nickname"]?.toString(),
+                            profileImageUrl = userProfile["avatar"]?.toString() ?: userProfile["profile_image_url"]?.toString(),
+                            bio = userProfile["bio"]?.toString() ?: userProfile["biography"]?.toString(),
+                            joinDate = userProfile["join_date"]?.toString(),
+                            createdAt = userProfile["created_at"]?.toString(),
+                            followersCount = userProfile["followers_count"]?.toString()?.toIntOrNull() ?: 0,
+                            followingCount = userProfile["following_count"]?.toString()?.toIntOrNull() ?: 0,
+                            postsCount = userProfile["posts_count"]?.toString()?.toIntOrNull() ?: 0,
+                            status = userProfile["status"]?.toString() ?: "offline"
+                        )
+                        _userProfile.value = State.Success(user)
+                    } else {
+                        _userProfile.value = State.Error("User not found")
                     }
+                }
                     .onFailure { exception ->
                         _userProfile.value = State.Error(exception.message ?: "Failed to load user profile")
                     }

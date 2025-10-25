@@ -204,22 +204,32 @@ class ProfileActivity : AppCompatActivity() {
      */
     private fun formatDate(dateString: String): String {
         return try {
-            // Try to parse as timestamp first
+            // Try to parse as timestamp (milliseconds) first
             val timestamp = dateString.toLongOrNull()
             if (timestamp != null) {
                 val calendar = Calendar.getInstance()
                 calendar.timeInMillis = timestamp
                 val year = calendar.get(Calendar.YEAR)
-                val month = calendar.get(Calendar.MONTH) + 1
+                val month = calendar.getDisplayName(Calendar.MONTH, Calendar.SHORT, java.util.Locale.getDefault())
                 val day = calendar.get(Calendar.DAY_OF_MONTH)
-                "$day/$month/$year"
+                "Joined $month $day, $year"
             } else {
-                // If not a timestamp, try to format the string directly
-                // Assuming it's in ISO format or similar
-                dateString.substring(0, minOf(10, dateString.length))
+                // Try to parse as ISO timestamp (e.g., "2025-10-24 15:06:24.382365")
+                val parts = dateString.split(" ")[0].split("-")
+                if (parts.size >= 3) {
+                    val year = parts[0]
+                    val monthNum = parts[1].toIntOrNull() ?: 1
+                    val day = parts[2]
+                    val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    val month = if (monthNum in 1..12) monthNames[monthNum - 1] else "Unknown"
+                    "Joined $month $day, $year"
+                } else {
+                    "Joined $dateString"
+                }
             }
         } catch (e: Exception) {
-            dateString
+            android.util.Log.e("ProfileActivity", "Error formatting date: $dateString", e)
+            "Joined recently"
         }
     }
 

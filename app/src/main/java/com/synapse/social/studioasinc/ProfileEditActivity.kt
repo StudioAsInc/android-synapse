@@ -35,11 +35,13 @@ class ProfileEditActivity : AppCompatActivity() {
     companion object {
         const val REQ_CD_FP = 101
         const val REQ_CD_FPCOVER = 102
+        const val REQ_CD_REGION = 103
     }
 
     // Supabase services
     private val authService = SupabaseAuthenticationService()
     private val databaseService = SupabaseDatabaseService()
+    private val storageService = com.synapse.social.studioasinc.backend.SupabaseStorageService()
 
     private var synapseLoadingDialog: ProgressDialog? = null
     private var userLastProfileUri = ""
@@ -199,8 +201,9 @@ class ProfileEditActivity : AppCompatActivity() {
         }
 
         region.setOnClickListener {
-            // TODO: Implement SelectRegionActivity when available
-            SketchwareUtil.showMessage(applicationContext, "Region selection coming soon")
+            val intent = Intent(applicationContext, SelectRegionActivity::class.java)
+            intent.putExtra(SelectRegionActivity.EXTRA_CURRENT_REGION, regionSubtitle.text.toString())
+            startActivityForResult(intent, REQ_CD_REGION)
         }
 
         profileImageHistoryStage.setOnClickListener {
@@ -439,21 +442,33 @@ class ProfileEditActivity : AppCompatActivity() {
                     else -> "hidden"
                 }
                 
-                // Create User object with updated data
-                val updatedUser = com.synapse.social.studioasinc.model.User(
-                    uid = currentUserId,
-                    email = currentUser.email,
-                    avatar = userLastProfileUri.takeIf { it.isNotEmpty() },
-                    profileCoverImage = userLastCoverUri.takeIf { it.isNotEmpty() },
-                    username = mUsernameInput.text.toString().trim(),
-                    nickname = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() },
-                    biography = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() },
-                    gender = selectedGender,
-                    updatedAt = System.currentTimeMillis().toString()
-                )
+                // Create update data map with only the fields we want to update
+                val updateData = mutableMapOf<String, Any?>()
                 
-                // Update user profile using the new method
-                val updateResult = databaseService.updateWithObject("users", updatedUser, "uid", currentUserId)
+                // Add fields that should be updated
+                updateData["username"] = mUsernameInput.text.toString().trim()
+                updateData["nickname"] = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() }
+                updateData["biography"] = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() }
+                updateData["gender"] = selectedGender
+                
+                // Add region if it's set
+                val regionText = regionSubtitle.text.toString()
+                if (regionText.isNotEmpty() && regionText != "Not set") {
+                    updateData["region"] = regionText
+                }
+                
+                // Only update avatar if it has changed
+                if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") {
+                    updateData["avatar"] = userLastProfileUri
+                }
+                
+                // Only update cover image if it has changed
+                if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") {
+                    updateData["profile_cover_image"] = userLastCoverUri
+                }
+                
+                // Update user profile using the map-based method
+                val updateResult = databaseService.update("users", updateData, "uid", currentUserId)
                 
                 updateResult.fold(
                     onSuccess = {
@@ -501,18 +516,18 @@ class ProfileEditActivity : AppCompatActivity() {
                             mScroll.visibility = View.VISIBLE
                             mLoadingBody.visibility = View.GONE
                             
-                            userLastProfileUri = user["avatar"]?.toString() ?: "null"
-                            userLastCoverUri = user["profile_cover_image"]?.toString() ?: "null"
+                            userLastProfileUri = user["avatar"]?.toString() ?: ""
+                            userLastCoverUri = user["profile_cover_image"]?.toString() ?: ""
                             
                             // Load cover image
-                            if (userLastCoverUri == "null") {
+                            if (userLastCoverUri.isEmpty() || userLastCoverUri == "null") {
                                 profileCoverImage.setImageResource(R.drawable.user_null_cover_photo)
                             } else {
                                 Glide.with(applicationContext).load(Uri.parse(userLastCoverUri)).into(profileCoverImage)
                             }
                             
                             // Load profile image
-                            if (userLastProfileUri == "null") {
+                            if (userLastProfileUri.isEmpty() || userLastProfileUri == "null") {
                                 stage1RelativeUpProfileImage.setImageResource(R.drawable.avatar)
                             } else {
                                 Glide.with(applicationContext).load(Uri.parse(userLastProfileUri)).into(stage1RelativeUpProfileImage)
@@ -523,14 +538,18 @@ class ProfileEditActivity : AppCompatActivity() {
                             currentUsername = user["username"]?.toString() ?: ""
                             
                             val nickname = user["nickname"]?.toString()
-                            mNicknameInput.setText(if (nickname == "null") "" else nickname ?: "")
+                            mNicknameInput.setText(if (nickname == "null" || nickname == null) "" else nickname)
                             
                             val biography = user["biography"]?.toString()
-                            mBiographyInput.setText(if (biography == "null") "" else biography ?: "")
+                            mBiographyInput.setText(if (biography == "null" || biography == null) "" else biography)
                             
                             // Set gender selection
                             val gender = user["gender"]?.toString() ?: "hidden"
                             setGenderSelection(gender)
+                            
+                            // Set region
+                            val region = user["region"]?.toString()
+                            regionSubtitle.text = if (region.isNullOrEmpty() || region == "null") "Not set" else region
                         }
                     },
                     onFailure = { error ->
@@ -561,6 +580,14 @@ class ProfileEditActivity : AppCompatActivity() {
                     handleCoverImageSelection(data)
                 }
             }
+            REQ_CD_REGION -> {
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    val selectedRegion = data.getStringExtra(SelectRegionActivity.EXTRA_SELECTED_REGION)
+                    if (!selectedRegion.isNullOrEmpty()) {
+                        regionSubtitle.text = selectedRegion
+                    }
+                }
+            }
         }
     }
 
@@ -570,16 +597,16 @@ class ProfileEditActivity : AppCompatActivity() {
             loadingDialog(true)
             stage1RelativeUpProfileImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(filePaths[0], 1024, 1024))
             
-            ImageUploader.uploadImage(filePaths[0], object : ImageUploader.UploadCallback {
-                override fun onUploadComplete(imageUrl: String) {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        try {
-                            val currentUserId = authService.getCurrentUserId() ?: return@launch
-                            
-                            val profileData = mapOf(
-                                "avatar" to imageUrl,
-                                "avatar_history_type" to "local"
-                            )
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val currentUserId = authService.getCurrentUserId() ?: return@launch
+                    
+                    // Upload to Supabase Storage
+                    val uploadResult = storageService.uploadAvatar(currentUserId, filePaths[0])
+                    
+                    uploadResult.fold(
+                        onSuccess = { imageUrl ->
+                            val profileData = mapOf("avatar" to imageUrl)
                             
                             val result = databaseService.update("users", profileData, "uid", currentUserId)
                             result.fold(
@@ -587,24 +614,24 @@ class ProfileEditActivity : AppCompatActivity() {
                                     userLastProfileUri = imageUrl
                                     addToProfileHistory(imageUrl, "url")
                                     loadingDialog(false)
+                                    SketchwareUtil.showMessage(applicationContext, "Profile photo updated")
                                 },
                                 onFailure = { error ->
                                     loadingDialog(false)
                                     SketchwareUtil.showMessage(applicationContext, error.message ?: "Upload failed")
                                 }
                             )
-                        } catch (e: Exception) {
+                        },
+                        onFailure = { error ->
                             loadingDialog(false)
-                            SketchwareUtil.showMessage(applicationContext, "Error: ${e.message}")
+                            SketchwareUtil.showMessage(applicationContext, "Upload failed: ${error.message}")
                         }
-                    }
-                }
-
-                override fun onUploadError(errorMessage: String) {
+                    )
+                } catch (e: Exception) {
                     loadingDialog(false)
-                    SketchwareUtil.showMessage(applicationContext, "Failed to upload the image.")
+                    SketchwareUtil.showMessage(applicationContext, "Error: ${e.message}")
                 }
-            })
+            }
         }
     }
 
@@ -614,12 +641,15 @@ class ProfileEditActivity : AppCompatActivity() {
             loadingDialog(true)
             profileCoverImage.setImageBitmap(FileUtil.decodeSampleBitmapFromPath(filePaths[0], 1024, 1024))
             
-            ImageUploader.uploadImage(filePaths[0], object : ImageUploader.UploadCallback {
-                override fun onUploadComplete(imageUrl: String) {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        try {
-                            val currentUserId = authService.getCurrentUserId() ?: return@launch
-                            
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val currentUserId = authService.getCurrentUserId() ?: return@launch
+                    
+                    // Upload to Supabase Storage
+                    val uploadResult = storageService.uploadCover(currentUserId, filePaths[0])
+                    
+                    uploadResult.fold(
+                        onSuccess = { imageUrl ->
                             val profileData = mapOf("profile_cover_image" to imageUrl)
                             val result = databaseService.update("users", profileData, "uid", currentUserId)
                             
@@ -628,24 +658,24 @@ class ProfileEditActivity : AppCompatActivity() {
                                     userLastCoverUri = imageUrl
                                     addToCoverHistory(imageUrl, "url")
                                     loadingDialog(false)
+                                    SketchwareUtil.showMessage(applicationContext, "Cover photo updated")
                                 },
                                 onFailure = { error ->
                                     loadingDialog(false)
                                     SketchwareUtil.showMessage(applicationContext, error.message ?: "Upload failed")
                                 }
                             )
-                        } catch (e: Exception) {
+                        },
+                        onFailure = { error ->
                             loadingDialog(false)
-                            SketchwareUtil.showMessage(applicationContext, "Error: ${e.message}")
+                            SketchwareUtil.showMessage(applicationContext, "Upload failed: ${error.message}")
                         }
-                    }
-                }
-
-                override fun onUploadError(errorMessage: String) {
+                    )
+                } catch (e: Exception) {
                     loadingDialog(false)
-                    SketchwareUtil.showMessage(applicationContext, "Failed to upload the image.")
+                    SketchwareUtil.showMessage(applicationContext, "Error: ${e.message}")
                 }
-            })
+            }
         }
     }
 

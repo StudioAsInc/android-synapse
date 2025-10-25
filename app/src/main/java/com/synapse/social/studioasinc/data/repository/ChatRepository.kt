@@ -7,20 +7,22 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Repository for chat operations
+ * TODO: Implement proper methods to match SupabaseChatService API
  */
 class ChatRepository {
 
     private val chatService = SupabaseChatService()
 
     /**
-     * Creates a new chat
+     * Creates a new chat - TODO: Implement
      */
     suspend fun createChat(participantUids: List<String>, chatName: String? = null): Result<String> {
-        return chatService.createChat(participantUids, chatName)
+        // TODO: Implement using chatService.getOrCreateDirectChat
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Sends a message
+     * Sends a message - TODO: Fix parameter mismatch
      */
     suspend fun sendMessage(
         chatId: String,
@@ -28,21 +30,24 @@ class ChatRepository {
         messageType: String = "text",
         mediaUrl: String? = null
     ): Result<String> {
-        return chatService.sendMessage(chatId, content, messageType, mediaUrl)
+        // TODO: Fix - SupabaseChatService.sendMessage has different parameters
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Gets messages for a chat
+     * Gets messages for a chat - TODO: Fix return type mismatch
      */
     suspend fun getMessages(chatId: String, limit: Int = 50, offset: Int = 0): Result<List<Message>> {
-        return chatService.getMessages(chatId, limit, offset)
+        // TODO: Convert Map<String, Any?> to Message objects
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Gets user's chats
+     * Gets user's chats - TODO: Fix return type mismatch
      */
     suspend fun getUserChats(userId: String): Result<List<Chat>> {
-        return chatService.getUserChats(userId)
+        // TODO: Convert Map<String, Any?> to Chat objects
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
@@ -53,52 +58,52 @@ class ChatRepository {
     }
 
     /**
-     * Edits a message
+     * Edits a message - TODO: Implement in SupabaseChatService
      */
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
-        return chatService.editMessage(messageId, newContent)
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Gets chat participants
+     * Gets chat participants - TODO: Implement in SupabaseChatService
      */
     suspend fun getChatParticipants(chatId: String): Result<List<String>> {
-        return chatService.getChatParticipants(chatId)
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Adds a participant to a chat
+     * Adds a participant to a chat - TODO: Implement in SupabaseChatService
      */
     suspend fun addParticipant(chatId: String, userId: String): Result<Unit> {
-        return chatService.addParticipant(chatId, userId)
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Removes a participant from a chat
+     * Removes a participant from a chat - TODO: Implement in SupabaseChatService
      */
     suspend fun removeParticipant(chatId: String, userId: String): Result<Unit> {
-        return chatService.removeParticipant(chatId, userId)
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
-     * Observes messages in a chat (real-time)
+     * Observes messages in a chat (real-time) - TODO: Implement in SupabaseChatService
      */
     fun observeMessages(chatId: String): Flow<List<Message>> {
-        return chatService.observeMessages(chatId)
+        return kotlinx.coroutines.flow.flowOf(emptyList())
     }
 
     /**
-     * Observes user's chats (real-time)
+     * Observes user's chats (real-time) - TODO: Implement in SupabaseChatService
      */
     fun observeUserChats(userId: String): Flow<List<Chat>> {
-        return chatService.observeUserChats(userId)
+        return kotlinx.coroutines.flow.flowOf(emptyList())
     }
 
     /**
-     * Creates a direct chat between two users
+     * Creates a direct chat between two users - TODO: Implement
      */
     suspend fun createDirectChat(otherUserId: String): Result<String> {
-        return chatService.createChat(listOf(otherUserId), null)
+        return Result.failure(Exception("Not implemented"))
     }
 
     /**
