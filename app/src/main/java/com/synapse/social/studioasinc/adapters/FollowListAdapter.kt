@@ -7,10 +7,12 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.components.FollowButton
+import io.github.jan.supabase.gotrue.auth
 
 class FollowListAdapter(
     private val users: List<Map<String, Any?>>,

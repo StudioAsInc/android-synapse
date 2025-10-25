@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.synapse.social.studioasinc.adapters.FollowListAdapter
 import com.synapse.social.studioasinc.backend.SupabaseFollowService
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 
 class FollowListActivity : AppCompatActivity() {

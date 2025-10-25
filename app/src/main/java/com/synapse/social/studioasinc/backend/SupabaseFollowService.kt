@@ -331,14 +331,18 @@ class SupabaseFollowService {
                 followingIds.add(userId)
                 
                 // Get suggested users (excluding already followed and self)
-                val suggestedResult = client.from("users")
+                // Note: We'll get all users and filter client-side since Supabase doesn't support NOT IN easily
+                val allUsersResult = client.from("users")
                     .select(columns = Columns.raw("uid, username, display_name, avatar, verify, followers_count")) {
-                        filter { 
-                            not { isIn("uid", followingIds) }
-                        }
-                        limit(limit.toLong())
+                        limit(100) // Get more users to filter from
                     }
                     .decodeList<JsonObject>()
+                
+                // Filter out already followed users and self
+                val suggestedResult = allUsersResult.filter { jsonObject ->
+                    val uid = jsonObject["uid"].toString().removeSurrounding("\"")
+                    !followingIds.contains(uid)
+                }.take(limit)
                 
                 val suggested = suggestedResult.map { jsonObject ->
                     jsonObject.toMap().mapValues { (_, value) ->
