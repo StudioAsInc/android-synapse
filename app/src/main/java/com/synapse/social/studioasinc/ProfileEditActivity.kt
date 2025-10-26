@@ -442,33 +442,21 @@ class ProfileEditActivity : AppCompatActivity() {
                     else -> "hidden"
                 }
                 
-                // Create update data map with only the fields we want to update
-                val updateData = mutableMapOf<String, Any?>()
-                
-                // Add fields that should be updated
-                updateData["username"] = mUsernameInput.text.toString().trim()
-                updateData["nickname"] = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() }
-                updateData["biography"] = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() }
-                updateData["gender"] = selectedGender
-                
-                // Add region if it's set
+                // Create update data using serializable data class
                 val regionText = regionSubtitle.text.toString()
-                if (regionText.isNotEmpty() && regionText != "Not set") {
-                    updateData["region"] = regionText
-                }
                 
-                // Only update avatar if it has changed
-                if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") {
-                    updateData["avatar"] = userLastProfileUri
-                }
+                val updateData = com.synapse.social.studioasinc.model.UserUpdateRequest(
+                    username = mUsernameInput.text.toString().trim(),
+                    nickname = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    biography = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    gender = selectedGender,
+                    region = if (regionText.isNotEmpty() && regionText != "Not set") regionText else null,
+                    avatar = if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") userLastProfileUri else null,
+                    profileCoverImage = if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") userLastCoverUri else null
+                )
                 
-                // Only update cover image if it has changed
-                if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") {
-                    updateData["profile_cover_image"] = userLastCoverUri
-                }
-                
-                // Update user profile using the map-based method
-                val updateResult = databaseService.update("users", updateData, "uid", currentUserId)
+                // Update user profile using the serializable object
+                val updateResult = databaseService.updateWithObject("users", updateData, "uid", currentUserId)
                 
                 updateResult.fold(
                     onSuccess = {
@@ -606,9 +594,9 @@ class ProfileEditActivity : AppCompatActivity() {
                     
                     uploadResult.fold(
                         onSuccess = { imageUrl ->
-                            val profileData = mapOf("avatar" to imageUrl)
+                            val profileData = com.synapse.social.studioasinc.model.UserUpdateRequest(avatar = imageUrl)
                             
-                            val result = databaseService.update("users", profileData, "uid", currentUserId)
+                            val result = databaseService.updateWithObject("users", profileData, "uid", currentUserId)
                             result.fold(
                                 onSuccess = {
                                     userLastProfileUri = imageUrl
@@ -650,8 +638,8 @@ class ProfileEditActivity : AppCompatActivity() {
                     
                     uploadResult.fold(
                         onSuccess = { imageUrl ->
-                            val profileData = mapOf("profile_cover_image" to imageUrl)
-                            val result = databaseService.update("users", profileData, "uid", currentUserId)
+                            val profileData = com.synapse.social.studioasinc.model.UserUpdateRequest(profileCoverImage = imageUrl)
+                            val result = databaseService.updateWithObject("users", profileData, "uid", currentUserId)
                             
                             result.fold(
                                 onSuccess = {

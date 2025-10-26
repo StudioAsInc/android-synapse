@@ -14,15 +14,18 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
+import com.synapse.social.studioasinc.data.repository.LikeRepository
 import com.synapse.social.studioasinc.model.Post
 import kotlinx.coroutines.launch
+import android.widget.LinearLayout
 
 class PostAdapter(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val authRepository: AuthRepository = AuthRepository(),
     private val postRepository: PostRepository = PostRepository(),
-    private val userRepository: UserRepository = UserRepository()
+    private val userRepository: UserRepository = UserRepository(),
+    private val likeRepository: LikeRepository = LikeRepository()
 ) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     private var posts = mutableListOf<Post>()
@@ -49,6 +52,9 @@ class PostAdapter(
         private val postContent: TextView = itemView.findViewById(R.id.postContent)
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
         private val authorName: TextView = itemView.findViewById(R.id.authorName)
+        private val likeButton: LinearLayout = itemView.findViewById(R.id.likeButton)
+        private val likeIcon: ImageView = itemView.findViewById(R.id.likeIcon)
+        private val likeCount: TextView = itemView.findViewById(R.id.likeCount)
 
         fun bind(post: Post) {
             // Set post content
@@ -73,6 +79,77 @@ class PostAdapter(
                     .onFailure {
                         authorName.text = "Unknown User"
                     }
+            }
+            
+            // Load like status and count
+            loadLikeStatus(post)
+            
+            // Set up like button click listener
+            likeButton.setOnClickListener {
+                handleLikeClick(post)
+            }
+        }
+        
+        private fun loadLikeStatus(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    val currentUserId = authRepository.getCurrentUserId()
+                    if (currentUserId != null) {
+                        // Check if user has liked this post
+                        likeRepository.isLiked(currentUserId, post.id, "post")
+                            .onSuccess { isLiked ->
+                                updateLikeIcon(isLiked)
+                            }
+                    }
+                    
+                    // Get like count
+                    likeRepository.getLikeCount(post.id, "post")
+                        .onSuccess { count ->
+                            likeCount.text = count.toString()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Failed to load like status", e)
+                }
+            }
+        }
+        
+        private fun handleLikeClick(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    val currentUserId = authRepository.getCurrentUserId()
+                    if (currentUserId == null) {
+                        android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
+                    // Toggle like
+                    likeRepository.toggleLike(currentUserId, post.id, "post")
+                        .onSuccess { isLiked ->
+                            updateLikeIcon(isLiked)
+                            
+                            // Update like count
+                            likeRepository.getLikeCount(post.id, "post")
+                                .onSuccess { count ->
+                                    likeCount.text = count.toString()
+                                }
+                        }
+                        .onFailure { error ->
+                            android.util.Log.e("PostAdapter", "Failed to toggle like", error)
+                            android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Error handling like click", e)
+                }
+            }
+        }
+        
+        private fun updateLikeIcon(isLiked: Boolean) {
+            if (isLiked) {
+                likeIcon.setImageResource(R.drawable.post_icons_1_2) // Filled heart
+                likeIcon.setColorFilter(context.getColor(android.R.color.holo_red_light))
+            } else {
+                likeIcon.setImageResource(R.drawable.post_icons_1_1) // Outline heart
+                likeIcon.clearColorFilter()
             }
         }
     }
