@@ -10,6 +10,7 @@ import com.synapse.social.studioasinc.backend.SupabaseFollowService
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.model.Post
 import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 
 /**
@@ -142,21 +143,33 @@ class ProfileViewModel : ViewModel() {
                 val isCurrentlyLiked = _isProfileLiked.value ?: false
                 
                 if (isCurrentlyLiked) {
-                    // Unlike profile
-                    dbService.delete("profile_likes", "liker_uid", currentUid)
+                    // Unlike profile - delete the specific like
+                    val result = SupabaseClient.client.from("profile_likes").delete {
+                        filter {
+                            eq("liker_uid", currentUid)
+                            eq("profile_uid", targetUid)
+                        }
+                    }
+                    _isProfileLiked.value = false
+                    android.util.Log.d("ProfileViewModel", "Profile unliked successfully")
                 } else {
                     // Like profile
                     val likeData = mapOf(
                         "liker_uid" to currentUid,
-                        "profile_uid" to targetUid,
-                        "created_at" to System.currentTimeMillis().toString()
+                        "profile_uid" to targetUid
                     )
-                    dbService.insert("profile_likes", likeData)
+                    dbService.insert("profile_likes", likeData).fold(
+                        onSuccess = {
+                            _isProfileLiked.value = true
+                            android.util.Log.d("ProfileViewModel", "Profile liked successfully")
+                        },
+                        onFailure = { error ->
+                            android.util.Log.e("ProfileViewModel", "Failed to like profile", error)
+                        }
+                    )
                 }
-                
-                _isProfileLiked.value = !isCurrentlyLiked
             } catch (e: Exception) {
-                // Handle error
+                android.util.Log.e("ProfileViewModel", "Error toggling profile like", e)
             }
         }
     }
@@ -250,9 +263,21 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
-                val likes = dbService.selectWithFilter("profile_likes", "*", "liker_uid", currentUid).getOrNull() ?: emptyList()
-                _isProfileLiked.value = likes.isNotEmpty()
+                
+                // Check if current user has liked this profile
+                val result = SupabaseClient.client.from("profile_likes")
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("id")) {
+                        filter {
+                            eq("liker_uid", currentUid)
+                            eq("profile_uid", targetUid)
+                        }
+                    }
+                    .decodeList<kotlinx.serialization.json.JsonObject>()
+                
+                _isProfileLiked.value = result.isNotEmpty()
+                android.util.Log.d("ProfileViewModel", "Profile like state: ${result.isNotEmpty()}")
             } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error fetching profile like state", e)
                 _isProfileLiked.value = false
             }
         }

@@ -28,39 +28,36 @@ class SupabaseFollowService {
                 }
                 
                 // Check if already following
-                val existingFollow = databaseService.selectWhere(
-                    "follows", 
-                    "*", 
-                    "follower_id", 
-                    followerId
+                val existingFollow = client.from("follows")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("follower_id", followerId)
+                            eq("following_id", followingId)
+                        }
+                    }
+                    .decodeList<JsonObject>()
+                
+                if (existingFollow.isNotEmpty()) {
+                    return@withContext Result.failure(Exception("Already following this user"))
+                }
+                
+                // Create follow relationship
+                val followData = mapOf(
+                    "follower_id" to followerId,
+                    "following_id" to followingId
                 )
                 
-                existingFollow.fold(
-                    onSuccess = { follows ->
-                        val alreadyFollowing = follows.any { 
-                            it["following_id"] == followingId 
-                        }
-                        
-                        if (alreadyFollowing) {
-                            return@withContext Result.failure(Exception("Already following this user"))
-                        }
-                        
-                        // Create follow relationship
-                        val followData = mapOf(
-                            "follower_id" to followerId,
-                            "following_id" to followingId
-                        )
-                        
-                        databaseService.insert("follows", followData).fold(
-                            onSuccess = {
-                                // Update follower counts
-                                updateFollowerCounts(followerId, followingId, true)
-                                Result.success(Unit)
-                            },
-                            onFailure = { error -> Result.failure(error) }
-                        )
+                val insertResult = databaseService.insert("follows", followData)
+                
+                insertResult.fold(
+                    onSuccess = {
+                        // Update follower counts
+                        updateFollowerCounts(followerId, followingId, true)
+                        return@withContext Result.success(Unit)
                     },
-                    onFailure = { error -> Result.failure(error) }
+                    onFailure = { error -> 
+                        return@withContext Result.failure(error)
+                    }
                 )
             } catch (e: Exception) {
                 android.util.Log.e("SupabaseFollowService", "Failed to follow user", e)
