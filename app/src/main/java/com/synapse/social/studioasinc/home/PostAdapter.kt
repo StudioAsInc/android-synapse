@@ -93,10 +93,10 @@ class PostAdapter(
         private fun loadLikeStatus(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
-                    val currentUserId = authRepository.getCurrentUserId()
-                    if (currentUserId != null) {
+                    val currentUserUid = authRepository.getCurrentUserUid()
+                    if (currentUserUid != null) {
                         // Check if user has liked this post
-                        likeRepository.isLiked(currentUserId, post.id, "post")
+                        likeRepository.isLiked(currentUserUid, post.id, "post")
                             .onSuccess { isLiked ->
                                 updateLikeIcon(isLiked)
                             }
@@ -116,14 +116,14 @@ class PostAdapter(
         private fun handleLikeClick(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
-                    val currentUserId = authRepository.getCurrentUserId()
-                    if (currentUserId == null) {
+                    val currentUserUid = authRepository.getCurrentUserUid()
+                    if (currentUserUid == null) {
                         android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
                     }
                     
                     // Toggle like
-                    likeRepository.toggleLike(currentUserId, post.id, "post")
+                    likeRepository.toggleLike(currentUserUid, post.id, "post")
                         .onSuccess { isLiked ->
                             updateLikeIcon(isLiked)
                             

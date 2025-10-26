@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import io.github.jan.supabase.gotrue.auth
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -24,9 +25,14 @@ class SimpleChatAdapter(
 
     override fun getItemViewType(position: Int): Int {
         val message = messages[position]
-        val senderId = message["uid"]?.toString()
-        // For now, assume all messages are received. This can be improved later.
-        return VIEW_TYPE_RECEIVED
+        val senderId = message["uid"]?.toString() ?: message["sender_id"]?.toString()
+        val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id
+        
+        return if (senderId == currentUserId) {
+            VIEW_TYPE_SENT
+        } else {
+            VIEW_TYPE_RECEIVED
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {

@@ -190,38 +190,84 @@ class ProfileActivity : AppCompatActivity() {
                     show()
                 }
 
-                val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
-                val result = chatService.getOrCreateDirectChat(currentUserId, targetUserId)
-                
-                result.fold(
-                    onSuccess = { chatId ->
-                        progressDialog.dismiss()
-                        
-                        // Navigate to ChatActivity
-                        val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
-                        intent.putExtra("chatId", chatId)
-                        intent.putExtra("uid", targetUserId)
-                        intent.putExtra("isGroup", false)
-                        startActivity(intent)
-                    },
-                    onFailure = { error ->
-                        progressDialog.dismiss()
-                        android.util.Log.e("ProfileActivity", "Failed to create chat", error)
-                        Toast.makeText(
-                            this@ProfileActivity, 
-                            "Failed to start chat: ${error.message}", 
-                            Toast.LENGTH_SHORT
-                        ).show()
+                // Get current user's UID from users table
+                val currentUserUid = getCurrentUserUid()
+                if (currentUserUid == null) {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@ProfileActivity, "Failed to get user info", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // Create chat ID (dm_userId1_userId2, sorted alphabetically)
+                val chatId = if (currentUserUid < targetUserId) {
+                    "dm_${currentUserUid}_${targetUserId}"
+                } else {
+                    "dm_${targetUserId}_${currentUserUid}"
+                }
+
+                // Check if chat already exists
+                val existingChat = SupabaseClient.client.from("chats")
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("chat_id")) {
+                        filter { eq("chat_id", chatId) }
                     }
-                )
+                    .decodeSingleOrNull<JsonObject>()
+
+                if (existingChat == null) {
+                    // Create new chat
+                    val chatData = kotlinx.serialization.json.buildJsonObject {
+                        put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
+                        put("is_group", kotlinx.serialization.json.JsonPrimitive(false))
+                        put("created_by", kotlinx.serialization.json.JsonPrimitive(currentUserUid))
+                        put("participants_count", kotlinx.serialization.json.JsonPrimitive(2))
+                    }
+                    SupabaseClient.client.from("chats").insert(chatData)
+
+                    // Add participants
+                    val participant1 = kotlinx.serialization.json.buildJsonObject {
+                        put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
+                        put("user_id", kotlinx.serialization.json.JsonPrimitive(currentUserUid))
+                        put("role", kotlinx.serialization.json.JsonPrimitive("member"))
+                    }
+                    val participant2 = kotlinx.serialization.json.buildJsonObject {
+                        put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
+                        put("user_id", kotlinx.serialization.json.JsonPrimitive(targetUserId))
+                        put("role", kotlinx.serialization.json.JsonPrimitive("member"))
+                    }
+                    SupabaseClient.client.from("chat_participants").insert(listOf(participant1, participant2))
+                }
+
+                progressDialog.dismiss()
+
+                // Navigate to ChatActivity
+                val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
+                intent.putExtra("chatId", chatId)
+                intent.putExtra("uid", targetUserId)
+                intent.putExtra("isGroup", false)
+                startActivity(intent)
+
             } catch (e: Exception) {
                 android.util.Log.e("ProfileActivity", "Error starting chat", e)
                 Toast.makeText(
-                    this@ProfileActivity, 
-                    "Error starting chat: ${e.message}", 
+                    this@ProfileActivity,
+                    "Error starting chat: ${e.message}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
+        }
+    }
+
+    private suspend fun getCurrentUserUid(): String? {
+        return try {
+            val authId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: return null
+            val result = SupabaseClient.client.from("users")
+                .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("uid")) {
+                    filter { eq("id", authId) }
+                }
+                .decodeSingleOrNull<JsonObject>()
+            result?.get("uid")?.toString()?.removeSurrounding("\"")
+        } catch (e: Exception) {
+            android.util.Log.e("ProfileActivity", "Failed to get user UID", e)
+            null
         }
     }
 

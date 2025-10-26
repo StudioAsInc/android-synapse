@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc.data.repository
 import com.synapse.social.studioasinc.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -60,6 +61,32 @@ class AuthRepository {
             try {
                 client.auth.currentUserOrNull()?.id
             } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Get the current user's UID from the users table (not the auth UUID)
+     * This is needed for RLS policies that check against the users.uid field
+     */
+    suspend fun getCurrentUserUid(): String? {
+        return if (isSupabaseConfigured()) {
+            try {
+                val authId = client.auth.currentUserOrNull()?.id ?: return null
+                val result = client.from("users")
+                    .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("uid")) {
+                        filter {
+                            eq("id", authId)
+                        }
+                    }
+                    .decodeSingleOrNull<kotlinx.serialization.json.JsonObject>()
+                
+                result?.get("uid")?.toString()?.removeSurrounding("\"")
+            } catch (e: Exception) {
+                android.util.Log.e("AuthRepository", "Failed to get user UID", e)
                 null
             }
         } else {
