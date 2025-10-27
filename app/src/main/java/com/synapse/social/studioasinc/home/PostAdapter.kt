@@ -25,7 +25,10 @@ class PostAdapter(
     private val authRepository: AuthRepository = AuthRepository(),
     private val postRepository: PostRepository = PostRepository(),
     private val userRepository: UserRepository = UserRepository(),
-    private val likeRepository: LikeRepository = LikeRepository()
+    private val likeRepository: LikeRepository = LikeRepository(),
+    private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
+    private val onCommentClicked: ((Post) -> Unit)? = null,
+    private val onShareClicked: ((Post) -> Unit)? = null
 ) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     private var posts = mutableListOf<Post>()
@@ -55,6 +58,10 @@ class PostAdapter(
         private val likeButton: LinearLayout = itemView.findViewById(R.id.likeButton)
         private val likeIcon: ImageView = itemView.findViewById(R.id.likeIcon)
         private val likeCount: TextView = itemView.findViewById(R.id.likeCount)
+        private val commentButton: LinearLayout = itemView.findViewById(R.id.commentButton)
+        private val commentCount: TextView = itemView.findViewById(R.id.commentCount)
+        private val shareButton: ImageView = itemView.findViewById(R.id.shareButton)
+        private val moreButton: ImageView = itemView.findViewById(R.id.postOptions)
 
         fun bind(post: Post) {
             // Set post content
@@ -84,10 +91,25 @@ class PostAdapter(
             // Load like status and count
             loadLikeStatus(post)
             
-            // Set up like button click listener
+            // Set up click listeners
             likeButton.setOnClickListener {
                 handleLikeClick(post)
             }
+            
+            commentButton.setOnClickListener {
+                onCommentClicked?.invoke(post)
+            }
+            
+            shareButton.setOnClickListener {
+                onShareClicked?.invoke(post)
+            }
+            
+            moreButton.setOnClickListener {
+                onMoreOptionsClicked?.invoke(post)
+            }
+            
+            // Set comment count
+            commentCount.text = post.commentsCount.toString()
         }
         
         private fun loadLikeStatus(post: Post) {
