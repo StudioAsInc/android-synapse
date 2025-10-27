@@ -4,10 +4,19 @@ import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.UserProfile
 import io.github.jan.supabase.postgrest.from
 
+/**
+ * Repository for managing user data operations with Supabase.
+ * Handles user profile retrieval, updates, and search functionality.
+ */
 class UserRepository {
     
     private val client = SupabaseClient.client
     
+    /**
+     * Fetch a user profile by user ID.
+     * @param userId The unique identifier of the user
+     * @return Result containing UserProfile if found, null if not found, or error on failure
+     */
     suspend fun getUserById(userId: String): Result<UserProfile?> {
         return try {
             android.util.Log.d("UserRepository", "Fetching user by ID: $userId")
@@ -46,8 +55,17 @@ class UserRepository {
         }
     }
     
+    /**
+     * Fetch a user profile by username.
+     * @param username The username to search for
+     * @return Result containing UserProfile if found, null if not found, or error on failure
+     */
     suspend fun getUserByUsername(username: String): Result<UserProfile?> {
         return try {
+            if (username.isBlank()) {
+                return Result.failure(Exception("Username cannot be empty"))
+            }
+            
             val user = client.from("users")
                 .select() {
                     filter {
@@ -63,8 +81,17 @@ class UserRepository {
         }
     }
     
+    /**
+     * Update a user's profile information.
+     * @param user The UserProfile object with updated information
+     * @return Result containing updated UserProfile on success, or error on failure
+     */
     suspend fun updateUser(user: UserProfile): Result<UserProfile> {
         return try {
+            if (user.uid.isBlank()) {
+                return Result.failure(Exception("User ID cannot be empty"))
+            }
+            
             client.from("users")
                 .update(user) {
                     filter {
@@ -72,6 +99,7 @@ class UserRepository {
                     }
                 }
             
+            android.util.Log.d("UserRepository", "User updated successfully: ${user.uid}")
             Result.success(user)
         } catch (e: Exception) {
             android.util.Log.e("UserRepository", "Failed to update user: ${user.uid}", e)
@@ -79,8 +107,18 @@ class UserRepository {
         }
     }
     
+    /**
+     * Search for users by username or display name.
+     * @param query The search query string
+     * @param limit Maximum number of results to return (default: 20)
+     * @return Result containing list of matching UserProfiles, or error on failure
+     */
     suspend fun searchUsers(query: String, limit: Int = 20): Result<List<UserProfile>> {
         return try {
+            if (query.isBlank()) {
+                return Result.success(emptyList())
+            }
+            
             val users = client.from("users")
                 .select() {
                     filter {
@@ -93,6 +131,7 @@ class UserRepository {
                 }
                 .decodeList<UserProfile>()
             
+            android.util.Log.d("UserRepository", "Search found ${users.size} users for query: $query")
             Result.success(users)
         } catch (e: Exception) {
             android.util.Log.e("UserRepository", "Failed to search users with query: $query", e)

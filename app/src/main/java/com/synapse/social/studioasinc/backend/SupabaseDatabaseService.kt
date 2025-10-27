@@ -10,35 +10,36 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * Supabase Database Service
- * Handles database operations using Supabase Postgrest
+ * Handles database operations using Supabase Postgrest.
+ * Provides CRUD operations with comprehensive error handling and logging.
  */
 class SupabaseDatabaseService : IDatabaseService {
+    
+    companion object {
+        private const val TAG = "SupabaseDB"
+    }
     
     private val client = SupabaseClient.client
     
     /**
-     * Insert data into a table
+     * Insert data into a table.
+     * @param table The name of the table to insert into
+     * @param data The data object to insert (must be serializable)
+     * @return Result indicating success or failure with detailed error message
      */
     suspend fun insert(table: String, data: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                android.util.Log.d("SupabaseDB", "Inserting data into table '$table': $data")
+                android.util.Log.d(TAG, "Inserting data into table '$table'")
                 
-                // Perform the insertion directly with the serializable object
-                try {
-                    client.from(table).insert(data)
-                    android.util.Log.d("SupabaseDB", "Data inserted successfully into table '$table'")
-                } catch (insertError: Exception) {
-                    android.util.Log.e("SupabaseDB", "Insert operation failed", insertError)
-                    throw insertError
-                }
+                client.from(table).insert(data)
+                android.util.Log.d(TAG, "Data inserted successfully into table '$table'")
                 
                 Result.success(Unit)
                 
             } catch (e: Exception) {
-                android.util.Log.e("SupabaseDB", "Database insertion failed", e)
+                android.util.Log.e(TAG, "Database insertion failed for table '$table'", e)
                 
-                // Provide more specific error messages
                 val errorMessage = when {
                     e.message?.contains("serialization", ignoreCase = true) == true -> 
                         "Data serialization error: ${e.message}"
@@ -58,42 +59,54 @@ class SupabaseDatabaseService : IDatabaseService {
     }
     
     /**
-     * Update data in a table
+     * Update data in a table with map-based data.
+     * @param table The name of the table to update
+     * @param data Map of column names to values
+     * @param filter The column name to filter by
+     * @param value The value to match in the filter column
+     * @return Result indicating success or failure
      */
     override suspend fun update(table: String, data: Map<String, Any?>, filter: String, value: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                android.util.Log.d(TAG, "Updating data in table '$table' where $filter=$value")
                 client.from(table).update(data) {
                     filter { 
                         eq(filter, value)
                     }
                 }
+                android.util.Log.d(TAG, "Data updated successfully in table '$table'")
                 Result.success(Unit)
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Database update failed for table '$table'", e)
                 Result.failure(e)
             }
         }
     }
     
     /**
-     * Update data in a table with serializable object
+     * Update data in a table with serializable object.
+     * @param table The name of the table to update
+     * @param data The data object to update (must be serializable)
+     * @param filter The column name to filter by
+     * @param value The value to match in the filter column
+     * @return Result indicating success or failure with detailed error message
      */
     suspend fun updateWithObject(table: String, data: Any, filter: String, value: Any): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                android.util.Log.d("SupabaseDB", "Updating data in table '$table' with filter '$filter'='$value': $data")
+                android.util.Log.d(TAG, "Updating data in table '$table' where $filter=$value")
                 
                 client.from(table).update(data) {
                     filter { 
                         eq(filter, value)
                     }
                 }
-                android.util.Log.d("SupabaseDB", "Data updated successfully in table '$table'")
+                android.util.Log.d(TAG, "Data updated successfully in table '$table'")
                 Result.success(Unit)
             } catch (e: Exception) {
-                android.util.Log.e("SupabaseDB", "Database update failed", e)
+                android.util.Log.e(TAG, "Database update failed for table '$table'", e)
                 
-                // Provide more specific error messages
                 val errorMessage = when {
                     e.message?.contains("serialization", ignoreCase = true) == true -> 
                         "Data serialization error: ${e.message}"

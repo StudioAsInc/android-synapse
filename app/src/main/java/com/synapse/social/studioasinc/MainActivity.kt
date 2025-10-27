@@ -207,7 +207,9 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        super.onBackPressed()
         finishAffinity()
     }
 }

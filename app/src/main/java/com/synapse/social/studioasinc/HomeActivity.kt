@@ -102,9 +102,8 @@ class HomeActivity : AppCompatActivity() {
         })
 
         navSearchIc.setOnClickListener {
-            // TODO: Enable when SearchActivity is migrated
-            // val intent = Intent(applicationContext, SearchActivity::class.java)
-            // startActivity(intent)
+            val intent = Intent(applicationContext, SearchActivity::class.java)
+            startActivity(intent)
         }
 
         navInboxIc.setOnClickListener {
@@ -131,35 +130,37 @@ class HomeActivity : AppCompatActivity() {
 
     private fun loadUserProfileImage() {
         val currentUser = SupabaseClient.client.auth.currentUserOrNull()
-        if (currentUser != null) {
-            lifecycleScope.launch {
-                try {
-                    val userData = SupabaseClient.client.from("users")
-                        .select(columns = Columns.raw("profile_image_url")) {
-                            filter { eq("uid", currentUser.id) }
-                        }.decodeSingleOrNull<JsonObject>()
-                    
-                    if (userData != null) {
-                        val profileImageUrl = userData["profile_image_url"]?.toString()?.removeSurrounding("\"")
-                        val imageUrl = profileImageUrl
-                        
-                        if (!imageUrl.isNullOrEmpty() && imageUrl != "null") {
-                            Glide.with(applicationContext)
-                                .load(Uri.parse(imageUrl))
-                                .circleCrop()
-                                .into(navProfileIc)
-                        } else {
-                            navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
-                        }
-                    } else {
-                        navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
-                    }
-                } catch (e: Exception) {
+        if (currentUser == null) {
+            navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
+            return
+        }
+        
+        lifecycleScope.launch {
+            try {
+                val userData = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("profile_image_url")) {
+                        filter { eq("uid", currentUser.id) }
+                    }.decodeSingleOrNull<JsonObject>()
+                
+                val profileImageUrl = userData?.get("profile_image_url")
+                    ?.toString()
+                    ?.removeSurrounding("\"")
+                    ?.takeIf { it.isNotEmpty() && it != "null" }
+                
+                if (profileImageUrl != null) {
+                    Glide.with(this@HomeActivity)
+                        .load(Uri.parse(profileImageUrl))
+                        .circleCrop()
+                        .placeholder(R.drawable.ic_account_circle_48px)
+                        .error(R.drawable.ic_account_circle_48px)
+                        .into(navProfileIc)
+                } else {
                     navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeActivity", "Failed to load profile image: ${e.message}", e)
+                navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
             }
-        } else {
-            navProfileIc.setImageResource(R.drawable.ic_account_circle_48px)
         }
     }
 

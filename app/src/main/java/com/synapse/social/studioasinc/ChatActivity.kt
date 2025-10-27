@@ -84,9 +84,12 @@ class ChatActivity : AppCompatActivity() {
             chatNameText = findViewById(R.id.topProfileLayoutUsername)
             chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
             
-            // Setup RecyclerView
-            recyclerView?.layoutManager = LinearLayoutManager(this).apply {
-                stackFromEnd = true
+            // Setup RecyclerView with proper configuration
+            recyclerView?.apply {
+                layoutManager = LinearLayoutManager(this@ChatActivity).apply {
+                    stackFromEnd = true
+                }
+                setHasFixedSize(true)
             }
             
             // Initialize adapter
@@ -94,27 +97,29 @@ class ChatActivity : AppCompatActivity() {
             recyclerView?.adapter = messagesAdapter
             
         } catch (e: Exception) {
-            android.util.Log.e("ChatActivity", "UI initialization error: ${e.message}")
-            Toast.makeText(this, "UI initialization error", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("ChatActivity", "UI initialization error: ${e.message}", e)
+            Toast.makeText(this, "Failed to initialize chat interface", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 
     private fun initializeLogic() {
         // Setup basic functionality
-        sendButton?.setOnClickListener {
-            sendMessage()
+        sendButton?.apply {
+            isEnabled = false
+            setOnClickListener { sendMessage() }
         }
         
         backButton?.setOnClickListener {
-            onBackPressed()
+            onBackPressedDispatcher.onBackPressed()
         }
         
-        // Setup message input listener
+        // Setup message input listener with proper state management
         messageInput?.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                sendButton?.isEnabled = !s.isNullOrEmpty()
+                sendButton?.isEnabled = !s.isNullOrEmpty() && s.isNotBlank()
             }
         })
     }
@@ -225,35 +230,44 @@ class ChatActivity : AppCompatActivity() {
     }
     
     private fun updateChatHeader() {
-        otherUserData?.let { userData ->
-            chatNameText?.text = userData["username"]?.toString() ?: "User"
-            
-            val avatarUrl = userData["avatar"]?.toString()
-            if (!avatarUrl.isNullOrEmpty() && avatarUrl != "null") {
-                chatAvatarImage?.let { imageView ->
-                    Glide.with(this)
-                        .load(Uri.parse(avatarUrl))
-                        .circleCrop()
-                        .into(imageView)
-                }
+        val userData = otherUserData ?: return
+        
+        chatNameText?.text = userData["username"]?.toString() ?: "User"
+        
+        val avatarUrl = userData["avatar"]?.toString()
+            ?.takeIf { it.isNotEmpty() && it != "null" }
+        
+        if (avatarUrl != null) {
+            chatAvatarImage?.let { imageView ->
+                Glide.with(this)
+                    .load(Uri.parse(avatarUrl))
+                    .circleCrop()
+                    .placeholder(R.drawable.ic_account_circle_48px)
+                    .error(R.drawable.ic_account_circle_48px)
+                    .into(imageView)
             }
         }
     }
     
     private fun showError(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        runOnUiThread {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
     }
     
     private fun loadingDialog(show: Boolean) {
-        if (show) {
-            synapseLoadingDialog = ProgressDialog(this).apply {
-                setMessage("Loading...")
-                setCancelable(false)
-                show()
+        runOnUiThread {
+            if (show) {
+                if (synapseLoadingDialog == null) {
+                    synapseLoadingDialog = ProgressDialog(this).apply {
+                        setMessage("Loading...")
+                        setCancelable(false)
+                    }
+                }
+                synapseLoadingDialog?.show()
+            } else {
+                synapseLoadingDialog?.dismiss()
             }
-        } else {
-            synapseLoadingDialog?.dismiss()
-            synapseLoadingDialog = null
         }
     }
 
@@ -292,8 +306,15 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         super.onBackPressed()
         finish()
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        synapseLoadingDialog?.dismiss()
+        synapseLoadingDialog = null
     }
 }

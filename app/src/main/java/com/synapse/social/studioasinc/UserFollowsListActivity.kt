@@ -356,7 +356,7 @@ class UserFollowsListActivity : AppCompatActivity() {
     private fun setTab(id: Int) {
         when (id) {
             0 -> {
-                viewGraphics(tabFollowers, resources.getColor(R.color.colorPrimary), 0xFF3F51B5.toInt(), 300.0, 0.0, Color.TRANSPARENT)
+                viewGraphics(tabFollowers, androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary), 0xFF3F51B5.toInt(), 300.0, 0.0, Color.TRANSPARENT)
                 viewGraphics(tabFollowings, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 2.0, 0xFFEEEEEE.toInt())
                 tabFollowers.setTextColor(0xFFFFFFFF.toInt())
                 tabFollowings.setTextColor(0xFF616161.toInt())
@@ -365,7 +365,7 @@ class UserFollowsListActivity : AppCompatActivity() {
             }
             1 -> {
                 viewGraphics(tabFollowers, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 2.0, 0xFFEEEEEE.toInt())
-                viewGraphics(tabFollowings, resources.getColor(R.color.colorPrimary), 0xFF3949AB.toInt(), 300.0, 0.0, Color.TRANSPARENT)
+                viewGraphics(tabFollowings, androidx.core.content.ContextCompat.getColor(this, R.color.colorPrimary), 0xFF3949AB.toInt(), 300.0, 0.0, Color.TRANSPARENT)
                 tabFollowers.setTextColor(0xFF616161.toInt())
                 tabFollowings.setTextColor(0xFFFFFFFF.toInt())
                 followersLayout.visibility = View.GONE
@@ -389,7 +389,11 @@ class UserFollowsListActivity : AppCompatActivity() {
     }
 
     private fun stateColor(statusColor: Int, navigationColor: Int) {
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = true
+            }
+        }
         window.statusBarColor = statusColor
         window.navigationBarColor = navigationColor
     }

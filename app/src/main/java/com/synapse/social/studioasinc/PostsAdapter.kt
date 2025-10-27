@@ -14,7 +14,8 @@ import com.synapse.social.studioasinc.model.Post
 import io.noties.markwon.Markwon
 
 /**
- * Adapter for displaying posts in a RecyclerView
+ * Adapter for displaying posts in a RecyclerView.
+ * Supports markdown rendering, user interactions, and efficient list updates via DiffUtil.
  */
 class PostsAdapter(
     private val context: Context,
@@ -50,37 +51,53 @@ class PostsAdapter(
 
         fun bind(post: Post) {
             // Set content with markdown support if available
-            if (markwon != null) {
-                markwon.setMarkdown(contentText, post.postText ?: "")
+            val postContent = post.postText ?: ""
+            if (markwon != null && postContent.isNotEmpty()) {
+                markwon.setMarkdown(contentText, postContent)
             } else {
-                contentText.text = post.postText ?: ""
+                contentText.text = postContent
             }
 
-            // Set author info
-            authorText.text = post.authorUid // This should be replaced with actual username
+            // Set author info (TODO: Load actual username from users table)
+            authorText.text = "@${post.authorUid}"
             
-            // Set counts
-            likesCountText.text = post.likesCount.toString()
-            commentsCountText.text = post.commentsCount.toString()
+            // Set counts with proper formatting
+            likesCountText.text = formatCount(post.likesCount)
+            commentsCountText.text = formatCount(post.commentsCount)
 
-            // Set click listeners
+            // Set click listeners with null safety
             likeButton.setOnClickListener { onLikeClicked?.invoke(post) }
             commentButton.setOnClickListener { onCommentClicked?.invoke(post) }
             shareButton.setOnClickListener { onShareClicked?.invoke(post) }
             moreButton.setOnClickListener { onMoreOptionsClicked?.invoke(post) }
             authorText.setOnClickListener { onUserClicked?.invoke(post.authorUid) }
         }
+        
+        /**
+         * Format large numbers for display (e.g., 1.2K, 3.5M)
+         */
+        private fun formatCount(count: Int): String {
+            return when {
+                count < 1000 -> count.toString()
+                count < 1_000_000 -> String.format("%.1fK", count / 1000.0)
+                else -> String.format("%.1fM", count / 1_000_000.0)
+            }
+        }
 
+        /**
+         * Format timestamp to relative time string (e.g., "2h ago", "3d ago")
+         */
         private fun formatTimestamp(timestamp: Long): String {
             val now = System.currentTimeMillis()
             val diff = now - timestamp
             
             return when {
+                diff < 0 -> "Just now" // Handle future timestamps
                 diff < 60_000 -> "Just now"
-                diff < 3600_000 -> "${diff / 60_000}m"
-                diff < 86400_000 -> "${diff / 3600_000}h"
-                diff < 604800_000 -> "${diff / 86400_000}d"
-                else -> "${diff / 604800_000}w"
+                diff < 3600_000 -> "${diff / 60_000}m ago"
+                diff < 86400_000 -> "${diff / 3600_000}h ago"
+                diff < 604800_000 -> "${diff / 86400_000}d ago"
+                else -> "${diff / 604800_000}w ago"
             }
         }
     }
