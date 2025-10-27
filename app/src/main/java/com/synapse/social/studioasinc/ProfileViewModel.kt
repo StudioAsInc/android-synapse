@@ -247,4 +247,88 @@ class ProfileViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Toggles post like status - direct Supabase call
+     */
+    fun togglePostLike(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                // Check if post is already liked
+                val existingLike = client.from("post_likes")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    .decodeSingleOrNull<JsonObject>()
+                
+                if (existingLike != null) {
+                    // Unlike post
+                    client.from("post_likes").delete {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    android.util.Log.d("ProfileViewModel", "Post unliked successfully")
+                } else {
+                    // Like post
+                    val likeData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(postId))
+                    }
+                    client.from("post_likes").insert(likeData)
+                    android.util.Log.d("ProfileViewModel", "Post liked successfully")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling post like", e)
+            }
+        }
+    }
+
+    /**
+     * Toggles favorite status for a post - direct Supabase call
+     */
+    fun toggleFavorite(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                // Check if post is already favorited
+                val existingFavorite = client.from("favorites")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    .decodeSingleOrNull<JsonObject>()
+                
+                if (existingFavorite != null) {
+                    // Remove from favorites
+                    client.from("favorites").delete {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    android.util.Log.d("ProfileViewModel", "Post removed from favorites")
+                } else {
+                    // Add to favorites
+                    val favoriteData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(postId))
+                    }
+                    client.from("favorites").insert(favoriteData)
+                    android.util.Log.d("ProfileViewModel", "Post added to favorites")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling favorite", e)
+            }
+        }
+    }
 }
