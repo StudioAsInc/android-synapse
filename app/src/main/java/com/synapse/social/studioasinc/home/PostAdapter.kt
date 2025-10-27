@@ -119,36 +119,53 @@ class PostAdapter(
         private fun handleLikeClick(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
+                    android.util.Log.d("PostAdapter", "=== LIKE BUTTON CLICKED ===")
+                    android.util.Log.d("PostAdapter", "Post ID: ${post.id}")
+                    
                     // Check if user is logged in first using the synchronous method
-                    if (!authRepository.isUserLoggedIn()) {
+                    val isLoggedIn = authRepository.isUserLoggedIn()
+                    android.util.Log.d("PostAdapter", "User logged in: $isLoggedIn")
+                    
+                    if (!isLoggedIn) {
+                        android.util.Log.w("PostAdapter", "User not logged in, showing login prompt")
                         android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
                     }
                     
                     // Get the user UID (this is a suspend function)
+                    android.util.Log.d("PostAdapter", "Fetching current user UID...")
                     val currentUserUid = authRepository.getCurrentUserUid()
+                    android.util.Log.d("PostAdapter", "Current user UID: $currentUserUid")
+                    
                     if (currentUserUid == null) {
-                        android.widget.Toast.makeText(context, "Failed to get user information", android.widget.Toast.LENGTH_SHORT).show()
+                        android.util.Log.e("PostAdapter", "Failed to get user UID - user may not exist in database")
+                        android.widget.Toast.makeText(context, "Failed to get user information. Please try logging in again.", android.widget.Toast.LENGTH_LONG).show()
                         return@launch
                     }
                     
                     // Toggle like
+                    android.util.Log.d("PostAdapter", "Toggling like for user: $currentUserUid, post: ${post.id}")
                     likeRepository.toggleLike(currentUserUid, post.id, "post")
                         .onSuccess { isLiked ->
+                            android.util.Log.d("PostAdapter", "Like toggled successfully. Is liked: $isLiked")
                             updateLikeIcon(isLiked)
                             
                             // Update like count
                             likeRepository.getLikeCount(post.id, "post")
                                 .onSuccess { count ->
+                                    android.util.Log.d("PostAdapter", "Like count updated: $count")
                                     likeCount.text = count.toString()
+                                }
+                                .onFailure { error ->
+                                    android.util.Log.e("PostAdapter", "Failed to get like count: ${error.message}", error)
                                 }
                         }
                         .onFailure { error ->
-                            android.util.Log.e("PostAdapter", "Failed to toggle like", error)
+                            android.util.Log.e("PostAdapter", "Failed to toggle like: ${error.message}", error)
                             android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
                         }
                 } catch (e: Exception) {
-                    android.util.Log.e("PostAdapter", "Error handling like click", e)
+                    android.util.Log.e("PostAdapter", "Error handling like click: ${e.message}", e)
                     android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }

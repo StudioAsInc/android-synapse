@@ -317,4 +317,74 @@ class SupabaseDatabaseService : IDatabaseService {
             }
         }
     }
+    
+    /**
+     * Search posts by content using text search
+     * @param query The search query string
+     * @param limit Maximum number of results to return
+     * @return Result with list of matching posts
+     */
+    suspend fun searchPosts(query: String, limit: Int = 20): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d(TAG, "Searching posts with query: $query")
+                
+                val result = client.from("posts").select(columns = Columns.raw("*")) {
+                    filter {
+                        ilike("content", "%$query%")
+                    }
+                    limit(limit.toLong())
+                    order(column = "timestamp", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                }.decodeList<JsonObject>()
+                
+                val mappedResult = result.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }
+                
+                android.util.Log.d(TAG, "Found ${mappedResult.size} posts matching query")
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Post search failed", e)
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Search users by username or nickname
+     * @param query The search query string
+     * @param limit Maximum number of results to return
+     * @return Result with list of matching users
+     */
+    suspend fun searchUsers(query: String, limit: Int = 20): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d(TAG, "Searching users with query: $query")
+                
+                val result = client.from("users").select(columns = Columns.raw("*")) {
+                    filter {
+                        or {
+                            ilike("username", "%$query%")
+                            ilike("nickname", "%$query%")
+                        }
+                    }
+                    limit(limit.toLong())
+                }.decodeList<JsonObject>()
+                
+                val mappedResult = result.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }
+                
+                android.util.Log.d(TAG, "Found ${mappedResult.size} users matching query")
+                Result.success(mappedResult)
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "User search failed", e)
+                Result.failure(e)
+            }
+        }
+    }
 }

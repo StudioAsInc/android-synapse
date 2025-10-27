@@ -202,15 +202,10 @@ class SearchActivity : AppCompatActivity() {
 
     private suspend fun searchUsers(query: String): List<SearchResult.User> = withContext(Dispatchers.IO) {
         try {
-            val result = databaseService.select("users", "*")
+            val result = databaseService.searchUsers(query, 20)
             result.fold(
                 onSuccess = { users ->
-                    users.filter { user ->
-                        val username = user["username"]?.toString() ?: ""
-                        val nickname = user["nickname"]?.toString() ?: ""
-                        username.contains(query, ignoreCase = true) || 
-                        nickname.contains(query, ignoreCase = true)
-                    }.take(20).map { user ->
+                    users.map { user ->
                         SearchResult.User(
                             uid = user["uid"]?.toString() ?: "",
                             username = user["username"]?.toString() ?: "",
@@ -234,19 +229,16 @@ class SearchActivity : AppCompatActivity() {
 
     private suspend fun searchPosts(query: String): List<SearchResult.Post> = withContext(Dispatchers.IO) {
         try {
-            val result = databaseService.select("posts", "*")
+            val result = databaseService.searchPosts(query, 20)
             result.fold(
                 onSuccess = { posts ->
-                    posts.filter { post ->
-                        val content = post["content"]?.toString() ?: ""
-                        content.contains(query, ignoreCase = true)
-                    }.take(20).mapNotNull { post ->
+                    posts.mapNotNull { post ->
                         val authorId = post["uid"]?.toString() ?: return@mapNotNull null
-                        val authorResult = databaseService.select("users", "*")
+                        val authorResult = databaseService.selectWhere("users", "*", "uid", authorId)
                         
                         authorResult.fold(
                             onSuccess = { users ->
-                                val author = users.find { it["uid"]?.toString() == authorId }
+                                val author = users.firstOrNull()
                                 SearchResult.Post(
                                     postId = post["post_id"]?.toString() ?: "",
                                     authorId = authorId,

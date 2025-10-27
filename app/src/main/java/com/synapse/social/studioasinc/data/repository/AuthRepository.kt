@@ -102,27 +102,44 @@ class AuthRepository {
     }
     
     /**
-     * Get the current user's UID from the users table (not the auth UUID)
-     * This is needed for RLS policies that check against the users.uid field
+     * Get the current user's UID from the users table.
+     * In this app, the auth ID IS the UID (stored in users.uid column).
+     * This method verifies the user exists in the database and returns their UID.
      */
     suspend fun getCurrentUserUid(): String? {
         return if (isSupabaseConfigured()) {
             try {
-                val authId = client.auth.currentUserOrNull()?.id ?: return null
+                val authId = client.auth.currentUserOrNull()?.id
+                if (authId == null) {
+                    android.util.Log.e("AuthRepository", "No authenticated user found")
+                    return null
+                }
+                
+                android.util.Log.d("AuthRepository", "Getting UID for auth ID: $authId")
+                
+                // In this app, auth ID IS the UID (users.uid = auth.users.id)
+                // Verify the user exists in the database
                 val result = client.from("users")
                     .select(columns = io.github.jan.supabase.postgrest.query.Columns.raw("uid")) {
                         filter {
-                            eq("id", authId)
+                            eq("uid", authId)
                         }
                     }
                     .decodeSingleOrNull<kotlinx.serialization.json.JsonObject>()
                 
-                result?.get("uid")?.toString()?.removeSurrounding("\"")
+                if (result != null) {
+                    android.util.Log.d("AuthRepository", "User found in database with UID: $authId")
+                    return authId
+                }
+                
+                android.util.Log.e("AuthRepository", "User not found in database with UID: $authId")
+                null
             } catch (e: Exception) {
-                android.util.Log.e("AuthRepository", "Failed to get user UID", e)
+                android.util.Log.e("AuthRepository", "Failed to get user UID: ${e.message}", e)
                 null
             }
         } else {
+            android.util.Log.e("AuthRepository", "Supabase not configured")
             null
         }
     }

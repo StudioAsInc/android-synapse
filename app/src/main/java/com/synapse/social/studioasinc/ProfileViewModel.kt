@@ -44,15 +44,31 @@ class ProfileViewModel : ViewModel() {
     
     private suspend fun getCurrentUserUid(): String? {
         return try {
-            val authId = client.auth.currentUserOrNull()?.id ?: return null
-            val result = client.from("users")
+            val authId = client.auth.currentUserOrNull()?.id
+            if (authId == null) {
+                android.util.Log.e("ProfileViewModel", "No authenticated user found")
+                return null
+            }
+            
+            android.util.Log.d("ProfileViewModel", "Auth ID: $authId")
+            
+            // In this app, the auth ID IS the UID (stored in users.uid column)
+            // Verify the user exists in the database
+            val userCheck = client.from("users")
                 .select(columns = Columns.raw("uid")) {
-                    filter { eq("id", authId) }
+                    filter { eq("uid", authId) }
                 }
                 .decodeSingleOrNull<JsonObject>()
-            result?.get("uid")?.toString()?.removeSurrounding("\"")
+            
+            if (userCheck != null) {
+                android.util.Log.d("ProfileViewModel", "User found in database with UID: $authId")
+                return authId
+            }
+            
+            android.util.Log.e("ProfileViewModel", "User not found in database with UID: $authId")
+            null
         } catch (e: Exception) {
-            android.util.Log.e("ProfileViewModel", "Failed to get user UID", e)
+            android.util.Log.e("ProfileViewModel", "Failed to get user UID: ${e.message}", e)
             null
         }
     }
