@@ -100,7 +100,7 @@ class ProfileActivity : AppCompatActivity() {
             markwon = markwon,
             onLikeClicked = { post -> viewModel.togglePostLike(post.id) },
             onCommentClicked = { post -> showCommentsDialog(post) },
-            onShareClicked = { post -> /* Handle share click */ },
+            onShareClicked = { post -> sharePost(post) },
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
             onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
@@ -147,7 +147,39 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptionsDialog(post: Post) {
-        // More options dialog - placeholder for now
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id
+        val isOwnPost = post.authorUid == currentUid
+        
+        val options = if (isOwnPost) {
+            arrayOf("Edit Post", "Delete Post", "Copy Link", "Post Statistics")
+        } else {
+            arrayOf("Report Post", "Copy Link", "Hide Post")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Post Options")
+            .setItems(options) { _, which ->
+                when {
+                    isOwnPost -> {
+                        when (which) {
+                            0 -> editPost(post)
+                            1 -> deletePost(post)
+                            2 -> copyPostLink(post)
+                            3 -> showPostStatistics(post)
+                        }
+                    }
+                    else -> {
+                        when (which) {
+                            0 -> reportPost(post)
+                            1 -> copyPostLink(post)
+                            2 -> hidePost(post)
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showFollowOptionsDialog(userId: String) {
@@ -296,7 +328,7 @@ class ProfileActivity : AppCompatActivity() {
             loadUserProfile(userId, currentUid)
         }
         binding.ProfilePageTopBarMenu.setOnClickListener {
-            // Navigate to settings - placeholder for now
+            showProfileMenu(userId, currentUid)
         }
         binding.btnFollow.setOnClickListener {
             android.util.Log.d("ProfileActivity", "Follow button clicked for user: $userId, current user: $currentUid")
@@ -481,6 +513,279 @@ class ProfileActivity : AppCompatActivity() {
                     "Error starting chat: ${e.message}", 
                     Toast.LENGTH_SHORT
                 ).show()
+            }
+        }
+    }
+
+    /**
+     * Share post functionality
+     */
+    private fun sharePost(post: Post) {
+        val shareText = buildString {
+            append("Check out this post on Synapse!\n\n")
+            if (!post.postText.isNullOrEmpty()) {
+                append(post.postText)
+                append("\n\n")
+            }
+            append("Posted by @${post.authorUid}\n")
+            append("https://synapse.app/post/${post.id}")
+        }
+        
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            putExtra(Intent.EXTRA_SUBJECT, "Synapse Post")
+        }
+        
+        startActivity(Intent.createChooser(shareIntent, "Share post via"))
+    }
+
+    /**
+     * Show profile menu options
+     */
+    private fun showProfileMenu(userId: String, currentUid: String) {
+        val isOwnProfile = userId == currentUid
+        
+        val options = if (isOwnProfile) {
+            arrayOf("Settings", "QR Code", "Share Profile", "Archive")
+        } else {
+            arrayOf("Share Profile", "Block User", "Report User")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Profile Options")
+            .setItems(options) { _, which ->
+                when {
+                    isOwnProfile -> {
+                        when (which) {
+                            0 -> openSettings()
+                            1 -> showQRCode(userId)
+                            2 -> shareProfile(userId)
+                            3 -> openArchive()
+                        }
+                    }
+                    else -> {
+                        when (which) {
+                            0 -> shareProfile(userId)
+                            1 -> blockUser(userId)
+                            2 -> reportUser(userId)
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun openSettings() {
+        Toast.makeText(this, "Settings feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement settings activity
+    }
+
+    private fun showQRCode(userId: String) {
+        Toast.makeText(this, "QR Code feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement QR code generation
+    }
+
+    private fun shareProfile(userId: String) {
+        val shareText = "Check out this profile on Synapse!\nhttps://synapse.app/profile/$userId"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share profile via"))
+    }
+
+    private fun openArchive() {
+        Toast.makeText(this, "Archive feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement archive activity
+    }
+
+    private fun blockUser(userId: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Block User")
+            .setMessage("Are you sure you want to block this user? You won't see their posts and they won't be able to message you.")
+            .setPositiveButton("Block") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                        if (currentUid != null) {
+                            val blockData = kotlinx.serialization.json.buildJsonObject {
+                                put("blocker_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                                put("blocked_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                                put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                            }
+                            SupabaseClient.client.from("blocks").insert(blockData)
+                            Toast.makeText(this@ProfileActivity, "User blocked", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ProfileActivity, "Failed to block user: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun reportUser(userId: String) {
+        val reasons = arrayOf(
+            "Spam",
+            "Harassment",
+            "Inappropriate Content",
+            "Impersonation",
+            "Other"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("Report User")
+            .setItems(reasons) { _, which ->
+                val reason = reasons[which]
+                submitUserReport(userId, reason)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun submitUserReport(userId: String, reason: String) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val reportData = kotlinx.serialization.json.buildJsonObject {
+                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("reported_user_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
+                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                    }
+                    SupabaseClient.client.from("user_reports").insert(reportData)
+                    Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for helping keep Synapse safe.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to submit report: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Post action methods
+     */
+    private fun editPost(post: Post) {
+        val intent = Intent(this, EditPostActivity::class.java)
+        intent.putExtra("post_id", post.id)
+        intent.putExtra("post_text", post.postText)
+        startActivity(intent)
+    }
+
+    private fun deletePost(post: Post) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Post")
+            .setMessage("Are you sure you want to delete this post? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        SupabaseClient.client.from("posts").delete {
+                            filter {
+                                eq("id", post.id)
+                            }
+                        }
+                        Toast.makeText(this@ProfileActivity, "Post deleted", Toast.LENGTH_SHORT).show()
+                        // Refresh posts
+                        val userId = intent.getStringExtra("uid") ?: return@launch
+                        viewModel.getUserPosts(userId)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ProfileActivity, "Failed to delete post: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun copyPostLink(post: Post) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Post Link", "https://synapse.app/post/${post.id}")
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "Link copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showPostStatistics(post: Post) {
+        val message = buildString {
+            append("Post Statistics\n\n")
+            append("Likes: ${post.likesCount}\n")
+            append("Comments: ${post.commentsCount}\n")
+            append("Views: ${post.viewsCount}\n")
+            append("Posted: ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(post.timestamp))}")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Statistics")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun reportPost(post: Post) {
+        val reasons = arrayOf(
+            "Spam",
+            "Harassment or Bullying",
+            "Violence or Dangerous Content",
+            "Hate Speech",
+            "Nudity or Sexual Content",
+            "False Information",
+            "Other"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("Report Post")
+            .setItems(reasons) { _, which ->
+                val reason = reasons[which]
+                submitPostReport(post.id, reason)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun submitPostReport(postId: String, reason: String) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val reportData = kotlinx.serialization.json.buildJsonObject {
+                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("post_id", kotlinx.serialization.json.JsonPrimitive(postId))
+                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
+                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                    }
+                    SupabaseClient.client.from("post_reports").insert(reportData)
+                    Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for your feedback.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to submit report: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun hidePost(post: Post) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val hideData = kotlinx.serialization.json.buildJsonObject {
+                        put("user_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("post_id", kotlinx.serialization.json.JsonPrimitive(post.id))
+                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                    }
+                    SupabaseClient.client.from("hidden_posts").insert(hideData)
+                    Toast.makeText(this@ProfileActivity, "Post hidden. You won't see posts like this.", Toast.LENGTH_SHORT).show()
+                    // Refresh posts
+                    val userId = intent.getStringExtra("uid") ?: return@launch
+                    viewModel.getUserPosts(userId)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
