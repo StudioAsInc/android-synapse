@@ -127,11 +127,20 @@ class ProfileViewModel : ViewModel() {
     fun toggleFollow(targetUid: String) {
         viewModelScope.launch {
             try {
-                val currentUid = getCurrentUserUid() ?: return@launch
+                android.util.Log.d("ProfileViewModel", "toggleFollow called for target: $targetUid")
+                val currentUid = getCurrentUserUid()
+                if (currentUid == null) {
+                    android.util.Log.e("ProfileViewModel", "Failed to get current user UID")
+                    return@launch
+                }
+                android.util.Log.d("ProfileViewModel", "Current user UID: $currentUid")
+                
                 val isCurrentlyFollowing = _isFollowing.value ?: false
+                android.util.Log.d("ProfileViewModel", "Currently following: $isCurrentlyFollowing")
                 
                 if (isCurrentlyFollowing) {
                     // Unfollow
+                    android.util.Log.d("ProfileViewModel", "Attempting to unfollow...")
                     client.from("follows").delete {
                         filter {
                             eq("follower_id", currentUid)
@@ -142,11 +151,13 @@ class ProfileViewModel : ViewModel() {
                     android.util.Log.d("ProfileViewModel", "Unfollowed successfully")
                 } else {
                     // Follow
-                    val follow = Follow(
-                        followerId = currentUid,
-                        followingId = targetUid
-                    )
-                    client.from("follows").insert(follow)
+                    android.util.Log.d("ProfileViewModel", "Attempting to follow...")
+                    val followData = buildJsonObject {
+                        put("follower_id", currentUid)
+                        put("following_id", targetUid)
+                        put("created_at", System.currentTimeMillis())
+                    }
+                    client.from("follows").insert(followData)
                     _isFollowing.value = true
                     android.util.Log.d("ProfileViewModel", "Followed successfully")
                 }

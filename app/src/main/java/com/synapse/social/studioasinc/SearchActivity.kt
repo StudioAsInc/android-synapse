@@ -102,6 +102,8 @@ class SearchActivity : AppCompatActivity() {
         })
     }
 
+
+
     private fun setupChips() {
         chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isNotEmpty()) {

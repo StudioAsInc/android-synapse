@@ -74,7 +74,12 @@ class SearchResultsAdapter(
 
         fun bind(user: SearchResult.User) {
             // Set username and handle
-            textUsername.text = user.nickname ?: "@${user.username}"
+            val displayName = if (!user.nickname.isNullOrEmpty() && user.nickname != "null") {
+                user.nickname
+            } else {
+                user.username
+            }
+            textUsername.text = displayName
             textHandle.text = "@${user.username}"
 
             // Set avatar

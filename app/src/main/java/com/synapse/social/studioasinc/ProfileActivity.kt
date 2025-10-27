@@ -299,6 +299,12 @@ class ProfileActivity : AppCompatActivity() {
             // Navigate to settings - placeholder for now
         }
         binding.btnFollow.setOnClickListener {
+            android.util.Log.d("ProfileActivity", "Follow button clicked for user: $userId, current user: $currentUid")
+            if (userId.isEmpty() || currentUid.isEmpty()) {
+                android.util.Log.e("ProfileActivity", "Invalid user IDs for follow action")
+                Toast.makeText(this, "Failed to get user info", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             viewModel.toggleFollow(userId)
         }
 
@@ -321,6 +327,7 @@ class ProfileActivity : AppCompatActivity() {
         }
 
         binding.btnMessage.setOnClickListener {
+            android.util.Log.d("ProfileActivity", "Message button clicked for user: $userId")
             startDirectChat(userId, currentUid)
         }
 
@@ -388,7 +395,6 @@ class ProfileActivity : AppCompatActivity() {
         }
         dialog.show()
     }
-
     private fun saveToHistory(imageUrl: String) {
         val currentUser = SupabaseClient.client.auth.currentUserOrNull()
         val currentUid = currentUser?.id ?: return
@@ -416,13 +422,16 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun startDirectChat(targetUserId: String, currentUserId: String?) {
+        android.util.Log.d("ProfileActivity", "startDirectChat called - Target: $targetUserId, Current: $currentUserId")
         lifecycleScope.launch {
             try {
                 // Get current user UID (not auth UUID)
                 val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
                 val currentUserUid = authRepository.getCurrentUserUid()
+                android.util.Log.d("ProfileActivity", "Got current user UID: $currentUserUid")
 
                 if (currentUserUid == null) {
+                    android.util.Log.e("ProfileActivity", "Failed to get current user UID")
                     Toast.makeText(this@ProfileActivity, "Failed to get user info", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
@@ -439,12 +448,14 @@ class ProfileActivity : AppCompatActivity() {
                     show()
                 }
 
+                android.util.Log.d("ProfileActivity", "Creating/getting chat...")
                 val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
                 val result = chatService.getOrCreateDirectChat(currentUserUid, targetUserId)
                 
                 result.fold(
                     onSuccess = { chatId ->
                         progressDialog.dismiss()
+                        android.util.Log.d("ProfileActivity", "Chat created successfully: $chatId")
                         
                         // Navigate to ChatActivity
                         val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
