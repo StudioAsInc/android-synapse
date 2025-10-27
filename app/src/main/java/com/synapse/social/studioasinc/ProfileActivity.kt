@@ -109,7 +109,12 @@ class ProfileActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         )
-        binding.ProfilePageTabUserPostsRecyclerView.adapter = postAdapter
+        
+        // Set up RecyclerView with layout manager
+        binding.ProfilePageTabUserPostsRecyclerView.apply {
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@ProfileActivity)
+            adapter = postAdapter
+        }
 
         viewModel.userPosts.observe(this) { state ->
             when (state) {
@@ -635,7 +640,7 @@ class ProfileActivity : AppCompatActivity() {
                             val blockData = kotlinx.serialization.json.buildJsonObject {
                                 put("blocker_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
                                 put("blocked_id", kotlinx.serialization.json.JsonPrimitive(userId))
-                                put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                                // Let database handle created_at with default value
                             }
                             SupabaseClient.client.from("blocks").insert(blockData)
                             Toast.makeText(this@ProfileActivity, "User blocked", Toast.LENGTH_SHORT).show()
@@ -678,8 +683,8 @@ class ProfileActivity : AppCompatActivity() {
                         put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
                         put("reported_user_id", kotlinx.serialization.json.JsonPrimitive(userId))
                         put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
-                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
                         put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                        // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("user_reports").insert(reportData)
                     Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for helping keep Synapse safe.", Toast.LENGTH_LONG).show()
@@ -778,8 +783,8 @@ class ProfileActivity : AppCompatActivity() {
                         put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
                         put("post_id", kotlinx.serialization.json.JsonPrimitive(postId))
                         put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
-                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
                         put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                        // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("post_reports").insert(reportData)
                     Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for your feedback.", Toast.LENGTH_LONG).show()
@@ -798,7 +803,7 @@ class ProfileActivity : AppCompatActivity() {
                     val hideData = kotlinx.serialization.json.buildJsonObject {
                         put("user_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
                         put("post_id", kotlinx.serialization.json.JsonPrimitive(post.id))
-                        put("created_at", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                        // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("hidden_posts").insert(hideData)
                     Toast.makeText(this@ProfileActivity, "Post hidden. You won't see posts like this.", Toast.LENGTH_SHORT).show()

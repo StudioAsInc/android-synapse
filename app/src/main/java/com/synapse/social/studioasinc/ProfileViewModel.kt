@@ -171,7 +171,7 @@ class ProfileViewModel : ViewModel() {
                     val followData = buildJsonObject {
                         put("follower_id", currentUid)
                         put("following_id", targetUid)
-                        put("created_at", System.currentTimeMillis())
+                        // Don't set created_at - let database handle it with default value
                     }
                     client.from("follows").insert(followData)
                     _isFollowing.value = true

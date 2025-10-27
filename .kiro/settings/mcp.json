@@ -80,6 +80,64 @@
         "get_pull_request_comments",
         "get_pull_request_reviews"
       ]
+    },
+    "mobile-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@mobilenext/mobile-mcp@latest"
+      ],
+      "env": {
+        "ANDROID_HOME": "${ANDROID_HOME}",
+        "JAVA_HOME": "${JAVA_HOME}"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "get_device_info",
+        "take_screenshot",
+        "get_accessibility_tree",
+        "tap_coordinate",
+        "tap_element",
+        "swipe",
+        "scroll",
+        "type_text",
+        "press_key",
+        "get_current_app",
+        "launch_app",
+        "close_app",
+        "install_app",
+        "uninstall_app",
+        "get_installed_apps",
+        "start_recording",
+        "stop_recording",
+        "get_device_logs",
+        "set_device_orientation",
+        "get_battery_info",
+        "simulate_location",
+        "get_network_info",
+        "toggle_wifi",
+        "toggle_airplane_mode"
+      ]
+    },
+    "firebase": {
+      "command": "uvx",
+      "args": [
+        "mcp-firebase-tools"
+      ],
+      "env": {
+        "FIREBASE_TOKEN": "${FIREBASE_TOKEN}",
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "list_projects",
+        "get_project_info",
+        "deploy_functions",
+        "get_firestore_data",
+        "set_firestore_data",
+        "get_analytics",
+        "send_notification"
+      ]
     }
   }
 }

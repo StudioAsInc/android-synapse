@@ -181,7 +181,7 @@
     <color name="light_blue_ripple">#BBDEFB</color>
 
     <!-- Colors for User Profile Status -->
-    <color name="online_green">#2196F3</color>
+    <color name="online_green">#4CAF50</color>
     <color name="offline_gray">#757575</color>
     
     <!-- Follow feature colors -->
@@ -192,4 +192,20 @@
     <color name="text_primary">@color/md_theme_onBackground</color>
     <color name="text_secondary">@color/md_theme_onSurfaceVariant</color>
     <color name="gray_light">@color/md_theme_surfaceVariant</color>
+    
+    <!-- Gradient overlay colors -->
+    <color name="gradient_transparent">#00000000</color>
+    <color name="gradient_semi_black">#80000000</color>
+    
+    <!-- Layout specific colors -->
+    <color name="card_background">@color/md_theme_surface</color>
+    <color name="username_text">@color/md_theme_onSurface</color>
+    <color name="secondary_text">@color/md_theme_onSurfaceVariant</color>
+    <color name="status_indicator_online">#2196F3</color>
+    <color name="status_indicator_active">#43A047</color>
+    <color name="overlay_dark">#212121</color>
+    <color name="overlay_text">#9E9E9E</color>
+    <color name="video_duration_bg">#616161</color>
+    <color name="border_color">#008DCD</color>
+    <color name="rocket_pay_accent">#E2136E</color>
 </resources>
