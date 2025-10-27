@@ -151,35 +151,57 @@ class ProfileActivity : AppCompatActivity() {
         val currentUid = currentUser?.id
         val isOwnPost = post.authorUid == currentUid
         
-        val options = if (isOwnPost) {
-            arrayOf("Edit Post", "Delete Post", "Copy Link", "Post Statistics")
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val sheetBinding = com.synapse.social.studioasinc.databinding.BottomSheetPostOptionsBinding.inflate(layoutInflater)
+        bottomSheet.setContentView(sheetBinding.root)
+        
+        // Show/hide options based on ownership
+        if (isOwnPost) {
+            sheetBinding.optionEdit.visibility = View.VISIBLE
+            sheetBinding.optionDelete.visibility = View.VISIBLE
+            sheetBinding.optionStatistics.visibility = View.VISIBLE
+            sheetBinding.optionReport.visibility = View.GONE
+            sheetBinding.optionHide.visibility = View.GONE
         } else {
-            arrayOf("Report Post", "Copy Link", "Hide Post")
+            sheetBinding.optionEdit.visibility = View.GONE
+            sheetBinding.optionDelete.visibility = View.GONE
+            sheetBinding.optionStatistics.visibility = View.GONE
+            sheetBinding.optionReport.visibility = View.VISIBLE
+            sheetBinding.optionHide.visibility = View.VISIBLE
         }
         
-        AlertDialog.Builder(this)
-            .setTitle("Post Options")
-            .setItems(options) { _, which ->
-                when {
-                    isOwnPost -> {
-                        when (which) {
-                            0 -> editPost(post)
-                            1 -> deletePost(post)
-                            2 -> copyPostLink(post)
-                            3 -> showPostStatistics(post)
-                        }
-                    }
-                    else -> {
-                        when (which) {
-                            0 -> reportPost(post)
-                            1 -> copyPostLink(post)
-                            2 -> hidePost(post)
-                        }
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        // Set click listeners
+        sheetBinding.optionEdit.setOnClickListener {
+            editPost(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionDelete.setOnClickListener {
+            bottomSheet.dismiss()
+            deletePost(post)
+        }
+        
+        sheetBinding.optionCopyLink.setOnClickListener {
+            copyPostLink(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionStatistics.setOnClickListener {
+            bottomSheet.dismiss()
+            showPostStatistics(post)
+        }
+        
+        sheetBinding.optionReport.setOnClickListener {
+            bottomSheet.dismiss()
+            reportPost(post)
+        }
+        
+        sheetBinding.optionHide.setOnClickListener {
+            bottomSheet.dismiss()
+            hidePost(post)
+        }
+        
+        bottomSheet.show()
     }
 
     private fun showFollowOptionsDialog(userId: String) {
