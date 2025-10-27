@@ -13,6 +13,7 @@ import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.components.FollowButton
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.launch
 
 class FollowListAdapter(
     private val users: List<Map<String, Any?>>,
@@ -65,20 +66,36 @@ class FollowListAdapter(
                 avatarImage.setImageResource(R.drawable.ic_profile_placeholder)
             }
 
-            // Setup follow button
-            val currentUserId = getCurrentUserId()
-            if (currentUserId != null && currentUserId != userId) {
-                followButton.visibility = View.VISIBLE
-                messageButton.visibility = View.VISIBLE
+            // Setup follow button and message button
+            if (itemView.context is androidx.lifecycle.LifecycleOwner) {
+                val lifecycleOwner = itemView.context as androidx.lifecycle.LifecycleOwner
                 
-                if (itemView.context is androidx.lifecycle.LifecycleOwner) {
-                    val lifecycleOwner = itemView.context as androidx.lifecycle.LifecycleOwner
-                    followButton.setup(currentUserId, userId, lifecycleOwner.lifecycleScope)
-                }
-                
-                // Setup message button
-                messageButton.setOnClickListener {
-                    onMessageClick?.invoke(user)
+                // Get current user UID asynchronously
+                lifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
+                        val currentUserUid = authRepository.getCurrentUserUid()
+                        
+                        if (currentUserUid != null && currentUserUid != userId) {
+                            followButton.visibility = View.VISIBLE
+                            messageButton.visibility = View.VISIBLE
+                            
+                            // Setup follow button with correct UIDs
+                            followButton.setup(currentUserUid, userId, lifecycleOwner.lifecycleScope)
+                            
+                            // Setup message button
+                            messageButton.setOnClickListener {
+                                onMessageClick?.invoke(user)
+                            }
+                        } else {
+                            followButton.visibility = View.GONE
+                            messageButton.visibility = View.GONE
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("FollowListAdapter", "Failed to get current user UID", e)
+                        followButton.visibility = View.GONE
+                        messageButton.visibility = View.GONE
+                    }
                 }
             } else {
                 followButton.visibility = View.GONE
@@ -92,6 +109,10 @@ class FollowListAdapter(
 
         private fun getCurrentUserId(): String? {
             return try {
+                // Get the user UID from the users table, not the auth UUID
+                val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
+                // We need to use a coroutine for this, but since this is called from bind(),
+                // we'll use the auth UUID for now and fix the follow button setup
                 com.synapse.social.studioasinc.SupabaseClient.client.auth.currentUserOrNull()?.id
             } catch (e: Exception) {
                 null

@@ -146,24 +146,23 @@ class FollowListActivity : AppCompatActivity() {
 
     private fun startDirectChat(user: Map<String, Any?>) {
         val targetUserId = user["uid"]?.toString() ?: return
-        val currentUserId = try {
-            com.synapse.social.studioasinc.SupabaseClient.client.auth.currentUserOrNull()?.id
-        } catch (e: Exception) {
-            null
-        }
-
-        if (currentUserId == null) {
-            android.widget.Toast.makeText(this, "Please log in to send messages", android.widget.Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (targetUserId == currentUserId) {
-            android.widget.Toast.makeText(this, "You cannot message yourself", android.widget.Toast.LENGTH_SHORT).show()
-            return
-        }
 
         lifecycleScope.launch {
             try {
+                // Get current user UID (not auth UUID)
+                val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
+                val currentUserId = authRepository.getCurrentUserUid()
+
+                if (currentUserId == null) {
+                    android.widget.Toast.makeText(this@FollowListActivity, "Failed to get user info", android.widget.Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                if (targetUserId == currentUserId) {
+                    android.widget.Toast.makeText(this@FollowListActivity, "You cannot message yourself", android.widget.Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
                 // Show loading
                 val progressDialog = android.app.ProgressDialog(this@FollowListActivity).apply {
                     setMessage("Starting chat...")

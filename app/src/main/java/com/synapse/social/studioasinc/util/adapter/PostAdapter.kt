@@ -93,16 +93,19 @@ class PostAdapter(
         private fun loadLikeStatus(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
-                    val currentUserId = authRepository.getCurrentUserId()
-                    if (currentUserId != null) {
-                        // Check if user has liked this post
-                        likeRepository.isLiked(currentUserId, post.id, "post")
-                            .onSuccess { isLiked ->
-                                updateLikeIcon(isLiked)
-                            }
+                    // Check if user is logged in first
+                    if (authRepository.isUserLoggedIn()) {
+                        val currentUserId = authRepository.getCurrentUserId()
+                        if (currentUserId != null) {
+                            // Check if user has liked this post
+                            likeRepository.isLiked(currentUserId, post.id, "post")
+                                .onSuccess { isLiked ->
+                                    updateLikeIcon(isLiked)
+                                }
+                        }
                     }
                     
-                    // Get like count
+                    // Get like count (always show this regardless of login status)
                     likeRepository.getLikeCount(post.id, "post")
                         .onSuccess { count ->
                             likeCount.text = count.toString()
@@ -116,9 +119,15 @@ class PostAdapter(
         private fun handleLikeClick(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
+                    // Check if user is logged in first using the synchronous method
+                    if (!authRepository.isUserLoggedIn()) {
+                        android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
                     val currentUserId = authRepository.getCurrentUserId()
                     if (currentUserId == null) {
-                        android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "Failed to get user information", android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
                     }
                     
@@ -139,6 +148,7 @@ class PostAdapter(
                         }
                 } catch (e: Exception) {
                     android.util.Log.e("PostAdapter", "Error handling like click", e)
+                    android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }
