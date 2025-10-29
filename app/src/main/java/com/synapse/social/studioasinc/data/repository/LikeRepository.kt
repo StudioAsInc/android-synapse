@@ -41,13 +41,17 @@ class LikeRepository {
                     android.util.Log.d("LikeRepository", "Unliked successfully")
                     Result.success(false) // false = unliked
                 } else {
-                    // Like - insert new like
-                    val like = Like(
-                        userId = userId,
-                        targetId = targetId,
-                        targetType = targetType
-                    )
-                    client.from("likes").insert(like)
+                    // Like - insert new like using JsonObject to avoid serialization issues
+                    android.util.Log.d("LikeRepository", "Creating like with userId=$userId, targetId=$targetId, targetType=$targetType")
+                    
+                    val likeData = kotlinx.serialization.json.buildJsonObject {
+                        put("user_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                        put("target_id", kotlinx.serialization.json.JsonPrimitive(targetId))
+                        put("target_type", kotlinx.serialization.json.JsonPrimitive(targetType))
+                    }
+                    android.util.Log.d("LikeRepository", "Like data: $likeData")
+                    
+                    client.from("likes").insert(likeData)
                     android.util.Log.d("LikeRepository", "Liked successfully")
                     Result.success(true) // true = liked
                 }

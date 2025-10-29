@@ -195,13 +195,13 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
                     onSuccess = {
                         // Create user_chats entries for each participant
                         participants.forEach { participantId ->
-                            val userChatData = mapOf(
-                                "user_id" to participantId,
-                                "chat_id" to chatId,
-                                "joined_at" to currentTime,
-                                "last_read_message_id" to null,
-                                "unread_count" to 0
-                            )
+                            val userChatData = kotlinx.serialization.json.buildJsonObject {
+                                put("user_id", kotlinx.serialization.json.JsonPrimitive(participantId))
+                                put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
+                                put("joined_at", kotlinx.serialization.json.JsonPrimitive(currentTime))
+                                put("last_read_message_id", kotlinx.serialization.json.JsonNull)
+                                put("unread_count", kotlinx.serialization.json.JsonPrimitive(0))
+                            }
                             databaseService.insert("user_chats", userChatData)
                         }
                         

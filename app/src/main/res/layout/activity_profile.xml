@@ -145,7 +145,7 @@
 										android:layout_marginRight="18dp"
 										android:paddingLeft="2dp"
 										android:paddingRight="2dp"
-										android:background="#FFFFFF"
+										android:background="?attr/colorSurface"
 										android:gravity="center_horizontal|center_vertical"
 										android:orientation="horizontal">
 										<ImageView
@@ -163,7 +163,7 @@
 											android:layout_marginRight="8dp"
 											android:text="0"
 											android:textSize="18sp"
-											android:textColor="#616161" />
+											android:textColor="?attr/colorOnSurfaceVariant" />
 									</LinearLayout>
 								</LinearLayout>
 							</LinearLayout>
@@ -191,7 +191,7 @@
 										android:text="Name"
 										android:textSize="30sp"
 										android:textStyle="bold"
-										android:textColor="#000000"
+										android:textColor="?attr/colorOnSurface"
 										android:singleLine="true"
 										android:maxWidth="250dp"
 										android:fontFamily="@font/product_sans" />
@@ -203,7 +203,7 @@
 									android:layout_marginBottom="16dp"
 									android:text="@string/text_loading"
 									android:textSize="16sp"
-									android:textColor="#000000" />
+									android:textColor="?attr/colorOnSurface" />
 								<LinearLayout
 									android:id="@+id/ProfilePageTabUserInfoStateDetails"
 									android:layout_width="wrap_content"
@@ -216,7 +216,7 @@
 										android:layout_marginBottom="8dp"
 										android:text="@string/text_loading"
 										android:textSize="16sp"
-										android:textColor="#757575"
+										android:textColor="?attr/colorOnSurfaceVariant"
 										android:singleLine="true"
 										android:maxWidth="300dp" />
 									<TextView
@@ -228,7 +228,7 @@
 										android:gravity="center_horizontal|center_vertical"
 										android:text="|"
 										android:textSize="14sp"
-										android:textColor="#757575" />
+										android:textColor="?attr/colorOnSurfaceVariant" />
 									<TextView
 										android:id="@+id/ProfilePageTabUserInfoStatus"
 										android:layout_width="wrap_content"
@@ -236,7 +236,7 @@
 										android:gravity="center_horizontal|center_vertical"
 										android:text="@string/text_loading"
 										android:textSize="16sp"
-										android:textColor="#757575" />
+										android:textColor="?attr/colorOnSurfaceVariant" />
 								</LinearLayout>
 								<LinearLayout
 									android:id="@+id/ProfilePageTabUserInfoFollowsDetails"
@@ -251,7 +251,7 @@
 										android:gravity="center_horizontal|center_vertical"
 										android:text="@string/text_loading"
 										android:textSize="14sp"
-										android:textColor="#757575" />
+										android:textColor="?attr/colorOnSurfaceVariant" />
 									<TextView
 										android:id="@+id/ProfilePageTabUserInfoSpc"
 										android:layout_width="wrap_content"
@@ -261,7 +261,7 @@
 										android:gravity="center_horizontal|center_vertical"
 										android:text="|"
 										android:textSize="14sp"
-										android:textColor="#757575" />
+										android:textColor="?attr/colorOnSurfaceVariant" />
 									<TextView
 										android:id="@+id/ProfilePageTabUserInfoFollowingCount"
 										android:layout_width="wrap_content"
@@ -269,7 +269,7 @@
 										android:gravity="center_horizontal|center_vertical"
 										android:text="@string/text_loading"
 										android:textSize="14sp"
-										android:textColor="#757575" />
+										android:textColor="?attr/colorOnSurfaceVariant" />
 								</LinearLayout>
 								<com.google.android.material.button.MaterialButtonGroup
 									android:id="@+id/ProfilePageTabUserInfoSecondaryButtons"
@@ -285,7 +285,7 @@
 										android:padding="8dp"
 										android:text="Follow"
 										android:textSize="16sp"
-										android:textColor="#FFFFFF"
+										android:textColor="?attr/colorOnPrimary"
 										android:layout_weight="1"
 										style="@style/Widget.Material3Expressive.Button"
 										android:fontFamily="@font/product_sans" />
@@ -296,7 +296,7 @@
 										android:padding="8dp"
 										android:text="Message"
 										android:textSize="16sp"
-										android:textColor="#000000"
+										android:textColor="?attr/colorOnSurface"
 										android:layout_weight="1"
 										android:fontFamily="@font/product_sans"
 										style="@style/Widget.Material3.Button.TonalButton.Icon" />
@@ -327,7 +327,7 @@
 										android:text="Joined on"
 										android:textSize="16sp"
 										android:textStyle="bold"
-										android:textColor="#616161"
+										android:textColor="?attr/colorOnSurfaceVariant"
 										android:layout_weight="1"
 										android:fontFamily="@font/product_sans" />
 									<TextView
@@ -335,7 +335,7 @@
 										android:layout_width="wrap_content"
 										android:layout_height="wrap_content"
 										android:text="@string/text_loading"
-										android:textColor="#9E9E9E"
+										android:textColor="?attr/colorOnSurfaceVariant"
 										tools:replace="android:textSize"
 										android:textSize="14dp" />
 								</LinearLayout>
@@ -354,7 +354,7 @@
 										android:text="UID "
 										android:textSize="16sp"
 										android:textStyle="bold"
-										android:textColor="#616161"
+										android:textColor="?attr/colorOnSurfaceVariant"
 										android:layout_weight="1"
 										android:fontFamily="@font/product_sans" />
 									<TextView
@@ -362,7 +362,7 @@
 										android:layout_width="wrap_content"
 										android:layout_height="wrap_content"
 										android:text="@string/text_loading"
-										android:textColor="#9E9E9E"
+										android:textColor="?attr/colorOnSurfaceVariant"
 										tools:replace="android:textSize"
 										android:textSize="14dp" />
 								</LinearLayout>
@@ -373,7 +373,7 @@
 						android:id="@+id/ProfilePageTabUserPosts"
 						android:layout_width="match_parent"
 						android:layout_height="match_parent"
-						android:background="#F5F5F5"
+						android:background="?attr/colorSurfaceVariant"
 						android:orientation="vertical">
 						<androidx.recyclerview.widget.RecyclerView
 							android:id="@+id/ProfilePageTabUserPostsRecyclerView"
@@ -386,7 +386,7 @@
 							android:layout_height="match_parent"
 							android:gravity="center_horizontal|center_vertical"
 							android:textSize="18sp"
-							android:textColor="#757575"
+							android:textColor="?attr/colorOnSurfaceVariant"
 							tools:replace="android:text"
 							android:text="@string/m_no_posts" />
 					</LinearLayout>
@@ -414,7 +414,7 @@
 					android:text="Something went wrong!"
 					android:textSize="20sp"
 					android:textStyle="bold"
-					android:textColor="#000000" />
+					android:textColor="?attr/colorOnSurface" />
 				<TextView
 					android:id="@+id/ProfilePageNoInternetBodySubtitle"
 					android:layout_width="wrap_content"
@@ -422,15 +422,15 @@
 					android:layout_marginBottom="16dp"
 					android:text="The potential reasons for this issue could be:\n\n• Insufficient or unstable internet connection.\n• Ongoing maintenance of the application.\n• Technical difficulties on our part."
 					android:textSize="14sp"
-					android:textColor="#757575" />
+					android:textColor="?attr/colorOnSurfaceVariant" />
 				<TextView
 					android:id="@+id/ProfilePageNoInternetBodyRetry"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:padding="8dp"
-					android:background="#2962FF"
+					android:background="?attr/colorPrimary"
 					android:textSize="16sp"
-					android:textColor="#FFFFFF"
+					android:textColor="?attr/colorOnPrimary"
 					tools:replace="android:text"
 					android:text="@string/retry" />
 			</LinearLayout>
@@ -456,3 +456,5 @@
 		</LinearLayout>
 	</LinearLayout>
 </LinearLayout>
+
+

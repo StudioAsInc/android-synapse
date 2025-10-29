@@ -1,0 +1,329 @@
+# Implementation Plan
+
+- [ ] 1. Set up E2EE project structure and dependencies
+  - Create package structure under `com.synapse.social.studioasinc.e2ee` with subpackages: crypto, storage, models, repository, service, ui
+  - Add Signal Protocol library dependency to build.gradle: `implementation 'org.signal:libsignal-android:0.40.1'`
+  - Add AndroidX Security library: `implementation 'androidx.security:security-crypto:1.1.0-alpha06'`
+  - Create base interfaces for core components
+  - _Requirements: 1.4, 2.2_
+
+- [ ] 2. Implement core data models
+  - [ ] 2.1 Create E2EE message models
+    - Implement `E2EEMessage` data class with serialization support
+    - Implement `MessageType` enum (TEXT, MEDIA, GROUP, KEY_EXCHANGE)
+    - Implement `MessageMetadata` data class for additional message information
+    - _Requirements: 1.1, 1.3_
+  - [ ] 2.2 Create key bundle models
+    - Implement `KeyBundle` data class with identity key and prekeys
+    - Implement `SignedPreKey` and `PreKey` data classes
+    - Add Base64 encoding/decoding utilities for key serialization
+    - _Requirements: 2.4, 3.1, 3.5_
+  - [ ] 2.3 Create encrypted media models
+    - Implement `EncryptedMedia` data class with file path and encryption metadata
+    - Implement `MediaType` enum (IMAGE, VIDEO, AUDIO, DOCUMENT)
+    - _Requirements: 4.1, 4.2, 4.5_
+  - [ ] 2.4 Create verification and error models
+    - Implement `VerificationCode` data class with display formatting
+    - Implement `E2EEError` sealed class hierarchy for error handling
+    - _Requirements: 5.1, 5.2, 8.1, 8.2_
+
+- [ ] 3. Implement secure key storage layer
+  - [ ] 3.1 Create SecureKeyStore implementation
+    - Implement `SecureKeyStore` interface using Android Keystore System
+    - Add methods for storing and retrieving identity key pairs
+    - Implement session key storage with encryption
+    - Add key deletion functionality
+    - _Requirements: 2.1, 2.2, 2.3, 2.5_
+  - [ ] 3.2 Implement Signal Protocol storage interfaces
+    - Implement `SessionStore` for storing session state
+    - Implement `PreKeyStore` for one-time prekey management
+    - Implement `SignedPreKeyStore` for signed prekey management
+    - Implement `IdentityKeyStore` for identity key management
+    - _Requirements: 2.1, 3.3_
+  - [ ] 3.3 Write storage layer tests
+    - Create unit tests for key storage and retrieval
+    - Test key deletion and cleanup
+    - Test session persistence
+    - _Requirements: 2.1, 2.2, 2.3_
+
+- [ ] 4. Implement cryptographic core components
+  - [ ] 4.1 Create KeyPairGenerator
+    - Implement identity key pair generation using Curve25519
+    - Implement one-time prekey generation (batch of 100)
+    - Implement signed prekey generation with signature
+    - _Requirements: 2.1, 3.2_
+  - [ ] 4.2 Implement SignalProtocolManager
+    - Initialize Signal Protocol with user identity
+    - Implement session creation using X3DH key agreement
+    - Implement message encryption using Double Ratchet
+    - Implement message decryption with session state management
+    - Add session existence checking
+    - _Requirements: 1.1, 1.3, 3.2, 3.3_
+  - [ ] 4.3 Write cryptographic tests
+    - Test key generation produces valid keys
+    - Test encryption/decryption round-trip
+    - Test session establishment
+    - Test forward secrecy properties
+    - _Requirements: 1.1, 1.3, 2.1_
+
+- [ ] 5. Create Supabase database schema
+  - [ ] 5.1 Create key bundle tables
+    - Write migration for `e2ee_key_bundles` table with identity keys and prekeys
+    - Write migration for `e2ee_devices` table for multi-device support
+    - Add indexes on user_id and device_id columns
+    - _Requirements: 2.4, 3.1_
+  - [ ] 5.2 Create encrypted message tables
+    - Write migration for `encrypted_messages` table with encrypted content
+    - Write migration for `encrypted_media` table for media files
+    - Add indexes on conversation_id and sender_id
+    - _Requirements: 1.2, 4.1, 4.3_
+  - [ ] 5.3 Create key backup and group encryption tables
+    - Write migration for `e2ee_key_backups` table
+    - Write migration for `group_encryption_keys` table
+    - Add RLS policies for all E2EE tables
+    - _Requirements: 7.1, 7.3, 9.1_
+
+- [ ] 6. Implement E2EE repository layer
+  - [ ] 6.1 Create E2EEKeyRepository
+    - Implement key bundle publishing to Supabase
+    - Implement key bundle fetching from Supabase
+    - Implement prekey usage marking
+    - Add encrypted backup upload/download
+    - _Requirements: 2.4, 3.1, 7.3_
+  - [ ] 6.2 Create E2EEMessageRepository
+    - Implement encrypted message sending to Supabase
+    - Implement encrypted message fetching with pagination
+    - Implement message decryption status tracking
+    - _Requirements: 1.2, 1.3_
+  - [ ] 6.3 Write repository tests
+    - Mock Supabase client for testing
+    - Test key bundle upload and retrieval
+    - Test message storage and retrieval
+    - Test error handling and retries
+    - _Requirements: 3.1, 1.2_
+
+- [ ] 7. Implement encryption and decryption services
+  - [ ] 7.1 Create EncryptionService
+    - Implement text message encryption with session management
+    - Implement media file encryption using AES-256-GCM
+    - Implement group message encryption with shared keys
+    - Add automatic session establishment if needed
+    - _Requirements: 1.1, 4.1, 4.2, 9.3_
+  - [ ] 7.2 Create DecryptionService
+    - Implement text message decryption
+    - Implement media file decryption with progress tracking
+    - Implement group message decryption
+    - Add error handling for missing keys
+    - _Requirements: 1.3, 4.4, 8.2, 9.3_
+  - [ ] 7.3 Write service layer tests
+    - Test message encryption and decryption flow
+    - Test media encryption with different file types
+    - Test group encryption scenarios
+    - Test error handling
+    - _Requirements: 1.1, 1.3, 4.1, 4.4_
+
+- [ ] 8. Implement key exchange service
+  - [ ] 8.1 Create KeyExchangeService
+    - Implement X3DH key exchange protocol initiation
+    - Implement key exchange completion with session creation
+    - Implement signed prekey rotation (weekly schedule)
+    - Implement one-time prekey replenishment (when below 20)
+    - Add key bundle signature verification
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+  - [ ] 8.2 Write key exchange tests
+    - Test complete key exchange flow between two users
+    - Test prekey rotation
+    - Test signature verification
+    - Test error scenarios
+    - _Requirements: 3.1, 3.2, 3.5_
+
+- [ ] 9. Implement key backup service
+  - [ ] 9.1 Create KeyBackupService
+    - Implement backup creation with PBKDF2 passphrase derivation (100,000 iterations)
+    - Implement backup encryption using AES-256-GCM
+    - Implement backup restoration with passphrase verification
+    - Implement backup deletion
+    - Add backup integrity verification with HMAC
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+  - [ ] 9.2 Write backup service tests
+    - Test backup creation and restoration
+    - Test passphrase verification
+    - Test backup integrity
+    - Test incorrect passphrase handling
+    - _Requirements: 7.1, 7.4, 7.5_
+
+- [ ] 10. Implement group encryption functionality
+  - [ ] 10.1 Create group key management
+    - Implement group session key generation
+    - Implement per-member key encryption
+    - Implement group key distribution to members
+    - Add member addition with key provisioning
+    - Add member removal with key rotation
+    - _Requirements: 9.1, 9.2, 9.4, 9.5_
+  - [ ] 10.2 Write group encryption tests
+    - Test group key generation and distribution
+    - Test member addition and removal
+    - Test group message encryption/decryption
+    - _Requirements: 9.1, 9.2, 9.4, 9.5_
+
+- [ ] 11. Create E2EE UI components
+  - [ ] 11.1 Implement EncryptionStatusView
+    - Create custom view showing encryption status icons
+    - Add verified status indicator
+    - Implement click listener for verification
+    - Add visual states for encrypted, verified, and error states
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  - [ ] 11.2 Create VerificationDialog
+    - Implement dialog showing verification code in readable format
+    - Add comparison instructions for users
+    - Implement verification confirmation flow
+    - Add visual feedback for verification status
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - [ ] 11.3 Create E2EE settings screen
+    - Implement settings activity showing encryption status per conversation
+    - Add key information display (fingerprints)
+    - Add verification trigger button
+    - Display key change warnings
+    - _Requirements: 5.5, 6.5_
+
+- [ ] 12. Implement key backup UI
+  - [ ] 12.1 Create KeyBackupActivity
+    - Implement backup creation screen with passphrase input
+    - Add passphrase strength indicator (minimum 12 characters)
+    - Implement backup restoration screen
+    - Add backup status display
+    - _Requirements: 7.1, 7.2, 7.4_
+  - [ ] 12.2 Add backup onboarding flow
+    - Create first-time backup setup wizard
+    - Add passphrase creation with confirmation
+    - Implement backup success confirmation
+    - Add skip option with warning
+    - _Requirements: 7.1, 7.2_
+
+- [ ] 13. Integrate E2EE with existing messaging
+  - [ ] 13.1 Update message sending flow
+    - Modify message repository to check for E2EE enabled conversations
+    - Add encryption step before message transmission
+    - Implement fallback to unencrypted with user consent
+    - Add encryption progress indicator for large messages
+    - _Requirements: 1.1, 10.2, 10.3_
+  - [ ] 13.2 Update message receiving flow
+    - Modify message repository to detect encrypted messages
+    - Add decryption step after message receipt
+    - Implement background decryption with notification
+    - Add decryption error handling with user-friendly messages
+    - _Requirements: 1.3, 8.1, 8.2, 10.2_
+  - [ ] 13.3 Update chat UI for encryption indicators
+    - Add encryption status icon to chat list items
+    - Add encryption indicator to message bubbles
+    - Implement visual distinction for verified conversations
+    - Add error indicators for failed encryption/decryption
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+
+- [ ] 14. Implement media encryption integration
+  - [ ] 14.1 Update media upload flow
+    - Add encryption step before media upload to Supabase Storage
+    - Implement progress tracking for large file encryption
+    - Generate and encrypt media keys
+    - Add encrypted thumbnail generation
+    - _Requirements: 4.1, 4.2, 4.3, 10.3_
+  - [ ] 14.2 Update media download flow
+    - Add decryption step after media download
+    - Implement progress tracking for decryption
+    - Add visual indicator for encrypted media
+    - Handle decryption errors gracefully
+    - _Requirements: 4.4, 4.5_
+
+- [ ] 15. Implement error handling and recovery
+  - [ ] 15.1 Add encryption error handling
+    - Implement retry logic with exponential backoff (3 attempts)
+    - Add message queuing for failed encryptions
+    - Display user-friendly error messages
+    - Add manual retry option in UI
+    - _Requirements: 8.1, 8.3, 8.4_
+  - [ ] 15.2 Add decryption error handling
+    - Display "Unable to decrypt" placeholder for failed messages
+    - Implement session re-establishment attempt
+    - Add "Request resend" option
+    - Log errors without exposing sensitive data
+    - _Requirements: 8.2, 8.5_
+  - [ ] 15.3 Add key exchange error handling
+    - Implement retry logic for key bundle fetching
+    - Add fallback to unencrypted with user consent
+    - Display clear E2EE unavailable indicator
+    - Cache failed attempts to avoid repeated failures
+    - _Requirements: 3.4, 8.1_
+
+- [ ] 16. Implement E2EE initialization and onboarding
+  - [ ] 16.1 Create E2EE setup flow
+    - Implement first-time E2EE initialization on app launch
+    - Generate and upload initial key bundle
+    - Create onboarding screens explaining E2EE
+    - Add opt-in mechanism for E2EE per conversation
+    - _Requirements: 2.1, 2.4_
+  - [ ] 16.2 Add E2EE conversation enablement
+    - Add UI option to enable E2EE for existing conversations
+    - Implement key exchange initiation from UI
+    - Display E2EE setup progress
+    - Add success confirmation
+    - _Requirements: 3.1, 3.2_
+
+- [ ] 17. Implement background key maintenance
+  - [ ] 17.1 Create key rotation worker
+    - Implement WorkManager job for weekly signed prekey rotation
+    - Implement prekey replenishment when count drops below 20
+    - Add background key bundle upload
+    - Implement retry logic for failed uploads
+    - _Requirements: 3.2_
+  - [ ] 17.2 Add session cleanup worker
+    - Implement periodic cleanup of old sessions
+    - Remove expired prekeys
+    - Clean up decrypted message cache
+    - _Requirements: 2.5_
+
+- [ ] 18. Implement performance optimizations
+  - [ ] 18.1 Add session caching
+    - Implement in-memory session cache for active conversations
+    - Add cache invalidation strategy
+    - Optimize session lookup performance
+    - _Requirements: 10.4_
+  - [ ] 18.2 Optimize encryption operations
+    - Implement async encryption with coroutines
+    - Add progress callbacks for long operations
+    - Optimize media encryption for large files
+    - Ensure UI remains responsive during encryption
+    - _Requirements: 10.1, 10.2, 10.3_
+
+- [ ] 19. Add E2EE analytics and monitoring
+  - [ ] 19.1 Implement privacy-preserving analytics
+    - Track E2EE adoption rate (without user identification)
+    - Monitor encryption/decryption success rates
+    - Track key exchange completion rates
+    - Log error types and frequencies
+    - _Requirements: 8.5_
+  - [ ] 19.2 Add performance monitoring
+    - Measure encryption/decryption latency
+    - Track media encryption performance
+    - Monitor key exchange duration
+    - Measure battery impact
+    - _Requirements: 10.1, 10.5_
+
+- [ ] 20. Final integration and polish
+  - [ ] 20.1 Implement comprehensive error messages
+    - Create user-friendly error strings for all E2EE errors
+    - Add contextual help for common issues
+    - Implement error recovery suggestions
+    - _Requirements: 8.1, 8.2, 8.3_
+  - [ ] 20.2 Add E2EE documentation
+    - Create in-app help section for E2EE
+    - Add FAQ for common questions
+    - Document verification process
+    - Add backup/restore instructions
+    - _Requirements: 5.2, 7.4_
+  - [ ] 20.3 Perform security review
+    - Verify no private keys in logs
+    - Verify keys stored in Android Keystore
+    - Test key deletion on app uninstall
+    - Verify proper IV generation
+    - Review all cryptographic operations
+    - _Requirements: 1.4, 1.5, 2.2, 2.3, 2.5_

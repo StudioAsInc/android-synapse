@@ -31,10 +31,12 @@
 ---
 
 ## 🚀 Introduction  
-**Synapse** is a revolutionary open-source social platform combining speed, privacy, and customization. Our mission is to provide a secure and ad-free environment where users can connect and express themselves freely.
+**Synapse** is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. Designed with privacy, real-time communication, and a lightweight user experience at its core, Synapse provides a secure, ad-free environment where users can connect and express themselves freely.
+
+**Architecture**: MVVM with Repository pattern, leveraging Kotlin coroutines for async operations and StateFlow for reactive UI updates.
 
 > [!WARNING]
-> The project is currently unstable due to a recent migration of its Backend-as-a-Service (BaaS) from Firebase to Supabase. We are actively working to resolve any resulting issues.
+> The project is currently undergoing stabilization following a recent migration from Firebase to Supabase. Some features may be unstable as we complete the transition.
 
 ---
 
@@ -49,26 +51,85 @@
 ---
 
 ## 🛠️ Tech Stack
-- **Frontend**: Kotlin/Java (Android), HTML/CSS (Web)
-- **Backend**: Supabase (Database, Auth, Storage)
+
+### Android App
+- **Language**: Kotlin with Android KTX
+- **Architecture**: MVVM + Repository pattern
+- **UI**: ViewBinding, Material Design 3, Navigation Component
+- **Async**: Kotlin Coroutines + Flow
+- **Image Loading**: Glide
+- **Markdown**: Markwon
+- **Media**: Media3
+
+### Backend (Supabase)
+- **Database**: PostgreSQL via Postgrest
+- **Authentication**: GoTrue (email, OAuth)
+- **Storage**: Supabase Storage for media
+- **Real-time**: Supabase Realtime for live updates
+
+### Build Configuration
+- Target SDK: 32
+- Min SDK: 26
+- Compile SDK: 36
+- Build System: Gradle with Kotlin DSL
 
 ---
 
 ## 🏁 Getting Started
 
-To get a local copy up and running, follow these simple steps.
-
 ### Prerequisites
-- Android Studio
-- Git
+- **Android Studio** (latest stable version recommended)
+- **JDK 11** or higher
+- **Git**
+- **Supabase Account** (for backend configuration)
 
 ### Installation
-1. Clone the repo
+
+1. **Clone the repository**
    ```sh
    git clone https://github.com/StudioAsInc/android-synapse.git
+   cd android-synapse
    ```
-2. Open the project in Android Studio
-3. Build the project with Gradle
+
+2. **Configure Supabase**
+   
+   Create a `local.properties` file in the project root (if it doesn't exist) and add your Supabase credentials:
+   ```properties
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+   
+   > **Note**: Never commit `local.properties` to version control. It's already in `.gitignore`.
+
+3. **Open in Android Studio**
+   - Open Android Studio
+   - Select "Open an Existing Project"
+   - Navigate to the cloned directory
+
+4. **Sync and Build**
+   - Let Gradle sync the project
+   - Build the project: `Build > Make Project`
+   - Run on emulator or device
+
+### Project Structure
+```
+app/src/main/
+├── java/com/studioas/synapse/
+│   ├── auth/          # Authentication flows
+│   ├── profile/       # User profiles
+│   ├── feed/          # Home feed & posts
+│   ├── chat/          # Messaging features
+│   ├── data/          # Repositories & data sources
+│   ├── models/        # Data models
+│   └── utils/         # Utilities & extensions
+└── res/               # Resources (layouts, drawables, etc.)
+```
+
+### Running Tests
+```sh
+./gradlew test           # Unit tests
+./gradlew connectedAndroidTest  # Instrumented tests
+```
 
 ---
 
@@ -109,35 +170,65 @@ Synapse is distributed under a [custom open-source license](Docs/LICENSE.md). Se
 
 ## ❓ FAQ
 
-**1. Is Synapse completely free to use?**
+<details>
+<summary><strong>Is Synapse completely free to use?</strong></summary>
+<br>
 Yes, Synapse is free and operates on a non-profit model. We do not have ads or premium features that require payment.
+</details>
 
-**2. What makes Synapse different from other social platforms?**
+<details>
+<summary><strong>What makes Synapse different from other social platforms?</strong></summary>
+<br>
 Synapse prioritizes user privacy and experience. We offer an ad-free environment, end-to-end encrypted chats, generous free storage (35GB+), and our platform is fully open-source.
+</details>
 
-**3. What platforms is Synapse currently available on?**
-Synapse is available for Android and has a web version. You can find links to both on our official [website](https://dl-synapse.pages.dev).
+<details>
+<summary><strong>What platforms is Synapse currently available on?</strong></summary>
+<br>
+Synapse is available for Android and has a web version. You can find links to both on our official <a href="https://dl-synapse.pages.dev">website</a>.
+</details>
 
-**4. How is my privacy protected on Synapse?**
+<details>
+<summary><strong>How is my privacy protected on Synapse?</strong></summary>
+<br>
 We use end-to-end encryption for all private chats, meaning only you and the recipient can read the messages. We are committed to minimizing data collection.
+</details>
 
-**5. Is the project stable?**
+<details>
+<summary><strong>Is the project stable?</strong></summary>
+<br>
 Currently, the project is undergoing a major backend migration from Firebase to Supabase, which may cause some instability. We are working hard to stabilize it.
+</details>
 
-**6. Can I contribute to the project?**
-Absolutely! We welcome contributions from everyone. Please check out our [Contribution Guide](Docs/CONTRIBUTE.md) to get started.
+<details>
+<summary><strong>Can I contribute to the project?</strong></summary>
+<br>
+Absolutely! We welcome contributions from everyone. Please check out our <a href="Docs/CONTRIBUTE.md">Contribution Guide</a> to get started.
+</details>
 
-**7. What technology does Synapse use?**
-The Android app is built with Kotlin and Java, while the backend is powered by Supabase, which handles our database, authentication, and storage needs.
+<details>
+<summary><strong>What technology does Synapse use?</strong></summary>
+<br>
+The Android app is built with Kotlin using MVVM architecture, Kotlin Coroutines, and Material Design 3. The backend is powered by Supabase (PostgreSQL, Auth, Storage, Realtime).
+</details>
 
-**8. Can I host my own instance of Synapse?**
+<details>
+<summary><strong>Can I host my own instance of Synapse?</strong></summary>
+<br>
 While self-hosting is a goal for the future, it is not officially supported at this time. The project's open-source nature, however, allows for community experimentation.
+</details>
 
-**9. Who is behind Synapse?**
-Synapse is a project developed and maintained by [StudioAs Inc.](https://studioas.dev) and a dedicated community of open-source contributors.
+<details>
+<summary><strong>Who is behind Synapse?</strong></summary>
+<br>
+Synapse is a project developed and maintained by <a href="https://studioas.dev">StudioAs Inc.</a> and a dedicated community of open-source contributors.
+</details>
 
-**10. Where can I report a bug or suggest a feature?**
-You can report bugs or request new features by creating an issue on our [GitHub repository](https://github.com/StudioAsInc/android-synapse/issues).
+<details>
+<summary><strong>Where can I report a bug or suggest a feature?</strong></summary>
+<br>
+You can report bugs or request new features by creating an issue on our <a href="https://github.com/StudioAsInc/android-synapse/issues">GitHub repository</a>.
+</details>
 
 ---
 

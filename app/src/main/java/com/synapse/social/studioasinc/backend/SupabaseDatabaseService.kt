@@ -24,7 +24,7 @@ class SupabaseDatabaseService : IDatabaseService {
     /**
      * Insert data into a table.
      * @param table The name of the table to insert into
-     * @param data The data object to insert (must be serializable)
+     * @param data The data object to insert (must be serializable or a Map)
      * @return Result indicating success or failure with detailed error message
      */
     suspend fun insert(table: String, data: Any): Result<Unit> {
@@ -32,7 +32,25 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 android.util.Log.d(TAG, "Inserting data into table '$table'")
                 
-                client.from(table).insert(data)
+                // Convert Map to JsonObject to avoid serialization issues
+                val insertData = when (data) {
+                    is Map<*, *> -> {
+                        kotlinx.serialization.json.buildJsonObject {
+                            data.forEach { (key, value) ->
+                                when (value) {
+                                    is String -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
+                                    is Number -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
+                                    is Boolean -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
+                                    null -> put(key.toString(), kotlinx.serialization.json.JsonNull)
+                                    else -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                                }
+                            }
+                        }
+                    }
+                    else -> data
+                }
+                
+                client.from(table).insert(insertData)
                 android.util.Log.d(TAG, "Data inserted successfully into table '$table'")
                 
                 Result.success(Unit)
@@ -70,7 +88,21 @@ class SupabaseDatabaseService : IDatabaseService {
         return withContext(Dispatchers.IO) {
             try {
                 android.util.Log.d(TAG, "Updating data in table '$table' where $filter=$value")
-                client.from(table).update(data) {
+                
+                // Convert Map to JsonObject to avoid serialization issues
+                val updateData = kotlinx.serialization.json.buildJsonObject {
+                    data.forEach { (key, value) ->
+                        when (value) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            null -> put(key, kotlinx.serialization.json.JsonNull)
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                        }
+                    }
+                }
+                
+                client.from(table).update(updateData) {
                     filter { 
                         eq(filter, value)
                     }
