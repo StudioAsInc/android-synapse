@@ -525,19 +525,31 @@ class ProfileActivity : AppCompatActivity() {
                     },
                     onFailure = { error ->
                         progressDialog.dismiss()
-                        android.util.Log.e("ProfileActivity", "Failed to create chat", error)
-                        Toast.makeText(
-                            this@ProfileActivity, 
-                            "Failed to start chat: ${error.message}", 
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        
+                        // Provide user-friendly error messages based on error type
+                        val userMessage = when {
+                            error.message?.contains("Cannot create chat with yourself", ignoreCase = true) == true -> 
+                                "You cannot message yourself"
+                            error.message?.contains("Supabase not configured", ignoreCase = true) == true -> 
+                                "Service unavailable. Please try again later."
+                            error.message?.contains("Invalid user IDs", ignoreCase = true) == true -> 
+                                "Failed to get user information. Please try again."
+                            error.message?.contains("network", ignoreCase = true) == true ||
+                            error.message?.contains("connection", ignoreCase = true) == true -> 
+                                "Network error. Please check your connection."
+                            else -> 
+                                "Failed to start chat. Please try again."
+                        }
+                        
+                        android.util.Log.e("ProfileActivity", "Failed to create chat: ${error.message}", error)
+                        Toast.makeText(this@ProfileActivity, userMessage, Toast.LENGTH_SHORT).show()
                     }
                 )
             } catch (e: Exception) {
-                android.util.Log.e("ProfileActivity", "Error starting chat", e)
+                android.util.Log.e("ProfileActivity", "Unexpected error starting chat", e)
                 Toast.makeText(
                     this@ProfileActivity, 
-                    "Error starting chat: ${e.message}", 
+                    "An unexpected error occurred. Please try again.", 
                     Toast.LENGTH_SHORT
                 ).show()
             }

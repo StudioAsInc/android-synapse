@@ -14,19 +14,55 @@ import java.util.*
  */
 class SupabaseChatService {
     
+    companion object {
+        private const val TAG = "SupabaseChatService"
+    }
+    
     private val client = SupabaseClient.client
     private val databaseService = SupabaseDatabaseService()
     
     /**
+     * Check if a Result contains a duplicate key constraint violation error
+     */
+    private fun isDuplicateKeyError(result: Result<Unit>): Boolean {
+        return result.exceptionOrNull()?.message?.contains("duplicate key", ignoreCase = true) == true
+    }
+    
+    /**
+     * Ensure both participants exist in the chat
+     * Handles duplicate key errors gracefully as participants may already exist
+     */
+    private suspend fun ensureParticipantsExist(chatId: String, userId1: String, userId2: String) {
+        android.util.Log.d(TAG, "Ensuring participants exist for chat: $chatId")
+        addChatParticipant(chatId, userId1)
+        addChatParticipant(chatId, userId2)
+    }
+    
+    /**
      * Create or get existing chat between two users
+     * Uses try-insert-catch-retrieve pattern to handle race conditions gracefully
      */
     suspend fun getOrCreateDirectChat(userId1: String, userId2: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
+                // Validate inputs
+                if (userId1.isEmpty() || userId2.isEmpty()) {
+                    android.util.Log.e(TAG, "Invalid user IDs: userId1=$userId1, userId2=$userId2")
+                    return@withContext Result.failure(Exception("Invalid user IDs"))
+                }
+                
+                // Prevent self-messaging
+                if (userId1 == userId2) {
+                    android.util.Log.d(TAG, "Attempted self-messaging: $userId1")
+                    return@withContext Result.failure(Exception("Cannot create chat with yourself"))
+                }
+                
                 // Check if Supabase is properly configured
                 if (!SupabaseClient.isConfigured()) {
+                    android.util.Log.e(TAG, "Supabase not configured")
                     return@withContext Result.failure(Exception("Supabase not configured"))
                 }
+                
                 // Generate consistent chat ID for direct chats
                 val chatId = if (userId1 < userId2) {
                     "dm_${userId1}_${userId2}"
@@ -34,38 +70,40 @@ class SupabaseChatService {
                     "dm_${userId2}_${userId1}"
                 }
                 
-                // Check if chat exists
-                val existingChat = databaseService.selectWhere("chats", "*", "chat_id", chatId)
+                android.util.Log.d(TAG, "Creating/retrieving chat between $userId1 and $userId2: $chatId")
                 
-                existingChat.fold(
-                    onSuccess = { chats ->
-                        if (chats.isNotEmpty()) {
-                            // Chat exists
-                            Result.success(chatId)
-                        } else {
-                            // Create new chat using Map instead of JsonObject
-                            val chatData = mapOf(
-                                "chat_id" to chatId,
-                                "is_group" to false,
-                                "created_by" to userId1,
-                                "participants_count" to 2,
-                                "is_active" to true
-                            )
-                            
-                            databaseService.insert("chats", chatData).fold(
-                                onSuccess = {
-                                    // Add participants
-                                    addChatParticipant(chatId, userId1)
-                                    addChatParticipant(chatId, userId2)
-                                    Result.success(chatId)
-                                },
-                                onFailure = { error -> Result.failure(error) }
-                            )
-                        }
-                    },
-                    onFailure = { error -> Result.failure(error) }
+                // Try to insert new chat directly (optimistic approach)
+                val chatData = mapOf(
+                    "chat_id" to chatId,
+                    "is_group" to false,
+                    "created_by" to userId1,
+                    "participants_count" to 2,
+                    "is_active" to true
                 )
+                
+                val insertResult = databaseService.insert("chats", chatData)
+                
+                when {
+                    insertResult.isSuccess -> {
+                        // New chat created successfully
+                        android.util.Log.d(TAG, "New chat created: $chatId")
+                        ensureParticipantsExist(chatId, userId1, userId2)
+                        Result.success(chatId)
+                    }
+                    isDuplicateKeyError(insertResult) -> {
+                        // Chat already exists (expected scenario in race conditions)
+                        android.util.Log.d(TAG, "Chat already exists: $chatId (expected scenario)")
+                        ensureParticipantsExist(chatId, userId1, userId2)
+                        Result.success(chatId)
+                    }
+                    else -> {
+                        // Unexpected error
+                        android.util.Log.e(TAG, "Failed to create chat: ${insertResult.exceptionOrNull()?.message}")
+                        insertResult.map { chatId }
+                    }
+                }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error in getOrCreateDirectChat", e)
                 Result.failure(e)
             }
         }
@@ -73,6 +111,7 @@ class SupabaseChatService {
     
     /**
      * Add participant to chat
+     * Handles duplicate key errors gracefully as participant may already exist
      */
     private suspend fun addChatParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
@@ -83,7 +122,16 @@ class SupabaseChatService {
                 "is_admin" to false,
                 "can_send_messages" to true
             )
-            databaseService.insert("chat_participants", participantData)
+            
+            val result = databaseService.insert("chat_participants", participantData)
+            
+            // If duplicate, that's fine - participant already exists
+            if (isDuplicateKeyError(result)) {
+                android.util.Log.d(TAG, "Participant already exists: $userId in $chatId")
+                Result.success(Unit)
+            } else {
+                result
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
