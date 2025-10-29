@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://i.postimg.cc/cCHjZYMf/20250906-224245.png" width="120" height="120" style="border-radius:50%">
+  <img src="assets/icon_square.jpg" width="120" height="120">
 
   # **Synapse**
   
