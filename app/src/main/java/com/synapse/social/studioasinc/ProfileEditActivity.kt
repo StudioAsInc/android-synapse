@@ -8,10 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.PorterDuff
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Vibrator
@@ -267,20 +265,7 @@ class ProfileEditActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
-        stateColor(0xFFFFFFFF.toInt(), 0xFFF5F5F5.toInt())
-        imageColor(genderMaleIc, 0xFF2196F3.toInt())
-        imageColor(genderFemaleIc, 0xFFE91E63.toInt())
-        viewGraphics(region, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 28.0, 3.0, 0xFFEEEEEE.toInt())
-        viewGraphics(profileImageHistoryStage, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 28.0, 3.0, 0xFFEEEEEE.toInt())
-        viewGraphics(coverImageHistoryStage, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 28.0, 3.0, 0xFFEEEEEE.toInt())
-        
         top.elevation = 4f
-        profileRelativeCard.background = createGradientDrawable(28, Color.TRANSPARENT)
-        stage1RelativeUpProfileCard.background = createGradientDrawable(300, Color.TRANSPARENT)
-        mUsernameInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
-        mNicknameInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
-        mBiographyInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
-        gender.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
         
         mTitle.setTypeface(null, Typeface.BOLD)
         genderTitle.setTypeface(null, Typeface.BOLD)
@@ -369,32 +354,32 @@ class ProfileEditActivity : AppCompatActivity() {
     }
 
     private fun setUsernameError(error: String) {
-        mUsernameInput.background = createStrokeDrawable(28, 3, 0xFFF44336.toInt(), 0xFFFFFFFF.toInt())
+        mUsernameInput.isActivated = true
         mUsernameInput.error = error
     }
 
     private fun clearUsernameError() {
-        mUsernameInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
+        mUsernameInput.isActivated = false
         mUsernameInput.error = null
     }
 
     private fun setNicknameError(error: String) {
-        mNicknameInput.background = createStrokeDrawable(28, 3, 0xFFF44336.toInt(), 0xFFFFFFFF.toInt())
+        mNicknameInput.isActivated = true
         mNicknameInput.error = error
     }
 
     private fun clearNicknameError() {
-        mNicknameInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
+        mNicknameInput.isActivated = false
         mNicknameInput.error = null
     }
 
     private fun setBiographyError(error: String) {
-        mBiographyInput.background = createStrokeDrawable(28, 3, 0xFFF44336.toInt(), 0xFFFFFFFF.toInt())
+        mBiographyInput.isActivated = true
         mBiographyInput.error = error
     }
 
     private fun clearBiographyError() {
-        mBiographyInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
+        mBiographyInput.isActivated = false
         mBiographyInput.error = null
     }
 
@@ -442,21 +427,21 @@ class ProfileEditActivity : AppCompatActivity() {
                     else -> "hidden"
                 }
                 
-                // Create update data using serializable data class
+                // Create update data as map
                 val regionText = regionSubtitle.text.toString()
                 
-                val updateData = com.synapse.social.studioasinc.model.UserUpdateRequest(
-                    username = mUsernameInput.text.toString().trim(),
-                    nickname = mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() },
-                    biography = mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() },
-                    gender = selectedGender,
-                    region = if (regionText.isNotEmpty() && regionText != "Not set") regionText else null,
-                    avatar = if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") userLastProfileUri else null,
-                    profileCoverImage = if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") userLastCoverUri else null
+                val updateData = mapOf(
+                    "username" to mUsernameInput.text.toString().trim(),
+                    "nickname" to mNicknameInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    "biography" to mBiographyInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                    "gender" to selectedGender,
+                    "region" to if (regionText.isNotEmpty() && regionText != "Not set") regionText else null,
+                    "avatar" to if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") userLastProfileUri else null,
+                    "profileCoverImage" to if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") userLastCoverUri else null
                 )
                 
-                // Update user profile using the serializable object
-                val updateResult = databaseService.updateWithObject("users", updateData, "uid", currentUserId)
+                // Update user profile
+                val updateResult = databaseService.update("users", updateData, "uid", currentUserId)
                 
                 updateResult.fold(
                     onSuccess = {
@@ -594,9 +579,9 @@ class ProfileEditActivity : AppCompatActivity() {
                     
                     uploadResult.fold(
                         onSuccess = { imageUrl ->
-                            val profileData = com.synapse.social.studioasinc.model.UserUpdateRequest(avatar = imageUrl)
+                            val profileData = mapOf("avatar" to imageUrl)
                             
-                            val result = databaseService.updateWithObject("users", profileData, "uid", currentUserId)
+                            val result = databaseService.update("users", profileData, "uid", currentUserId)
                             result.fold(
                                 onSuccess = {
                                     userLastProfileUri = imageUrl
@@ -638,8 +623,8 @@ class ProfileEditActivity : AppCompatActivity() {
                     
                     uploadResult.fold(
                         onSuccess = { imageUrl ->
-                            val profileData = com.synapse.social.studioasinc.model.UserUpdateRequest(profileCoverImage = imageUrl)
-                            val result = databaseService.updateWithObject("users", profileData, "uid", currentUserId)
+                            val profileData = mapOf("profileCoverImage" to imageUrl)
+                            val result = databaseService.update("users", profileData, "uid", currentUserId)
                             
                             result.fold(
                                 onSuccess = {
@@ -733,40 +718,7 @@ class ProfileEditActivity : AppCompatActivity() {
         finish()
     }
 
-    // Utility functions
-    private fun stateColor(statusColor: Int, navigationColor: Int) {
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        window.statusBarColor = statusColor
-        window.navigationBarColor = navigationColor
-    }
 
-    private fun imageColor(image: ImageView, color: Int) {
-        image.setColorFilter(color, PorterDuff.Mode.SRC_ATOP)
-    }
-
-    private fun viewGraphics(view: View, onFocus: Int, onRipple: Int, radius: Double, stroke: Double, strokeColor: Int) {
-        val gradientDrawable = GradientDrawable().apply {
-            setColor(onFocus)
-            cornerRadius = radius.toFloat()
-            setStroke(stroke.toInt(), strokeColor)
-        }
-        view.background = gradientDrawable
-    }
-
-    private fun createGradientDrawable(radius: Int, color: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            cornerRadius = radius.toFloat()
-            setColor(color)
-        }
-    }
-
-    private fun createStrokeDrawable(radius: Int, stroke: Int, strokeColor: Int, fillColor: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            cornerRadius = radius.toFloat()
-            setStroke(stroke, strokeColor)
-            setColor(fillColor)
-        }
-    }
 
     private fun loadingDialog(visibility: Boolean) {
         if (visibility) {

@@ -21,7 +21,7 @@
 ## 📚 Table of Contents
 - [🚀 Introduction](#-introduction)
 - [✨ Features](#-features)
-- [🛠️ Tech Stack](#-tech-stack)
+- [🛠️ Tech Stack](#️-tech-stack)
 - [🏁 Getting Started](#-getting-started)
 - [🤝 Contributing](#-contributing)
 - [📜 License](#-license)
@@ -34,6 +34,9 @@
 **Synapse** is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. Designed with privacy, real-time communication, and a lightweight user experience at its core, Synapse provides a secure, ad-free environment where users can connect and express themselves freely.
 
 **Architecture**: MVVM with Repository pattern, leveraging Kotlin coroutines for async operations and StateFlow for reactive UI updates.
+
+> [!NOTE]
+> The project has successfully completed a comprehensive Java to Kotlin migration, modernizing 27 core files with improved null safety, coroutines, and Kotlin idioms.
 
 > [!WARNING]
 > The project is currently undergoing stabilization following a recent migration from Firebase to Supabase. Some features may be unstable as we complete the transition.

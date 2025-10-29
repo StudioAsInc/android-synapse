@@ -24,30 +24,24 @@ class SupabaseDatabaseService : IDatabaseService {
     /**
      * Insert data into a table.
      * @param table The name of the table to insert into
-     * @param data The data object to insert (must be serializable or a Map)
+     * @param data The data map to insert
      * @return Result indicating success or failure with detailed error message
      */
-    suspend fun insert(table: String, data: Any): Result<Unit> {
+    suspend fun insert(table: String, data: Map<String, Any?>): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 android.util.Log.d(TAG, "Inserting data into table '$table'")
                 
-                // Convert Map to JsonObject to avoid serialization issues
-                val insertData = when (data) {
-                    is Map<*, *> -> {
-                        kotlinx.serialization.json.buildJsonObject {
-                            data.forEach { (key, value) ->
-                                when (value) {
-                                    is String -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
-                                    is Number -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
-                                    is Boolean -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value))
-                                    null -> put(key.toString(), kotlinx.serialization.json.JsonNull)
-                                    else -> put(key.toString(), kotlinx.serialization.json.JsonPrimitive(value.toString()))
-                                }
-                            }
+                val insertData = kotlinx.serialization.json.buildJsonObject {
+                    data.forEach { (key, value) ->
+                        when (value) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            null -> put(key, kotlinx.serialization.json.JsonNull)
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
                         }
                     }
-                    else -> data
                 }
                 
                 client.from(table).insert(insertData)
@@ -116,44 +110,7 @@ class SupabaseDatabaseService : IDatabaseService {
         }
     }
     
-    /**
-     * Update data in a table with serializable object.
-     * @param table The name of the table to update
-     * @param data The data object to update (must be serializable)
-     * @param filter The column name to filter by
-     * @param value The value to match in the filter column
-     * @return Result indicating success or failure with detailed error message
-     */
-    suspend fun updateWithObject(table: String, data: Any, filter: String, value: Any): Result<Unit> {
-        return withContext(Dispatchers.IO) {
-            try {
-                android.util.Log.d(TAG, "Updating data in table '$table' where $filter=$value")
-                
-                client.from(table).update(data) {
-                    filter { 
-                        eq(filter, value)
-                    }
-                }
-                android.util.Log.d(TAG, "Data updated successfully in table '$table'")
-                Result.success(Unit)
-            } catch (e: Exception) {
-                android.util.Log.e(TAG, "Database update failed for table '$table'", e)
-                
-                val errorMessage = when {
-                    e.message?.contains("serialization", ignoreCase = true) == true -> 
-                        "Data serialization error: ${e.message}"
-                    e.message?.contains("constraint", ignoreCase = true) == true -> 
-                        "Database constraint violation: ${e.message}"
-                    e.message?.contains("column", ignoreCase = true) == true -> 
-                        "Database column error: ${e.message}"
-                    e.message?.contains("table", ignoreCase = true) == true -> 
-                        "Database table error: ${e.message}"
-                    else -> e.message ?: "Database update failed"
-                }
-                Result.failure(Exception(errorMessage))
-            }
-        }
-    }
+
     
     /**
      * Select data from a table
@@ -275,7 +232,18 @@ class SupabaseDatabaseService : IDatabaseService {
     override suspend fun upsert(table: String, data: Map<String, Any?>): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                client.from(table).upsert(data)
+                val upsertData = kotlinx.serialization.json.buildJsonObject {
+                    data.forEach { (key, value) ->
+                        when (value) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                            null -> put(key, kotlinx.serialization.json.JsonNull)
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                        }
+                    }
+                }
+                client.from(table).upsert(upsertData)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
@@ -311,11 +279,12 @@ class SupabaseDatabaseService : IDatabaseService {
     suspend fun updatePresence(userId: String, isOnline: Boolean): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                client.from("user_presence").upsert(mapOf(
-                    "user_id" to userId,
-                    "is_online" to isOnline,
-                    "last_seen" to System.currentTimeMillis()
-                ))
+                val presenceData = kotlinx.serialization.json.buildJsonObject {
+                    put("user_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                    put("is_online", kotlinx.serialization.json.JsonPrimitive(isOnline))
+                    put("last_seen", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                }
+                client.from("user_presence").upsert(presenceData)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
