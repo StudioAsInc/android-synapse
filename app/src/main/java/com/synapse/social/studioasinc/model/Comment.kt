@@ -1,10 +1,15 @@
 package com.synapse.social.studioasinc.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Comment(
     val uid: String = "",
-    val comment: String = "",
-    val push_time: String = "",
-    val key: String = "",
-    val like: Long = 0,
-    val replyCommentkey: String? = null
+    val text: String = "",  // Changed from 'comment' to match Supabase schema
+    val timestamp: String = "",  // Changed from 'push_time' to match Supabase schema
+    @SerialName("post_key")
+    val postKey: String = "",  // Changed from 'key' to match Supabase schema
+    @SerialName("reply_comment_key")
+    val replyCommentKey: String? = null  // Fixed naming convention
 )

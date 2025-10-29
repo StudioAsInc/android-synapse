@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.domain.usecase.SendMessageUseCase
-import com.service.studioasinc.AI.Gemini
+import com.synapse.social.studioasinc.AI.Gemini
 import com.synapse.social.studioasinc.ChatConstants.KEY_KEY
 import com.synapse.social.studioasinc.ChatConstants.MESSAGE_TEXT_KEY
 import com.synapse.social.studioasinc.ChatConstants.UID_KEY
@@ -134,15 +134,17 @@ class AiFeatureHandler(
 
     private fun callGeminiForSend(prompt: String, showThinking: Boolean) {
         try {
-            gemini.setModel("gemini-2.5-flash-lite")
-            gemini.setShowThinking(showThinking)
-            gemini.setSystemInstruction(
-                "You are a concise text assistant. Always return ONLY the transformed text (no explanation, no labels). " +
-                        "Preserve original formatting. Censor profanity by replacing letters with asterisks (e.g., s***t). " +
-                        "Keep the language and tone of the input unless asked to change it."
-            )
+            val geminiInstance = Gemini.Builder(activity)
+                .model("gemini-2.5-flash-lite")
+                .showThinking(showThinking)
+                .systemInstruction(
+                    "You are a concise text assistant. Always return ONLY the transformed text (no explanation, no labels). " +
+                            "Preserve original formatting. Censor profanity by replacing letters with asterisks (e.g., s***t). " +
+                            "Keep the language and tone of the input unless asked to change it."
+                )
+                .build()
             
-            gemini.sendPrompt(prompt, object : Gemini.GeminiCallback {
+            geminiInstance.sendPrompt(prompt, object : Gemini.GeminiCallback {
                 override fun onSuccess(response: String) {
                     activity.runOnUiThread { 
                         message_et.setText(response)
@@ -158,7 +160,7 @@ class AiFeatureHandler(
                 override fun onThinking() {
                     if (showThinking) {
                         activity.runOnUiThread { 
-                            message_et.setText(gemini.thinkingText)
+                            message_et.setText("Thinking...")
                         }
                     }
                 }

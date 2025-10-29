@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -84,9 +85,24 @@ class SelectRegionActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
-        stateColor(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt())
-        viewGraphics(back, 0xFFFFFFFF.toInt(), 0xFFE0E0E0.toInt(), 300.0, 0.0, Color.TRANSPARENT)
-        searchInput.background = createStrokeDrawable(28, 3, 0xFFEEEEEE.toInt(), 0xFFFFFFFF.toInt())
+        stateColor(
+            ContextCompat.getColor(this, R.color.white),
+            ContextCompat.getColor(this, R.color.white)
+        )
+        viewGraphics(
+            back,
+            ContextCompat.getColor(this, R.color.white),
+            ContextCompat.getColor(this, R.color.light_grey),
+            300.0,
+            0.0,
+            Color.TRANSPARENT
+        )
+        searchInput.background = createStrokeDrawable(
+            28,
+            3,
+            ContextCompat.getColor(this, R.color.light_grey),
+            ContextCompat.getColor(this, R.color.white)
+        )
         top.elevation = 4f
         
         title.text = "Select Region"
@@ -158,10 +174,10 @@ class SelectRegionActivity : AppCompatActivity() {
             holder.textView.textSize = 16f
             
             if (region == currentRegion) {
-                holder.textView.setTextColor(0xFF2196F3.toInt())
+                holder.textView.setTextColor(ContextCompat.getColor(holder.itemView.context, R.color.status_indicator_online))
                 holder.textView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else {
-                holder.textView.setTextColor(0xFF212121.toInt())
+                holder.textView.setTextColor(ContextCompat.getColor(holder.itemView.context, R.color.overlay_dark))
                 holder.textView.setTypeface(null, android.graphics.Typeface.NORMAL)
             }
             

@@ -9,6 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
@@ -69,7 +70,10 @@ class InboxActivity : AppCompatActivity() {
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
 
             override fun onPageSelected(position: Int) {
-                bottomnavigation1.menu.getItem(position).isChecked = true
+                // Check if menu has items before accessing
+                if (bottomnavigation1.menu.size() > position) {
+                    bottomnavigation1.menu.getItem(position).isChecked = true
+                }
             }
 
             override fun onPageScrollStateChanged(scrollState: Int) {}
@@ -105,10 +109,13 @@ class InboxActivity : AppCompatActivity() {
     }
 
     private fun initializeLogic() {
-        stateColor(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt())
-        imageColor(imageview1, 0xFF616161.toInt())
-        imageColor(imageview2, 0xFF616161.toInt())
-        imageColor(imageview3, 0xFF2196F3.toInt())
+        stateColor(
+            ContextCompat.getColor(this, R.color.white),
+            ContextCompat.getColor(this, R.color.white)
+        )
+        imageColor(imageview1, ContextCompat.getColor(this, R.color.video_duration_bg))
+        imageColor(imageview2, ContextCompat.getColor(this, R.color.video_duration_bg))
+        imageColor(imageview3, ContextCompat.getColor(this, R.color.status_indicator_online))
         
         appBar.elevation = 4f
         textview1.text = "Messages"

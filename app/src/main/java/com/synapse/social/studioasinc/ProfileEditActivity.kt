@@ -437,7 +437,7 @@ class ProfileEditActivity : AppCompatActivity() {
                     "gender" to selectedGender,
                     "region" to if (regionText.isNotEmpty() && regionText != "Not set") regionText else null,
                     "avatar" to if (userLastProfileUri.isNotEmpty() && userLastProfileUri != "null") userLastProfileUri else null,
-                    "profileCoverImage" to if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") userLastCoverUri else null
+                    "profile_cover_image" to if (userLastCoverUri.isNotEmpty() && userLastCoverUri != "null") userLastCoverUri else null
                 )
                 
                 // Update user profile
@@ -623,7 +623,7 @@ class ProfileEditActivity : AppCompatActivity() {
                     
                     uploadResult.fold(
                         onSuccess = { imageUrl ->
-                            val profileData = mapOf("profileCoverImage" to imageUrl)
+                            val profileData = mapOf("profile_cover_image" to imageUrl)
                             val result = databaseService.update("users", profileData, "uid", currentUserId)
                             
                             result.fold(

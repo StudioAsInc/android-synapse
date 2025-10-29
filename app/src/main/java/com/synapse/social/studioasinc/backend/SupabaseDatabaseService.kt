@@ -34,12 +34,13 @@ class SupabaseDatabaseService : IDatabaseService {
                 
                 val insertData = kotlinx.serialization.json.buildJsonObject {
                     data.forEach { (key, value) ->
-                        when (value) {
-                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                        val convertedValue = convertTimestampIfNeeded(key, value)
+                        when (convertedValue) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
                             null -> put(key, kotlinx.serialization.json.JsonNull)
-                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue.toString()))
                         }
                     }
                 }
@@ -71,6 +72,25 @@ class SupabaseDatabaseService : IDatabaseService {
     }
     
     /**
+     * Convert millisecond timestamp to ISO 8601 format for Supabase
+     */
+    private fun convertTimestampIfNeeded(key: String, value: Any?): Any? {
+        // List of timestamp fields that need conversion
+        val timestampFields = listOf("last_seen", "created_at", "updated_at", "timestamp", "publish_date")
+        
+        return if (key in timestampFields && value is Number) {
+            // Convert milliseconds to ISO 8601 timestamp
+            try {
+                java.time.Instant.ofEpochMilli(value.toLong()).toString()
+            } catch (e: Exception) {
+                value // Return original if conversion fails
+            }
+        } else {
+            value
+        }
+    }
+    
+    /**
      * Update data in a table with map-based data.
      * @param table The name of the table to update
      * @param data Map of column names to values
@@ -83,15 +103,16 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 android.util.Log.d(TAG, "Updating data in table '$table' where $filter=$value")
                 
-                // Convert Map to JsonObject to avoid serialization issues
+                // Convert Map to JsonObject with timestamp conversion
                 val updateData = kotlinx.serialization.json.buildJsonObject {
                     data.forEach { (key, value) ->
-                        when (value) {
-                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                        val convertedValue = convertTimestampIfNeeded(key, value)
+                        when (convertedValue) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
                             null -> put(key, kotlinx.serialization.json.JsonNull)
-                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue.toString()))
                         }
                     }
                 }
@@ -279,10 +300,12 @@ class SupabaseDatabaseService : IDatabaseService {
     suspend fun updatePresence(userId: String, isOnline: Boolean): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                // Use ISO 8601 timestamp format for Supabase
+                val timestamp = java.time.Instant.now().toString()
                 val presenceData = kotlinx.serialization.json.buildJsonObject {
                     put("user_id", kotlinx.serialization.json.JsonPrimitive(userId))
                     put("is_online", kotlinx.serialization.json.JsonPrimitive(isOnline))
-                    put("last_seen", kotlinx.serialization.json.JsonPrimitive(System.currentTimeMillis()))
+                    put("last_seen", kotlinx.serialization.json.JsonPrimitive(timestamp))
                 }
                 client.from("user_presence").upsert(presenceData)
                 Result.success(Unit)
@@ -332,7 +355,7 @@ class SupabaseDatabaseService : IDatabaseService {
                 
                 val result = client.from("posts").select(columns = Columns.raw("*")) {
                     filter {
-                        ilike("content", "%$query%")
+                        ilike("post_text", "%$query%")  // Changed from 'content' to 'post_text'
                     }
                     limit(limit.toLong())
                     order(column = "timestamp", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
