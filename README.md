@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/icon_square.jpg" width="120" height="120">
+  <img src="assets/icon_round_blue_bg" width="120" height="120">
 
   # **Synapse**
   
