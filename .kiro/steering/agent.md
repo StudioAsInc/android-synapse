@@ -2,105 +2,45 @@
 inclusion: always
 ---
 
-# Synapse Android Development Guidelines
+# Agent Guidelines
 
-Synapse is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. Focus on privacy, real-time communication, and lightweight user experience.
+## Code Style & Conventions
 
-## Build Configuration
+- **Language**: Use Kotlin exclusively for new code. Java-to-Kotlin migration is ongoing.
+- **View Binding**: Mandatory for all UI code. Never use `findViewById()`.
+- **Null Safety**: Leverage Kotlin's null safety features. Use `?.`, `?:`, and `!!` appropriately.
+- **Coroutines**: Use `suspend` functions for async operations. Prefer `viewModelScope` and `lifecycleScope`.
+- **Naming**: Use camelCase for variables/functions, PascalCase for classes, UPPER_SNAKE_CASE for constants.
 
-- Target SDK 32, Min SDK 26, Compile SDK 36
-- Use Gradle Kotlin DSL where applicable
-- Maintain separate debug and release configurations
-- Apply ProGuard rules for release builds
-- Supabase credentials managed through BuildConfig (never hardcode)
+## Architecture Patterns
 
-## Architecture
-
-**Pattern**: MVVM with Repository pattern
-- ViewModels manage UI state using StateFlow/LiveData
-- Repositories abstract data layer (Supabase, local storage)
-- Separate UI logic from business logic
-
-
-**File Organization**:
-- Group by feature, not layer (e.g., `auth/`, `profile/`, `feed/`)
-- Standard Android project structure under `app/src/main/`
-- Resources named with feature prefix: `activity_profile_edit.xml`, `ic_profile_avatar.png`
-
-## Kotlin Style
-
-- Use data classes for models
-- Prefer sealed classes for state management
-- Use coroutines for async operations (avoid callbacks)
-- Leverage Kotlin extensions and Android KTX
-- Null safety: use `?.`, `?:`, and `!!` sparingly with justification
-
-## Android UI
-
-- Use ViewBinding (no findViewById or synthetic imports)
-- Follow Material Design 3 guidelines
-- Implement proper lifecycle awareness (collect flows in lifecycleScope)
-- Use Navigation Component for app navigation
-- Handle configuration changes properly
+- **MVVM**: ViewModels expose StateFlow/LiveData, Fragments/Activities observe and update UI.
+- **Repository Pattern**: Repositories in `data/` abstract Supabase and local data sources.
+- **Single Source of Truth**: SupabaseClient.kt is the singleton for all backend operations.
+- **Separation of Concerns**: Keep business logic in domain layer, UI logic in presentation layer.
 
 ## Supabase Integration
 
-**Client Initialization**:
-```kotlin
-val supabase = createSupabaseClient(
-    supabaseUrl = BuildConfig.SUPABASE_URL,
-    supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-) {
-    install(GoTrue)
-    install(Postgrest)
-    install(Storage)
-    install(Realtime)
-}
-```
+- **Client Access**: Always use `SupabaseClient.client` singleton, never create new instances.
+- **RLS Policies**: All database operations respect Row Level Security. Test with different user contexts.
+- **Realtime**: Use Supabase Realtime for live updates (chat, notifications, feed).
+- **Storage**: Use Supabase Storage for media uploads with proper bucket policies.
 
-**Authentication**:
-- Use GoTrue for auth (signInWith, signOut, currentSession)
-- Handle session state changes with auth.sessionStatus flow
-- Store tokens securely (never in SharedPreferences)
-- Implement proper error handling for network failures
+## Documentation Rules
 
-**Data Operations**:
-- Use Kotlin serialization for JSON parsing
-- Implement retry logic for network operations
-- Handle Supabase errors gracefully with user-friendly messages
-- Use Postgrest for database queries with proper error handling
+- **Location**: All documentation MUST go in `Docs/` directory only.
+- **No Auto-Creation**: Never create markdown documentation files without explicit user permission.
+- **Existing Docs**: Reference and update existing docs rather than creating new ones.
 
-**Storage**:
-- Use Supabase Storage for media uploads
-- Implement progress tracking for large uploads
-- Handle file compression before upload
-- Use signed URLs for private content
+## Testing & Validation
 
-## Dependencies
+- **Build Before Commit**: Run `./gradlew build` to verify compilation.
+- **RLS Testing**: Test database operations with different authenticated users.
+- **Null Checks**: Verify null handling for all Supabase responses.
 
-Core libraries in use:
-- Supabase BOM (auth, database, storage, realtime)
-- AndroidX (lifecycle, navigation, viewmodel)
-- Kotlin Coroutines
-- Glide (image loading)
-- Material Components
-- Markwon (markdown rendering)
-- Media3 (media playback)
+## Common Pitfalls
 
-## Security
-
-- Never commit credentials or API keys
-- Use BuildConfig for environment-specific values
-- Implement proper permission handling (runtime permissions)
-- Validate user input before sending to backend
-- Use HTTPS for all network requests
-- Follow Android security best practices for data storage
-
-## AI Assistant Guidelines
-
-- Provide concise, actionable responses
-- Focus on code implementation over explanations
-- **Never create .md files without explicit permission**
-- When suggesting changes, provide specific file paths and code snippets
-- Check for syntax errors before suggesting code
-- Consider Android lifecycle and memory leaks in solutions
+- Don't mix `adapter/` and `adapters/` packages - prefer `adapters/` for new code.
+- Don't bypass ViewBinding with direct view references.
+- Don't create Supabase client instances - use the singleton.
+- Don't place documentation outside `Docs/` directory.
