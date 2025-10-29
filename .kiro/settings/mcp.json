@@ -43,14 +43,20 @@
         "rebase_branch"
       ]
     },
-    "genkit": {
+    "context7": {
       "command": "npx",
       "args": [
         "-y",
-        "@genkit-ai/mcp"
+        "@upstash/context7-mcp"
       ],
-      "disabled": true,
-      "autoApprove": []
+      "env": {
+        "CONTEXT7_API_KEY": "94eb9030-9b06-491b-9821-82d40ebc7427"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "resolve-library-id",
+        "get-library-docs"
+      ]
     }
   }
 }

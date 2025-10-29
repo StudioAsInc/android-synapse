@@ -58,10 +58,11 @@ class PostCommentsViewModel : ViewModel() {
                     // Convert map to Comment object
                     val comment = Comment(
                         uid = commentData["uid"] as? String ?: "",
-                        comment = commentData["text"] as? String ?: "",
-                        push_time = commentData["timestamp"] as? String ?: "",
-                        key = commentData["id"] as? String ?: "",
-                        like = (commentData["like"] as? Number)?.toLong() ?: 0L
+                        comment = commentData["text"] as? String ?: commentData["comment"] as? String ?: "",
+                        push_time = commentData["timestamp"] as? String ?: commentData["push_time"] as? String ?: "",
+                        key = commentData["id"] as? String ?: commentData["key"] as? String ?: "",
+                        like = (commentData["like"] as? Number)?.toLong() ?: 0L,
+                        postKey = commentData["post_key"] as? String ?: ""
                     )
                     commentsList.add(comment)
                     comment.uid.let { uids.add(it) }
@@ -95,11 +96,11 @@ class PostCommentsViewModel : ViewModel() {
                     // Convert map to Reply object
                     val reply = Reply(
                         uid = replyData["uid"] as? String ?: "",
-                        comment = replyData["text"] as? String ?: "",
-                        push_time = replyData["timestamp"] as? String ?: "",
-                        key = replyData["id"] as? String ?: "",
+                        comment = replyData["text"] as? String ?: replyData["comment"] as? String ?: "",
+                        push_time = replyData["timestamp"] as? String ?: replyData["push_time"] as? String ?: "",
+                        key = replyData["id"] as? String ?: replyData["key"] as? String ?: "",
                         like = (replyData["like"] as? Number)?.toLong() ?: 0L,
-                        replyCommentkey = replyData["comment_key"] as? String ?: ""
+                        replyCommentkey = replyData["comment_key"] as? String ?: replyData["reply_comment_key"] as? String ?: ""
                     )
                     repliesList.add(reply)
                     reply.uid.let { uids.add(it) }

@@ -6,10 +6,13 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Comment(
     val uid: String = "",
-    val text: String = "",  // Changed from 'comment' to match Supabase schema
-    val timestamp: String = "",  // Changed from 'push_time' to match Supabase schema
+    val comment: String = "",  // Comment text
+    @SerialName("push_time")
+    val push_time: String = "",  // Timestamp
+    val key: String = "",  // Comment ID
+    val like: Long = 0,  // Like count
     @SerialName("post_key")
-    val postKey: String = "",  // Changed from 'key' to match Supabase schema
+    val postKey: String = "",  // Post this comment belongs to
     @SerialName("reply_comment_key")
-    val replyCommentKey: String? = null  // Fixed naming convention
+    val replyCommentKey: String? = null  // If this is a reply, the parent comment key
 )
