@@ -43,14 +43,14 @@ class SupabaseChatService {
                             // Chat exists
                             Result.success(chatId)
                         } else {
-                            // Create new chat using JsonObject to avoid serialization issues
-                            val chatData = kotlinx.serialization.json.buildJsonObject {
-                                put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
-                                put("is_group", kotlinx.serialization.json.JsonPrimitive(false))
-                                put("created_by", kotlinx.serialization.json.JsonPrimitive(userId1))
-                                put("participants_count", kotlinx.serialization.json.JsonPrimitive(2))
-                                put("is_active", kotlinx.serialization.json.JsonPrimitive(true))
-                            }
+                            // Create new chat using Map instead of JsonObject
+                            val chatData = mapOf(
+                                "chat_id" to chatId,
+                                "is_group" to false,
+                                "created_by" to userId1,
+                                "participants_count" to 2,
+                                "is_active" to true
+                            )
                             
                             databaseService.insert("chats", chatData).fold(
                                 onSuccess = {
@@ -76,13 +76,13 @@ class SupabaseChatService {
      */
     private suspend fun addChatParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
-            val participantData = kotlinx.serialization.json.buildJsonObject {
-                put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
-                put("user_id", kotlinx.serialization.json.JsonPrimitive(userId))
-                put("role", kotlinx.serialization.json.JsonPrimitive("member"))
-                put("is_admin", kotlinx.serialization.json.JsonPrimitive(false))
-                put("can_send_messages", kotlinx.serialization.json.JsonPrimitive(true))
-            }
+            val participantData = mapOf(
+                "chat_id" to chatId,
+                "user_id" to userId,
+                "role" to "member",
+                "is_admin" to false,
+                "can_send_messages" to true
+            )
             databaseService.insert("chat_participants", participantData)
         } catch (e: Exception) {
             Result.failure(e)
