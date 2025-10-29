@@ -92,8 +92,24 @@ class UserRepository {
                 return Result.failure(Exception("User ID cannot be empty"))
             }
             
+            // Build update map manually to avoid serialization issues
+            val updateData = mapOf(
+                "username" to user.username,
+                "display_name" to user.display_name,
+                "email" to user.email,
+                "bio" to user.bio,
+                "profile_image_url" to user.profile_image_url,
+                "followers_count" to user.followers_count,
+                "following_count" to user.following_count,
+                "posts_count" to user.posts_count,
+                "status" to user.status,
+                "account_type" to user.account_type,
+                "verify" to user.verify,
+                "banned" to user.banned
+            )
+            
             client.from("users")
-                .update(user) {
+                .update(updateData) {
                     filter {
                         eq("uid", user.uid)
                     }
@@ -103,7 +119,7 @@ class UserRepository {
             Result.success(user)
         } catch (e: Exception) {
             android.util.Log.e("UserRepository", "Failed to update user: ${user.uid}", e)
-            Result.failure(e)
+            Result.failure(Exception("Database update failed for table 'users': ${e.message}", e))
         }
     }
     

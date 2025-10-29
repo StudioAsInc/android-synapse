@@ -673,10 +673,10 @@ class ProfileEditActivity : AppCompatActivity() {
         if (data.clipData != null) {
             for (i in 0 until data.clipData!!.itemCount) {
                 val item = data.clipData!!.getItemAt(i)
-                filePaths.add(FileUtil.convertUriToFilePath(applicationContext, item.uri))
+                FileUtil.convertUriToFilePath(applicationContext, item.uri)?.let { filePaths.add(it) }
             }
         } else if (data.data != null) {
-            filePaths.add(FileUtil.convertUriToFilePath(applicationContext, data.data!!))
+            FileUtil.convertUriToFilePath(applicationContext, data.data!!)?.let { filePaths.add(it) }
         }
         
         return filePaths
