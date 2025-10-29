@@ -23,8 +23,8 @@ class FollowButton @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     private val followService = SupabaseFollowService()
-    private var followButton: Button
-    private var progressBar: ProgressBar
+    private lateinit var followButton: Button
+    private lateinit var progressBar: ProgressBar
     
     private var currentUserId: String? = null
     private var targetUserId: String? = null

@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.android.material.button.MaterialButton
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -49,7 +50,7 @@ class ChatActivity : AppCompatActivity() {
     // UI Components
     private var recyclerView: RecyclerView? = null
     private var messageInput: EditText? = null
-    private var sendButton: ImageButton? = null
+    private var sendButton: MaterialButton? = null
     private var backButton: ImageView? = null
     private var chatNameText: TextView? = null
     private var chatAvatarImage: ImageView? = null
