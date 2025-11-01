@@ -72,21 +72,30 @@ class SupabaseDatabaseService : IDatabaseService {
     }
     
     /**
-     * Convert millisecond timestamp to ISO 8601 format for Supabase
+     * Convert timestamp values based on field requirements
+     * Some fields expect bigint (milliseconds), others expect timestamp strings
      */
     private fun convertTimestampIfNeeded(key: String, value: Any?): Any? {
-        // List of timestamp fields that need conversion
-        val timestampFields = listOf("last_seen", "created_at", "updated_at", "timestamp", "publish_date")
+        // Fields that expect ISO 8601 timestamp strings (timestamp columns)
+        val isoTimestampFields = listOf("last_seen", "timestamp", "publish_date")
         
-        return if (key in timestampFields && value is Number) {
-            // Convert milliseconds to ISO 8601 timestamp
-            try {
-                java.time.Instant.ofEpochMilli(value.toLong()).toString()
-            } catch (e: Exception) {
-                value // Return original if conversion fails
+        // Fields that expect bigint milliseconds (bigint columns)
+        val bigintTimestampFields = listOf("created_at", "updated_at", "last_message_time", "joined_at", "last_read_at")
+        
+        return when {
+            key in isoTimestampFields && value is Number -> {
+                // Convert milliseconds to ISO 8601 timestamp string
+                try {
+                    java.time.Instant.ofEpochMilli(value.toLong()).toString()
+                } catch (e: Exception) {
+                    value // Return original if conversion fails
+                }
             }
-        } else {
-            value
+            key in bigintTimestampFields && value is Number -> {
+                // Keep as bigint (milliseconds) - no conversion needed
+                value.toLong()
+            }
+            else -> value
         }
     }
     

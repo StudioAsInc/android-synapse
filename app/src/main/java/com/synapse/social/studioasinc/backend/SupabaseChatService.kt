@@ -72,13 +72,30 @@ class SupabaseChatService {
                 
                 android.util.Log.d(TAG, "Creating/retrieving chat between $userId1 and $userId2: $chatId")
                 
-                // Try to insert new chat directly (optimistic approach)
+                // First check if chat already exists
+                val existingChat = client.from("chats")
+                    .select(columns = Columns.raw("chat_id")) {
+                        filter {
+                            eq("chat_id", chatId)
+                        }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+                
+                if (existingChat.isNotEmpty()) {
+                    android.util.Log.d(TAG, "Chat already exists: $chatId")
+                    ensureParticipantsExist(chatId, userId1, userId2)
+                    return@withContext Result.success(chatId)
+                }
+                
+                // Try to insert new chat
                 val chatData = mapOf(
                     "chat_id" to chatId,
                     "is_group" to false,
                     "created_by" to userId1,
                     "participants_count" to 2,
-                    "is_active" to true
+                    "is_active" to true,
+                    "created_at" to System.currentTimeMillis()
                 )
                 
                 val insertResult = databaseService.insert("chats", chatData)
@@ -91,8 +108,8 @@ class SupabaseChatService {
                         Result.success(chatId)
                     }
                     isDuplicateKeyError(insertResult) -> {
-                        // Chat already exists (expected scenario in race conditions)
-                        android.util.Log.d(TAG, "Chat already exists: $chatId (expected scenario)")
+                        // Chat already exists (race condition)
+                        android.util.Log.d(TAG, "Chat already exists (race condition): $chatId")
                         ensureParticipantsExist(chatId, userId1, userId2)
                         Result.success(chatId)
                     }
@@ -115,25 +132,65 @@ class SupabaseChatService {
      */
     private suspend fun addChatParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
+            // First check if participant already exists
+            val existingParticipant = client.from("chat_participants")
+                .select(columns = Columns.raw("user_id")) {
+                    filter {
+                        eq("chat_id", chatId)
+                        eq("user_id", userId)
+                    }
+                    limit(1)
+                }
+                .decodeList<JsonObject>()
+            
+            if (existingParticipant.isNotEmpty()) {
+                android.util.Log.d(TAG, "Participant already exists: $userId in $chatId")
+                return Result.success(Unit)
+            }
+            
             val participantData = mapOf(
                 "chat_id" to chatId,
                 "user_id" to userId,
                 "role" to "member",
                 "is_admin" to false,
-                "can_send_messages" to true
+                "can_send_messages" to true,
+                "joined_at" to System.currentTimeMillis()
             )
             
             val result = databaseService.insert("chat_participants", participantData)
             
             // If duplicate, that's fine - participant already exists
             if (isDuplicateKeyError(result)) {
-                android.util.Log.d(TAG, "Participant already exists: $userId in $chatId")
+                android.util.Log.d(TAG, "Participant already exists (race condition): $userId in $chatId")
                 Result.success(Unit)
             } else {
                 result
             }
         } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error adding participant $userId to chat $chatId", e)
             Result.failure(e)
+        }
+    }
+    
+    /**
+     * Verify that a user is a participant in the chat
+     */
+    private suspend fun verifyUserIsParticipant(chatId: String, userId: String): Boolean {
+        return try {
+            val participants = client.from("chat_participants")
+                .select(columns = Columns.raw("user_id")) {
+                    filter {
+                        eq("chat_id", chatId)
+                        eq("user_id", userId)
+                    }
+                    limit(1)
+                }
+                .decodeList<JsonObject>()
+            
+            participants.isNotEmpty()
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error verifying participant $userId in chat $chatId", e)
+            false
         }
     }
     
@@ -153,6 +210,14 @@ class SupabaseChatService {
                 if (!SupabaseClient.isConfigured()) {
                     return@withContext Result.failure(Exception("Supabase not configured"))
                 }
+                
+                // Validate that user is participant in this chat
+                val isParticipant = verifyUserIsParticipant(chatId, senderId)
+                if (!isParticipant) {
+                    android.util.Log.e(TAG, "User $senderId is not a participant in chat $chatId")
+                    return@withContext Result.failure(Exception("User is not a participant in this chat"))
+                }
+                
                 val messageId = UUID.randomUUID().toString()
                 val timestamp = System.currentTimeMillis()
                 
