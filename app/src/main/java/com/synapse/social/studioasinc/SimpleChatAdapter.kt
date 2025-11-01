@@ -1,16 +1,25 @@
 package com.synapse.social.studioasinc
 
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import io.github.jan.supabase.gotrue.auth
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Simplified chat adapter for basic message display
+ * Supports sent/received messages with timestamps and delivery status
+ */
 class SimpleChatAdapter(
-    private val messages: ArrayList<HashMap<String, Any?>>
+    private val messages: ArrayList<HashMap<String, Any?>>,
+    private val onMessageClick: ((String, Int) -> Unit)? = null,
+    private val onMessageLongClick: ((String, Int) -> Boolean)? = null
 ) : RecyclerView.Adapter<SimpleChatAdapter.MessageViewHolder>() {
 
     companion object {
@@ -21,11 +30,14 @@ class SimpleChatAdapter(
     class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val messageText: TextView = itemView.findViewById(R.id.message_text)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
+        val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
+        val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
     }
 
     override fun getItemViewType(position: Int): Int {
         val message = messages[position]
-        val senderId = message["uid"]?.toString() ?: message["sender_id"]?.toString()
+        val senderId = message["uid"]?.toString() 
+            ?: message["sender_id"]?.toString()
         val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id
         
         return if (senderId == currentUserId) {
@@ -48,16 +60,142 @@ class SimpleChatAdapter(
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val message = messages[position]
+        val isMyMessage = getItemViewType(position) == VIEW_TYPE_SENT
         
         // Set message text
-        val messageText = message["message_text"]?.toString() ?: ""
+        val messageText = message["message_text"]?.toString() 
+            ?: message["content"]?.toString() 
+            ?: ""
         holder.messageText.text = messageText
         
         // Set message time
-        val timestamp = message["push_date"] as? Long ?: System.currentTimeMillis()
-        val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        holder.messageTime?.text = dateFormat.format(Date(timestamp))
+        val timestamp = message["push_date"]?.toString()?.toLongOrNull()
+            ?: message["created_at"]?.toString()?.toLongOrNull()
+            ?: System.currentTimeMillis()
+        
+        // Show edited indicator if message was edited
+        val isEdited = message["is_edited"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val timeText = formatMessageTime(timestamp) + if (isEdited) " (edited)" else ""
+        holder.messageTime?.text = timeText
+        
+        // Set message status for sent messages
+        holder.messageStatus?.let { statusView ->
+            if (isMyMessage) {
+                val deliveryStatus = message["delivery_status"]?.toString() 
+                    ?: message["message_state"]?.toString() 
+                    ?: "sent"
+                
+                when (deliveryStatus) {
+                    "sending" -> {
+                        statusView.setImageResource(R.drawable.ic_upload)
+                        statusView.visibility = View.VISIBLE
+                    }
+                    "sent" -> {
+                        statusView.setImageResource(R.drawable.ic_check_circle)
+                        statusView.visibility = View.VISIBLE
+                    }
+                    "delivered" -> {
+                        statusView.setImageResource(R.drawable.ic_check_circle)
+                        statusView.visibility = View.VISIBLE
+                    }
+                    "read" -> {
+                        statusView.setImageResource(R.drawable.ic_check_circle)
+                        statusView.visibility = View.VISIBLE
+                    }
+                    else -> statusView.visibility = View.GONE
+                }
+            } else {
+                statusView.visibility = View.GONE
+            }
+        }
+        
+        // Set message bubble alignment
+        holder.messageBubble?.let { bubble ->
+            val layoutParams = bubble.layoutParams as? LinearLayout.LayoutParams
+            layoutParams?.let { params ->
+                params.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                bubble.layoutParams = params
+            }
+            
+            // Set background based on message type
+            if (isMyMessage) {
+                bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
+            } else {
+                bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
+            }
+        }
+        
+        // Set click listeners
+        val messageId = message["id"]?.toString() 
+            ?: message["key"]?.toString() 
+            ?: ""
+        
+        holder.itemView.setOnClickListener {
+            onMessageClick?.invoke(messageId, position)
+        }
+        
+        holder.itemView.setOnLongClickListener {
+            onMessageLongClick?.invoke(messageId, position) ?: false
+        }
     }
 
     override fun getItemCount(): Int = messages.size
+    
+    /**
+     * Format message timestamp for display
+     */
+    private fun formatMessageTime(timestamp: Long): String {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        
+        val now = Calendar.getInstance()
+        
+        return if (isSameDay(calendar, now)) {
+            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+        } else if (isYesterday(calendar, now)) {
+            "Yesterday ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+        } else {
+            SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(timestamp))
+        }
+    }
+    
+    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+    
+    private fun isYesterday(messageTime: Calendar, now: Calendar): Boolean {
+        val yesterday = Calendar.getInstance()
+        yesterday.timeInMillis = now.timeInMillis
+        yesterday.add(Calendar.DAY_OF_YEAR, -1)
+        
+        return isSameDay(messageTime, yesterday)
+    }
+    
+    /**
+     * Update messages list and refresh UI
+     */
+    fun updateMessages(newMessages: List<HashMap<String, Any?>>) {
+        messages.clear()
+        messages.addAll(newMessages)
+        notifyDataSetChanged()
+    }
+    
+    /**
+     * Add a new message to the list
+     */
+    fun addMessage(message: HashMap<String, Any?>) {
+        messages.add(message)
+        notifyItemInserted(messages.size - 1)
+    }
+    
+    /**
+     * Remove a message from the list
+     */
+    fun removeMessage(position: Int) {
+        if (position >= 0 && position < messages.size) {
+            messages.removeAt(position)
+            notifyItemRemoved(position)
+        }
+    }
 }

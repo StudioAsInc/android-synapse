@@ -402,4 +402,266 @@ class SupabaseChatService {
             Result.failure(e)
         }
     }
+    
+    /**
+     * Edit a message
+     */
+    suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
+        return try {
+            val updateData = mapOf(
+                "content" to newContent,
+                "is_edited" to true,
+                "edited_at" to System.currentTimeMillis(),
+                "updated_at" to System.currentTimeMillis()
+            )
+            databaseService.update("messages", updateData, "id", messageId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Update typing status for a user in a chat
+     */
+    suspend fun updateTypingStatus(chatId: String, userId: String, isTyping: Boolean): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val typingData = mapOf(
+                    "chat_id" to chatId,
+                    "user_id" to userId,
+                    "is_typing" to isTyping,
+                    "timestamp" to System.currentTimeMillis()
+                )
+                
+                if (isTyping) {
+                    databaseService.upsert("typing_status", typingData)
+                } else {
+                    // Remove typing status when user stops typing
+                    client.from("typing_status").delete {
+                        filter {
+                            eq("chat_id", chatId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    Result.success(Unit)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Get typing users in a chat
+     */
+    suspend fun getTypingUsers(chatId: String, excludeUserId: String): Result<List<String>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val fiveSecondsAgo = System.currentTimeMillis() - 5000
+                
+                val typingUsers = client.from("typing_status")
+                    .select(columns = Columns.raw("user_id")) {
+                        filter {
+                            eq("chat_id", chatId)
+                            eq("is_typing", true)
+                            neq("user_id", excludeUserId)
+                            gte("timestamp", fiveSecondsAgo)
+                        }
+                    }
+                    .decodeList<JsonObject>()
+                
+                val userIds = typingUsers.map { 
+                    it["user_id"].toString().removeSurrounding("\"") 
+                }
+                Result.success(userIds)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Get chat participants
+     */
+    suspend fun getChatParticipants(chatId: String): Result<List<String>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val participants = client.from("chat_participants")
+                    .select(columns = Columns.raw("user_id")) {
+                        filter { eq("chat_id", chatId) }
+                    }
+                    .decodeList<JsonObject>()
+                
+                val userIds = participants.map { 
+                    it["user_id"].toString().removeSurrounding("\"") 
+                }
+                Result.success(userIds)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Update message delivery status
+     */
+    suspend fun updateMessageDeliveryStatus(
+        messageId: String,
+        status: String
+    ): Result<Unit> {
+        return try {
+            val updateData = mapOf(
+                "delivery_status" to status,
+                "updated_at" to System.currentTimeMillis()
+            )
+            databaseService.update("messages", updateData, "id", messageId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Get unread message count for a chat
+     */
+    suspend fun getUnreadMessageCount(chatId: String, userId: String): Result<Int> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Get user's last read timestamp
+                val participant = client.from("chat_participants")
+                    .select(columns = Columns.raw("last_read_at")) {
+                        filter {
+                            eq("chat_id", chatId)
+                            eq("user_id", userId)
+                        }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+                
+                val lastReadAt = participant.firstOrNull()
+                    ?.get("last_read_at")
+                    ?.toString()
+                    ?.removeSurrounding("\"")
+                    ?.toLongOrNull() ?: 0L
+                
+                // Count messages after last read time
+                val unreadMessages = client.from("messages")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("chat_id", chatId)
+                            neq("sender_id", userId)
+                            gt("created_at", lastReadAt)
+                            eq("is_deleted", false)
+                        }
+                    }
+                    .decodeList<JsonObject>()
+                
+                Result.success(unreadMessages.size)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Add a reaction to a message
+     */
+    suspend fun addReaction(messageId: String, userId: String, emoji: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val reactionId = UUID.randomUUID().toString()
+                val reactionData = mapOf(
+                    "id" to reactionId,
+                    "message_id" to messageId,
+                    "user_id" to userId,
+                    "emoji" to emoji,
+                    "created_at" to System.currentTimeMillis()
+                )
+                
+                databaseService.insert("message_reactions", reactionData).fold(
+                    onSuccess = { Result.success(reactionId) },
+                    onFailure = { error -> Result.failure(error) }
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Remove a reaction from a message
+     */
+    suspend fun removeReaction(messageId: String, userId: String, emoji: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("message_reactions").delete {
+                    filter {
+                        eq("message_id", messageId)
+                        eq("user_id", userId)
+                        eq("emoji", emoji)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Get reactions for a message
+     */
+    suspend fun getMessageReactions(messageId: String): Result<List<Map<String, Any?>>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val reactions = client.from("message_reactions")
+                    .select(columns = Columns.raw("*")) {
+                        filter { eq("message_id", messageId) }
+                    }
+                    .decodeList<JsonObject>()
+                
+                val reactionsList = reactions.map { jsonObject ->
+                    jsonObject.toMap().mapValues { (_, value) ->
+                        value.toString().removeSurrounding("\"")
+                    }
+                }
+                
+                Result.success(reactionsList)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Toggle reaction on a message (add if not exists, remove if exists)
+     */
+    suspend fun toggleReaction(messageId: String, userId: String, emoji: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Check if reaction already exists
+                val existingReactions = client.from("message_reactions")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("message_id", messageId)
+                            eq("user_id", userId)
+                            eq("emoji", emoji)
+                        }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+                
+                if (existingReactions.isNotEmpty()) {
+                    // Remove reaction
+                    removeReaction(messageId, userId, emoji)
+                    Result.success(false) // Reaction removed
+                } else {
+                    // Add reaction
+                    addReaction(messageId, userId, emoji)
+                    Result.success(true) // Reaction added
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }

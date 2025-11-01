@@ -42,19 +42,24 @@ class ChatMessageManager(
         val chatResult = chatRepository.getOrCreateDirectChat(recipientId, senderId)
         val actualChatId = chatResult.getOrElse { return Result.failure(it) }
 
-        return chatRepository.sendMessage(actualChatId, messageText, messageType, attachmentUrl)
-            .map { messageId ->
-                // Create a Message object for return compatibility
-                Message(
-                    id = messageId,
-                    chatId = actualChatId,
-                    senderId = senderId,
-                    content = messageText,
-                    messageType = messageType,
-                    mediaUrl = attachmentUrl,
-                    createdAt = System.currentTimeMillis()
-                )
-            }
+        return chatRepository.sendMessage(
+            chatId = actualChatId,
+            senderId = senderId,
+            content = messageText,
+            messageType = messageType,
+            replyToId = null
+        ).map { messageId ->
+            // Create a Message object for return compatibility
+            Message(
+                id = messageId,
+                chatId = actualChatId,
+                senderId = senderId,
+                content = messageText,
+                messageType = messageType,
+                mediaUrl = attachmentUrl,
+                createdAt = System.currentTimeMillis()
+            )
+        }
     }
 
     /**

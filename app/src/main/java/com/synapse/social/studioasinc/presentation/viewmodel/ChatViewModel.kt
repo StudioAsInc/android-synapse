@@ -84,12 +84,19 @@ class ChatViewModel : ViewModel() {
     /**
      * Sends a message
      */
-    fun sendMessage(chatId: String, content: String, messageType: String = "text", mediaUrl: String? = null) {
-        if (content.isBlank() && mediaUrl == null) return
+    fun sendMessage(chatId: String, content: String, messageType: String = "text", replyToId: String? = null) {
+        if (content.isBlank()) return
         
         viewModelScope.launch {
             try {
-                val result = sendMessageUseCase(chatId, content, messageType, mediaUrl)
+                val currentUserId = authService.getCurrentUserId()
+                if (currentUserId == null) {
+                    _error.value = "User not authenticated"
+                    _messageSent.value = false
+                    return@launch
+                }
+                
+                val result = sendMessageUseCase(chatId, currentUserId, content, messageType, replyToId)
                 result.onSuccess {
                     _messageSent.value = true
                     _error.value = null

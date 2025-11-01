@@ -38,7 +38,7 @@ class ChatListAdapter(
         fun bind(chat: Chat) {
             chatName.text = chat.getDisplayName()
             val lastMessageText = chat.lastMessage ?: "No messages yet"
-            val timeText = chat.lastMessageAt?.let { formatTime(it) } ?: ""
+            val timeText = chat.lastMessageTime?.let { formatTime(it) } ?: ""
             lastMessage.text = "$lastMessageText • $timeText"
             
             itemView.setOnClickListener {

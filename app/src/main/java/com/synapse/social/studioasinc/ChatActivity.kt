@@ -112,17 +112,20 @@ class ChatActivity : AppCompatActivity() {
         }
         
         backButton?.setOnClickListener {
+            // Stop typing indicator when leaving chat
+            if (chatId != null && currentUserId != null) {
+                lifecycleScope.launch {
+                    chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+                }
+            }
             onBackPressedDispatcher.onBackPressed()
         }
         
-        // Setup message input listener with proper state management
-        messageInput?.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                sendButton?.isEnabled = !s.isNullOrEmpty() && s.isNotBlank()
-            }
-        })
+        // Setup typing indicator
+        setupTypingIndicator()
+        
+        // Start polling for typing indicators from other users
+        startTypingIndicatorPolling()
     }
 
     private fun loadChatData() {
@@ -281,6 +284,9 @@ class ChatActivity : AppCompatActivity() {
             return
         }
         
+        // Disable send button to prevent double-sending
+        sendButton?.isEnabled = false
+        
         lifecycleScope.launch {
             try {
                 val result = chatService.sendMessage(
@@ -292,10 +298,33 @@ class ChatActivity : AppCompatActivity() {
                 )
                 
                 result.fold(
-                    onSuccess = {
-                        messageInput?.text?.clear()
-                        replyMessageId = null
-                        loadMessages() // Reload to show new message
+                    onSuccess = { messageId ->
+                        // Clear input immediately for better UX
+                        runOnUiThread {
+                            messageInput?.text?.clear()
+                            replyMessageId = null
+                        }
+                        
+                        // Add message optimistically to UI
+                        val newMessage = HashMap<String, Any?>()
+                        newMessage["id"] = messageId
+                        newMessage["chat_id"] = chatId
+                        newMessage["sender_id"] = currentUserId
+                        newMessage["uid"] = currentUserId
+                        newMessage["content"] = messageText
+                        newMessage["message_text"] = messageText
+                        newMessage["message_type"] = "text"
+                        newMessage["created_at"] = System.currentTimeMillis()
+                        newMessage["push_date"] = System.currentTimeMillis()
+                        newMessage["is_deleted"] = false
+                        newMessage["is_edited"] = false
+                        newMessage["delivery_status"] = "sent"
+                        
+                        runOnUiThread {
+                            messagesList.add(newMessage)
+                            messagesAdapter?.notifyItemInserted(messagesList.size - 1)
+                            recyclerView?.scrollToPosition(messagesList.size - 1)
+                        }
                     },
                     onFailure = { error ->
                         showError("Failed to send message: ${error.message}")
@@ -303,6 +332,73 @@ class ChatActivity : AppCompatActivity() {
                 )
             } catch (e: Exception) {
                 showError("Error sending message: ${e.message}")
+            } finally {
+                // Re-enable send button
+                runOnUiThread {
+                    sendButton?.isEnabled = true
+                }
+            }
+        }
+    }
+    
+    /**
+     * Setup typing indicator
+     */
+    private fun setupTypingIndicator() {
+        var typingJob: kotlinx.coroutines.Job? = null
+        
+        messageInput?.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                // Cancel previous typing job
+                typingJob?.cancel()
+                
+                // Send typing status
+                if (!s.isNullOrEmpty() && chatId != null && currentUserId != null) {
+                    lifecycleScope.launch {
+                        chatService.updateTypingStatus(chatId!!, currentUserId!!, true)
+                    }
+                    
+                    // Auto-stop typing after 3 seconds
+                    typingJob = lifecycleScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+                    }
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {
+                sendButton?.isEnabled = !s.isNullOrEmpty() && s.isNotBlank()
+                
+                // Stop typing when input is cleared
+                if (s.isNullOrEmpty() && chatId != null && currentUserId != null) {
+                    lifecycleScope.launch {
+                        chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+                    }
+                }
+            }
+        })
+    }
+    
+    /**
+     * Start polling for typing indicators
+     */
+    private fun startTypingIndicatorPolling() {
+        lifecycleScope.launch {
+            while (isActive) {
+                if (chatId != null && currentUserId != null) {
+                    val result = chatService.getTypingUsers(chatId!!, currentUserId!!)
+                    result.fold(
+                        onSuccess = { typingUsers ->
+                            // Update UI to show typing indicator if users are typing
+                            // This can be enhanced with actual UI implementation
+                            if (typingUsers.isNotEmpty()) {
+                                android.util.Log.d("ChatActivity", "Users typing: $typingUsers")
+                            }
+                        },
+                        onFailure = { /* Ignore errors */ }
+                    )
+                }
+                kotlinx.coroutines.delay(2000) // Poll every 2 seconds
             }
         }
     }

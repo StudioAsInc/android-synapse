@@ -10,10 +10,11 @@ class SendMessageUseCase(
 ) {
     suspend operator fun invoke(
         chatId: String,
+        senderId: String,
         content: String,
         messageType: String = "text",
-        mediaUrl: String? = null
+        replyToId: String? = null
     ): Result<String> {
-        return chatRepository.sendMessage(chatId, content, messageType, mediaUrl)
+        return chatRepository.sendMessage(chatId, senderId, content, messageType, replyToId)
     }
 }
