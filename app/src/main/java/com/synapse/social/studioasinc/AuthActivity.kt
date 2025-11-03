@@ -18,6 +18,11 @@ import androidx.core.content.ContextCompat
 import android.view.MotionEvent
 import android.view.animation.OvershootInterpolator
 import android.view.HapticFeedbackConstants
+import android.os.Build
+import androidx.annotation.RequiresApi
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.widget.ScrollView
 
 /**
  * AuthUIState sealed class for managing UI states
@@ -90,50 +95,92 @@ class AuthActivity : AppCompatActivity() {
     }
     
     /**
+     * Check if animations should be reduced based on system preferences
+     */
+    private fun shouldReduceMotion(): Boolean {
+        return try {
+            val animationScale = android.provider.Settings.Global.getFloat(
+                contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                1.0f
+            )
+            animationScale == 0f
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    /**
+     * Get animation duration based on reduced motion preference
+     */
+    private fun getAnimationDuration(normalDuration: Long): Long {
+        return if (shouldReduceMotion()) 0L else normalDuration
+    }
+    
+    /**
      * Setup enhanced animations for UI elements
      */
     private fun setupEnhancedAnimations() {
+        val reduceMotion = shouldReduceMotion()
+        
         binding.apply {
             // Logo entrance animation with scale and overshoot interpolator
             cardLogo.apply {
-                scaleX = 0f
-                scaleY = 0f
-                alpha = 0f
-                postDelayed({
-                    animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .alpha(1f)
-                        .setDuration(600)
-                        .setInterpolator(OvershootInterpolator(1.5f))
-                        .start()
-                }, 100)
+                if (reduceMotion) {
+                    // Skip animation, just show the logo
+                    scaleX = 1f
+                    scaleY = 1f
+                    alpha = 1f
+                } else {
+                    scaleX = 0f
+                    scaleY = 0f
+                    alpha = 0f
+                    postDelayed({
+                        animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .alpha(1f)
+                            .setDuration(600)
+                            .setInterpolator(OvershootInterpolator(1.5f))
+                            .start()
+                    }, 100)
+                }
             }
             
             // App name fade-in animation with staggered delay
             tvAppName.apply {
-                alpha = 0f
-                translationY = -20f
-                postDelayed({
-                    animate()
-                        .alpha(1f)
-                        .translationY(0f)
-                        .setDuration(400)
-                        .start()
-                }, 400)
+                if (reduceMotion) {
+                    alpha = 1f
+                    translationY = 0f
+                } else {
+                    alpha = 0f
+                    translationY = -20f
+                    postDelayed({
+                        animate()
+                            .alpha(1f)
+                            .translationY(0f)
+                            .setDuration(400)
+                            .start()
+                    }, 400)
+                }
             }
             
             // Welcome message fade-in animation with staggered delay
             tvWelcome.apply {
-                alpha = 0f
-                translationY = -20f
-                postDelayed({
-                    animate()
-                        .alpha(1f)
-                        .translationY(0f)
-                        .setDuration(400)
-                        .start()
-                }, 600)
+                if (reduceMotion) {
+                    alpha = 1f
+                    translationY = 0f
+                } else {
+                    alpha = 0f
+                    translationY = -20f
+                    postDelayed({
+                        animate()
+                            .alpha(1f)
+                            .translationY(0f)
+                            .setDuration(400)
+                            .start()
+                    }, 600)
+                }
             }
             
             // Setup input field focus animations
@@ -146,57 +193,67 @@ class AuthActivity : AppCompatActivity() {
     
     /**
      * Setup input field focus animations with scale and glow effects
+     * Note: This is called before setupKeyboardHandling, so these listeners
+     * will be chained by the keyboard handling setup
      */
     private fun setupInputFieldFocusAnimations() {
+        val reduceMotion = shouldReduceMotion()
+        
         binding.apply {
             // Email field focus animation
             etEmail.setOnFocusChangeListener { view, hasFocus ->
-                if (hasFocus) {
-                    tilEmail.animate()
-                        .scaleX(1.02f)
-                        .scaleY(1.02f)
-                        .setDuration(200)
-                        .start()
-                } else {
-                    tilEmail.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(200)
-                        .start()
+                if (!reduceMotion) {
+                    if (hasFocus) {
+                        tilEmail.animate()
+                            .scaleX(1.02f)
+                            .scaleY(1.02f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        tilEmail.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(200)
+                            .start()
+                    }
                 }
             }
             
             // Password field focus animation
             etPassword.setOnFocusChangeListener { view, hasFocus ->
-                if (hasFocus) {
-                    tilPassword.animate()
-                        .scaleX(1.02f)
-                        .scaleY(1.02f)
-                        .setDuration(200)
-                        .start()
-                } else {
-                    tilPassword.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(200)
-                        .start()
+                if (!reduceMotion) {
+                    if (hasFocus) {
+                        tilPassword.animate()
+                            .scaleX(1.02f)
+                            .scaleY(1.02f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        tilPassword.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(200)
+                            .start()
+                    }
                 }
             }
             
             // Username field focus animation
             etUsername.setOnFocusChangeListener { view, hasFocus ->
-                if (hasFocus) {
-                    tilUsername.animate()
-                        .scaleX(1.02f)
-                        .scaleY(1.02f)
-                        .setDuration(200)
-                        .start()
-                } else {
-                    tilUsername.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(200)
-                        .start()
+                if (!reduceMotion) {
+                    if (hasFocus) {
+                        tilUsername.animate()
+                            .scaleX(1.02f)
+                            .scaleY(1.02f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        tilUsername.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(200)
+                            .start()
+                    }
                 }
             }
         }
@@ -206,23 +263,27 @@ class AuthActivity : AppCompatActivity() {
      * Setup button press animations with scale down/up on touch events
      */
     private fun setupButtonPressAnimations() {
+        val reduceMotion = shouldReduceMotion()
+        
         binding.apply {
             // Sign in/up button press animation
             btnSignIn.setOnTouchListener { view, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        view.animate()
-                            .scaleX(0.95f)
-                            .scaleY(0.95f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        view.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(100)
-                            .start()
+                if (!reduceMotion) {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.animate()
+                                .scaleX(0.95f)
+                                .scaleY(0.95f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
                     }
                 }
                 false // Return false to allow click event to proceed
@@ -230,23 +291,82 @@ class AuthActivity : AppCompatActivity() {
             
             // Mode toggle press animation
             tvToggleMode.setOnTouchListener { view, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        view.animate()
-                            .scaleX(0.97f)
-                            .scaleY(0.97f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        view.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(100)
-                            .start()
+                if (!reduceMotion) {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.animate()
+                                .scaleX(0.97f)
+                                .scaleY(0.97f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
                     }
                 }
                 false // Return false to allow click event to proceed
+            }
+        }
+    }
+    
+    /**
+     * Setup accessibility content descriptions for all interactive elements
+     */
+    private fun setupAccessibilityDescriptions() {
+        binding.apply {
+            // Input fields
+            etEmail.contentDescription = "Email address input field"
+            tilEmail.contentDescription = "Email address"
+            
+            etPassword.contentDescription = "Password input field"
+            tilPassword.contentDescription = "Password"
+            
+            etUsername.contentDescription = "Username input field"
+            tilUsername.contentDescription = "Username"
+            
+            // Buttons
+            btnSignIn.contentDescription = "Sign in button. Double tap to sign in with your credentials"
+            tvToggleMode.contentDescription = "Switch authentication mode. Double tap to toggle between sign in and sign up"
+            
+            // Verification screen elements
+            btnResendVerification.contentDescription = "Resend verification email button. Double tap to send a new verification email"
+            btnBackToSignIn.contentDescription = "Back to sign in button. Double tap to return to the sign in screen"
+            
+            // Logo and branding
+            cardLogo.contentDescription = "Synapse application logo"
+            tvAppName.contentDescription = "Synapse"
+            
+            // Loading overlay
+            loadingOverlay.contentDescription = "Loading. Please wait while we process your request"
+            progressBar.contentDescription = "Loading progress indicator"
+            
+            // Error card
+            cardError.contentDescription = "Error message"
+            
+            // Password strength indicator
+            layoutPasswordStrength.contentDescription = "Password strength indicator"
+            progressPasswordStrength.contentDescription = "Password strength progress bar"
+        }
+    }
+    
+    /**
+     * Update content descriptions based on current mode
+     */
+    private fun updateAccessibilityForMode(isSignUp: Boolean) {
+        binding.apply {
+            if (isSignUp) {
+                btnSignIn.contentDescription = "Create account button. Double tap to create your new account"
+                tvToggleMode.contentDescription = "Switch to sign in mode. Double tap if you already have an account"
+                tvWelcome.contentDescription = "Create your account"
+            } else {
+                btnSignIn.contentDescription = "Sign in button. Double tap to sign in with your credentials"
+                tvToggleMode.contentDescription = "Switch to sign up mode. Double tap to create a new account"
+                tvWelcome.contentDescription = "Welcome back"
             }
         }
     }
@@ -280,10 +400,64 @@ class AuthActivity : AppCompatActivity() {
                     false
                 }
             }
+            
+            // Setup focus listeners to scroll input into view when keyboard appears
+            // Store original focus listeners to chain them
+            val originalEmailFocusListener = etEmail.onFocusChangeListener
+            val originalPasswordFocusListener = etPassword.onFocusChangeListener
+            val originalUsernameFocusListener = etUsername.onFocusChangeListener
+            
+            etEmail.setOnFocusChangeListener { view, hasFocus ->
+                originalEmailFocusListener?.onFocusChange(view, hasFocus)
+                if (hasFocus) {
+                    scrollToView(view)
+                }
+            }
+            
+            etPassword.setOnFocusChangeListener { view, hasFocus ->
+                originalPasswordFocusListener?.onFocusChange(view, hasFocus)
+                if (hasFocus) {
+                    scrollToView(view)
+                }
+            }
+            
+            etUsername.setOnFocusChangeListener { view, hasFocus ->
+                originalUsernameFocusListener?.onFocusChange(view, hasFocus)
+                if (hasFocus) {
+                    scrollToView(view)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Scroll to view with keyboard padding to ensure it's visible
+     */
+    private fun scrollToView(view: View) {
+        // Find the ScrollView in the layout hierarchy
+        var parent = view.parent
+        while (parent != null && parent !is android.widget.ScrollView) {
+            parent = parent.parent
+        }
+        
+        (parent as? android.widget.ScrollView)?.let { scrollView ->
+            // Post delayed to ensure keyboard is shown
+            view.postDelayed({
+                val rect = android.graphics.Rect()
+                view.getGlobalVisibleRect(rect)
+                
+                // Calculate scroll position with 16dp padding
+                val keyboardPadding = resources.getDimensionPixelSize(R.dimen.auth_keyboard_padding)
+                val scrollY = rect.top - keyboardPadding
+                scrollView.smoothScrollTo(0, scrollY)
+            }, 100)
         }
     }
 
     private fun setupUI() {
+        // Setup accessibility content descriptions for all interactive elements
+        setupAccessibilityDescriptions()
+        
         binding.apply {
             // Setup button press animation with scale down/up on touch events
             btnSignIn.setOnTouchListener { view, event ->
@@ -386,6 +560,45 @@ class AuthActivity : AppCompatActivity() {
     }
 
     /**
+     * Apply blur effect to background content when loading overlay is visible (API 31+)
+     */
+    private fun applyBlurEffect() {
+        // Check if device supports RenderEffect (API 31+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                // Apply blur effect with 25f radius and CLAMP tile mode
+                val blurEffect = RenderEffect.createBlurEffect(
+                    25f, 25f,
+                    Shader.TileMode.CLAMP
+                )
+                
+                // Apply to the ScrollView which contains all the background content
+                // The ScrollView is the first child of the CoordinatorLayout (binding.root)
+                val scrollView = binding.root.getChildAt(0)
+                scrollView?.setRenderEffect(blurEffect)
+            } catch (e: Exception) {
+                android.util.Log.w("AuthActivity", "Failed to apply blur effect: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Remove blur effect from background content when loading overlay is hidden (API 31+)
+     */
+    private fun removeBlurEffect() {
+        // Check if device supports RenderEffect (API 31+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                // Remove blur effect from the ScrollView
+                val scrollView = binding.root.getChildAt(0)
+                scrollView?.setRenderEffect(null)
+            } catch (e: Exception) {
+                android.util.Log.w("AuthActivity", "Failed to remove blur effect: ${e.message}")
+            }
+        }
+    }
+    
+    /**
      * Update UI state based on current authentication state
      */
     private fun updateUIState(state: AuthUIState) {
@@ -404,11 +617,20 @@ class AuthActivity : AppCompatActivity() {
                     loadingOverlay.animate().alpha(1f).setDuration(200).start()
                     setButtonLoadingState(true)
                     cardError.visibility = View.GONE
+                    
+                    // Apply blur effect to background content (API 31+)
+                    applyBlurEffect()
+                    
+                    // Note: Loading message is set by the caller using setLoadingMessage()
                 }
                 
                 is AuthUIState.SignInForm -> {
                     isSignUpMode = false
                     loadingOverlay.visibility = View.GONE
+                    
+                    // Remove blur effect when hiding loading overlay
+                    removeBlurEffect()
+                    
                     layoutMainForm.visibility = View.VISIBLE
                     layoutEmailVerification.visibility = View.GONE
                     
@@ -432,6 +654,9 @@ class AuthActivity : AppCompatActivity() {
                     setButtonEnabledState(true)
                     btnSignIn.text = "Sign In"
                     setButtonIcon(R.drawable.ic_arrow_forward)
+                    
+                    // Update accessibility descriptions for sign in mode
+                    updateAccessibilityForMode(false)
                     
                     // Animate text changes with crossfade
                     tvWelcome.animate()
@@ -464,6 +689,10 @@ class AuthActivity : AppCompatActivity() {
                 is AuthUIState.SignUpForm -> {
                     isSignUpMode = true
                     loadingOverlay.visibility = View.GONE
+                    
+                    // Remove blur effect when hiding loading overlay
+                    removeBlurEffect()
+                    
                     layoutMainForm.visibility = View.VISIBLE
                     layoutEmailVerification.visibility = View.GONE
                     
@@ -488,6 +717,9 @@ class AuthActivity : AppCompatActivity() {
                     setButtonEnabledState(true)
                     btnSignIn.text = "Create Account"
                     setButtonIcon(R.drawable.ic_arrow_forward)
+                    
+                    // Update accessibility descriptions for sign up mode
+                    updateAccessibilityForMode(true)
                     
                     // Animate text changes with crossfade
                     tvWelcome.animate()
@@ -520,6 +752,9 @@ class AuthActivity : AppCompatActivity() {
                 is AuthUIState.EmailVerificationPending -> {
                     loadingOverlay.visibility = View.GONE
                     
+                    // Remove blur effect when hiding loading overlay
+                    removeBlurEffect()
+                    
                     // Enhanced verification screen transition with fade and slide
                     layoutMainForm.animate()
                         .alpha(0f)
@@ -538,6 +773,10 @@ class AuthActivity : AppCompatActivity() {
                                 .translationY(0f)
                                 .setDuration(300)
                                 .setStartDelay(100)
+                                .withEndAction {
+                                    // Start animated email icon after transition completes
+                                    startEmailIconAnimation()
+                                }
                                 .start()
                         }
                         .start()
@@ -558,6 +797,10 @@ class AuthActivity : AppCompatActivity() {
                 
                 is AuthUIState.Error -> {
                     loadingOverlay.visibility = View.GONE
+                    
+                    // Remove blur effect when hiding loading overlay
+                    removeBlurEffect()
+                    
                     setButtonEnabledState(true)
                     resetSignInButton()
                     
@@ -567,6 +810,28 @@ class AuthActivity : AppCompatActivity() {
                     showError(state.message, ErrorField.GENERAL)
                 }
             }
+        }
+    }
+    
+    /**
+     * Set loading message with fade transition animation
+     */
+    private fun setLoadingMessage(message: String) {
+        binding.tvLoadingMessage.apply {
+            // Fade out current message
+            animate()
+                .alpha(0f)
+                .setDuration(150)
+                .withEndAction {
+                    // Update text
+                    text = message
+                    // Fade in new message
+                    animate()
+                        .alpha(1f)
+                        .setDuration(150)
+                        .start()
+                }
+                .start()
         }
     }
     
@@ -649,10 +914,18 @@ class AuthActivity : AppCompatActivity() {
                 .start()
         }
         
-        // Delay navigation by 500ms to show success feedback
-        binding.btnSignIn.postDelayed({
-            navigateToMain()
-        }, 500)
+        // Start fade out animation for entire auth screen after brief success display
+        binding.root.postDelayed({
+            // Fade out entire auth screen
+            binding.root.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction {
+                    // Navigate to main after fade out completes
+                    navigateToMain()
+                }
+                .start()
+        }, 500) // Delay navigation by 500ms to show success feedback
     }
 
     /**
@@ -716,31 +989,59 @@ class AuthActivity : AppCompatActivity() {
     }
 
     /**
-     * Start cooldown timer for resend verification button
+     * Start cooldown timer for resend verification button with circular progress indicator
      */
     private fun startResendCooldown() {
         isResendCooldownActive = true
         resendCooldownSeconds = 60 // 60 second cooldown
+        val totalSeconds = 60
         
         binding.apply {
             btnResendVerification.isEnabled = false
-            tvResendCooldown.visibility = View.VISIBLE
+            layoutResendCooldown.visibility = View.VISIBLE
+            progressResendCooldown.max = totalSeconds
+            progressResendCooldown.progress = totalSeconds
         }
         
         lifecycleScope.launch {
             while (resendCooldownSeconds > 0) {
-                binding.tvResendCooldown.text = "You can resend in $resendCooldownSeconds seconds"
+                binding.apply {
+                    tvResendCooldown.text = resendCooldownSeconds.toString()
+                    progressResendCooldown.setProgressCompat(resendCooldownSeconds, true)
+                }
                 delay(1000)
                 resendCooldownSeconds--
             }
             
-            // Cooldown finished
+            // Cooldown finished - start pulsing animation on resend button
             isResendCooldownActive = false
             binding.apply {
                 btnResendVerification.isEnabled = true
                 btnResendVerification.text = "Resend Verification Email"
-                tvResendCooldown.visibility = View.GONE
+                layoutResendCooldown.visibility = View.GONE
+                
+                // Start pulsing animation to draw attention
+                startResendButtonPulseAnimation()
             }
+        }
+    }
+    
+    /**
+     * Start pulsing animation on resend button when it becomes available
+     */
+    private fun startResendButtonPulseAnimation() {
+        if (shouldReduceMotion()) {
+            return
+        }
+        
+        binding.btnResendVerification.apply {
+            val pulseAnimation = AnimationUtils.loadAnimation(this@AuthActivity, R.anim.pulse)
+            startAnimation(pulseAnimation)
+            
+            // Stop animation after 3 cycles (6 seconds)
+            postDelayed({
+                clearAnimation()
+            }, 6000)
         }
     }
 
@@ -765,6 +1066,7 @@ class AuthActivity : AppCompatActivity() {
             }
             
             val isValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+            val reduceMotion = shouldReduceMotion()
             
             if (isValid) {
                 // Show green checkmark icon
@@ -775,19 +1077,24 @@ class AuthActivity : AppCompatActivity() {
                 ))
                 tilEmail.error = null
                 
+                // Announce success for accessibility
+                tilEmail.announceForAccessibility("Email address is valid")
+                
                 // Animate the entire TextInputLayout with subtle scale
-                tilEmail.animate()
-                    .scaleX(1.01f)
-                    .scaleY(1.01f)
-                    .setDuration(100)
-                    .withEndAction {
-                        tilEmail.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    .start()
+                if (!reduceMotion) {
+                    tilEmail.animate()
+                        .scaleX(1.01f)
+                        .scaleY(1.01f)
+                        .setDuration(100)
+                        .withEndAction {
+                            tilEmail.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        .start()
+                }
             } else {
                 // Show red error icon with error message
                 tilEmail.endIconMode = com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM
@@ -795,25 +1102,31 @@ class AuthActivity : AppCompatActivity() {
                 tilEmail.setEndIconTintList(android.content.res.ColorStateList.valueOf(
                     ContextCompat.getColor(this@AuthActivity, R.color.error_red)
                 ))
-                tilEmail.error = "Please enter a valid email address"
+                val errorMessage = "Please enter a valid email address"
+                tilEmail.error = errorMessage
+                
+                // Announce error for accessibility (TalkBack)
+                tilEmail.announceForAccessibility("Email validation error: $errorMessage")
                 
                 // Animate error appearance with subtle shake
-                tilEmail.animate()
-                    .translationX(-5f)
-                    .setDuration(50)
-                    .withEndAction {
-                        tilEmail.animate()
-                            .translationX(5f)
-                            .setDuration(50)
-                            .withEndAction {
-                                tilEmail.animate()
-                                    .translationX(0f)
-                                    .setDuration(50)
-                                    .start()
-                            }
-                            .start()
-                    }
-                    .start()
+                if (!reduceMotion) {
+                    tilEmail.animate()
+                        .translationX(-5f)
+                        .setDuration(50)
+                        .withEndAction {
+                            tilEmail.animate()
+                                .translationX(5f)
+                                .setDuration(50)
+                                .withEndAction {
+                                    tilEmail.animate()
+                                        .translationX(0f)
+                                        .setDuration(50)
+                                        .start()
+                                }
+                                .start()
+                        }
+                        .start()
+                }
             }
         }
     }
@@ -837,15 +1150,20 @@ class AuthActivity : AppCompatActivity() {
             
             // Evaluate password strength
             val strength = evaluatePasswordStrength(password)
+            val reduceMotion = shouldReduceMotion()
             
             // Show strength indicator with animation
             if (layoutPasswordStrength.visibility != View.VISIBLE) {
                 layoutPasswordStrength.visibility = View.VISIBLE
-                layoutPasswordStrength.alpha = 0f
-                layoutPasswordStrength.animate()
-                    .alpha(1f)
-                    .setDuration(200)
-                    .start()
+                if (!reduceMotion) {
+                    layoutPasswordStrength.alpha = 0f
+                    layoutPasswordStrength.animate()
+                        .alpha(1f)
+                        .setDuration(200)
+                        .start()
+                } else {
+                    layoutPasswordStrength.alpha = 1f
+                }
             }
             
             // Update progress bar color and value with animation
@@ -857,19 +1175,24 @@ class AuthActivity : AppCompatActivity() {
             tvPasswordStrength.text = strength.message
             tvPasswordStrength.setTextColor(color)
             
+            // Announce password strength for accessibility (TalkBack)
+            layoutPasswordStrength.announceForAccessibility("Password strength: ${strength.message}")
+            
             // Animate text change
-            tvPasswordStrength.animate()
-                .scaleX(1.1f)
-                .scaleY(1.1f)
-                .setDuration(100)
-                .withEndAction {
-                    tvPasswordStrength.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(100)
-                        .start()
-                }
-                .start()
+            if (!reduceMotion) {
+                tvPasswordStrength.animate()
+                    .scaleX(1.1f)
+                    .scaleY(1.1f)
+                    .setDuration(100)
+                    .withEndAction {
+                        tvPasswordStrength.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(100)
+                            .start()
+                    }
+                    .start()
+            }
         }
     }
     
@@ -921,6 +1244,16 @@ class AuthActivity : AppCompatActivity() {
                 HapticFeedbackConstants.REJECT,
                 HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
             )
+            
+            // Announce error for accessibility (TalkBack)
+            // This ensures screen readers announce the error message with descriptive context
+            val accessibilityMessage = when (field) {
+                ErrorField.EMAIL -> "Email error: $message"
+                ErrorField.PASSWORD -> "Password error: $message"
+                ErrorField.USERNAME -> "Username error: $message"
+                ErrorField.GENERAL -> "Error: $message"
+            }
+            cardError.announceForAccessibility(accessibilityMessage)
             
             // Implement field-specific error highlighting with animated borders
             highlightErrorField(field)
@@ -1157,8 +1490,9 @@ class AuthActivity : AppCompatActivity() {
         val password = binding.etPassword.text.toString().trim()
         
         if (validateInput(email, password)) {
-            // Show loading state
+            // Show loading state with contextual message
             updateUIState(AuthUIState.Loading)
+            setLoadingMessage("Signing you in...")
             
             lifecycleScope.launch {
                 try {
@@ -1191,7 +1525,7 @@ class AuthActivity : AppCompatActivity() {
                     } else {
                         // Use enhanced error handling with user-friendly messages
                         val (errorMessage, errorField) = getUserFriendlyErrorMessage(e, "signin")
-                        updateUIState(AuthUIState.Loading) // Reset to clear loading
+                        updateUIState(AuthUIState.SignInForm) // Return to sign in form
                         showError(errorMessage, errorField)
                     }
                 }
@@ -1221,8 +1555,9 @@ class AuthActivity : AppCompatActivity() {
         val username = binding.etUsername.text.toString().trim()
         
         if (validateInput(email, password, username)) {
-            // Show loading state
+            // Show loading state with contextual message
             updateUIState(AuthUIState.Loading)
+            setLoadingMessage("Creating your account...")
             
             lifecycleScope.launch {
                 try {
@@ -1262,7 +1597,7 @@ class AuthActivity : AppCompatActivity() {
                     // Use enhanced error handling with user-friendly messages
                     val (errorMessage, errorField) = getUserFriendlyErrorMessage(e, "signup")
                     android.util.Log.e("AuthActivity", "Showing error to user: $errorMessage")
-                    updateUIState(AuthUIState.Loading) // Reset to clear loading
+                    updateUIState(AuthUIState.SignUpForm) // Return to sign up form
                     showError(errorMessage, errorField)
                 }
             }
@@ -1444,6 +1779,7 @@ class AuthActivity : AppCompatActivity() {
 
     /**
      * Start periodic verification checking when in verification pending state
+     * with enhanced auto-refresh indicator
      */
     private fun startVerificationChecking(email: String) {
         // Get the password from the form if available for auto sign in
@@ -1451,39 +1787,125 @@ class AuthActivity : AppCompatActivity() {
         
         if (password.isNotEmpty()) {
             lifecycleScope.launch {
+                // Show auto-refresh indicator
+                binding.layoutAutoRefresh.visibility = View.VISIBLE
+                
                 // Check verification status every 30 seconds for up to 10 minutes
                 repeat(20) { attempt ->
                     delay(30000) // Wait 30 seconds
                     
                     // Only continue checking if still in verification pending state
                     if (currentState is AuthUIState.EmailVerificationPending) {
+                        // Update auto-refresh message
+                        binding.tvAutoRefresh.text = "Checking verification status... (${attempt + 1}/20)"
+                        
+                        // Pulse the auto-refresh indicator
+                        if (!shouldReduceMotion()) {
+                            binding.layoutAutoRefresh.animate()
+                                .scaleX(1.05f)
+                                .scaleY(1.05f)
+                                .setDuration(200)
+                                .withEndAction {
+                                    binding.layoutAutoRefresh.animate()
+                                        .scaleX(1f)
+                                        .scaleY(1f)
+                                        .setDuration(200)
+                                        .start()
+                                }
+                                .start()
+                        }
+                        
+                        // Show loading overlay with verification message during check
+                        binding.loadingOverlay.visibility = View.VISIBLE
+                        applyBlurEffect()
+                        setLoadingMessage("Verifying email...")
+                        
                         attemptAutoSignInAfterVerification(email, password)
+                        
+                        // Hide loading overlay after check completes
+                        delay(2000) // Give time for the check to complete
+                        if (currentState is AuthUIState.EmailVerificationPending) {
+                            binding.loadingOverlay.visibility = View.GONE
+                            removeBlurEffect()
+                        }
                     } else {
                         // Exit checking if state changed
+                        binding.layoutAutoRefresh.visibility = View.GONE
                         return@launch
                     }
                 }
+                
+                // Hide auto-refresh indicator after all attempts
+                binding.layoutAutoRefresh.visibility = View.GONE
+            }
+        }
+    }
+    
+    /**
+     * Start animated email icon animation
+     */
+    private fun startEmailIconAnimation() {
+        if (shouldReduceMotion()) {
+            return
+        }
+        
+        binding.ivEmailIcon.apply {
+            // Check if the drawable is an AnimatedVectorDrawable
+            val drawable = drawable
+            if (drawable is android.graphics.drawable.AnimatedVectorDrawable) {
+                drawable.start()
+            } else {
+                // Fallback to simple scale animation if not using animated vector
+                scaleX = 0.8f
+                scaleY = 0.8f
+                alpha = 0f
+                animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(600)
+                    .setInterpolator(OvershootInterpolator(1.2f))
+                    .start()
             }
         }
     }
 
     /**
-     * Handle back to sign in from verification pending state
+     * Handle back to sign in from verification pending state with enhanced animations
      */
     private fun handleBackToSignIn() {
         // Clear saved email when going back to sign in
         clearSavedEmail()
         
+        // Hide auto-refresh indicator if visible
+        binding.layoutAutoRefresh.visibility = View.GONE
+        
         // Enhanced animate transition back to sign in with fade and slide
         binding.apply {
+            // Fade out email icon first
+            if (!shouldReduceMotion()) {
+                ivEmailIcon.animate()
+                    .scaleX(0.8f)
+                    .scaleY(0.8f)
+                    .alpha(0f)
+                    .setDuration(200)
+                    .start()
+            }
+            
             layoutEmailVerification.animate()
                 .alpha(0f)
                 .translationY(50f)
                 .setDuration(300)
+                .setStartDelay(if (shouldReduceMotion()) 0 else 100)
                 .withEndAction {
                     layoutEmailVerification.visibility = View.GONE
                     layoutEmailVerification.alpha = 1f
                     layoutEmailVerification.translationY = 0f
+                    
+                    // Reset email icon for next time
+                    ivEmailIcon.scaleX = 1f
+                    ivEmailIcon.scaleY = 1f
+                    ivEmailIcon.alpha = 1f
                     
                     // Reset form fields
                     etEmail.text?.clear()
@@ -1506,6 +1928,60 @@ class AuthActivity : AppCompatActivity() {
                         .start()
                 }
                 .start()
+        }
+    }
+    
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Preserve form state on orientation changes
+        binding.apply {
+            outState.putString("email", etEmail.text?.toString())
+            outState.putString("password", etPassword.text?.toString())
+            outState.putString("username", etUsername.text?.toString())
+            outState.putBoolean("isSignUpMode", isSignUpMode)
+            outState.putInt("currentStateType", when (currentState) {
+                is AuthUIState.Loading -> 0
+                is AuthUIState.SignInForm -> 1
+                is AuthUIState.SignUpForm -> 2
+                is AuthUIState.EmailVerificationPending -> 3
+                is AuthUIState.Authenticated -> 4
+                is AuthUIState.Error -> 5
+            })
+            if (currentState is AuthUIState.EmailVerificationPending) {
+                outState.putString("verificationEmail", (currentState as AuthUIState.EmailVerificationPending).email)
+            }
+        }
+    }
+    
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        // Restore form state after orientation changes
+        binding.apply {
+            savedInstanceState.getString("email")?.let { etEmail.setText(it) }
+            savedInstanceState.getString("password")?.let { etPassword.setText(it) }
+            savedInstanceState.getString("username")?.let { etUsername.setText(it) }
+            
+            val wasSignUpMode = savedInstanceState.getBoolean("isSignUpMode", false)
+            val stateType = savedInstanceState.getInt("currentStateType", 1)
+            
+            // Restore UI state
+            when (stateType) {
+                0 -> {
+                    updateUIState(AuthUIState.Loading)
+                    setLoadingMessage("Please wait...")
+                }
+                1 -> updateUIState(AuthUIState.SignInForm)
+                2 -> updateUIState(AuthUIState.SignUpForm)
+                3 -> {
+                    val email = savedInstanceState.getString("verificationEmail") ?: ""
+                    if (email.isNotEmpty()) {
+                        updateUIState(AuthUIState.EmailVerificationPending(email))
+                    } else {
+                        updateUIState(if (wasSignUpMode) AuthUIState.SignUpForm else AuthUIState.SignInForm)
+                    }
+                }
+                else -> updateUIState(if (wasSignUpMode) AuthUIState.SignUpForm else AuthUIState.SignInForm)
+            }
         }
     }
     
