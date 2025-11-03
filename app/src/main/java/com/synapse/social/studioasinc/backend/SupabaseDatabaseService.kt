@@ -73,27 +73,38 @@ class SupabaseDatabaseService : IDatabaseService {
     
     /**
      * Convert timestamp values based on field requirements
-     * Some fields expect bigint (milliseconds), others expect timestamp strings
+     * PostgreSQL timestamp columns need ISO 8601 strings, not milliseconds
      */
     private fun convertTimestampIfNeeded(key: String, value: Any?): Any? {
-        // Fields that expect ISO 8601 timestamp strings (timestamp columns)
-        val isoTimestampFields = listOf("last_seen", "timestamp", "publish_date")
-        
-        // Fields that expect bigint milliseconds (bigint columns)
-        val bigintTimestampFields = listOf("created_at", "updated_at", "last_message_time", "joined_at", "last_read_at")
+        // Fields that expect ISO 8601 timestamp strings (timestamp/timestamptz columns)
+        val timestampFields = listOf(
+            "created_at", "updated_at", "last_seen", "timestamp", 
+            "publish_date", "last_message_time", "joined_at", 
+            "last_read_at", "edited_at", "push_date"
+        )
         
         return when {
-            key in isoTimestampFields && value is Number -> {
-                // Convert milliseconds to ISO 8601 timestamp string
+            key in timestampFields && value is Number -> {
+                // Convert milliseconds to ISO 8601 timestamp string for PostgreSQL
                 try {
                     java.time.Instant.ofEpochMilli(value.toLong()).toString()
                 } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Failed to convert timestamp for field '$key': $value", e)
                     value // Return original if conversion fails
                 }
             }
-            key in bigintTimestampFields && value is Number -> {
-                // Keep as bigint (milliseconds) - no conversion needed
-                value.toLong()
+            key in timestampFields && value is String -> {
+                // If already a string, check if it's milliseconds and convert
+                try {
+                    val longValue = value.toLongOrNull()
+                    if (longValue != null && longValue > 1000000000000) { // Likely milliseconds
+                        java.time.Instant.ofEpochMilli(longValue).toString()
+                    } else {
+                        value // Already in correct format
+                    }
+                } catch (e: Exception) {
+                    value
+                }
             }
             else -> value
         }
@@ -264,12 +275,13 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 val upsertData = kotlinx.serialization.json.buildJsonObject {
                     data.forEach { (key, value) ->
-                        when (value) {
-                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
-                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(value))
+                        val convertedValue = convertTimestampIfNeeded(key, value)
+                        when (convertedValue) {
+                            is String -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Number -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
+                            is Boolean -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue))
                             null -> put(key, kotlinx.serialization.json.JsonNull)
-                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(value.toString()))
+                            else -> put(key, kotlinx.serialization.json.JsonPrimitive(convertedValue.toString()))
                         }
                     }
                 }

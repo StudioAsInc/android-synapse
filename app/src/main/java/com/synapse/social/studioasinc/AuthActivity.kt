@@ -13,6 +13,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import android.content.SharedPreferences
 import android.view.View
+import android.view.animation.AnimationUtils
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import androidx.core.content.ContextCompat
 
 /**
  * AuthUIState sealed class for managing UI states
@@ -51,6 +56,7 @@ class AuthActivity : AppCompatActivity() {
         sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
 
         setupUI()
+        setupKeyboardHandling()
         
         // Check if returning from successful email verification
         if (intent.getBooleanExtra("verification_success", false)) {
@@ -58,6 +64,38 @@ class AuthActivity : AppCompatActivity() {
         }
         
         checkCurrentUser()
+    }
+    
+    /**
+     * Setup keyboard handling for better UX
+     */
+    private fun setupKeyboardHandling() {
+        binding.apply {
+            // Handle IME action on password field
+            etPassword.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                    if (!isSignUpMode) {
+                        performSignIn()
+                        true
+                    } else {
+                        etUsername.requestFocus()
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            
+            // Handle IME action on username field
+            etUsername.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                    performSignUp()
+                    true
+                } else {
+                    false
+                }
+            }
+        }
     }
 
     private fun setupUI() {
@@ -81,6 +119,34 @@ class AuthActivity : AppCompatActivity() {
             btnBackToSignIn.setOnClickListener {
                 handleBackToSignIn()
             }
+            
+            // Clear error on text change
+            etEmail.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    tilEmail.error = null
+                    cardError.visibility = View.GONE
+                }
+                override fun afterTextChanged(s: android.text.Editable?) {}
+            })
+            
+            etPassword.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    tilPassword.error = null
+                    cardError.visibility = View.GONE
+                }
+                override fun afterTextChanged(s: android.text.Editable?) {}
+            })
+            
+            etUsername.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    tilUsername.error = null
+                    cardError.visibility = View.GONE
+                }
+                override fun afterTextChanged(s: android.text.Editable?) {}
+            })
         }
     }
 
@@ -91,51 +157,91 @@ class AuthActivity : AppCompatActivity() {
         currentState = state
         
         binding.apply {
-            // Hide all sections first
-            layoutEmailVerification.visibility = View.GONE
-            tvErrorMessage.visibility = View.GONE
-            progressBar.visibility = View.GONE
-            
-            // Show/hide main form elements
-            etEmail.visibility = View.VISIBLE
-            etPassword.visibility = View.VISIBLE
-            btnSignIn.visibility = View.VISIBLE
-            tvToggleMode.visibility = View.VISIBLE
+            // Clear all errors first
+            tilEmail.error = null
+            tilPassword.error = null
+            tilUsername.error = null
             
             when (state) {
                 is AuthUIState.Loading -> {
-                    progressBar.visibility = View.VISIBLE
+                    loadingOverlay.visibility = View.VISIBLE
+                    loadingOverlay.alpha = 0f
+                    loadingOverlay.animate().alpha(1f).setDuration(200).start()
                     btnSignIn.isEnabled = false
-                    btnSignIn.text = "Loading..."
+                    cardError.visibility = View.GONE
                 }
                 
                 is AuthUIState.SignInForm -> {
                     isSignUpMode = false
-                    etUsername.visibility = View.GONE
+                    loadingOverlay.visibility = View.GONE
+                    layoutMainForm.visibility = View.VISIBLE
+                    layoutEmailVerification.visibility = View.GONE
+                    
+                    // Animate username field out
+                    if (tilUsername.visibility == View.VISIBLE) {
+                        tilUsername.animate()
+                            .alpha(0f)
+                            .setDuration(200)
+                            .withEndAction {
+                                tilUsername.visibility = View.GONE
+                                tilUsername.alpha = 1f
+                            }
+                            .start()
+                    }
+                    
                     btnSignIn.isEnabled = true
                     btnSignIn.text = "Sign In"
+                    btnSignIn.icon = null
+                    tvWelcome.text = "Welcome back"
                     tvToggleMode.text = "Don't have an account? Sign Up"
+                    cardError.visibility = View.GONE
                 }
                 
                 is AuthUIState.SignUpForm -> {
                     isSignUpMode = true
-                    etUsername.visibility = View.VISIBLE
+                    loadingOverlay.visibility = View.GONE
+                    layoutMainForm.visibility = View.VISIBLE
+                    layoutEmailVerification.visibility = View.GONE
+                    
+                    // Animate username field in
+                    if (tilUsername.visibility != View.VISIBLE) {
+                        tilUsername.visibility = View.VISIBLE
+                        tilUsername.alpha = 0f
+                        tilUsername.animate()
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                    }
+                    
                     btnSignIn.isEnabled = true
-                    btnSignIn.text = "Sign Up"
+                    btnSignIn.text = "Create Account"
+                    btnSignIn.icon = null
+                    tvWelcome.text = "Create your account"
                     tvToggleMode.text = "Already have an account? Sign In"
+                    cardError.visibility = View.GONE
                 }
                 
                 is AuthUIState.EmailVerificationPending -> {
-                    // Hide main form elements
-                    etEmail.visibility = View.GONE
-                    etPassword.visibility = View.GONE
-                    etUsername.visibility = View.GONE
-                    btnSignIn.visibility = View.GONE
-                    tvToggleMode.visibility = View.GONE
+                    loadingOverlay.visibility = View.GONE
                     
-                    // Show verification section
-                    layoutEmailVerification.visibility = View.VISIBLE
-                    tvVerificationEmail.text = "Email sent to: ${state.email}"
+                    // Animate transition to verification screen
+                    layoutMainForm.animate()
+                        .alpha(0f)
+                        .setDuration(200)
+                        .withEndAction {
+                            layoutMainForm.visibility = View.GONE
+                            layoutMainForm.alpha = 1f
+                            
+                            layoutEmailVerification.visibility = View.VISIBLE
+                            layoutEmailVerification.alpha = 0f
+                            layoutEmailVerification.animate()
+                                .alpha(1f)
+                                .setDuration(200)
+                                .start()
+                        }
+                        .start()
+                    
+                    tvVerificationEmail.text = state.email
                     
                     // Save email for resend functionality
                     saveEmailForResend(state.email)
@@ -150,10 +256,18 @@ class AuthActivity : AppCompatActivity() {
                 }
                 
                 is AuthUIState.Error -> {
-                    tvErrorMessage.visibility = View.VISIBLE
-                    tvErrorMessage.text = state.message
+                    loadingOverlay.visibility = View.GONE
                     btnSignIn.isEnabled = true
                     resetSignInButton()
+                    
+                    // Show error in card with animation
+                    tvErrorMessage.text = state.message
+                    cardError.visibility = View.VISIBLE
+                    cardError.alpha = 0f
+                    cardError.animate()
+                        .alpha(1f)
+                        .setDuration(200)
+                        .start()
                 }
             }
         }
@@ -416,34 +530,62 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun validateInput(email: String, password: String, username: String? = null): Boolean {
-        if (email.isEmpty()) {
-            binding.etEmail.error = "Email is required"
-            return false
+        var isValid = true
+        
+        binding.apply {
+            if (email.isEmpty()) {
+                tilEmail.error = "Email is required"
+                isValid = false
+            } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                tilEmail.error = "Please enter a valid email"
+                isValid = false
+            }
+            
+            if (password.isEmpty()) {
+                tilPassword.error = "Password is required"
+                isValid = false
+            } else if (password.length < 6) {
+                tilPassword.error = "Password must be at least 6 characters"
+                isValid = false
+            }
+            
+            if (isSignUpMode && username.isNullOrEmpty()) {
+                tilUsername.error = "Username is required"
+                isValid = false
+            } else if (isSignUpMode && username != null && username.length < 3) {
+                tilUsername.error = "Username must be at least 3 characters"
+                isValid = false
+            }
         }
         
-        if (password.isEmpty()) {
-            binding.etPassword.error = "Password is required"
-            return false
-        }
-        
-        if (password.length < 6) {
-            binding.etPassword.error = "Password must be at least 6 characters"
-            return false
-        }
-        
-        if (isSignUpMode && username.isNullOrEmpty()) {
-            binding.etUsername.error = "Username is required"
-            return false
-        }
-        
-        return true
+        return isValid
     }
 
     private fun toggleMode() {
+        // Add haptic feedback
+        performHapticFeedback()
+        
         if (isSignUpMode) {
             updateUIState(AuthUIState.SignInForm)
         } else {
             updateUIState(AuthUIState.SignUpForm)
+        }
+    }
+    
+    /**
+     * Perform subtle haptic feedback for better UX
+     */
+    private fun performHapticFeedback() {
+        try {
+            val vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(50)
+            }
+        } catch (e: Exception) {
+            // Ignore vibration errors
         }
     }
 
@@ -568,12 +710,24 @@ class AuthActivity : AppCompatActivity() {
         // Clear saved email when going back to sign in
         clearSavedEmail()
         
-        // Reset form fields
-        binding.etEmail.text?.clear()
-        binding.etPassword.text?.clear()
-        binding.etUsername.text?.clear()
-        
-        // Navigate back to sign in form
-        updateUIState(AuthUIState.SignInForm)
+        // Animate transition back to sign in
+        binding.apply {
+            layoutEmailVerification.animate()
+                .alpha(0f)
+                .setDuration(200)
+                .withEndAction {
+                    layoutEmailVerification.visibility = View.GONE
+                    layoutEmailVerification.alpha = 1f
+                    
+                    // Reset form fields
+                    etEmail.text?.clear()
+                    etPassword.text?.clear()
+                    etUsername.text?.clear()
+                    
+                    // Navigate back to sign in form
+                    updateUIState(AuthUIState.SignInForm)
+                }
+                .start()
+        }
     }
 }
