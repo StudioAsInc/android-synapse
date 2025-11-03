@@ -217,12 +217,11 @@ class SupabaseChatService {
                 put("p_user_uid", userId)
             }
             
-            // RPC returns a boolean value directly
+            // RPC returns a boolean value directly - decode it
             val result = client.postgrest.rpc("is_user_in_chat", params)
-            val jsonResult = result.body<kotlinx.serialization.json.JsonPrimitive>()
+                .decodeAs<Boolean>()
             
-            // Extract boolean value
-            jsonResult.content.toBoolean()
+            result
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Error verifying participant $userId in chat $chatId: ${e.message}", e)
             // If verification fails, assume user is participant to avoid blocking legitimate messages
