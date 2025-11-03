@@ -1,6 +1,7 @@
 from telethon import TelegramClient
 import os
 import subprocess
+import asyncio
 
 def get_git_commit_info():
     commit_author = subprocess.check_output(['git', 'log', '-1', '--pretty=format:%an']).decode('utf-8')
@@ -25,10 +26,6 @@ commit_author, commit_message, commit_hash, commit_hash_short = get_git_commit_i
 session_file = "bot_session.session"
 if os.path.exists(session_file):
     os.remove(session_file)
-
-# Create the client with bot token directly
-client = TelegramClient('bot_session', api_id, api_hash).start(bot_token=bot_token)
-client.parse_mode = 'markdown'
 
 def human_readable_size(size, decimal_places=2):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
@@ -72,9 +69,12 @@ async def send_file(file_path):
     except Exception as e:
         print(f"Failed to send file: {e}")
 
-try:
-    with client:
-        client.loop.run_until_complete(send_file(apk_path))
-finally:
-    if client.is_connected():
-        client.loop.run_until_complete(client.disconnect())
+async def main():
+    # Create the client with bot token directly
+    async with TelegramClient('bot_session', api_id, api_hash) as client:
+        await client.start(bot_token=bot_token)
+        client.parse_mode = 'markdown'
+        await send_file(apk_path)
+
+if __name__ == '__main__':
+    asyncio.run(main())

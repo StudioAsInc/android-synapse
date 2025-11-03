@@ -8,6 +8,7 @@ keystore.properties
 build/
 app/build/
 .gradle/
+.vscode/
 *.apk
 *.aab
 *.dex

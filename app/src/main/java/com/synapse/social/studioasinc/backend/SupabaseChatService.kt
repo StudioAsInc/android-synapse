@@ -1,11 +1,16 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.*
 
 /**
@@ -30,12 +35,67 @@ class SupabaseChatService {
     
     /**
      * Ensure both participants exist in the chat
-     * Handles duplicate key errors gracefully as participants may already exist
+     * Uses a database function to bypass RLS for adding both participants
      */
-    private suspend fun ensureParticipantsExist(chatId: String, userId1: String, userId2: String) {
+    private suspend fun ensureParticipantsExist(chatId: String, userId1: String, userId2: String, createdBy: String): Result<Unit> {
         android.util.Log.d(TAG, "Ensuring participants exist for chat: $chatId")
-        addChatParticipant(chatId, userId1)
-        addChatParticipant(chatId, userId2)
+        
+        return try {
+            // Always try to add both participants via RPC (it has ON CONFLICT DO NOTHING)
+            // This is more reliable than checking first, especially with race conditions
+            val results = listOf(
+                addChatParticipantViaRPC(chatId, userId1, createdBy),
+                addChatParticipantViaRPC(chatId, userId2, createdBy)
+            )
+            
+            // Check if any critical failures occurred
+            val failures = results.filter { it.isFailure }
+            if (failures.isNotEmpty()) {
+                android.util.Log.w(TAG, "Some participants may not have been added, but continuing")
+            }
+            
+            android.util.Log.d(TAG, "Participants ensured for chat: $chatId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error ensuring participants exist", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Add participant via RPC function (bypasses RLS)
+     */
+    private suspend fun addChatParticipantViaRPC(chatId: String, userId: String, createdBy: String): Result<Unit> {
+        return try {
+            val isCreator = userId == createdBy
+            
+            // Build parameters as JSON
+            val params = buildJsonObject {
+                put("p_chat_id", chatId)
+                put("p_user_id", userId)
+                put("p_role", if (isCreator) "creator" else "member")
+                put("p_is_admin", isCreator)
+                put("p_can_send_messages", true)
+            }
+            
+            // Call RPC function using the postgrest extension property
+            client.postgrest.rpc("add_chat_participant", params)
+            
+            android.util.Log.d(TAG, "Added participant via RPC: $userId to $chatId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            // The RPC function has ON CONFLICT DO NOTHING, so any error is unexpected
+            android.util.Log.e(TAG, "RPC failed for participant $userId: ${e.message}", e)
+            // Don't fail the operation if participant might already exist
+            if (e.message?.contains("duplicate", ignoreCase = true) == true ||
+                e.message?.contains("already exists", ignoreCase = true) == true ||
+                e.message?.contains("conflict", ignoreCase = true) == true) {
+                android.util.Log.d(TAG, "Participant likely already exists: $userId in $chatId")
+                Result.success(Unit)
+            } else {
+                Result.failure(e)
+            }
+        }
     }
     
     /**
@@ -72,23 +132,7 @@ class SupabaseChatService {
                 
                 android.util.Log.d(TAG, "Creating/retrieving chat between $userId1 and $userId2: $chatId")
                 
-                // First check if chat already exists
-                val existingChat = client.from("chats")
-                    .select(columns = Columns.raw("chat_id")) {
-                        filter {
-                            eq("chat_id", chatId)
-                        }
-                        limit(1)
-                    }
-                    .decodeList<JsonObject>()
-                
-                if (existingChat.isNotEmpty()) {
-                    android.util.Log.d(TAG, "Chat already exists: $chatId")
-                    ensureParticipantsExist(chatId, userId1, userId2)
-                    return@withContext Result.success(chatId)
-                }
-                
-                // Try to insert new chat
+                // Try to insert new chat first (optimistic approach)
                 val chatData = mapOf(
                     "chat_id" to chatId,
                     "is_group" to false,
@@ -104,21 +148,26 @@ class SupabaseChatService {
                     insertResult.isSuccess -> {
                         // New chat created successfully
                         android.util.Log.d(TAG, "New chat created: $chatId")
-                        ensureParticipantsExist(chatId, userId1, userId2)
-                        Result.success(chatId)
                     }
                     isDuplicateKeyError(insertResult) -> {
-                        // Chat already exists (race condition)
-                        android.util.Log.d(TAG, "Chat already exists (race condition): $chatId")
-                        ensureParticipantsExist(chatId, userId1, userId2)
-                        Result.success(chatId)
+                        // Chat already exists (race condition or previous creation)
+                        android.util.Log.d(TAG, "Chat already exists: $chatId")
                     }
                     else -> {
-                        // Unexpected error
+                        // Unexpected error during chat creation
                         android.util.Log.e(TAG, "Failed to create chat: ${insertResult.exceptionOrNull()?.message}")
-                        insertResult.map { chatId }
+                        return@withContext Result.failure(insertResult.exceptionOrNull() ?: Exception("Failed to create chat"))
                     }
                 }
+                
+                // Ensure both participants are added (works whether chat is new or existing)
+                val participantsResult = ensureParticipantsExist(chatId, userId1, userId2, userId1)
+                if (participantsResult.isFailure) {
+                    android.util.Log.e(TAG, "Failed to add participants: ${participantsResult.exceptionOrNull()?.message}")
+                    return@withContext Result.failure(participantsResult.exceptionOrNull() ?: Exception("Failed to add participants"))
+                }
+                
+                Result.success(chatId)
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "Error in getOrCreateDirectChat", e)
                 Result.failure(e)
@@ -128,48 +177,13 @@ class SupabaseChatService {
     
     /**
      * Add participant to chat
-     * Handles duplicate key errors gracefully as participant may already exist
+     * DEPRECATED: Use addChatParticipantViaRPC instead to bypass RLS policies
+     * This method is kept for backward compatibility but should not be used for new code
      */
-    private suspend fun addChatParticipant(chatId: String, userId: String): Result<Unit> {
-        return try {
-            // First check if participant already exists
-            val existingParticipant = client.from("chat_participants")
-                .select(columns = Columns.raw("user_id")) {
-                    filter {
-                        eq("chat_id", chatId)
-                        eq("user_id", userId)
-                    }
-                    limit(1)
-                }
-                .decodeList<JsonObject>()
-            
-            if (existingParticipant.isNotEmpty()) {
-                android.util.Log.d(TAG, "Participant already exists: $userId in $chatId")
-                return Result.success(Unit)
-            }
-            
-            val participantData = mapOf(
-                "chat_id" to chatId,
-                "user_id" to userId,
-                "role" to "member",
-                "is_admin" to false,
-                "can_send_messages" to true,
-                "joined_at" to System.currentTimeMillis()
-            )
-            
-            val result = databaseService.insert("chat_participants", participantData)
-            
-            // If duplicate, that's fine - participant already exists
-            if (isDuplicateKeyError(result)) {
-                android.util.Log.d(TAG, "Participant already exists (race condition): $userId in $chatId")
-                Result.success(Unit)
-            } else {
-                result
-            }
-        } catch (e: Exception) {
-            android.util.Log.e(TAG, "Error adding participant $userId to chat $chatId", e)
-            Result.failure(e)
-        }
+    @Deprecated("Use addChatParticipantViaRPC instead", ReplaceWith("addChatParticipantViaRPC(chatId, userId, createdBy)"))
+    private suspend fun addChatParticipant(chatId: String, userId: String, createdBy: String): Result<Unit> {
+        // Redirect to RPC method which properly handles RLS
+        return addChatParticipantViaRPC(chatId, userId, createdBy)
     }
     
     /**
@@ -426,26 +440,42 @@ class SupabaseChatService {
     suspend fun updateTypingStatus(chatId: String, userId: String, isTyping: Boolean): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                val typingData = mapOf(
-                    "chat_id" to chatId,
-                    "user_id" to userId,
-                    "is_typing" to isTyping,
-                    "timestamp" to System.currentTimeMillis()
-                )
+                // Validate inputs
+                if (chatId.isBlank() || userId.isBlank()) {
+                    android.util.Log.e(TAG, "Invalid parameters: chatId=$chatId, userId=$userId")
+                    return@withContext Result.failure(Exception("Invalid chat ID or user ID"))
+                }
                 
+                // Check if Supabase is properly configured
+                if (!SupabaseClient.isConfigured()) {
+                    android.util.Log.e(TAG, "Supabase not configured")
+                    return@withContext Result.failure(Exception("Supabase not configured"))
+                }
                 if (isTyping) {
+                    val typingData = mapOf(
+                        "chat_id" to chatId,
+                        "user_id" to userId,
+                        "is_typing" to isTyping,
+                        "timestamp" to System.currentTimeMillis()
+                    )
                     databaseService.upsert("typing_status", typingData)
                 } else {
                     // Remove typing status when user stops typing
-                    client.from("typing_status").delete {
-                        filter {
-                            eq("chat_id", chatId)
-                            eq("user_id", userId)
+                    try {
+                        client.from("typing_status").delete {
+                            filter {
+                                eq("chat_id", chatId)
+                                eq("user_id", userId)
+                            }
                         }
+                        Result.success(Unit)
+                    } catch (e: Exception) {
+                        android.util.Log.w(TAG, "Failed to delete typing status (user may not be typing): ${e.message}")
+                        Result.success(Unit) // Don't fail if delete fails
                     }
-                    Result.success(Unit)
                 }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error updating typing status", e)
                 Result.failure(e)
             }
         }
