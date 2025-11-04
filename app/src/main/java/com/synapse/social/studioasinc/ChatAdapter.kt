@@ -39,6 +39,7 @@ class ChatAdapter(
         private const val VIEW_TYPE_VIDEO = 4
         private const val VIEW_TYPE_LINK_PREVIEW = 5
         private const val VIEW_TYPE_VOICE_MESSAGE = 6
+        private const val VIEW_TYPE_ERROR = 7
         private const val VIEW_TYPE_LOADING_MORE = 99
     }
 
@@ -49,6 +50,7 @@ class ChatAdapter(
     private var appSettings: SharedPreferences? = null
     private var isGroupChat = false
     private var userNamesMap = HashMap<String, String>()
+    private var previousSenderId: String? = null
     
     // Supabase services
     private val authService = SupabaseAuthenticationService()
@@ -66,6 +68,15 @@ class ChatAdapter(
         
         if (item.containsKey("isLoadingMore")) return VIEW_TYPE_LOADING_MORE
         if (item.containsKey("typingMessageStatus")) return VIEW_TYPE_TYPING
+        
+        // Check for error/failed messages - support both field names
+        val deliveryStatus = item["delivery_status"]?.toString() 
+            ?: item["message_state"]?.toString() 
+            ?: ""
+        if (deliveryStatus == "failed" || deliveryStatus == "error") {
+            Log.d(TAG, "Error message detected at position $position")
+            return VIEW_TYPE_ERROR
+        }
         
         val type = item["TYPE"]?.toString() ?: "MESSAGE"
         Log.d(TAG, "Message at position $position has type: $type")
@@ -118,6 +129,7 @@ class ChatAdapter(
             VIEW_TYPE_TYPING -> TypingViewHolder(inflater.inflate(R.layout.chat_bubble_typing, parent, false))
             VIEW_TYPE_LINK_PREVIEW -> LinkPreviewViewHolder(inflater.inflate(R.layout.chat_bubble_link_preview, parent, false))
             VIEW_TYPE_VOICE_MESSAGE -> VoiceMessageViewHolder(inflater.inflate(R.layout.chat_bubble_voice, parent, false))
+            VIEW_TYPE_ERROR -> ErrorViewHolder(inflater.inflate(R.layout.chat_bubble_error, parent, false))
             VIEW_TYPE_LOADING_MORE -> LoadingViewHolder(inflater.inflate(R.layout.chat_bubble_loading_more, parent, false))
             else -> TextViewHolder(inflater.inflate(R.layout.chat_bubble_text, parent, false))
         }
@@ -131,6 +143,7 @@ class ChatAdapter(
             VIEW_TYPE_TYPING -> bindTypingViewHolder(holder as TypingViewHolder, position)
             VIEW_TYPE_LINK_PREVIEW -> bindLinkPreviewViewHolder(holder as LinkPreviewViewHolder, position)
             VIEW_TYPE_VOICE_MESSAGE -> bindVoiceMessageViewHolder(holder as VoiceMessageViewHolder, position)
+            VIEW_TYPE_ERROR -> bindErrorViewHolder(holder as ErrorViewHolder, position)
             VIEW_TYPE_LOADING_MORE -> bindLoadingViewHolder(holder as LoadingViewHolder, position)
         }
     }
@@ -206,6 +219,13 @@ class ChatAdapter(
         var handler: Handler? = null
     }
 
+    // Error Message ViewHolder
+    class ErrorViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
+        val errorMessageText: TextView = itemView.findViewById(R.id.error_message_text)
+        val retryText: TextView = itemView.findViewById(R.id.retry_text)
+        val errorIcon: ImageView = itemView.findViewById(R.id.error_icon)
+    }
+
     // Loading More ViewHolder
     class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val loadingProgress: ProgressBar = itemView.findViewById(R.id.loadingMoreProgressBar)
@@ -221,6 +241,26 @@ class ChatAdapter(
             ?: messageData["uid"]?.toString() 
             ?: ""
         val isMyMessage = msgUid == myUid
+        
+        // Apply dynamic vertical spacing based on sender changes
+        holder.bodyLayout?.let { bodyLayout ->
+            val layoutParams = bodyLayout.layoutParams as? ViewGroup.MarginLayoutParams
+            layoutParams?.let { params ->
+                val context = holder.itemView.context
+                val spacing = if (position > 0 && previousSenderId != null && previousSenderId != msgUid) {
+                    // Sender changed - use larger spacing
+                    context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing_sender_change)
+                } else {
+                    // Same sender - use normal spacing
+                    context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing)
+                }
+                params.topMargin = spacing
+                bodyLayout.layoutParams = params
+            }
+        }
+        
+        // Update previous sender ID for next message
+        previousSenderId = msgUid
         
         // Handle username display for group chats
         holder.senderUsername?.let { usernameView ->
@@ -305,24 +345,6 @@ class ChatAdapter(
             }
         }
         
-        // Set text color based on message type
-        val context = holder.itemView.context
-        if (isMyMessage) {
-            // Sent messages use primary container colors
-            holder.messageBubble?.let { bubble ->
-                (bubble.getChildAt(0) as? TextView)?.setTextColor(
-                    context.getColor(R.color.md_theme_onPrimaryContainer)
-                )
-            }
-        } else {
-            // Received messages use surface variant colors
-            holder.messageBubble?.let { bubble ->
-                (bubble.getChildAt(0) as? TextView)?.setTextColor(
-                    context.getColor(R.color.md_theme_onSurfaceVariant)
-                )
-            }
-        }
-        
         // Set click listeners - support both id field names
         holder.itemView.setOnClickListener {
             val messageId = messageData["id"]?.toString() 
@@ -342,16 +364,39 @@ class ChatAdapter(
     private fun bindTextViewHolder(holder: TextViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
+        val currentUser = authService.getCurrentUser()
+        val myUid = currentUser?.id ?: ""
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
+        val isMyMessage = msgUid == myUid
+        
         // Support both content (Supabase) and message_text (legacy) field names
         val messageText = messageData["content"]?.toString() 
             ?: messageData["message_text"]?.toString() 
             ?: ""
         holder.messageText.text = messageText
+        
+        // Apply text color based on message type
+        val context = holder.itemView.context
+        holder.messageText.setTextColor(
+            if (isMyMessage) {
+                context.getColor(R.color.md_theme_onPrimaryContainer)
+            } else {
+                context.getColor(R.color.md_theme_onSecondaryContainer)
+            }
+        )
     }
 
     private fun bindMediaViewHolder(holder: MediaViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
+        val currentUser = authService.getCurrentUser()
+        val myUid = currentUser?.id ?: ""
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
+        val isMyMessage = msgUid == myUid
         val attachments = messageData["attachments"] as? ArrayList<HashMap<String, Any?>>
         
         holder.mediaGrid.removeAllViews()
@@ -379,11 +424,29 @@ class ChatAdapter(
             ?: messageData["message_text"]?.toString() 
             ?: ""
         holder.mediaCaption?.text = caption
+        
+        // Apply text color to caption based on message type
+        holder.mediaCaption?.let { captionView ->
+            val context = holder.itemView.context
+            captionView.setTextColor(
+                if (isMyMessage) {
+                    context.getColor(R.color.md_theme_onPrimaryContainer)
+                } else {
+                    context.getColor(R.color.md_theme_onSecondaryContainer)
+                }
+            )
+        }
     }
 
     private fun bindVideoViewHolder(holder: VideoViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
+        val currentUser = authService.getCurrentUser()
+        val myUid = currentUser?.id ?: ""
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
+        val isMyMessage = msgUid == myUid
         val attachments = messageData["attachments"] as? ArrayList<HashMap<String, Any?>>
         val videoAttachment = attachments?.firstOrNull()
         
@@ -408,6 +471,18 @@ class ChatAdapter(
             ?: messageData["message_text"]?.toString() 
             ?: ""
         holder.videoCaption?.text = caption
+        
+        // Apply text color to caption based on message type
+        holder.videoCaption?.let { captionView ->
+            val context = holder.itemView.context
+            captionView.setTextColor(
+                if (isMyMessage) {
+                    context.getColor(R.color.md_theme_onPrimaryContainer)
+                } else {
+                    context.getColor(R.color.md_theme_onSecondaryContainer)
+                }
+            )
+        }
     }
 
     private fun bindTypingViewHolder(holder: TypingViewHolder, position: Int) {
@@ -417,12 +492,29 @@ class ChatAdapter(
     private fun bindLinkPreviewViewHolder(holder: LinkPreviewViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
+        val currentUser = authService.getCurrentUser()
+        val myUid = currentUser?.id ?: ""
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
+        val isMyMessage = msgUid == myUid
+        
         // Support both content and message_text field names
         val messageText = messageData["content"]?.toString() 
             ?: messageData["message_text"]?.toString() 
             ?: ""
         
         holder.messageText.text = messageText
+        
+        // Apply text color based on message type
+        val context = holder.itemView.context
+        holder.messageText.setTextColor(
+            if (isMyMessage) {
+                context.getColor(R.color.md_theme_onPrimaryContainer)
+            } else {
+                context.getColor(R.color.md_theme_onSecondaryContainer)
+            }
+        )
         
         val url = LinkPreviewUtil.extractUrl(messageText)
         if (url != null) {
@@ -449,6 +541,50 @@ class ChatAdapter(
         
         val duration = audioAttachment?.get("duration")?.toString()?.toLongOrNull() ?: 0L
         holder.duration.text = formatDuration(duration)
+    }
+
+    private fun bindErrorViewHolder(holder: ErrorViewHolder, position: Int) {
+        val messageData = data[position]
+        
+        // Display user-friendly error message
+        holder.errorMessageText.text = context?.getString(R.string.failed_to_send) ?: "Failed to send"
+        holder.retryText.text = context?.getString(R.string.tap_to_retry) ?: "Tap to retry"
+        
+        // Log full error details for debugging (never display in UI)
+        val errorDetails = messageData["error"]?.toString()
+        val exception = messageData["exception"] as? Exception
+        val messageId = messageData["id"]?.toString() 
+            ?: messageData["key"]?.toString() 
+            ?: "unknown"
+        
+        Log.e(TAG, "Message send failed for message ID: $messageId. Error: $errorDetails", exception)
+        
+        // Set message time
+        holder.messageTime?.let { timeView ->
+            val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
+                ?: messageData["push_date"]?.toString()?.toLongOrNull() 
+                ?: System.currentTimeMillis()
+            timeView.text = formatMessageTime(timestamp)
+        }
+        
+        // Set message layout alignment (error messages are always from current user)
+        holder.messageLayout?.let { layout ->
+            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+            layoutParams?.let { params ->
+                params.gravity = Gravity.END
+                layout.layoutParams = params
+            }
+        }
+        
+        // Implement retry click listener
+        holder.itemView.setOnClickListener {
+            listener.onMessageRetry(messageId, position)
+        }
+        
+        // Also allow long click for message options
+        holder.itemView.setOnLongClickListener {
+            listener.onMessageLongClick(messageId, position)
+        }
     }
 
     private fun bindLoadingViewHolder(holder: LoadingViewHolder, position: Int) {

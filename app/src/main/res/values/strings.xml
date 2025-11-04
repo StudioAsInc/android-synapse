@@ -318,4 +318,16 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="chat_settings_ai_settings_title">AI Settings</string>
     <string name="chat_settings_ai_settings_summary">Setup your artificial intelligence settings</string>
     <string name="cancel">Cancel</string>
+    
+    <!-- Error messages -->
+    <string name="failed_to_send">Failed to send</string>
+    <string name="tap_to_retry">Tap to retry</string>
+    <string name="error_icon">Error icon</string>
+
+    <!-- Message Actions -->
+    <string name="action_reply">Reply</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_ai_summary">AI Summary</string>
 </resources>

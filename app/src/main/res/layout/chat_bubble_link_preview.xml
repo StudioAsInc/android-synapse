@@ -38,8 +38,9 @@
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
+				android:maxWidth="@dimen/message_bubble_max_width"
 			android:layout_marginLeft="0dp"
-				android:layout_marginTop="2dp"
+				android:layout_marginTop="@dimen/message_vertical_spacing"
 			android:layout_marginRight="0dp"
 				android:layout_marginBottom="2dp"
 				android:paddingLeft="12dp"
@@ -197,31 +198,33 @@
 					android:focusable="false"
 					android:autoLink="all"
 					android:textColorLink="#FF0000" />
-			</LinearLayout>
-			<LinearLayout
-				android:id="@+id/my_message_info"
-				android:layout_width="wrap_content"
-				android:layout_height="16dp"
-				android:layout_marginRight="8dp"
-				android:gravity="right|center_vertical"
-				android:orientation="horizontal"
-				android:layout_gravity="right">
-				<TextView
-					android:id="@+id/date"
+				<!-- Metadata moved inside bubble -->
+				<LinearLayout
+					android:id="@+id/my_message_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginRight="4dp"
-					android:text="00:00"
-					android:textSize="12sp"
-					android:textColor="#000000"
-					android:focusable="false" />
-				<ImageView
-					android:id="@+id/message_state"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
-					android:src="@drawable/ic_check_black"
-					android:scaleType="centerInside"
-					android:focusable="false" />
+					android:layout_marginTop="4dp"
+					android:layout_marginRight="8dp"
+					android:gravity="right|center_vertical"
+					android:orientation="horizontal"
+					android:layout_gravity="end">
+					<TextView
+						android:id="@+id/date"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginRight="4dp"
+						android:text="00:00"
+						android:textSize="11sp"
+						android:textColor="#000000"
+						android:focusable="false" />
+					<ImageView
+						android:id="@+id/message_state"
+						android:layout_width="14dp"
+						android:layout_height="14dp"
+						android:src="@drawable/ic_check_black"
+						android:scaleType="centerInside"
+						android:focusable="false" />
+				</LinearLayout>
 			</LinearLayout>
 		</LinearLayout>
 	</LinearLayout>

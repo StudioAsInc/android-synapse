@@ -9,6 +9,7 @@
 		android:id="@+id/body"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
+		android:layout_marginTop="@dimen/message_vertical_spacing"
 		android:paddingLeft="8dp"
 		android:paddingRight="8dp"
 		android:orientation="horizontal"
@@ -32,9 +33,8 @@
 		</androidx.cardview.widget.CardView>
 		<LinearLayout
 			android:id="@+id/message_layout"
-			android:layout_width="0dp"
+			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:layout_weight="1"
 			android:orientation="vertical">
 			<LinearLayout
 				android:id="@+id/menuView_d"
@@ -45,12 +45,10 @@
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
+				android:maxWidth="@dimen/message_bubble_max_width"
 				android:layout_marginLeft="0dp"
 				android:layout_marginRight="0dp"
-				android:paddingLeft="12dp"
-				android:paddingTop="10dp"
-				android:paddingRight="12dp"
-				android:paddingBottom="10dp"
+				android:padding="@dimen/message_bubble_padding"
 				android:background="@android:color/transparent"
 				android:clickable="true"
 				android:focusable="true"
@@ -145,35 +143,33 @@
 						android:autoLink="all"
 						android:textColorLink="?attr/colorPrimary" />
 				</com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
-			</LinearLayout>
-			<LinearLayout
-				android:id="@+id/my_message_info"
-				android:layout_width="wrap_content"
-				android:layout_height="16dp"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
-				android:layout_marginBottom="2dp"
-				android:gravity="right|center_vertical"
-				android:orientation="horizontal"
-				android:layout_gravity="right">
-				<TextView
-					android:id="@+id/date"
-					android:focusable="false"
+				<LinearLayout
+					android:id="@+id/my_message_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginLeft="4dp"
-					android:layout_marginRight="4dp"
-					android:text="00:00"
-					android:textSize="12sp"
-					android:textColor="?attr/colorOnSurfaceVariant" />
-				<ImageView
-					android:id="@+id/message_state"
-					android:focusable="false"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
-					android:layout_marginRight="4dp"
-					android:src="@drawable/ic_check_black"
-					android:scaleType="centerInside" />
+					android:layout_gravity="end"
+					android:layout_marginTop="4dp"
+					android:gravity="center_vertical"
+					android:orientation="horizontal">
+					<TextView
+						android:id="@+id/date"
+						android:focusable="false"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginLeft="4dp"
+						android:layout_marginRight="4dp"
+						android:text="00:00"
+						android:textSize="11sp"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+					<ImageView
+						android:id="@+id/message_state"
+						android:focusable="false"
+						android:layout_width="14dp"
+						android:layout_height="14dp"
+						android:layout_marginRight="4dp"
+						android:src="@drawable/ic_check_black"
+						android:scaleType="centerInside" />
+				</LinearLayout>
 			</LinearLayout>
 		</LinearLayout>
 	</LinearLayout>

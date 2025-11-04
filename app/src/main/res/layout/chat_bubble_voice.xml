@@ -57,7 +57,9 @@
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
+				android:maxWidth="@dimen/message_bubble_max_width"
 				android:layout_marginLeft="0dp"
+				android:layout_marginTop="@dimen/message_vertical_spacing"
 				android:layout_marginRight="0dp"
 				android:paddingLeft="12dp"
 				android:paddingTop="10dp"
@@ -67,57 +69,61 @@
 				android:clickable="true"
 				android:focusable="true"
 				android:foreground="?attr/selectableItemBackgroundBorderless"
-				android:orientation="horizontal"
-				android:gravity="center_vertical">
-				<ImageView
-					android:id="@+id/play_pause_button"
-					android:layout_width="40dp"
-					android:layout_height="40dp"
-					android:src="@drawable/ic_send"
-					android:scaleType="fitCenter"
-					android:layout_marginEnd="8dp"/>
-				<SeekBar
-					android:id="@+id/voice_seekbar"
-					android:layout_width="150dp"
-					android:layout_height="wrap_content"
-					android:layout_weight="1"
-					android:layout_gravity="center_vertical"/>
-				<TextView
-					android:id="@+id/voice_duration"
+				android:orientation="vertical">
+				<!-- Voice controls in horizontal layout -->
+				<LinearLayout
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:text="0:00"
-					android:textSize="12sp"
-					android:layout_marginStart="8dp"/>
-			</LinearLayout>
-			<LinearLayout
-				android:id="@+id/my_message_info"
-				android:layout_width="wrap_content"
-				android:layout_height="16dp"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
-				android:layout_marginBottom="2dp"
-				android:gravity="right|center_vertical"
-				android:orientation="horizontal"
-				android:layout_gravity="right">
-				<TextView
-					android:id="@+id/date"
-					android:focusable="false"
+					android:orientation="horizontal"
+					android:gravity="center_vertical">
+					<ImageView
+						android:id="@+id/play_pause_button"
+						android:layout_width="40dp"
+						android:layout_height="40dp"
+						android:src="@drawable/ic_send"
+						android:scaleType="fitCenter"
+						android:layout_marginEnd="8dp"/>
+					<SeekBar
+						android:id="@+id/voice_seekbar"
+						android:layout_width="150dp"
+						android:layout_height="wrap_content"
+						android:layout_weight="1"
+						android:layout_gravity="center_vertical"/>
+					<TextView
+						android:id="@+id/voice_duration"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="0:00"
+						android:textSize="12sp"
+						android:layout_marginStart="8dp"/>
+				</LinearLayout>
+				<!-- Metadata moved inside bubble -->
+				<LinearLayout
+					android:id="@+id/my_message_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginLeft="4dp"
-					android:layout_marginRight="4dp"
-					android:text="00:00"
-					android:textSize="12sp"
-					android:textColor="?attr/colorOnSurfaceVariant" />
-				<ImageView
-					android:id="@+id/message_state"
-					android:focusable="false"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
-					android:layout_marginRight="4dp"
-					android:src="@drawable/ic_check_black"
-					android:scaleType="centerInside" />
+					android:layout_marginTop="4dp"
+					android:layout_marginRight="8dp"
+					android:gravity="right|center_vertical"
+					android:orientation="horizontal"
+					android:layout_gravity="end">
+					<TextView
+						android:id="@+id/date"
+						android:focusable="false"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginRight="4dp"
+						android:text="00:00"
+						android:textSize="11sp"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+					<ImageView
+						android:id="@+id/message_state"
+						android:focusable="false"
+						android:layout_width="14dp"
+						android:layout_height="14dp"
+						android:src="@drawable/ic_check_black"
+						android:scaleType="centerInside" />
+				</LinearLayout>
 			</LinearLayout>
 		</LinearLayout>
 	</LinearLayout>

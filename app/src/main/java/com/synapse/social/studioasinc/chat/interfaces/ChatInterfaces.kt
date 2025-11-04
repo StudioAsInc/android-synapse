@@ -10,6 +10,7 @@ interface ChatAdapterListener {
     fun onReplyClick(messageId: String, messageText: String, senderName: String)
     fun onAttachmentClick(attachmentUrl: String, attachmentType: String)
     fun onUserProfileClick(userId: String)
+    fun onMessageRetry(messageId: String, position: Int)
 }
 
 /**

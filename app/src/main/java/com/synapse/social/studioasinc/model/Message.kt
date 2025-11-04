@@ -29,6 +29,16 @@ data class Message(
     @SerialName("reply_to_id")
     val replyToId: String? = null,
     
+    // Message actions fields
+    @SerialName("edit_history")
+    val editHistory: List<MessageEdit>? = null,
+    @SerialName("forwarded_from_message_id")
+    val forwardedFromMessageId: String? = null,
+    @SerialName("forwarded_from_chat_id")
+    val forwardedFromChatId: String? = null,
+    @SerialName("delete_for_everyone")
+    val deleteForEveryone: Boolean = false,
+    
     // UI-related properties
     var senderName: String? = null,
     var senderAvatarUrl: String? = null,
@@ -70,6 +80,19 @@ enum class MessageDeliveryStatus {
 }
 
 /**
+ * Message edit history entry
+ */
+@Serializable
+data class MessageEdit(
+    @SerialName("edited_at")
+    val editedAt: Long,
+    @SerialName("previous_content")
+    val previousContent: String,
+    @SerialName("edited_by")
+    val editedBy: String
+)
+
+/**
  * Extension function to convert HashMap to Message object
  */
 fun HashMap<String, Any>.toMessage(): Message {
@@ -84,7 +107,10 @@ fun HashMap<String, Any>.toMessage(): Message {
         updatedAt = (this["updated_at"] as? String)?.toLongOrNull() ?: 0L,
         isDeleted = (this["is_deleted"] as? String) == "true",
         isEdited = (this["is_edited"] as? String) == "true",
-        replyToId = this["reply_to_id"] as? String
+        replyToId = this["reply_to_id"] as? String,
+        forwardedFromMessageId = this["forwarded_from_message_id"] as? String,
+        forwardedFromChatId = this["forwarded_from_chat_id"] as? String,
+        deleteForEveryone = (this["delete_for_everyone"] as? String) == "true"
     )
 }
 
@@ -103,6 +129,9 @@ fun Message.toHashMap(): HashMap<String, Any?> {
         "updated_at" to updatedAt.toString(),
         "is_deleted" to isDeleted.toString(),
         "is_edited" to isEdited.toString(),
-        "reply_to_id" to replyToId
+        "reply_to_id" to replyToId,
+        "forwarded_from_message_id" to forwardedFromMessageId,
+        "forwarded_from_chat_id" to forwardedFromChatId,
+        "delete_for_everyone" to deleteForEveryone.toString()
     )
 }
