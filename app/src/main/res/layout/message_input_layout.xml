@@ -17,13 +17,13 @@
                 android:layout_height="wrap_content"
                 android:padding="3dp"
                 android:background="@drawable/bg_message_input"
-                android:gravity="center_horizontal|center_vertical"
-                android:orientation="vertical"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
                 android:layout_weight="1"
                 android:animateLayoutChanges="true">
                 <com.synapse.social.studioasinc.FadeEditText
                         android:id="@+id/message_et"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="7dp"
                         android:padding="@dimen/spacing_normal"
@@ -38,19 +38,19 @@
                 <LinearLayout
                         android:id="@+id/toolContainer"
                         android:layout_width="wrap_content"
-                        android:layout_height="60dp"
+                        android:layout_height="wrap_content"
                         android:paddingLeft="22dp"
                         android:paddingTop="12dp"
                         android:paddingRight="22dp"
                         android:paddingBottom="12dp"
                         android:background="@drawable/bg_tool_container"
-                        android:gravity="center_horizontal|center_vertical"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:elevation="1dp">
                         <ImageView
                                 android:id="@+id/btn_voice_message"
                                 android:layout_width="20dp"
-                                android:layout_height="match_parent"
+                                android:layout_height="20dp"
                                 android:src="@drawable/ic_call_48px"
                                 android:scaleType="fitCenter" />
                                         <View
@@ -63,7 +63,7 @@
                         <ImageView
                                 android:id="@+id/galleryBtn"
                                 android:layout_width="20dp"
-                                android:layout_height="25dp"
+                                android:layout_height="20dp"
                                 android:src="@drawable/icons_2"
                                 android:scaleType="fitCenter" />
                 </LinearLayout>

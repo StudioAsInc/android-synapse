@@ -13,14 +13,14 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Simplified chat adapter for basic message display
+ * Simple message adapter for basic chat display
  * Supports sent/received messages with timestamps and delivery status
  */
-class SimpleChatAdapter(
+class MessageAdapter(
     private val messages: ArrayList<HashMap<String, Any?>>,
     private val onMessageClick: ((String, Int) -> Unit)? = null,
     private val onMessageLongClick: ((String, Int) -> Boolean)? = null
-) : RecyclerView.Adapter<SimpleChatAdapter.MessageViewHolder>() {
+) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     companion object {
         private const val VIEW_TYPE_SENT = 1
@@ -32,12 +32,14 @@ class SimpleChatAdapter(
         val messageTime: TextView? = itemView.findViewById(R.id.date)
         val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
         val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
+        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
+        val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
     }
 
     override fun getItemViewType(position: Int): Int {
         val message = messages[position]
-        val senderId = message["uid"]?.toString() 
-            ?: message["sender_id"]?.toString()
+        val senderId = message["sender_id"]?.toString() 
+            ?: message["uid"]?.toString()
         val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id
         
         return if (senderId == currentUserId) {
@@ -48,12 +50,7 @@ class SimpleChatAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        val layoutId = when (viewType) {
-            VIEW_TYPE_SENT -> R.layout.chat_bubble_text
-            VIEW_TYPE_RECEIVED -> R.layout.chat_bubble_text
-            else -> R.layout.chat_bubble_text
-        }
-        
+        val layoutId = R.layout.chat_bubble_text
         val view = LayoutInflater.from(parent.context).inflate(layoutId, parent, false)
         return MessageViewHolder(view)
     }
@@ -62,15 +59,15 @@ class SimpleChatAdapter(
         val message = messages[position]
         val isMyMessage = getItemViewType(position) == VIEW_TYPE_SENT
         
-        // Set message text
-        val messageText = message["message_text"]?.toString() 
-            ?: message["content"]?.toString() 
+        // Set message text - support both field names
+        val messageText = message["content"]?.toString() 
+            ?: message["message_text"]?.toString() 
             ?: ""
         holder.messageText.text = messageText
         
-        // Set message time
-        val timestamp = message["push_date"]?.toString()?.toLongOrNull()
-            ?: message["created_at"]?.toString()?.toLongOrNull()
+        // Set message time - support both field names
+        val timestamp = message["created_at"]?.toString()?.toLongOrNull()
+            ?: message["push_date"]?.toString()?.toLongOrNull()
             ?: System.currentTimeMillis()
         
         // Show edited indicator if message was edited
@@ -109,14 +106,17 @@ class SimpleChatAdapter(
             }
         }
         
-        // Set message bubble alignment
-        holder.messageBubble?.let { bubble ->
-            val layoutParams = bubble.layoutParams as? LinearLayout.LayoutParams
+        // Set message layout alignment
+        holder.messageLayout?.let { layout ->
+            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
             layoutParams?.let { params ->
                 params.gravity = if (isMyMessage) Gravity.END else Gravity.START
-                bubble.layoutParams = params
+                layout.layoutParams = params
             }
-            
+        }
+        
+        // Set message bubble background and colors
+        holder.messageBubble?.let { bubble ->
             // Set background based on message type
             if (isMyMessage) {
                 bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
@@ -125,7 +125,15 @@ class SimpleChatAdapter(
             }
         }
         
-        // Set click listeners
+        // Set text color based on message type
+        val context = holder.itemView.context
+        if (isMyMessage) {
+            holder.messageText.setTextColor(context.getColor(R.color.md_theme_onPrimaryContainer))
+        } else {
+            holder.messageText.setTextColor(context.getColor(R.color.md_theme_onSurfaceVariant))
+        }
+        
+        // Set click listeners - support both id field names
         val messageId = message["id"]?.toString() 
             ?: message["key"]?.toString() 
             ?: ""

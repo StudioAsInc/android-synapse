@@ -45,7 +45,7 @@ class ChatActivity : AppCompatActivity() {
     private val messagesList = ArrayList<HashMap<String, Any?>>()
     private var otherUserData: Map<String, Any?>? = null
     private var currentUserId: String? = null
-    private var messagesAdapter: SimpleChatAdapter? = null
+    private var messagesAdapter: MessageAdapter? = null
 
     // UI Components
     private var recyclerView: RecyclerView? = null
@@ -54,6 +54,7 @@ class ChatActivity : AppCompatActivity() {
     private var backButton: ImageView? = null
     private var chatNameText: TextView? = null
     private var chatAvatarImage: ImageView? = null
+    private var toolContainer: LinearLayout? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +85,7 @@ class ChatActivity : AppCompatActivity() {
             backButton = findViewById(R.id.back)
             chatNameText = findViewById(R.id.topProfileLayoutUsername)
             chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
+            toolContainer = findViewById(R.id.toolContainer)
             
             // Setup RecyclerView with proper configuration
             recyclerView?.apply {
@@ -94,7 +96,7 @@ class ChatActivity : AppCompatActivity() {
             }
             
             // Initialize adapter
-            messagesAdapter = SimpleChatAdapter(messagesList)
+            messagesAdapter = MessageAdapter(messagesList)
             recyclerView?.adapter = messagesAdapter
             
         } catch (e: Exception) {
@@ -342,7 +344,7 @@ class ChatActivity : AppCompatActivity() {
     }
     
     /**
-     * Setup typing indicator
+     * Setup typing indicator and toolContainer animation
      */
     private fun setupTypingIndicator() {
         var typingJob: kotlinx.coroutines.Job? = null
@@ -352,6 +354,34 @@ class ChatActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 // Cancel previous typing job
                 typingJob?.cancel()
+                
+                // Animate toolContainer visibility based on text input
+                toolContainer?.let { container ->
+                    if (!s.isNullOrEmpty() && container.visibility == View.VISIBLE) {
+                        // Hide toolContainer with animation when user starts typing
+                        container.animate()
+                            .alpha(0f)
+                            .scaleX(0.8f)
+                            .scaleY(0.8f)
+                            .setDuration(200)
+                            .withEndAction {
+                                container.visibility = View.GONE
+                            }
+                            .start()
+                    } else if (s.isNullOrEmpty() && container.visibility == View.GONE) {
+                        // Show toolContainer with animation when input is empty
+                        container.visibility = View.VISIBLE
+                        container.alpha = 0f
+                        container.scaleX = 0.8f
+                        container.scaleY = 0.8f
+                        container.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(200)
+                            .start()
+                    }
+                }
                 
                 // Send typing status
                 if (!s.isNullOrEmpty() && chatId != null && currentUserId != null) {

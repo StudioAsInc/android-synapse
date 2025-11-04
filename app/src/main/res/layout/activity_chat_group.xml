@@ -273,6 +273,6 @@
 				android:elevation="@dimen/elevation_small" />
 		</RelativeLayout>
 		<include layout="@layout/chat_reply_layout" />
-		<include layout="@layout/chat_message_input_bar" />
+		<include layout="@layout/message_input_layout" />
 	</LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

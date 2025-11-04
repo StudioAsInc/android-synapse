@@ -159,6 +159,8 @@ class ChatAdapter(
         val replyLayout: LinearLayout? = itemView.findViewById(R.id.mRepliedMessageLayout)
         val replyText: TextView? = itemView.findViewById(R.id.mRepliedMessageLayoutMessage)
         val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
+        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
+        val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
     }
 
     // Text Message ViewHolder
@@ -214,7 +216,10 @@ class ChatAdapter(
         val messageData = data[position]
         val currentUser = authService.getCurrentUser()
         val myUid = currentUser?.id ?: ""
-        val msgUid = messageData["uid"]?.toString() ?: ""
+        // Support both old (uid) and new (sender_id) field names
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
         val isMyMessage = msgUid == myUid
         
         // Handle username display for group chats
@@ -227,17 +232,26 @@ class ChatAdapter(
             }
         }
         
-        // Set message time
+        // Set message time - support both old and new field names
         holder.messageTime?.let { timeView ->
-            val pushDate = messageData["push_date"]?.toString()?.toLongOrNull() ?: 0L
-            timeView.text = formatMessageTime(pushDate)
+            val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
+                ?: messageData["push_date"]?.toString()?.toLongOrNull() 
+                ?: System.currentTimeMillis()
+            
+            // Show edited indicator if message was edited
+            val isEdited = messageData["is_edited"]?.toString()?.toBooleanStrictOrNull() ?: false
+            val timeText = formatMessageTime(timestamp) + if (isEdited) " (edited)" else ""
+            timeView.text = timeText
         }
         
-        // Set message status for sent messages
+        // Set message status for sent messages - support both field names
         holder.messageStatus?.let { statusView ->
             if (isMyMessage) {
-                val messageState = messageData["message_state"]?.toString() ?: "sent"
-                when (messageState) {
+                val deliveryStatus = messageData["delivery_status"]?.toString() 
+                    ?: messageData["message_state"]?.toString() 
+                    ?: "sent"
+                
+                when (deliveryStatus) {
                     "sending" -> {
                         statusView.setImageResource(R.drawable.ic_upload)
                         statusView.visibility = View.VISIBLE
@@ -273,27 +287,54 @@ class ChatAdapter(
             }
         }
         
-        // Set message bubble alignment and styling
-        holder.messageBubble?.let { bubble ->
-            val layoutParams = bubble.layoutParams as LinearLayout.LayoutParams
-            if (isMyMessage) {
-                layoutParams.gravity = Gravity.END
-                bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
-            } else {
-                layoutParams.gravity = Gravity.START
-                bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
+        // Set message layout alignment
+        holder.messageLayout?.let { layout ->
+            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+            layoutParams?.let { params ->
+                params.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                layout.layoutParams = params
             }
-            bubble.layoutParams = layoutParams
         }
         
-        // Set click listeners
+        // Set message bubble background and styling
+        holder.messageBubble?.let { bubble ->
+            if (isMyMessage) {
+                bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
+            } else {
+                bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
+            }
+        }
+        
+        // Set text color based on message type
+        val context = holder.itemView.context
+        if (isMyMessage) {
+            // Sent messages use primary container colors
+            holder.messageBubble?.let { bubble ->
+                (bubble.getChildAt(0) as? TextView)?.setTextColor(
+                    context.getColor(R.color.md_theme_onPrimaryContainer)
+                )
+            }
+        } else {
+            // Received messages use surface variant colors
+            holder.messageBubble?.let { bubble ->
+                (bubble.getChildAt(0) as? TextView)?.setTextColor(
+                    context.getColor(R.color.md_theme_onSurfaceVariant)
+                )
+            }
+        }
+        
+        // Set click listeners - support both id field names
         holder.itemView.setOnClickListener {
-            val messageId = messageData["key"]?.toString() ?: ""
+            val messageId = messageData["id"]?.toString() 
+                ?: messageData["key"]?.toString() 
+                ?: ""
             listener.onMessageClick(messageId, position)
         }
         
         holder.itemView.setOnLongClickListener {
-            val messageId = messageData["key"]?.toString() ?: ""
+            val messageId = messageData["id"]?.toString() 
+                ?: messageData["key"]?.toString() 
+                ?: ""
             listener.onMessageLongClick(messageId, position)
         }
     }
@@ -301,7 +342,11 @@ class ChatAdapter(
     private fun bindTextViewHolder(holder: TextViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
-        holder.messageText.text = messageData["message_text"]?.toString() ?: ""
+        // Support both content (Supabase) and message_text (legacy) field names
+        val messageText = messageData["content"]?.toString() 
+            ?: messageData["message_text"]?.toString() 
+            ?: ""
+        holder.messageText.text = messageText
     }
 
     private fun bindMediaViewHolder(holder: MediaViewHolder, position: Int) {
@@ -329,7 +374,11 @@ class ChatAdapter(
             holder.mediaGrid.addView(imageView)
         }
         
-        holder.mediaCaption?.text = messageData["message_text"]?.toString() ?: ""
+        // Support both content and message_text for caption
+        val caption = messageData["content"]?.toString() 
+            ?: messageData["message_text"]?.toString() 
+            ?: ""
+        holder.mediaCaption?.text = caption
     }
 
     private fun bindVideoViewHolder(holder: VideoViewHolder, position: Int) {
@@ -354,7 +403,11 @@ class ChatAdapter(
             }
         }
         
-        holder.videoCaption?.text = messageData["message_text"]?.toString() ?: ""
+        // Support both content and message_text for caption
+        val caption = messageData["content"]?.toString() 
+            ?: messageData["message_text"]?.toString() 
+            ?: ""
+        holder.videoCaption?.text = caption
     }
 
     private fun bindTypingViewHolder(holder: TypingViewHolder, position: Int) {
@@ -364,7 +417,10 @@ class ChatAdapter(
     private fun bindLinkPreviewViewHolder(holder: LinkPreviewViewHolder, position: Int) {
         bindCommonMessageProperties(holder, position)
         val messageData = data[position]
-        val messageText = messageData["message_text"]?.toString() ?: ""
+        // Support both content and message_text field names
+        val messageText = messageData["content"]?.toString() 
+            ?: messageData["message_text"]?.toString() 
+            ?: ""
         
         holder.messageText.text = messageText
         
