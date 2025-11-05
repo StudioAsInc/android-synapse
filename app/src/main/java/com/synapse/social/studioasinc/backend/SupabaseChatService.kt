@@ -265,6 +265,9 @@ class SupabaseChatService {
                     "message_type" to messageType,
                     "created_at" to timestamp,
                     "updated_at" to timestamp,
+                    "message_state" to "sent",  // Set initial state to SENT
+                    "delivered_at" to null,      // Initially null
+                    "read_at" to null,           // Initially null
                     "delivery_status" to "sent",
                     "is_deleted" to false,
                     "is_edited" to false
@@ -404,25 +407,151 @@ class SupabaseChatService {
     }
     
     /**
-     * Mark messages as read
+     * Mark messages as read with batching and Realtime broadcasting.
+     * Updates message states to READ, sets read_at timestamp, and broadcasts read receipt event.
+     * 
+     * @param chatId The chat room identifier
+     * @param userId The user marking messages as read
+     * @param messageIds List of message IDs to mark as read (optional, defaults to all unread)
+     * @param realtimeService Optional SupabaseRealtimeService for broadcasting read receipts
      */
-    suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
+    suspend fun markMessagesAsRead(
+        chatId: String, 
+        userId: String, 
+        messageIds: List<String>? = null,
+        realtimeService: SupabaseRealtimeService? = null
+    ): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                // Update last_read_at for the participant
+                val timestamp = System.currentTimeMillis()
+                
+                // Get messages to mark as read
+                val messagesToUpdate = if (messageIds != null) {
+                    messageIds
+                } else {
+                    // Get all unread messages in this chat not sent by this user
+                    val unreadMessages = client.from("messages")
+                        .select(columns = Columns.raw("id")) {
+                            filter {
+                                eq("chat_id", chatId)
+                                neq("sender_id", userId)
+                                neq("message_state", "read")
+                                eq("is_deleted", false)
+                            }
+                        }
+                        .decodeList<JsonObject>()
+                    
+                    unreadMessages.map { it["id"].toString().removeSurrounding("\"") }
+                }
+                
+                if (messagesToUpdate.isEmpty()) {
+                    android.util.Log.d(TAG, "No messages to mark as read for chat: $chatId")
+                    return@withContext Result.success(Unit)
+                }
+                
+                android.util.Log.d(TAG, "Marking ${messagesToUpdate.size} messages as read in chat: $chatId")
+                
+                // Batch update all messages in a single operation
                 val updateData = mapOf(
-                    "last_read_at" to System.currentTimeMillis()
+                    "message_state" to "read",
+                    "read_at" to timestamp,
+                    "updated_at" to timestamp
                 )
                 
-                client.from("chat_participants").update(updateData) {
+                // Update messages using batch operation
+                client.from("messages").update(updateData) {
+                    filter {
+                        isIn("id", messagesToUpdate)
+                    }
+                }
+                
+                // Update last_read_at for the participant
+                val participantUpdateData = mapOf(
+                    "last_read_at" to timestamp
+                )
+                
+                client.from("chat_participants").update(participantUpdateData) {
                     filter {
                         eq("chat_id", chatId)
                         eq("user_id", userId)
                     }
                 }
                 
+                // Broadcast read receipt event via Realtime if service is provided
+                realtimeService?.let { service ->
+                    try {
+                        service.broadcastReadReceipt(chatId, userId, messagesToUpdate)
+                        android.util.Log.d(TAG, "Read receipt broadcasted for ${messagesToUpdate.size} messages")
+                    } catch (e: Exception) {
+                        android.util.Log.w(TAG, "Failed to broadcast read receipt, but messages were marked as read", e)
+                        // Don't fail the operation if broadcast fails
+                    }
+                }
+                
+                android.util.Log.d(TAG, "Successfully marked ${messagesToUpdate.size} messages as read")
                 Result.success(Unit)
+                
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error marking messages as read", e)
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Update message delivery state to DELIVERED.
+     * Sets delivered_at timestamp and broadcasts delivery event via Realtime.
+     * 
+     * @param messageId The message identifier
+     * @param chatId The chat room identifier
+     * @param userId The user who received the message
+     * @param realtimeService Optional SupabaseRealtimeService for broadcasting delivery events
+     */
+    suspend fun updateMessageDeliveryState(
+        messageId: String,
+        chatId: String,
+        userId: String,
+        realtimeService: SupabaseRealtimeService? = null
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val timestamp = System.currentTimeMillis()
+                
+                android.util.Log.d(TAG, "Updating message $messageId to DELIVERED state")
+                
+                // Update message state to DELIVERED
+                val updateData = mapOf(
+                    "message_state" to "delivered",
+                    "delivered_at" to timestamp,
+                    "delivery_status" to "delivered",
+                    "updated_at" to timestamp
+                )
+                
+                databaseService.update("messages", updateData, "id", messageId).fold(
+                    onSuccess = {
+                        android.util.Log.d(TAG, "Message $messageId marked as delivered")
+                        
+                        // Broadcast delivery event via Realtime if service is provided
+                        realtimeService?.let { service ->
+                            try {
+                                // Broadcast delivery event using the same pattern as read receipts
+                                service.broadcastReadReceipt(chatId, userId, listOf(messageId))
+                                android.util.Log.d(TAG, "Delivery event broadcasted for message: $messageId")
+                            } catch (e: Exception) {
+                                android.util.Log.w(TAG, "Failed to broadcast delivery event, but message was marked as delivered", e)
+                                // Don't fail the operation if broadcast fails
+                            }
+                        }
+                        
+                        Result.success(Unit)
+                    },
+                    onFailure = { error ->
+                        android.util.Log.e(TAG, "Failed to update message delivery state", error)
+                        Result.failure(error)
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error updating message delivery state", e)
                 Result.failure(e)
             }
         }

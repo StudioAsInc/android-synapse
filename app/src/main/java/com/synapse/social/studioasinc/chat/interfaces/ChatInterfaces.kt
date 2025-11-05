@@ -62,6 +62,8 @@ interface ChatMessage {
     val messageType: String
     val messageState: String
     val pushDate: Long
+    val deliveredAt: Long?
+    val readAt: Long?
     val repliedMessageId: String?
     val attachments: List<ChatAttachment>?
     val isEdited: Boolean

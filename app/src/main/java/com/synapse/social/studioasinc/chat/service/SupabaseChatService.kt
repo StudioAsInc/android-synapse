@@ -38,6 +38,8 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
                     "message_text" to messageText,
                     "message_type" to messageType,
                     "message_state" to MessageState.SENT,
+                    "delivered_at" to null,  // Initially null
+                    "read_at" to null,       // Initially null
                     "push_date" to currentTime,
                     "replied_message_id" to repliedMessageId,
                     "attachments" to attachments?.map { attachment ->
@@ -276,16 +278,34 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
     }
 
     /**
-     * Mark messages as read
+     * Mark messages as read with batching support.
+     * Updates message states to READ, sets read_at timestamp.
+     * 
+     * @param chatId The chat room identifier
+     * @param userId The user marking messages as read
+     * @param messageIds List of message IDs to mark as read
+     * @param realtimeService Optional SupabaseRealtimeService for broadcasting read receipts
      */
-    suspend fun markMessagesAsRead(chatId: String, userId: String, messageIds: List<String>): Result<Unit> {
+    suspend fun markMessagesAsRead(
+        chatId: String, 
+        userId: String, 
+        messageIds: List<String>,
+        realtimeService: SupabaseRealtimeService? = null
+    ): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                // Update message states to read
+                val timestamp = System.currentTimeMillis()
+                
+                if (messageIds.isEmpty()) {
+                    return@withContext Result.success(Unit)
+                }
+                
+                // Batch update all messages in a single operation
                 messageIds.forEach { messageId ->
                     val updateData = mapOf(
                         "message_state" to MessageState.READ,
-                        "read_at" to System.currentTimeMillis()
+                        "read_at" to timestamp,
+                        "updated_at" to timestamp
                     )
                     databaseService.update("messages", updateData, "id", messageId)
                 }
@@ -293,7 +313,7 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
                 // Reset unread count for user
                 val userChatUpdate = mapOf(
                     "unread_count" to 0,
-                    "last_read_at" to System.currentTimeMillis()
+                    "last_read_at" to timestamp
                 )
                 
                 // Find and update user_chat record
@@ -307,6 +327,15 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
                     },
                     onFailure = { }
                 )
+                
+                // Broadcast read receipt event via Realtime if service is provided
+                realtimeService?.let { service ->
+                    try {
+                        service.broadcastReadReceipt(chatId, userId, messageIds)
+                    } catch (e: Exception) {
+                        // Don't fail the operation if broadcast fails
+                    }
+                }
                 
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -330,6 +359,56 @@ class SupabaseChatService(private val databaseService: SupabaseDatabaseService) 
                 
                 val result = databaseService.upsert("typing_status", typingData)
                 result
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Update message delivery state to DELIVERED.
+     * Sets delivered_at timestamp and broadcasts delivery event via Realtime.
+     * 
+     * @param messageId The message identifier
+     * @param chatId The chat room identifier
+     * @param userId The user who received the message
+     * @param realtimeService Optional SupabaseRealtimeService for broadcasting delivery events
+     */
+    suspend fun updateMessageDeliveryState(
+        messageId: String,
+        chatId: String,
+        userId: String,
+        realtimeService: SupabaseRealtimeService? = null
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val timestamp = System.currentTimeMillis()
+                
+                // Update message state to DELIVERED
+                val updateData = mapOf(
+                    "message_state" to MessageState.DELIVERED,
+                    "delivered_at" to timestamp,
+                    "updated_at" to timestamp
+                )
+                
+                val result = databaseService.update("messages", updateData, "id", messageId)
+                
+                result.fold(
+                    onSuccess = {
+                        // Broadcast delivery event via Realtime if service is provided
+                        realtimeService?.let { service ->
+                            try {
+                                service.broadcastReadReceipt(chatId, userId, listOf(messageId))
+                            } catch (e: Exception) {
+                                // Don't fail the operation if broadcast fails
+                            }
+                        }
+                        Result.success(Unit)
+                    },
+                    onFailure = { error ->
+                        Result.failure(error)
+                    }
+                )
             } catch (e: Exception) {
                 Result.failure(e)
             }

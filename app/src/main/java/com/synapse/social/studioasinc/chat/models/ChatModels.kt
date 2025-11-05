@@ -1,10 +1,12 @@
 package com.synapse.social.studioasinc.chat.models
 
 import com.synapse.social.studioasinc.chat.interfaces.*
+import kotlinx.serialization.Serializable
 
 /**
  * Chat Message Implementation
  */
+@Serializable
 data class ChatMessageImpl(
     override val id: String,
     override val chatId: String,
@@ -14,6 +16,8 @@ data class ChatMessageImpl(
     override val messageType: String,
     override val messageState: String,
     override val pushDate: Long,
+    override val deliveredAt: Long? = null,
+    override val readAt: Long? = null,
     override val repliedMessageId: String? = null,
     override val attachments: List<ChatAttachment>? = null,
     override val isEdited: Boolean = false,
@@ -23,6 +27,7 @@ data class ChatMessageImpl(
 /**
  * Chat Attachment Implementation
  */
+@Serializable
 data class ChatAttachmentImpl(
     override val id: String,
     override val url: String,
@@ -35,6 +40,7 @@ data class ChatAttachmentImpl(
 /**
  * Chat Room Implementation
  */
+@Serializable
 data class ChatRoomImpl(
     override val id: String,
     override val participants: List<String>,
@@ -83,6 +89,7 @@ object AttachmentType {
 /**
  * Typing Status
  */
+@Serializable
 data class TypingStatus(
     val userId: String,
     val chatId: String,
@@ -91,8 +98,29 @@ data class TypingStatus(
 )
 
 /**
+ * Read Receipt Event
+ */
+@Serializable
+data class ReadReceiptEvent(
+    val chatId: String,
+    val userId: String,
+    val messageIds: List<String>,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * Chat Preferences
+ */
+@Serializable
+data class ChatPreferences(
+    val sendReadReceipts: Boolean = true,
+    val showTypingIndicators: Boolean = true
+)
+
+/**
  * User Status
  */
+@Serializable
 data class UserStatus(
     val userId: String,
     val isOnline: Boolean,
