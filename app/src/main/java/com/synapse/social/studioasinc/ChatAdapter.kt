@@ -172,10 +172,10 @@ class ChatAdapter(
         val editedIndicator: TextView? = itemView.findViewById(R.id.editedIndicator)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
         val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
-        val replyLayout: LinearLayout? = itemView.findViewById(R.id.mRepliedMessageLayout)
+        val replyLayout: com.google.android.material.card.MaterialCardView? = itemView.findViewById(R.id.mRepliedMessageLayout)
         val replyText: TextView? = itemView.findViewById(R.id.mRepliedMessageLayoutMessage)
         val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
-        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
+        val messageLayout: FrameLayout? = itemView.findViewById(R.id.message_layout)
         val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
         val deletedMessagePlaceholder: LinearLayout? = itemView.findViewById(R.id.deletedMessagePlaceholder)
         val messageContentContainer: LinearLayout? = itemView.findViewById(R.id.messageContentContainer)
@@ -230,7 +230,7 @@ class ChatAdapter(
         val retryText: TextView = itemView.findViewById(R.id.retry_text)
         val errorIcon: ImageView = itemView.findViewById(R.id.error_icon)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
-        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
+        val messageLayout: FrameLayout? = itemView.findViewById(R.id.message_layout)
     }
 
     // Loading More ViewHolder
