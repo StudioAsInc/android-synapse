@@ -734,6 +734,8 @@ class SupabaseChatService {
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                val timestamp = System.currentTimeMillis()
+                
                 // Get current message content before editing
                 val currentMessage = client.from("messages")
                     .select(columns = Columns.raw("content, sender_id")) {
@@ -754,17 +756,21 @@ class SupabaseChatService {
                         "message_id" to messageId,
                         "previous_content" to previousContent,
                         "edited_by" to senderId,
-                        "edited_at" to System.currentTimeMillis()
+                        "edited_at" to timestamp
                     )
-                    databaseService.insert("message_edit_history", historyData)
+                    val historyResult = databaseService.insert("message_edit_history", historyData)
+                    if (historyResult.isFailure) {
+                        android.util.Log.w(TAG, "Failed to save edit history: ${historyResult.exceptionOrNull()?.message}")
+                        // Continue with message update even if history fails
+                    }
                 }
 
                 // Update message
                 val updateData = mapOf(
                     "content" to newContent,
                     "is_edited" to true,
-                    "edited_at" to System.currentTimeMillis(),
-                    "updated_at" to System.currentTimeMillis()
+                    "edited_at" to timestamp,
+                    "updated_at" to timestamp
                 )
                 databaseService.update("messages", updateData, "id", messageId)
             } catch (e: Exception) {

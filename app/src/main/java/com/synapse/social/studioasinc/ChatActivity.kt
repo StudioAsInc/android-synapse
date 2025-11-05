@@ -1667,11 +1667,14 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = false
         
         // Subscribe to typing events and read receipts when chat screen opens
-        if (chatId != null && ::chatViewModel.isInitialized) {
-            chatViewModel.onChatOpened(chatId!!)
+        // Ensure chatViewModel is initialized before accessing it
+        val currentChatId = chatId
+        if (currentChatId != null && ::chatViewModel.isInitialized) {
+            chatViewModel.onChatOpened(currentChatId)
             
             // Mark visible messages as read when chat opens (only if not backgrounded)
-            if (!isAppInBackground) {
+            // Ensure recyclerView is initialized before marking messages as read
+            if (!isAppInBackground && recyclerView != null) {
                 markVisibleMessagesAsRead()
             }
         }
@@ -1697,9 +1700,11 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         }
         
         // Stop typing indicator when leaving chat
-        if (chatId != null && currentUserId != null) {
+        val currentChatId = chatId
+        val currentUser = currentUserId
+        if (currentChatId != null && currentUser != null) {
             lifecycleScope.launch {
-                chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+                chatService.updateTypingStatus(currentChatId, currentUser, false)
             }
         }
     }
@@ -1710,10 +1715,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = false
         
         // Resume operations when app returns to foreground
-        if (chatId != null && ::chatViewModel.isInitialized) {
+        // Only proceed if initialization has completed
+        val currentChatId = chatId
+        if (currentChatId != null && ::chatViewModel.isInitialized) {
             chatViewModel.setChatVisibility(true)
             // Re-subscribe to events if needed
-            chatViewModel.onChatOpened(chatId!!)
+            chatViewModel.onChatOpened(currentChatId)
         }
     }
     
@@ -1727,9 +1734,11 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         }
         
         // Stop sending typing events when app is backgrounded
-        if (chatId != null && currentUserId != null) {
+        val currentChatId = chatId
+        val currentUser = currentUserId
+        if (currentChatId != null && currentUser != null) {
             lifecycleScope.launch {
-                chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+                chatService.updateTypingStatus(currentChatId, currentUser, false)
             }
         }
     }
