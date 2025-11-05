@@ -29,6 +29,7 @@ import io.github.jan.supabase.realtime.realtime
 import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.util.ChatHelper
 import com.synapse.social.studioasinc.chat.presentation.MessageActionsViewModel
+import com.synapse.social.studioasinc.chat.MessageActionsBottomSheet
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
@@ -49,7 +50,7 @@ class ChatActivity : AppCompatActivity() {
     private val messagesList = ArrayList<HashMap<String, Any?>>()
     private var otherUserData: Map<String, Any?>? = null
     private var currentUserId: String? = null
-    private var messagesAdapter: MessageAdapter? = null
+    private var chatAdapter: ChatAdapter? = null
     
     // ViewModel
     private lateinit var viewModel: MessageActionsViewModel
@@ -120,14 +121,67 @@ class ChatActivity : AppCompatActivity() {
                 setHasFixedSize(true)
             }
             
-            // Initialize adapter with reply click callback
-            messagesAdapter = MessageAdapter(
-                messages = messagesList,
-                onReplyClick = { repliedMessageId ->
-                    scrollToMessage(repliedMessageId)
+            // Initialize ChatAdapter with full listener implementation
+            val chatAdapter = ChatAdapter(
+                data = messagesList,
+                repliedMessagesCache = HashMap(),
+                listener = object : com.synapse.social.studioasinc.chat.interfaces.ChatAdapterListener {
+                    override fun onMessageClick(messageId: String, position: Int) {
+                        // Handle message click if needed
+                    }
+                    
+                    override fun onMessageLongClick(messageId: String, position: Int): Boolean {
+                        showMessageActionsBottomSheet(messageId, position)
+                        return true
+                    }
+                    
+                    override fun onReplyClick(messageId: String, messageText: String, senderName: String) {
+                        prepareReply(messageId, messageText, senderName)
+                    }
+                    
+                    override fun onAttachmentClick(attachmentUrl: String, attachmentType: String) {
+                        when (attachmentType) {
+                            "link" -> openUrl(attachmentUrl)
+                            "image", "video" -> openMediaViewer(attachmentUrl, attachmentType)
+                            else -> openUrl(attachmentUrl)
+                        }
+                    }
+                    
+                    override fun onUserProfileClick(userId: String) {
+                        openUserProfile(userId)
+                    }
+                    
+                    override fun onMessageRetry(messageId: String, position: Int) {
+                        retryFailedMessage(messageId, position)
+                    }
+                    
+                    override fun onReplyAction(messageId: String, messageText: String, senderName: String) {
+                        prepareReply(messageId, messageText, senderName)
+                    }
+                    
+                    override fun onForwardAction(messageId: String, messageData: Map<String, Any?>) {
+                        showForwardDialog(messageId, messageData)
+                    }
+                    
+                    override fun onEditAction(messageId: String, currentText: String) {
+                        showEditDialog(messageId, currentText)
+                    }
+                    
+                    override fun onDeleteAction(messageId: String, deleteForEveryone: Boolean) {
+                        showDeleteConfirmation(messageId, deleteForEveryone)
+                    }
+                    
+                    override fun onAISummaryAction(messageId: String, messageText: String) {
+                        showAISummary(messageId, messageText)
+                    }
+                    
+                    override fun onEditHistoryClick(messageId: String) {
+                        showEditHistory(messageId)
+                    }
                 }
             )
-            recyclerView?.adapter = messagesAdapter
+            recyclerView?.adapter = chatAdapter
+            this.chatAdapter = chatAdapter
             
             // Initialize ViewModel
             viewModel = MessageActionsViewModel(this)
@@ -226,7 +280,7 @@ class ChatActivity : AppCompatActivity() {
                             messagesList.add(messageMap)
                         }
                         
-                        messagesAdapter?.notifyDataSetChanged()
+                        chatAdapter?.notifyDataSetChanged()
                         if (messagesList.isNotEmpty()) {
                             recyclerView?.scrollToPosition(messagesList.size - 1)
                         }
@@ -368,7 +422,7 @@ class ChatActivity : AppCompatActivity() {
                         
                         runOnUiThread {
                             messagesList.add(newMessage)
-                            messagesAdapter?.notifyItemInserted(messagesList.size - 1)
+                            chatAdapter?.notifyItemInserted(messagesList.size - 1)
                             recyclerView?.scrollToPosition(messagesList.size - 1)
                         }
                     },
@@ -737,7 +791,7 @@ class ChatActivity : AppCompatActivity() {
                 message["edited_at"] = editedAt
                 
                 // Refresh the specific message view with animation
-                messagesAdapter?.notifyItemChanged(position)
+                chatAdapter?.notifyItemChanged(position)
                 
                 // Show brief animation to indicate update
                 recyclerView?.postDelayed({
@@ -771,7 +825,7 @@ class ChatActivity : AppCompatActivity() {
                 message["delete_for_everyone"] = true
                 
                 // Refresh the specific message view with animation
-                messagesAdapter?.notifyItemChanged(position)
+                chatAdapter?.notifyItemChanged(position)
                 
                 // Show brief animation to indicate deletion
                 recyclerView?.postDelayed({
@@ -840,7 +894,7 @@ class ChatActivity : AppCompatActivity() {
                 
                 // Add message to list
                 messagesList.add(newMessage)
-                messagesAdapter?.notifyItemInserted(messagesList.size - 1)
+                chatAdapter?.notifyItemInserted(messagesList.size - 1)
                 
                 if (isAtBottom) {
                     // Scroll to new message if user is at bottom
@@ -866,6 +920,161 @@ class ChatActivity : AppCompatActivity() {
                 android.util.Log.e("ChatActivity", "Error adding new message to UI", e)
             }
         }
+    }
+
+    /**
+     * Show message actions bottom sheet on long press
+     */
+    private fun showMessageActionsBottomSheet(messageId: String, position: Int) {
+        val messageData = messagesList.getOrNull(position) ?: return
+        
+        MessageActionsBottomSheet.show(
+            fragmentManager = supportFragmentManager,
+            messageData = messageData,
+            currentUserId = currentUserId ?: return,
+            listener = object : MessageActionsBottomSheet.MessageActionListener {
+                override fun onReplyAction(messageId: String, messageText: String, senderName: String) {
+                    prepareReply(messageId, messageText, senderName)
+                }
+                
+                override fun onForwardAction(messageId: String, messageData: Map<String, Any?>) {
+                    showForwardDialog(messageId, messageData)
+                }
+                
+                override fun onEditAction(messageId: String, currentText: String) {
+                    showEditDialog(messageId, currentText)
+                }
+                
+                override fun onDeleteAction(messageId: String) {
+                    showDeleteConfirmation(messageId, false)
+                }
+                
+                override fun onAISummaryAction(messageId: String, messageText: String) {
+                    showAISummary(messageId, messageText)
+                }
+            }
+        )
+    }
+    
+    /**
+     * Open URL in browser
+     */
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Cannot open link", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Open media viewer for images/videos
+     */
+    private fun openMediaViewer(url: String, type: String) {
+        // TODO: Implement media viewer
+        Toast.makeText(this, "Media viewer coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Open user profile
+     */
+    private fun openUserProfile(userId: String) {
+        val intent = Intent(this, ProfileActivity::class.java)
+        intent.putExtra("uid", userId)
+        startActivity(intent)
+    }
+    
+    /**
+     * Retry failed message
+     */
+    private fun retryFailedMessage(messageId: String, position: Int) {
+        // TODO: Implement message retry logic
+        Toast.makeText(this, "Retry feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Show forward message dialog
+     */
+    private fun showForwardDialog(messageId: String, messageData: Map<String, Any?>) {
+        // TODO: Implement forward dialog
+        Toast.makeText(this, "Forward feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Show edit message dialog
+     */
+    private fun showEditDialog(messageId: String, currentText: String) {
+        // TODO: Implement edit dialog
+        Toast.makeText(this, "Edit feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Edit a message
+     */
+    private fun editMessage(messageId: String, newText: String) {
+        lifecycleScope.launch {
+            try {
+                val result = chatService.editMessage(messageId, newText)
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(this@ChatActivity, "Message edited", Toast.LENGTH_SHORT).show()
+                        // Update will come through realtime
+                    },
+                    onFailure = { error ->
+                        showError("Failed to edit message: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                showError("Error editing message: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Show delete confirmation dialog
+     */
+    private fun showDeleteConfirmation(messageId: String, deleteForEveryone: Boolean) {
+        // TODO: Implement delete confirmation dialog
+        Toast.makeText(this, "Delete feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Delete a message
+     */
+    private fun deleteMessage(messageId: String, deleteForEveryone: Boolean) {
+        lifecycleScope.launch {
+            try {
+                val result = chatService.deleteMessage(messageId)
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(this@ChatActivity, "Message deleted", Toast.LENGTH_SHORT).show()
+                        // Update will come through realtime
+                    },
+                    onFailure = { error ->
+                        showError("Failed to delete message: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                showError("Error deleting message: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Show AI summary dialog
+     */
+    private fun showAISummary(messageId: String, messageText: String) {
+        // TODO: Implement AI summary dialog
+        Toast.makeText(this, "AI Summary feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Show edit history dialog
+     */
+    private fun showEditHistory(messageId: String) {
+        // TODO: Implement edit history dialog
+        Toast.makeText(this, "Edit history feature coming soon", Toast.LENGTH_SHORT).show()
     }
 
     @Deprecated("Deprecated in Java")

@@ -443,12 +443,16 @@ class ChatAdapter(
             }
         }
         
-        // Set message layout alignment
+        // Set message layout alignment - message_layout is now a FrameLayout
         holder.messageLayout?.let { layout ->
-            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
-            layoutParams?.let { params ->
-                params.gravity = if (isMyMessage) Gravity.END else Gravity.START
-                layout.layoutParams = params
+            // Find the inner LinearLayout that contains the message bubble
+            val innerLayout = layout.getChildAt(0) as? LinearLayout
+            innerLayout?.let { inner ->
+                val layoutParams = inner.layoutParams as? android.widget.FrameLayout.LayoutParams
+                layoutParams?.let { params ->
+                    params.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                    inner.layoutParams = params
+                }
             }
         }
         
@@ -482,6 +486,7 @@ class ChatAdapter(
             
             // Call listener and return true to consume the event
             listener.onMessageLongClick(messageId, position)
+            true
         }
     }
 
@@ -642,9 +647,19 @@ class ChatAdapter(
         
         val url = LinkPreviewUtil.extractUrl(messageText)
         if (url != null) {
-            // TODO: Implement link preview loading
             holder.linkPreviewCard.visibility = View.VISIBLE
-            holder.linkUrl.text = url
+            holder.linkUrl.text = LinkPreviewUtil.extractDomain(url) ?: url
+            
+            // Set click listener to open URL
+            holder.linkPreviewCard.setOnClickListener {
+                listener.onAttachmentClick(url, "link")
+            }
+            
+            // For now, show basic preview with domain
+            // In a full implementation, you would fetch metadata from the URL
+            holder.linkTitle.text = LinkPreviewUtil.extractDomain(url) ?: "Link"
+            holder.linkDescription.text = url
+            holder.linkImage.visibility = View.GONE
         } else {
             holder.linkPreviewCard.visibility = View.GONE
         }
@@ -693,10 +708,14 @@ class ChatAdapter(
         
         // Set message layout alignment (error messages are always from current user)
         holder.messageLayout?.let { layout ->
-            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
-            layoutParams?.let { params ->
-                params.gravity = Gravity.END
-                layout.layoutParams = params
+            // Find the inner LinearLayout that contains the message bubble
+            val innerLayout = layout.getChildAt(0) as? LinearLayout
+            innerLayout?.let { inner ->
+                val layoutParams = inner.layoutParams as? android.widget.FrameLayout.LayoutParams
+                layoutParams?.let { params ->
+                    params.gravity = Gravity.END
+                    inner.layoutParams = params
+                }
             }
         }
         
