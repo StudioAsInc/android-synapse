@@ -71,16 +71,13 @@ class TypingIndicatorManager(
         val lastTime = lastTypingTime[chatId] ?: 0L
         val timeSinceLastEvent = currentTime - lastTime
         
-        // Cancel existing typing job if it exists
-        typingJobs[chatId]?.cancel()
-        
-        // Cancel existing auto-stop job
-        autoStopJobs[chatId]?.cancel()
-        
         // Check if we need to send a typing event (debounce logic)
         val shouldSendEvent = timeSinceLastEvent >= DEBOUNCE_DELAY || !isTypingInChat.getOrDefault(chatId, false)
         
         if (shouldSendEvent) {
+            // Cancel existing typing job if it exists
+            typingJobs[chatId]?.cancel()
+            
             // Send typing event immediately
             typingJobs[chatId] = coroutineScope.launch {
                 try {
@@ -93,6 +90,9 @@ class TypingIndicatorManager(
                 }
             }
         }
+        
+        // Cancel existing auto-stop job
+        autoStopJobs[chatId]?.cancel()
         
         // Set up auto-stop timer (3 seconds of inactivity)
         autoStopJobs[chatId] = coroutineScope.launch {

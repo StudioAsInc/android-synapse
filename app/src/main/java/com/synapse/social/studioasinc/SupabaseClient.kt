@@ -7,6 +7,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.serialization.json.Json
 
 /**
@@ -40,6 +41,7 @@ object SupabaseClient {
                     install(Postgrest)
                     install(Realtime)
                     install(Storage)
+                    httpEngine = OkHttp.create()
                 }
             } else {
                 createSupabaseClient(
@@ -52,7 +54,7 @@ object SupabaseClient {
                     install(Storage) {
                         customUrl = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_URL
                     }
-                    // httpEngine = OkHttp.create {}
+                    httpEngine = OkHttp.create()
                 }
             }
         } catch (e: Exception) {
@@ -65,6 +67,7 @@ object SupabaseClient {
                 install(Auth)
                 install(Postgrest)
                 install(Realtime)
+                httpEngine = OkHttp.create()
             }
         }
     }

@@ -151,6 +151,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.ktor:ktor-client-okhttp:2.3.12")
     
     // Serialization for Supabase
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
