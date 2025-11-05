@@ -92,9 +92,8 @@
 				android:paddingRight="12dp"
 				android:paddingBottom="10dp"
 				android:background="@android:color/transparent"
-				android:clickable="true"
-				android:focusable="true"
-				android:foreground="?attr/selectableItemBackgroundBorderless"
+				android:clickable="false"
+				android:focusable="false"
 				android:orientation="vertical">
 				<!-- Deleted message placeholder -->
 				<LinearLayout

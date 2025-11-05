@@ -53,9 +53,8 @@
 				android:layout_marginRight="0dp"
 				android:padding="@dimen/message_bubble_padding"
 				android:background="@android:color/transparent"
-				android:clickable="true"
-				android:focusable="true"
-				android:foreground="?attr/selectableItemBackgroundBorderless"
+				android:clickable="false"
+				android:focusable="false"
 				android:orientation="vertical">
 				<!-- Username for group chats -->
 				<TextView

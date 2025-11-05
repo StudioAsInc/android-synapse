@@ -51,9 +51,8 @@
 				android:paddingRight="4dp"
 				android:paddingBottom="8dp"
 				android:background="#00000000"
-				android:clickable="true"
-				android:focusable="true"
-				android:foreground="?attr/selectableItemBackgroundBorderless"
+				android:clickable="false"
+				android:focusable="false"
 				android:orientation="vertical">
 				<!-- Username for group chats -->
 				<TextView

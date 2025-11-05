@@ -34,7 +34,11 @@ data class ChatAttachmentImpl(
     override val type: String,
     override val fileName: String? = null,
     override val fileSize: Long? = null,
-    override val thumbnailUrl: String? = null
+    override val thumbnailUrl: String? = null,
+    override val width: Int? = null,
+    override val height: Int? = null,
+    override val duration: Long? = null,
+    override val mimeType: String? = null
 ) : ChatAttachment
 
 /**

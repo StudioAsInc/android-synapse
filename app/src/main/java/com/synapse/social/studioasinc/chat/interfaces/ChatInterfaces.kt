@@ -81,6 +81,10 @@ interface ChatAttachment {
     val fileName: String?
     val fileSize: Long?
     val thumbnailUrl: String?
+    val width: Int? // Width in pixels for images/videos
+    val height: Int? // Height in pixels for images/videos
+    val duration: Long? // Duration in milliseconds for videos/audio
+    val mimeType: String? // MIME type of the file
 }
 
 /**

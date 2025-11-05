@@ -233,14 +233,15 @@ class SupabaseChatService {
     }
     
     /**
-     * Send a message
+     * Send a message with optional attachments
      */
     suspend fun sendMessage(
         chatId: String,
         senderId: String,
         content: String,
         messageType: String = "text",
-        replyToId: String? = null
+        replyToId: String? = null,
+        attachments: List<com.synapse.social.studioasinc.chat.interfaces.ChatAttachment>? = null
     ): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
@@ -259,11 +260,18 @@ class SupabaseChatService {
                 val messageId = UUID.randomUUID().toString()
                 val timestamp = System.currentTimeMillis()
                 
+                // Determine message type based on attachments
+                val finalMessageType = if (!attachments.isNullOrEmpty()) {
+                    "ATTACHMENT_MESSAGE"
+                } else {
+                    messageType
+                }
+                
                 val messageData = mutableMapOf<String, Any?>(
                     "chat_id" to chatId,
                     "sender_id" to senderId,
                     "content" to content,
-                    "message_type" to messageType,
+                    "message_type" to finalMessageType,
                     "created_at" to timestamp,
                     "updated_at" to timestamp,
                     "message_state" to "sent",  // Set initial state to SENT
@@ -278,10 +286,40 @@ class SupabaseChatService {
                     messageData["reply_to_id"] = replyToId
                 }
                 
+                // Serialize attachments as JSONB array if present
+                if (!attachments.isNullOrEmpty()) {
+                    val attachmentsJson = attachments.map { attachment ->
+                        mapOf(
+                            "id" to attachment.id,
+                            "url" to attachment.url,
+                            "type" to attachment.type,
+                            "file_name" to attachment.fileName,
+                            "file_size" to attachment.fileSize,
+                            "thumbnail_url" to attachment.thumbnailUrl,
+                            "width" to attachment.width,
+                            "height" to attachment.height,
+                            "duration" to attachment.duration,
+                            "mime_type" to attachment.mimeType
+                        )
+                    }
+                    messageData["attachments"] = attachmentsJson
+                }
+                
                 databaseService.insert("messages", messageData).fold(
                     onSuccess = {
                         // Update chat's last message
-                        updateChatLastMessage(chatId, content, timestamp, senderId)
+                        val lastMessageText = if (!attachments.isNullOrEmpty()) {
+                            when (attachments.first().type) {
+                                "image" -> "📷 Photo"
+                                "video" -> "🎥 Video"
+                                "audio" -> "🎵 Audio"
+                                "document" -> "📄 Document"
+                                else -> "📎 Attachment"
+                            }
+                        } else {
+                            content
+                        }
+                        updateChatLastMessage(chatId, lastMessageText, timestamp, senderId)
                         Result.success(messageId)
                     },
                     onFailure = { error -> Result.failure(error) }
@@ -567,6 +605,126 @@ class SupabaseChatService {
             databaseService.update("messages", updateData, "id", messageId)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+    
+    /**
+     * Delete a message with its associated media files from storage
+     * This method deletes the message from the database and removes all associated
+     * media files (original and thumbnails) from Supabase Storage
+     * 
+     * @param messageId The message identifier to delete
+     * @return Result indicating success or failure
+     */
+    suspend fun deleteMessageWithMedia(messageId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d(TAG, "Deleting message with media: $messageId")
+                
+                // First, retrieve the message to get attachment information
+                val message = client.from("messages")
+                    .select(columns = Columns.raw("attachments")) {
+                        filter {
+                            eq("id", messageId)
+                        }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+                    .firstOrNull()
+                
+                if (message == null) {
+                    android.util.Log.w(TAG, "Message not found: $messageId")
+                    return@withContext Result.failure(Exception("Message not found"))
+                }
+                
+                // Extract attachments from the message
+                val attachmentsJson = message["attachments"]
+                
+                // Initialize storage service for file deletion
+                val storageService = SupabaseStorageService()
+                
+                // Delete media files if attachments exist
+                if (attachmentsJson != null && attachmentsJson.toString() != "null") {
+                    try {
+                        // Parse attachments JSON array
+                        val attachmentsString = attachmentsJson.toString()
+                        android.util.Log.d(TAG, "Processing attachments for deletion: $attachmentsString")
+                        
+                        // Extract URLs from the JSON string
+                        // This is a simple approach - in production, use proper JSON parsing
+                        val urlPattern = """"url"\s*:\s*"([^"]+)"""".toRegex()
+                        val thumbnailPattern = """"thumbnail_url"\s*:\s*"([^"]+)"""".toRegex()
+                        
+                        val urls = urlPattern.findAll(attachmentsString).map { it.groupValues[1] }.toList()
+                        val thumbnailUrls = thumbnailPattern.findAll(attachmentsString)
+                            .map { it.groupValues[1] }
+                            .filter { it != "null" }
+                            .toList()
+                        
+                        // Delete original files
+                        urls.forEach { url ->
+                            try {
+                                val path = storageService.extractPathFromUrl(url, "chat-media")
+                                if (path != null) {
+                                    val deleteResult = storageService.deleteFile(path)
+                                    if (deleteResult.isSuccess) {
+                                        android.util.Log.d(TAG, "Deleted media file: $path")
+                                    } else {
+                                        android.util.Log.w(TAG, "Failed to delete media file: $path - ${deleteResult.exceptionOrNull()?.message}")
+                                    }
+                                } else {
+                                    android.util.Log.w(TAG, "Could not extract path from URL: $url")
+                                }
+                            } catch (e: Exception) {
+                                // Log but don't fail - file might already be deleted
+                                android.util.Log.w(TAG, "Error deleting media file: $url - ${e.message}")
+                            }
+                        }
+                        
+                        // Delete thumbnail files
+                        thumbnailUrls.forEach { thumbnailUrl ->
+                            try {
+                                val path = storageService.extractPathFromUrl(thumbnailUrl, "chat-media")
+                                if (path != null) {
+                                    val deleteResult = storageService.deleteFile(path)
+                                    if (deleteResult.isSuccess) {
+                                        android.util.Log.d(TAG, "Deleted thumbnail file: $path")
+                                    } else {
+                                        android.util.Log.w(TAG, "Failed to delete thumbnail file: $path - ${deleteResult.exceptionOrNull()?.message}")
+                                    }
+                                } else {
+                                    android.util.Log.w(TAG, "Could not extract path from thumbnail URL: $thumbnailUrl")
+                                }
+                            } catch (e: Exception) {
+                                // Log but don't fail - file might already be deleted
+                                android.util.Log.w(TAG, "Error deleting thumbnail file: $thumbnailUrl - ${e.message}")
+                            }
+                        }
+                        
+                        android.util.Log.d(TAG, "Deleted ${urls.size} media files and ${thumbnailUrls.size} thumbnails")
+                        
+                    } catch (e: Exception) {
+                        // Log error but continue with message deletion
+                        android.util.Log.e(TAG, "Error processing attachments for deletion", e)
+                    }
+                }
+                
+                // Delete the message from database (soft delete)
+                val updateData = mapOf("is_deleted" to true)
+                val deleteResult = databaseService.update("messages", updateData, "id", messageId)
+                
+                if (deleteResult.isSuccess) {
+                    android.util.Log.d(TAG, "Successfully deleted message with media: $messageId")
+                    Result.success(Unit)
+                } else {
+                    android.util.Log.e(TAG, "Failed to delete message: $messageId")
+                    Result.failure(deleteResult.exceptionOrNull() ?: Exception("Failed to delete message"))
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error in deleteMessageWithMedia", e)
+                Result.failure(e)
+            }
         }
     }
     

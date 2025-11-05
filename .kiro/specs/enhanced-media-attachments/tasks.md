@@ -172,7 +172,12 @@
     - Cancel preloading when user navigates away
     - _Requirements: 9.4_
 
-- [ ] 8. Implement MediaValidator for file validation
+- [x] 8. Implement MediaValidator for file validation
+
+
+
+
+
   - Create MediaValidator class
   - Define allowed MIME types for each media category
   - Implement `validateFile()` to check type and size
@@ -183,8 +188,14 @@
   - Return descriptive error messages for validation failures
   - _Requirements: 1.3, 4.2, 4.5, 6.2, 7.2_
 
-- [ ] 9. Update data models for media attachments
-  - [ ] 9.1 Enhance ChatAttachment interface
+- [x] 9. Update data models for media attachments
+
+
+
+
+  - [x] 9.1 Enhance ChatAttachment interface
+
+
     - Add `width: Int?` field for images/videos
     - Add `height: Int?` field for images/videos
     - Add `duration: Long?` field for videos/audio (milliseconds)
@@ -192,28 +203,40 @@
     - Update ChatAttachmentImpl data class
     - _Requirements: 4.4, 6.3_
 
-  - [ ] 9.2 Create UploadProgress data class
+  - [x] 9.2 Create UploadProgress data class
+
     - Define fields: uploadId, fileName, progress, bytesUploaded, totalBytes, state, error
     - Create UploadState enum: QUEUED, COMPRESSING, UPLOADING, COMPLETED, FAILED, CANCELLED
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [ ] 9.3 Create MediaUploadResult data class
+  - [x] 9.3 Create MediaUploadResult data class
+
     - Define fields: url, thumbnailUrl, fileName, fileSize, mimeType, width, height, duration
     - _Requirements: 1.4, 4.3_
 
-  - [ ] 9.4 Create MediaMetadata data class
+  - [x] 9.4 Create MediaMetadata data class
+
     - Define fields: fileName, fileSize, mimeType, width, height, duration, createdAt
     - _Requirements: 3.4_
+-
 
-- [ ] 10. Update SupabaseChatService for attachment messages
-  - [ ] 10.1 Enhance sendMessage() for attachments
+- [x] 10. Update SupabaseChatService for attachment messages
+
+
+
+
+
+  - [x] 10.1 Enhance sendMessage() for attachments
+
     - Accept `attachments: List<ChatAttachment>?` parameter
     - Serialize attachments as JSONB array
     - Set message_type to MessageType.ATTACHMENT when attachments present
     - Store attachment metadata in database
     - _Requirements: 1.5, 2.1_
 
-  - [ ] 10.2 Add deleteMessageWithMedia() method
+
+  - [x] 10.2 Add deleteMessageWithMedia() method
+
     - Delete message from database
     - Delete associated media files from storage
     - Delete thumbnails from storage
@@ -221,7 +244,14 @@
     - _Requirements: 10.5_
 
 - [ ] 11. Create MediaPickerBottomSheet for file selection
-  - [ ] 11.1 Create MediaPickerBottomSheet UI
+
+
+
+
+
+
+  - [x] 11.1 Create MediaPickerBottomSheet UI
+
     - Create bottom sheet layout with media type options
     - Add "Photos" option with gallery icon
     - Add "Videos" option with video icon
@@ -230,7 +260,8 @@
     - Apply Material Design styling
     - _Requirements: 1.1_
 
-  - [ ] 11.2 Implement media picker launchers
+  - [x] 11.2 Implement media picker launchers
+
     - Implement `showImagePicker()` with multi-select (max 10)
     - Implement `showVideoPicker()` with single select
     - Implement `showAudioPicker()` with single select
@@ -238,14 +269,20 @@
     - Handle permission requests for storage access
     - _Requirements: 1.1, 2.1, 4.1, 6.1, 7.1_
 
-  - [ ] 11.3 Add MediaPickerListener interface
+
+  - [x] 11.3 Add MediaPickerListener interface
     - Define `onImagesSelected(uris: List<Uri>)` callback
     - Define `onVideoSelected(uri: Uri)` callback
     - Define `onAudioSelected(uri: Uri)` callback
     - Define `onDocumentSelected(uri: Uri)` callback
     - _Requirements: 1.1_
 
-- [ ] 12. Create MediaPreviewScreen for pre-send preview
+- [-] 12. Create MediaPreviewScreen for pre-send preview
+
+
+
+
+
   - [ ] 12.1 Create MediaPreviewScreen layout
     - Create RecyclerView with GridLayoutManager (2 columns)
     - Add caption EditText at bottom

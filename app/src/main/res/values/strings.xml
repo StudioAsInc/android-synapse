@@ -395,4 +395,12 @@ Please explain the following message from %3$s in detail, considering the contex
     
     <!-- Typing Indicator -->
     <string name="typing_indicator_text">is typing</string>
+
+    <!-- Media Picker -->
+    <string name="media_picker_title">Select Media Type</string>
+    <string name="media_picker_option_photos">Photos</string>
+    <string name="media_picker_option_videos">Videos</string>
+    <string name="media_picker_option_audio">Audio</string>
+    <string name="media_picker_option_documents">Documents</string>
+    <string name="media_picker_option_icon">Media option icon</string>
 </resources>
