@@ -221,4 +221,9 @@
     <!-- Delete Dialog Colors -->
     <color name="warning_color">#FF9800</color>
     <color name="error_color">#BA1A1A</color>
+    
+    <!-- Waveform Colors -->
+    <color name="waveform_color">#C5C8BA</color>
+    <color name="waveform_progress_color">@color/md_theme_primary</color>
+    <color name="waveform_background">#F3F4E9</color>
 </resources>

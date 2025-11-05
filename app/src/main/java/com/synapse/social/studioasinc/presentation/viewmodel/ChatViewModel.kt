@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.presentation.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.LiveData
@@ -12,18 +13,24 @@ import com.synapse.social.studioasinc.model.Message
 import com.synapse.social.studioasinc.chat.models.TypingStatus
 import com.synapse.social.studioasinc.chat.models.ReadReceiptEvent
 import com.synapse.social.studioasinc.chat.models.ChatMessageImpl
+import com.synapse.social.studioasinc.chat.models.ChatAttachmentImpl
 import com.synapse.social.studioasinc.chat.models.MessageState
+import com.synapse.social.studioasinc.chat.models.MessageType
 import com.synapse.social.studioasinc.chat.service.TypingIndicatorManager
 import com.synapse.social.studioasinc.chat.service.ReadReceiptManager
 import com.synapse.social.studioasinc.chat.service.SupabaseRealtimeService
 import com.synapse.social.studioasinc.chat.service.PreferencesManager
+import com.synapse.social.studioasinc.chat.service.MediaUploadManager
 import com.synapse.social.studioasinc.backend.SupabaseChatService
+import com.synapse.social.studioasinc.model.models.UploadProgress
+import com.synapse.social.studioasinc.model.models.MediaUploadResult
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * ViewModel for chat functionality with typing indicators and read receipts
@@ -65,6 +72,10 @@ class ChatViewModel : ViewModel() {
     private val _messagesStateFlow = MutableStateFlow<List<ChatMessageImpl>>(emptyList())
     val messagesStateFlow: StateFlow<List<ChatMessageImpl>> = _messagesStateFlow.asStateFlow()
 
+    // Upload progress state management
+    private val _uploadProgress = MutableStateFlow<Map<String, UploadProgress>>(emptyMap())
+    val uploadProgress: StateFlow<Map<String, UploadProgress>> = _uploadProgress.asStateFlow()
+
     private var currentChatId: String? = null
     private var currentUserId: String? = null
 
@@ -73,6 +84,7 @@ class ChatViewModel : ViewModel() {
     private var readReceiptManager: ReadReceiptManager? = null
     private var realtimeService: SupabaseRealtimeService? = null
     private var preferencesManager: PreferencesManager? = null
+    private var mediaUploadManager: MediaUploadManager? = null
 
     /**
      * Loads messages for a chat
@@ -410,6 +422,242 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    // Media upload methods
+
+    /**
+     * Uploads multiple images with progress tracking.
+     * 
+     * Requirements: 1.5, 2.3, 2.4, 8.1, 8.2
+     * 
+     * @param uris List of image URIs to upload
+     * @param caption Optional caption text to accompany the images
+     */
+    fun uploadImages(uris: List<Uri>, caption: String = "") {
+        val chatId = currentChatId ?: run {
+            _error.value = "No active chat"
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                mediaUploadManager?.uploadMultiple(uris, chatId)?.collect { progress ->
+                    // Update upload progress map
+                    val currentProgress = _uploadProgress.value.toMutableMap()
+                    currentProgress[progress.uploadId] = progress
+                    _uploadProgress.value = currentProgress
+                    
+                    // If upload completed successfully, create message with attachment
+                    if (progress.state == com.synapse.social.studioasinc.model.models.UploadState.COMPLETED) {
+                        // Note: Individual upload results are handled in uploadMultiple
+                        // We'll create the message after all uploads complete
+                    }
+                    
+                    // Remove from progress map if completed, failed, or cancelled
+                    if (progress.state == com.synapse.social.studioasinc.model.models.UploadState.COMPLETED ||
+                        progress.state == com.synapse.social.studioasinc.model.models.UploadState.FAILED ||
+                        progress.state == com.synapse.social.studioasinc.model.models.UploadState.CANCELLED) {
+                        viewModelScope.launch {
+                            kotlinx.coroutines.delay(2000) // Keep visible for 2 seconds
+                            val updatedProgress = _uploadProgress.value.toMutableMap()
+                            updatedProgress.remove(progress.uploadId)
+                            _uploadProgress.value = updatedProgress
+                        }
+                    }
+                } ?: run {
+                    _error.value = "Media upload manager not initialized"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to upload images: ${e.message}"
+                android.util.Log.e("ChatViewModel", "Image upload failed", e)
+            }
+        }
+    }
+
+    /**
+     * Uploads a single video with progress tracking.
+     * 
+     * Requirements: 1.5, 2.3, 2.4, 8.1, 8.2
+     * 
+     * @param uri The video URI to upload
+     * @param caption Optional caption text to accompany the video
+     */
+    fun uploadVideo(uri: Uri, caption: String = "") {
+        val chatId = currentChatId ?: run {
+            _error.value = "No active chat"
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val result = mediaUploadManager?.uploadVideo(uri, chatId)
+                
+                result?.onSuccess { uploadResult ->
+                    sendMessageWithAttachment(uploadResult, caption)
+                }?.onFailure { exception ->
+                    _error.value = "Failed to upload video: ${exception.message}"
+                    android.util.Log.e("ChatViewModel", "Video upload failed", exception)
+                } ?: run {
+                    _error.value = "Media upload manager not initialized"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to upload video: ${e.message}"
+                android.util.Log.e("ChatViewModel", "Video upload failed", e)
+            }
+        }
+    }
+
+    /**
+     * Uploads an audio file with progress tracking.
+     * 
+     * Requirements: 1.5, 2.3, 2.4, 8.1, 8.2
+     * 
+     * @param uri The audio URI to upload
+     * @param caption Optional caption text to accompany the audio
+     */
+    fun uploadAudio(uri: Uri, caption: String = "") {
+        val chatId = currentChatId ?: run {
+            _error.value = "No active chat"
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val result = mediaUploadManager?.uploadAudio(uri, chatId)
+                
+                result?.onSuccess { uploadResult ->
+                    sendMessageWithAttachment(uploadResult, caption)
+                }?.onFailure { exception ->
+                    _error.value = "Failed to upload audio: ${exception.message}"
+                    android.util.Log.e("ChatViewModel", "Audio upload failed", exception)
+                } ?: run {
+                    _error.value = "Media upload manager not initialized"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to upload audio: ${e.message}"
+                android.util.Log.e("ChatViewModel", "Audio upload failed", e)
+            }
+        }
+    }
+
+    /**
+     * Uploads a document with progress tracking.
+     * 
+     * Requirements: 1.5, 2.3, 2.4, 8.1, 8.2
+     * 
+     * @param uri The document URI to upload
+     * @param caption Optional caption text to accompany the document
+     */
+    fun uploadDocument(uri: Uri, caption: String = "") {
+        val chatId = currentChatId ?: run {
+            _error.value = "No active chat"
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val result = mediaUploadManager?.uploadDocument(uri, chatId)
+                
+                result?.onSuccess { uploadResult ->
+                    sendMessageWithAttachment(uploadResult, caption)
+                }?.onFailure { exception ->
+                    _error.value = "Failed to upload document: ${exception.message}"
+                    android.util.Log.e("ChatViewModel", "Document upload failed", exception)
+                } ?: run {
+                    _error.value = "Media upload manager not initialized"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to upload document: ${e.message}"
+                android.util.Log.e("ChatViewModel", "Document upload failed", e)
+            }
+        }
+    }
+
+    /**
+     * Cancels an ongoing upload operation.
+     * 
+     * Requirements: 8.3, 8.4, 8.5
+     * 
+     * @param uploadId The ID of the upload to cancel
+     */
+    fun cancelUpload(uploadId: String) {
+        mediaUploadManager?.cancelUpload(uploadId)
+        
+        // Remove from progress map
+        val updatedProgress = _uploadProgress.value.toMutableMap()
+        updatedProgress.remove(uploadId)
+        _uploadProgress.value = updatedProgress
+    }
+
+    /**
+     * Creates a message with attachment from upload result.
+     * 
+     * Requirements: 11.5
+     * 
+     * @param uploadResult The result of the media upload
+     * @param caption Optional caption text
+     */
+    private fun sendMessageWithAttachment(uploadResult: MediaUploadResult, caption: String) {
+        val chatId = currentChatId ?: return
+        val userId = currentUserId ?: authService.getCurrentUserId() ?: return
+        
+        viewModelScope.launch {
+            try {
+                // Create ChatAttachment from upload result
+                val attachment = ChatAttachmentImpl(
+                    id = UUID.randomUUID().toString(),
+                    url = uploadResult.url,
+                    type = getAttachmentType(uploadResult.mimeType),
+                    fileName = uploadResult.fileName,
+                    fileSize = uploadResult.fileSize,
+                    thumbnailUrl = uploadResult.thumbnailUrl,
+                    width = uploadResult.width,
+                    height = uploadResult.height,
+                    duration = uploadResult.duration,
+                    mimeType = uploadResult.mimeType
+                )
+                
+                // Send message with attachment using backend service
+                val backendChatService = SupabaseChatService()
+                val result = backendChatService.sendMessage(
+                    chatId = chatId,
+                    senderId = userId,
+                    content = caption.ifEmpty { "" },
+                    messageType = MessageType.ATTACHMENT,
+                    replyToId = null,
+                    attachments = listOf(attachment)
+                )
+                
+                result.onSuccess {
+                    _messageSent.value = true
+                    _error.value = null
+                    // Refresh messages
+                    loadMessages(chatId)
+                }.onFailure { exception ->
+                    _error.value = "Failed to send message: ${exception.message}"
+                    android.util.Log.e("ChatViewModel", "Failed to send attachment message", exception)
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to send message: ${e.message}"
+                android.util.Log.e("ChatViewModel", "Failed to send attachment message", e)
+            }
+        }
+    }
+
+    /**
+     * Determines attachment type from MIME type.
+     * 
+     * @param mimeType The MIME type of the file
+     * @return The attachment type (image, video, audio, document)
+     */
+    private fun getAttachmentType(mimeType: String): String {
+        return when {
+            mimeType.startsWith("image/") -> "image"
+            mimeType.startsWith("video/") -> "video"
+            mimeType.startsWith("audio/") -> "audio"
+            else -> "document"
+        }
+    }
+
     // Manager integration methods
 
     /**
@@ -441,6 +689,15 @@ class ChatViewModel : ViewModel() {
             ),
             realtimeService = realtimeService!!,
             preferencesManager = preferencesManager!!,
+            coroutineScope = viewModelScope
+        )
+        
+        // Initialize MediaUploadManager
+        mediaUploadManager = MediaUploadManager(
+            context = context,
+            storageService = com.synapse.social.studioasinc.backend.SupabaseStorageService(),
+            imageCompressor = com.synapse.social.studioasinc.util.ImageCompressor(context),
+            thumbnailGenerator = com.synapse.social.studioasinc.util.ThumbnailGenerator(context),
             coroutineScope = viewModelScope
         )
         

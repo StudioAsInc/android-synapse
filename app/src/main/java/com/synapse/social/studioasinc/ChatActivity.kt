@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.View
 import android.view.Window
 import android.widget.*
@@ -34,6 +35,7 @@ import com.synapse.social.studioasinc.chat.DeleteConfirmationDialog
 import com.synapse.social.studioasinc.chat.EditMessageDialog
 import com.synapse.social.studioasinc.chat.EditHistoryDialog
 import com.synapse.social.studioasinc.chat.SwipeToReplyCallback
+import com.synapse.social.studioasinc.chat.ImageGalleryActivity
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.ViewModelProvider
@@ -45,6 +47,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
+
+    companion object {
+        private const val TAG = "ChatActivity"
+    }
 
     // Supabase services
     private val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
@@ -174,7 +180,10 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                     override fun onAttachmentClick(attachmentUrl: String, attachmentType: String) {
                         when (attachmentType) {
                             "link" -> openUrl(attachmentUrl)
-                            "image", "video" -> openMediaViewer(attachmentUrl, attachmentType)
+                            "image" -> openMediaViewer(attachmentUrl, "image")
+                            "video" -> openMediaViewer(attachmentUrl, "video")
+                            "audio" -> openAudioPlayer(attachmentUrl)
+                            "document" -> openDocument(attachmentUrl)
                             else -> openUrl(attachmentUrl)
                         }
                     }
@@ -1392,8 +1401,93 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
      * Open media viewer for images/videos
      */
     private fun openMediaViewer(url: String, type: String) {
-        // TODO: Implement media viewer
-        Toast.makeText(this, "Media viewer coming soon", Toast.LENGTH_SHORT).show()
+        when (type) {
+            "image" -> {
+                // Launch ImageGalleryActivity for image viewing
+                val intent = ImageGalleryActivity.createIntent(
+                    context = this,
+                    imageUrls = listOf(url),
+                    initialPosition = 0
+                )
+                startActivity(intent)
+            }
+            "video" -> {
+                // Launch video player (inline playback handled by VideoPlayerView in adapter)
+                // For full-screen, we can use the system video player
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(Uri.parse(url), "video/*")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error opening video", e)
+                    Toast.makeText(this, "Unable to open video", Toast.LENGTH_SHORT).show()
+                }
+            }
+            else -> {
+                Toast.makeText(this, "Unsupported media type", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    /**
+     * Open audio player
+     * Audio playback is handled inline by AudioPlayerView in the adapter.
+     * This method is called when user taps on the audio attachment.
+     */
+    private fun openAudioPlayer(url: String) {
+        // Audio playback is handled inline by the AudioPlayerView in chat_bubble_audio.xml
+        // No additional action needed as the play button in the bubble handles playback
+        Log.d(TAG, "Audio playback handled inline: $url")
+    }
+    
+    /**
+     * Open document with system viewer
+     */
+    private fun openDocument(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.parse(url), getMimeTypeFromUrl(url))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            // Check if there's an app that can handle this intent
+            if (intent.resolveActivity(packageManager) != null) {
+                startActivity(intent)
+            } else {
+                // No app found, try opening as generic file
+                val genericIntent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse(url)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(genericIntent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening document", e)
+            Toast.makeText(this, "Unable to open document", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Get MIME type from URL based on file extension
+     */
+    private fun getMimeTypeFromUrl(url: String): String {
+        val extension = url.substringAfterLast('.', "").lowercase()
+        return when (extension) {
+            "pdf" -> "application/pdf"
+            "doc" -> "application/msword"
+            "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "xls" -> "application/vnd.ms-excel"
+            "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "ppt" -> "application/vnd.ms-powerpoint"
+            "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            "txt" -> "text/plain"
+            "zip" -> "application/zip"
+            else -> "*/*"
+        }
     }
     
     /**

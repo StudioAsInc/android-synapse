@@ -419,4 +419,37 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="media_preview_error_file_too_large">File exceeds maximum size of %1$s</string>
     <string name="media_preview_error_file_not_accessible">Unable to access file</string>
     <string name="media_preview_error_file_validation">Error validating file</string>
+
+    <!-- Image Gallery -->
+    <string name="download_image">Download image</string>
+    <string name="failed_to_load_image">Failed to load image</string>
+    <string name="image_downloaded">Image saved to gallery</string>
+    <string name="failed_to_download_image">Failed to download image</string>
+    <string name="loading_image">Loading image…</string>
+    <string name="downloading_image">Downloading…</string>
+
+    <!-- Video Player -->
+    <string name="play_pause">Play/Pause</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="rewind">Rewind</string>
+    <string name="forward">Fast forward</string>
+    <string name="fullscreen_toggle">Toggle fullscreen</string>
+    <string name="video_loading">Loading video…</string>
+    <string name="video_buffering">Buffering…</string>
+    <string name="video_error">Error playing video</string>
+    <string name="video_error_retry">Tap to retry</string>
+
+    <!-- Audio Player -->
+    <string name="play_audio">Play audio</string>
+    <string name="pause_audio">Pause audio</string>
+    <string name="audio_loading">Loading audio…</string>
+    <string name="audio_buffering">Buffering…</string>
+    <string name="audio_error">Error playing audio</string>
+
+    <!-- Document Viewer -->
+    <string name="download_document">Download document</string>
+    <string name="open_document">Open document</string>
+    <string name="document_downloaded">Document saved</string>
+    <string name="failed_to_download_document">Failed to download document</string>
 </resources>

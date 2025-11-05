@@ -36,11 +36,7 @@ class MediaCacheCleanupWorker(
                 CLEANUP_INTERVAL_HOURS, TimeUnit.HOURS
             )
                 .setConstraints(constraints)
-                .setBackoffCriteria(
-                    BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS,
-                    TimeUnit.MILLISECONDS
-                )
+                // Note: Cannot set backoff criteria on idle mode jobs
                 .build()
             
             WorkManager.getInstance(context)

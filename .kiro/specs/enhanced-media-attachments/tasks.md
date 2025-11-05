@@ -243,7 +243,11 @@
     - Handle cases where files already deleted
     - _Requirements: 10.5_
 
-- [ ] 11. Create MediaPickerBottomSheet for file selection
+- [x] 11. Create MediaPickerBottomSheet for file selection
+
+
+
+
 
 
 
@@ -251,6 +255,7 @@
 
 
   - [x] 11.1 Create MediaPickerBottomSheet UI
+
 
     - Create bottom sheet layout with media type options
     - Add "Photos" option with gallery icon
@@ -262,6 +267,7 @@
 
   - [x] 11.2 Implement media picker launchers
 
+
     - Implement `showImagePicker()` with multi-select (max 10)
     - Implement `showVideoPicker()` with single select
     - Implement `showAudioPicker()` with single select
@@ -271,13 +277,17 @@
 
 
   - [x] 11.3 Add MediaPickerListener interface
+
     - Define `onImagesSelected(uris: List<Uri>)` callback
     - Define `onVideoSelected(uri: Uri)` callback
     - Define `onAudioSelected(uri: Uri)` callback
     - Define `onDocumentSelected(uri: Uri)` callback
     - _Requirements: 1.1_
 
-- [ ] 12. Create MediaPreviewScreen for pre-send preview
+- [x] 12. Create MediaPreviewScreen for pre-send preview
+
+
+
 
 
 
@@ -297,7 +307,7 @@
 
 
 
-  - [ ] 12.2 Implement preview functionality
+  - [x] 12.2 Implement preview functionality
     - Implement `setupMediaGrid()` to display selected files
     - Implement `setupCaptionInput()` for text caption
     - Implement `calculateTotalSize()` for all files
@@ -308,15 +318,25 @@
     - Allow adding more files (up to limit)
     - _Requirements: 11.2, 11.3, 11.4_
 
-  - [ ] 12.3 Implement send action
+  - [x] 12.3 Implement send action
     - Validate all files before sending
     - Show warning for large files (>50MB)
     - Trigger upload via ViewModel
     - Navigate back to chat on send
     - _Requirements: 4.5, 11.5_
+-
 
-- [ ] 13. Create ImageGalleryActivity for full-screen viewing
-  - [ ] 13.1 Create ImageGalleryActivity layout
+
+- [x] 13. Create ImageGalleryActivity for full-screen viewing
+
+
+
+
+
+
+
+  - [x] 13.1 Create ImageGalleryActivity layout
+
     - Create ViewPager2 for image swiping
     - Add PhotoView for pinch-to-zoom (max 3x)
     - Add toolbar with image metadata (name, size)
@@ -324,7 +344,9 @@
     - Add close button
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [ ] 13.2 Implement gallery functionality
+  - [x] 13.2 Implement gallery functionality
+
+
     - Implement `setupViewPager()` with image adapter
     - Implement `setupZoomGestures()` using PhotoView library
     - Implement `preloadAdjacentImages()` for smooth swiping
@@ -332,15 +354,22 @@
     - Handle swipe gestures for navigation
     - _Requirements: 3.1, 3.2, 3.3, 3.5_
 
-  - [ ] 13.3 Add progressive image loading
+  - [x] 13.3 Add progressive image loading
+
     - Load low-resolution thumbnail first
     - Load high-resolution image progressively
     - Show loading indicator during download
     - Handle download failures gracefully
     - _Requirements: 9.3_
 
-- [ ] 14. Create VideoPlayerView for inline playback
-  - [ ] 14.1 Create VideoPlayerView custom widget
+
+- [x] 14. Create VideoPlayerView for inline playback
+
+
+
+  - [x] 14.1 Create VideoPlayerView custom widget
+
+
     - Extend FrameLayout with ExoPlayer integration
     - Add PlayerView for video rendering
     - Implement `setVideoUrl()` to load video
@@ -348,7 +377,9 @@
     - Implement `release()` for cleanup
     - _Requirements: 5.1, 5.2_
 
-  - [ ] 14.2 Add video controls and features
+  - [x] 14.2 Add video controls and features
+
+
     - Display standard controls (play/pause, seek bar, volume)
     - Add full-screen toggle button
     - Show video duration on thumbnail
@@ -356,20 +387,31 @@
     - Resume from last position on return
     - _Requirements: 5.2, 5.3, 5.4, 5.5_
 
-  - [ ] 14.3 Optimize video playback
+  - [x] 14.3 Optimize video playback
+
+
     - Use adaptive streaming for large videos
     - Cache video segments for offline playback
     - Handle playback errors with retry
     - Show buffering indicator
     - _Requirements: 5.1_
 
-- [ ] 15. Create AudioPlayerView for audio playback
-  - [ ] 15.1 Create AudioPlayerView custom widget
+- [x] 15. Create AudioPlayerView for audio playback
+
+
+
+
+
+
+  - [x] 15.1 Create AudioPlayerView custom widget
+
     - Create layout with play/pause button, seek bar, duration
     - Integrate ExoPlayer for audio playback
     - Implement `setAudioUrl()` to load audio
     - Display audio file name and duration
     - _Requirements: 6.3, 6.4_
+
+
 
   - [ ] 15.2 Add waveform visualization
     - Generate waveform data for audio files <5 minutes
@@ -378,8 +420,15 @@
     - Allow seeking by tapping waveform
     - _Requirements: 6.5_
 
-- [ ] 16. Update chat message layouts for attachments
-  - [ ] 16.1 Create attachment bubble layouts
+- [x] 16. Update chat message layouts for attachments
+
+
+
+
+
+  - [x] 16.1 Create attachment bubble layouts
+
+
     - Create `chat_bubble_image.xml` for image attachments
     - Create `chat_bubble_video.xml` for video attachments
     - Create `chat_bubble_audio.xml` for audio attachments
@@ -387,15 +436,24 @@
     - Support multiple attachments in grid layout (2 columns)
     - _Requirements: 2.2_
 
-  - [ ] 16.2 Add attachment click handlers
+  - [x] 16.2 Add attachment click handlers
+
+
     - Open ImageGalleryActivity on image tap
     - Start video playback on video tap
     - Start audio playback on audio tap
     - Open document with system viewer on document tap
     - _Requirements: 3.1, 5.1, 6.4, 7.5_
 
-- [ ] 17. Update ChatViewModel for media operations
-  - [ ] 17.1 Add upload state management
+- [x] 17. Update ChatViewModel for media operations
+
+
+
+
+
+  - [x] 17.1 Add upload state management
+
+
     - Add `_uploadProgress` MutableStateFlow<Map<String, UploadProgress>>
     - Expose `uploadProgress` StateFlow for UI observation
     - Implement `uploadImages()` for multiple images
@@ -404,7 +462,8 @@
     - Implement `uploadDocument()` for documents
     - _Requirements: 1.5, 2.3, 2.4, 8.1, 8.2_
 
-  - [ ] 17.2 Integrate MediaUploadManager
+  - [x] 17.2 Integrate MediaUploadManager
+
     - Initialize MediaUploadManager in ViewModel
     - Collect upload progress Flow and update state
     - Handle upload completion and create messages
@@ -412,7 +471,8 @@
     - Implement `cancelUpload()` for user cancellation
     - _Requirements: 8.3, 8.4, 8.5_
 
-  - [ ] 17.3 Add attachment message creation
+  - [x] 17.3 Add attachment message creation
+
     - Implement `sendMessageWithAttachment()` helper
     - Create ChatAttachment objects from upload results
     - Set message_type to ATTACHMENT_MESSAGE
