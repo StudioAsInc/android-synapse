@@ -31,6 +31,8 @@ import com.synapse.social.studioasinc.util.ChatHelper
 import com.synapse.social.studioasinc.chat.presentation.MessageActionsViewModel
 import com.synapse.social.studioasinc.chat.MessageActionsBottomSheet
 import com.synapse.social.studioasinc.chat.DeleteConfirmationDialog
+import com.synapse.social.studioasinc.chat.EditMessageDialog
+import com.synapse.social.studioasinc.chat.EditHistoryDialog
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
@@ -1006,8 +1008,16 @@ class ChatActivity : AppCompatActivity() {
      * Show edit message dialog
      */
     private fun showEditDialog(messageId: String, currentText: String) {
-        // TODO: Implement edit dialog
-        Toast.makeText(this, "Edit feature coming soon", Toast.LENGTH_SHORT).show()
+        val dialog = EditMessageDialog.newInstance(
+            messageId = messageId,
+            currentText = currentText,
+            listener = object : EditMessageDialog.EditMessageListener {
+                override fun onMessageEdited(messageId: String, newText: String) {
+                    editMessage(messageId, newText)
+                }
+            }
+        )
+        dialog.show(supportFragmentManager, "EditMessageDialog")
     }
     
     /**
@@ -1081,8 +1091,8 @@ class ChatActivity : AppCompatActivity() {
      * Show edit history dialog
      */
     private fun showEditHistory(messageId: String) {
-        // TODO: Implement edit history dialog
-        Toast.makeText(this, "Edit history feature coming soon", Toast.LENGTH_SHORT).show()
+        val dialog = EditHistoryDialog.newInstance(messageId)
+        dialog.show(supportFragmentManager, "EditHistoryDialog")
     }
 
     @Deprecated("Deprecated in Java")

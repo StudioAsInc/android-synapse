@@ -441,19 +441,48 @@ class SupabaseChatService {
     }
     
     /**
-     * Edit a message
+     * Edit a message and save edit history
      */
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
-        return try {
-            val updateData = mapOf(
-                "content" to newContent,
-                "is_edited" to true,
-                "edited_at" to System.currentTimeMillis(),
-                "updated_at" to System.currentTimeMillis()
-            )
-            databaseService.update("messages", updateData, "id", messageId)
-        } catch (e: Exception) {
-            Result.failure(e)
+        return withContext(Dispatchers.IO) {
+            try {
+                // Get current message content before editing
+                val currentMessage = client.from("messages")
+                    .select(columns = Columns.raw("content, sender_id")) {
+                        filter {
+                            eq("id", messageId)
+                        }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+                    .firstOrNull()
+
+                val previousContent = currentMessage?.get("content")?.toString()?.removeSurrounding("\"") ?: ""
+                val senderId = currentMessage?.get("sender_id")?.toString()?.removeSurrounding("\"") ?: ""
+
+                // Save edit history
+                if (previousContent.isNotEmpty()) {
+                    val historyData = mapOf(
+                        "message_id" to messageId,
+                        "previous_content" to previousContent,
+                        "edited_by" to senderId,
+                        "edited_at" to System.currentTimeMillis()
+                    )
+                    databaseService.insert("message_edit_history", historyData)
+                }
+
+                // Update message
+                val updateData = mapOf(
+                    "content" to newContent,
+                    "is_edited" to true,
+                    "edited_at" to System.currentTimeMillis(),
+                    "updated_at" to System.currentTimeMillis()
+                )
+                databaseService.update("messages", updateData, "id", messageId)
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error editing message", e)
+                Result.failure(e)
+            }
         }
     }
     
