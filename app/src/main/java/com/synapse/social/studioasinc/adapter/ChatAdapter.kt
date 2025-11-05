@@ -381,6 +381,16 @@ class ChatAdapter(
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
+        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+            // Handle payload updates for progress
+            if (payload != null) {
+                // Video upload progress handling can be added here if needed
+                return
+            }
+            
+            bind(message)
+        }
+        
         fun bind(message: Message) {
             // Handle deleted messages
             if (message.isDeleted) {
@@ -464,6 +474,16 @@ class ChatAdapter(
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
+        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+            // Handle payload updates for progress
+            if (payload != null) {
+                // Audio upload progress handling can be added here if needed
+                return
+            }
+            
+            bind(message)
+        }
+        
         fun bind(message: Message) {
             // Handle deleted messages
             if (message.isDeleted) {
@@ -542,6 +562,16 @@ class ChatAdapter(
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
+        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+            // Handle payload updates for progress
+            if (payload != null) {
+                // Document upload progress handling can be added here if needed
+                return
+            }
+            
+            bind(message)
+        }
+        
         fun bind(message: Message) {
             // Handle deleted messages
             if (message.isDeleted) {
