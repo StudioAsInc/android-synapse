@@ -137,11 +137,15 @@
                             app:cardCornerRadius="12dp"
                             app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
-                            <LinearLayout
+                            <FrameLayout
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:padding="12dp">
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:padding="12dp">
 
                                 <!-- Audio file name -->
                                 <TextView
@@ -216,6 +220,73 @@
                                     android:visibility="gone"
                                     android:indeterminateTint="?attr/colorPrimary" />
                             </LinearLayout>
+
+                            <!-- Upload progress overlay -->
+                            <LinearLayout
+                                android:id="@+id/uploadProgressOverlay"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="#80000000"
+                                android:visibility="gone"
+                                android:padding="16dp">
+                                <ProgressBar
+                                    android:id="@+id/uploadProgressBar"
+                                    style="?android:attr/progressBarStyleHorizontal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressTint="@android:color/white" />
+                                <TextView
+                                    android:id="@+id/uploadProgressText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:textColor="@android:color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:text="Uploading... 0%" />
+                                <LinearLayout
+                                    android:id="@+id/uploadErrorLayout"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center"
+                                    android:visibility="gone"
+                                    android:layout_marginTop="8dp">
+                                    <ImageView
+                                        android:layout_width="24dp"
+                                        android:layout_height="24dp"
+                                        android:src="@android:drawable/ic_dialog_alert"
+                                        android:tint="@android:color/holo_red_light"
+                                        android:layout_marginEnd="8dp" />
+                                    <TextView
+                                        android:id="@+id/uploadErrorText"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textColor="@android:color/holo_red_light"
+                                        android:textSize="14sp"
+                                        android:text="Upload failed" />
+                                </LinearLayout>
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/retryButton"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:text="Retry"
+                                    android:visibility="gone"
+                                    style="@style/Widget.Material3.Button.TextButton" />
+                                <ImageView
+                                    android:id="@+id/uploadSuccessIcon"
+                                    android:layout_width="48dp"
+                                    android:layout_height="48dp"
+                                    android:src="@android:drawable/ic_menu_upload_you_tube"
+                                    android:tint="@android:color/holo_green_light"
+                                    android:visibility="gone" />
+                            </LinearLayout>
+                        </FrameLayout>
                         </com.google.android.material.card.MaterialCardView>
 
                         <!-- Reply layout -->

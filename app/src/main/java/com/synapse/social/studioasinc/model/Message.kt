@@ -39,6 +39,9 @@ data class Message(
     @SerialName("delete_for_everyone")
     val deleteForEveryone: Boolean = false,
     
+    // Attachments field (JSONB array in database)
+    val attachments: List<ChatAttachmentImpl>? = null,
+    
     // UI-related properties
     var senderName: String? = null,
     var senderAvatarUrl: String? = null,
