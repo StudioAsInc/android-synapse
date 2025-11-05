@@ -399,7 +399,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                     onSuccess = { messages ->
                         messagesList.clear()
                         // Convert messages to HashMap format for adapter
-                        messages.forEach { message ->
+                        // Sort by created_at to ensure proper chronological order (oldest first)
+                        val sortedMessages = messages.sortedBy { 
+                            (it["created_at"] as? Long) ?: 0L 
+                        }
+                        
+                        sortedMessages.forEach { message ->
                             val messageMap = HashMap<String, Any?>()
                             messageMap["id"] = message["id"]
                             messageMap["chat_id"] = message["chat_id"]

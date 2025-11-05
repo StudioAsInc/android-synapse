@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 
+// DataStore singleton - MUST be at top level to avoid multiple instances
+private val Context.chatPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "synapse_chat_preferences"
+)
+
 /**
  * Manages user preferences for chat features using DataStore.
  * Handles privacy settings for read receipts and typing indicators.
@@ -22,7 +27,6 @@ class PreferencesManager(private val context: Context) {
     
     companion object {
         private const val TAG = "PreferencesManager"
-        private const val DATASTORE_NAME = "synapse_chat_preferences"
         
         // Preference keys
         private val KEY_SEND_READ_RECEIPTS = booleanPreferencesKey("send_read_receipts")
@@ -33,8 +37,9 @@ class PreferencesManager(private val context: Context) {
         private const val DEFAULT_SHOW_TYPING_INDICATORS = true
     }
     
-    // DataStore instance
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = DATASTORE_NAME)
+    // Use the singleton DataStore instance
+    private val dataStore: DataStore<Preferences>
+        get() = context.chatPreferencesDataStore
     
     /**
      * Check if read receipts are enabled (synchronous version for backward compatibility).
@@ -43,7 +48,7 @@ class PreferencesManager(private val context: Context) {
      */
     fun isReadReceiptsEnabled(): Boolean {
         return runBlocking {
-            context.dataStore.data.map { preferences ->
+            dataStore.data.map { preferences ->
                 preferences[KEY_SEND_READ_RECEIPTS] ?: DEFAULT_SEND_READ_RECEIPTS
             }.first()
         }
@@ -55,7 +60,7 @@ class PreferencesManager(private val context: Context) {
      * @return true if user wants to send read receipts, false otherwise
      */
     suspend fun isReadReceiptsEnabledAsync(): Boolean {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             preferences[KEY_SEND_READ_RECEIPTS] ?: DEFAULT_SEND_READ_RECEIPTS
         }.first()
     }
@@ -67,7 +72,7 @@ class PreferencesManager(private val context: Context) {
      */
     suspend fun setReadReceiptsEnabled(enabled: Boolean) {
         Log.d(TAG, "Setting read receipts enabled: $enabled")
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[KEY_SEND_READ_RECEIPTS] = enabled
         }
     }
@@ -79,7 +84,7 @@ class PreferencesManager(private val context: Context) {
      */
     fun isTypingIndicatorsEnabled(): Boolean {
         return runBlocking {
-            context.dataStore.data.map { preferences ->
+            dataStore.data.map { preferences ->
                 preferences[KEY_SHOW_TYPING_INDICATORS] ?: DEFAULT_SHOW_TYPING_INDICATORS
             }.first()
         }
@@ -91,7 +96,7 @@ class PreferencesManager(private val context: Context) {
      * @return true if user wants to send typing indicators, false otherwise
      */
     suspend fun isTypingIndicatorsEnabledAsync(): Boolean {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             preferences[KEY_SHOW_TYPING_INDICATORS] ?: DEFAULT_SHOW_TYPING_INDICATORS
         }.first()
     }
@@ -103,7 +108,7 @@ class PreferencesManager(private val context: Context) {
      */
     suspend fun setTypingIndicatorsEnabled(enabled: Boolean) {
         Log.d(TAG, "Setting typing indicators enabled: $enabled")
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[KEY_SHOW_TYPING_INDICATORS] = enabled
         }
     }
@@ -114,7 +119,7 @@ class PreferencesManager(private val context: Context) {
      * @return Flow<Boolean> that emits read receipts preference changes
      */
     fun getReadReceiptsEnabledFlow(): Flow<Boolean> {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             preferences[KEY_SEND_READ_RECEIPTS] ?: DEFAULT_SEND_READ_RECEIPTS
         }
     }
@@ -125,7 +130,7 @@ class PreferencesManager(private val context: Context) {
      * @return Flow<Boolean> that emits typing indicators preference changes
      */
     fun getTypingIndicatorsEnabledFlow(): Flow<Boolean> {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             preferences[KEY_SHOW_TYPING_INDICATORS] ?: DEFAULT_SHOW_TYPING_INDICATORS
         }
     }
@@ -136,7 +141,7 @@ class PreferencesManager(private val context: Context) {
      * @return ChatPreferences object with current settings
      */
     suspend fun getChatPreferences(): ChatPreferences {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             ChatPreferences(
                 sendReadReceipts = preferences[KEY_SEND_READ_RECEIPTS] ?: DEFAULT_SEND_READ_RECEIPTS,
                 showTypingIndicators = preferences[KEY_SHOW_TYPING_INDICATORS] ?: DEFAULT_SHOW_TYPING_INDICATORS
@@ -150,7 +155,7 @@ class PreferencesManager(private val context: Context) {
      * @return Flow<ChatPreferences> that emits preference changes
      */
     fun getChatPreferencesFlow(): Flow<ChatPreferences> {
-        return context.dataStore.data.map { preferences ->
+        return dataStore.data.map { preferences ->
             ChatPreferences(
                 sendReadReceipts = preferences[KEY_SEND_READ_RECEIPTS] ?: DEFAULT_SEND_READ_RECEIPTS,
                 showTypingIndicators = preferences[KEY_SHOW_TYPING_INDICATORS] ?: DEFAULT_SHOW_TYPING_INDICATORS
@@ -165,7 +170,7 @@ class PreferencesManager(private val context: Context) {
      */
     suspend fun updateChatPreferences(preferences: ChatPreferences) {
         Log.d(TAG, "Updating chat preferences: $preferences")
-        context.dataStore.edit { dataStorePreferences ->
+        dataStore.edit { dataStorePreferences ->
             dataStorePreferences[KEY_SEND_READ_RECEIPTS] = preferences.sendReadReceipts
             dataStorePreferences[KEY_SHOW_TYPING_INDICATORS] = preferences.showTypingIndicators
         }
@@ -176,7 +181,7 @@ class PreferencesManager(private val context: Context) {
      */
     suspend fun resetToDefaults() {
         Log.d(TAG, "Resetting preferences to defaults")
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[KEY_SEND_READ_RECEIPTS] = DEFAULT_SEND_READ_RECEIPTS
             preferences[KEY_SHOW_TYPING_INDICATORS] = DEFAULT_SHOW_TYPING_INDICATORS
         }
