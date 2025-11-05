@@ -22,6 +22,7 @@ import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.chat.interfaces.ChatAdapterListener
 import com.synapse.social.studioasinc.util.MessageAnimations
+import com.synapse.social.studioasinc.util.setMessageState
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.CoroutineScope
@@ -154,6 +155,55 @@ class ChatAdapter(
             VIEW_TYPE_VOICE_MESSAGE -> bindVoiceMessageViewHolder(holder as VoiceMessageViewHolder, position)
             VIEW_TYPE_ERROR -> bindErrorViewHolder(holder as ErrorViewHolder, position)
             VIEW_TYPE_LOADING_MORE -> bindLoadingViewHolder(holder as LoadingViewHolder, position)
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty() && payloads.contains("message_state_update")) {
+            // Handle partial update for message state only
+            if (holder is BaseMessageViewHolder) {
+                updateMessageStateIcon(holder, position)
+            }
+        } else {
+            // Full bind
+            onBindViewHolder(holder, position)
+        }
+    }
+
+    /**
+     * Update only the message state icon with fade animation
+     */
+    private fun updateMessageStateIcon(holder: BaseMessageViewHolder, position: Int) {
+        val messageData = data[position]
+        val currentUser = authService.getCurrentUser()
+        val myUid = currentUser?.id ?: ""
+        val msgUid = messageData["sender_id"]?.toString() 
+            ?: messageData["uid"]?.toString() 
+            ?: ""
+        val isMyMessage = msgUid == myUid
+        
+        holder.messageStatus?.let { statusView ->
+            if (isMyMessage) {
+                val deliveryStatus = messageData["delivery_status"]?.toString() 
+                    ?: messageData["message_state"]?.toString() 
+                    ?: "sent"
+                
+                // Apply fade animation for state change
+                statusView.animate()
+                    .alpha(0f)
+                    .setDuration(150)
+                    .withEndAction {
+                        // Update the icon using extension function
+                        statusView.setMessageState(deliveryStatus)
+                        statusView.animate()
+                            .alpha(1f)
+                            .setDuration(150)
+                            .start()
+                    }
+                    .start()
+            } else {
+                statusView.visibility = View.GONE
+            }
         }
     }
 
@@ -410,33 +460,18 @@ class ChatAdapter(
             }
         }
         
-        // Set message status for sent messages - support both field names
+        // Set message status for sent messages using extension function - support both field names
         holder.messageStatus?.let { statusView ->
             if (isMyMessage) {
                 val deliveryStatus = messageData["delivery_status"]?.toString() 
                     ?: messageData["message_state"]?.toString() 
                     ?: "sent"
                 
-                when (deliveryStatus) {
-                    "sending" -> {
-                        statusView.setImageResource(R.drawable.ic_upload)
-                        statusView.visibility = View.VISIBLE
-                    }
-                    "sent" -> {
-                        statusView.setImageResource(R.drawable.ic_check_circle)
-                        statusView.visibility = View.VISIBLE
-                    }
-                    "delivered" -> {
-                        statusView.setImageResource(R.drawable.ic_check_circle)
-                        statusView.visibility = View.VISIBLE
-                    }
-                    "read" -> {
-                        statusView.setImageResource(R.drawable.ic_check_circle)
-                        statusView.visibility = View.VISIBLE
-                    }
-                    else -> statusView.visibility = View.GONE
-                }
+                // Use the extension function to set the appropriate icon and styling
+                statusView.setMessageState(deliveryStatus)
+                statusView.visibility = View.VISIBLE
             } else {
+                // Hide read receipt icons for incoming messages
                 statusView.visibility = View.GONE
             }
         }
@@ -458,10 +493,11 @@ class ChatAdapter(
             // Find the inner LinearLayout that contains the message bubble
             val innerLayout = layout.getChildAt(0) as? LinearLayout
             innerLayout?.let { inner ->
-                val layoutParams = inner.layoutParams as? android.widget.FrameLayout.LayoutParams
-                layoutParams?.let { params ->
+                val params = inner.layoutParams as? FrameLayout.LayoutParams
+                if (params != null) {
                     params.gravity = if (isMyMessage) Gravity.END else Gravity.START
                     inner.layoutParams = params
+                    inner.requestLayout()
                 }
             }
         }
@@ -773,10 +809,11 @@ class ChatAdapter(
             // Find the inner LinearLayout that contains the message bubble
             val innerLayout = layout.getChildAt(0) as? LinearLayout
             innerLayout?.let { inner ->
-                val layoutParams = inner.layoutParams as? android.widget.FrameLayout.LayoutParams
-                layoutParams?.let { params ->
+                val params = inner.layoutParams as? FrameLayout.LayoutParams
+                if (params != null) {
                     params.gravity = Gravity.END
                     inner.layoutParams = params
+                    inner.requestLayout()
                 }
             }
         }
@@ -919,5 +956,100 @@ class ChatAdapter(
      */
     fun scrollToMessageWithHighlight(recyclerView: RecyclerView, position: Int) {
         MessageAnimations.scrollToMessageWithHighlight(recyclerView, position)
+    }
+
+    /**
+     * Update message state for real-time read receipts
+     * This method efficiently updates only the message state without full item refresh
+     */
+    fun updateMessageState(messageId: String, newState: String) {
+        val position = data.indexOfFirst { messageData ->
+            val id = messageData["id"]?.toString() ?: messageData["key"]?.toString() ?: ""
+            id == messageId
+        }
+        
+        if (position != -1) {
+            val messageData = data[position]
+            val oldState = messageData["delivery_status"]?.toString() 
+                ?: messageData["message_state"]?.toString() 
+                ?: "sent"
+            
+            // Only update if state actually changed
+            if (oldState != newState) {
+                // Update the data
+                messageData["message_state"] = newState
+                messageData["delivery_status"] = newState
+                
+                // Set timestamps based on state
+                when (newState) {
+                    "delivered" -> {
+                        if (messageData["delivered_at"] == null) {
+                            messageData["delivered_at"] = System.currentTimeMillis()
+                        }
+                    }
+                    "read" -> {
+                        if (messageData["read_at"] == null) {
+                            messageData["read_at"] = System.currentTimeMillis()
+                        }
+                        if (messageData["delivered_at"] == null) {
+                            messageData["delivered_at"] = System.currentTimeMillis()
+                        }
+                    }
+                }
+                
+                // Notify only the specific item changed with payload for partial update
+                notifyItemChanged(position, "message_state_update")
+            }
+        }
+    }
+
+    /**
+     * Update multiple message states in batch for efficiency
+     */
+    fun updateMessageStates(messageStates: Map<String, String>) {
+        val updatedPositions = mutableListOf<Int>()
+        
+        messageStates.forEach { (messageId, newState) ->
+            val position = data.indexOfFirst { messageData ->
+                val id = messageData["id"]?.toString() ?: messageData["key"]?.toString() ?: ""
+                id == messageId
+            }
+            
+            if (position != -1) {
+                val messageData = data[position]
+                val oldState = messageData["delivery_status"]?.toString() 
+                    ?: messageData["message_state"]?.toString() 
+                    ?: "sent"
+                
+                if (oldState != newState) {
+                    messageData["message_state"] = newState
+                    messageData["delivery_status"] = newState
+                    
+                    // Set timestamps based on state
+                    when (newState) {
+                        "delivered" -> {
+                            if (messageData["delivered_at"] == null) {
+                                messageData["delivered_at"] = System.currentTimeMillis()
+                            }
+                        }
+                        "read" -> {
+                            if (messageData["read_at"] == null) {
+                                messageData["read_at"] = System.currentTimeMillis()
+                            }
+                            if (messageData["delivered_at"] == null) {
+                                messageData["delivered_at"] = System.currentTimeMillis()
+                            }
+                        }
+                    }
+                    
+                    updatedPositions.add(position)
+                }
+            }
+        }
+        
+        // Batch notify all changed positions
+        updatedPositions.forEach { position ->
+            notifyItemChanged(position, "message_state_update")
+        }
     }
 }

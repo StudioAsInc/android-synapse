@@ -175,8 +175,8 @@
 					tools:replace="android:textSize" />
 				<ImageView
 					android:id="@+id/message_state"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
+					android:layout_width="12dp"
+					android:layout_height="12dp"
 					android:layout_marginRight="4dp"
 					android:src="@drawable/ic_check_black"
 					android:scaleType="centerInside"

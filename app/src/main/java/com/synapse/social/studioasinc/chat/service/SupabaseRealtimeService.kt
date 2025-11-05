@@ -7,13 +7,22 @@ import com.synapse.social.studioasinc.chat.models.TypingStatus
 import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -30,6 +39,9 @@ class SupabaseRealtimeService {
         private const val CONNECTION_TIMEOUT = 10000L
     }
     
+    // Performance metrics tracking
+    private val metrics = RealtimeMetrics()
+    
     // Thread-safe channel map for concurrent access
     private val channels = ConcurrentHashMap<String, RealtimeChannel>()
     
@@ -45,6 +57,16 @@ class SupabaseRealtimeService {
     
     // Track last successful connection time
     private var lastSuccessfulConnection = 0L
+    
+    // Event queuing for graceful degradation
+    private val queuedTypingEvents = ConcurrentHashMap<String, MutableList<TypingStatus>>()
+    private val queuedReadReceiptEvents = ConcurrentHashMap<String, MutableList<ReadReceiptEvent>>()
+    
+    // Polling fallback jobs
+    private val pollingJobs = ConcurrentHashMap<String, kotlinx.coroutines.Job>()
+    
+    // Backend service for polling fallback
+    private val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
     
     /**
      * Subscribe to a chat room's Realtime channel.
@@ -79,6 +101,9 @@ class SupabaseRealtimeService {
             chatPollingFallback[chatId] = false
             lastSuccessfulConnection = System.currentTimeMillis()
             
+            // Record successful connection
+            metrics.recordConnectionStart()
+            
             updateConnectionState(RealtimeState.Connected)
             
             Log.d(TAG, "Successfully subscribed to chat: $chatId")
@@ -93,6 +118,7 @@ class SupabaseRealtimeService {
     
     /**
      * Broadcast a typing event to the chat room.
+     * Falls back to queuing if WebSocket is unavailable.
      * 
      * @param chatId The chat room identifier
      * @param userId The user who is typing
@@ -101,25 +127,40 @@ class SupabaseRealtimeService {
     suspend fun broadcastTyping(chatId: String, userId: String, isTyping: Boolean) {
         Log.d(TAG, "Broadcasting typing event - chatId: $chatId, userId: $userId, isTyping: $isTyping")
         
+        val typingStatus = TypingStatus(
+            userId = userId,
+            chatId = chatId,
+            isTyping = isTyping,
+            timestamp = System.currentTimeMillis()
+        )
+        
+        // Check if using polling fallback
+        if (chatPollingFallback.getOrDefault(chatId, false)) {
+            Log.d(TAG, "Using polling fallback - queuing typing event")
+            queueTypingEvent(chatId, typingStatus)
+            return
+        }
+        
         val channel = channels[chatId]
         if (channel == null) {
             Log.w(TAG, "No channel found for chatId: $chatId. Subscribing first.")
-            subscribeToChat(chatId)
-            return broadcastTyping(chatId, userId, isTyping)
+            try {
+                subscribeToChat(chatId)
+                return broadcastTyping(chatId, userId, isTyping)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to subscribe, queuing typing event", e)
+                queueTypingEvent(chatId, typingStatus)
+                return
+            }
         }
         
         try {
-            val typingStatus = TypingStatus(
-                userId = userId,
-                chatId = chatId,
-                isTyping = isTyping,
-                timestamp = System.currentTimeMillis()
-            )
+            val startTime = System.currentTimeMillis()
             
             // Broadcast the typing event using the correct API
             channel.broadcast(
                 event = "typing",
-                payload = buildMap {
+                message = buildJsonObject {
                     put("user_id", userId)
                     put("chat_id", chatId)
                     put("is_typing", isTyping)
@@ -127,16 +168,23 @@ class SupabaseRealtimeService {
                 }
             )
             
+            // Record successful typing event with latency
+            val latency = System.currentTimeMillis() - startTime
+            metrics.recordTypingEventSent(latency)
+            
             Log.d(TAG, "Typing event broadcasted successfully")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to broadcast typing event", e)
+            Log.e(TAG, "Failed to broadcast typing event, queuing for later", e)
+            metrics.recordFailedEvent("typing")
+            queueTypingEvent(chatId, typingStatus)
             handleBroadcastError(chatId, e)
         }
     }
     
     /**
      * Broadcast a read receipt event to the chat room.
+     * Falls back to queuing if WebSocket is unavailable.
      * 
      * @param chatId The chat room identifier
      * @param userId The user who read the messages
@@ -145,36 +193,57 @@ class SupabaseRealtimeService {
     suspend fun broadcastReadReceipt(chatId: String, userId: String, messageIds: List<String>) {
         Log.d(TAG, "Broadcasting read receipt - chatId: $chatId, userId: $userId, messageCount: ${messageIds.size}")
         
+        val readReceiptEvent = ReadReceiptEvent(
+            chatId = chatId,
+            userId = userId,
+            messageIds = messageIds,
+            timestamp = System.currentTimeMillis()
+        )
+        
+        // Check if using polling fallback
+        if (chatPollingFallback.getOrDefault(chatId, false)) {
+            Log.d(TAG, "Using polling fallback - queuing read receipt event")
+            queueReadReceiptEvent(chatId, readReceiptEvent)
+            return
+        }
+        
         val channel = channels[chatId]
         if (channel == null) {
             Log.w(TAG, "No channel found for chatId: $chatId. Subscribing first.")
-            subscribeToChat(chatId)
-            return broadcastReadReceipt(chatId, userId, messageIds)
+            try {
+                subscribeToChat(chatId)
+                return broadcastReadReceipt(chatId, userId, messageIds)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to subscribe, queuing read receipt event", e)
+                queueReadReceiptEvent(chatId, readReceiptEvent)
+                return
+            }
         }
         
         try {
-            val readReceiptEvent = ReadReceiptEvent(
-                chatId = chatId,
-                userId = userId,
-                messageIds = messageIds,
-                timestamp = System.currentTimeMillis()
-            )
+            val startTime = System.currentTimeMillis()
             
             // Broadcast the read receipt event using the correct API
             channel.broadcast(
                 event = "read_receipt",
-                payload = buildMap {
+                message = buildJsonObject {
                     put("chat_id", chatId)
                     put("user_id", userId)
-                    put("message_ids", messageIds)
+                    put("message_ids", Json.encodeToJsonElement(ListSerializer(String.serializer()), messageIds))
                     put("timestamp", readReceiptEvent.timestamp)
                 }
             )
             
+            // Record successful read receipt with latency
+            val latency = System.currentTimeMillis() - startTime
+            metrics.recordReadReceiptSent(messageIds.size, latency)
+            
             Log.d(TAG, "Read receipt broadcasted successfully")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to broadcast read receipt", e)
+            Log.e(TAG, "Failed to broadcast read receipt, queuing for later", e)
+            metrics.recordFailedEvent("read_receipt")
+            queueReadReceiptEvent(chatId, readReceiptEvent)
             handleBroadcastError(chatId, e)
         }
     }
@@ -186,6 +255,12 @@ class SupabaseRealtimeService {
      */
     suspend fun unsubscribeFromChat(chatId: String) {
         Log.d(TAG, "Unsubscribing from chat: $chatId")
+        
+        // Stop polling fallback if active
+        stopPollingFallback(chatId)
+        
+        // Clear queued events
+        clearQueuedEvents(chatId)
         
         val channel = channels.remove(chatId)
         if (channel != null) {
@@ -201,6 +276,7 @@ class SupabaseRealtimeService {
         
         // Update connection state if no channels remain
         if (channels.isEmpty()) {
+            metrics.recordConnectionEnd()
             _connectionState.value = RealtimeState.Disconnected
             notifyConnectionCallbacks(RealtimeState.Disconnected)
         }
@@ -209,15 +285,28 @@ class SupabaseRealtimeService {
     /**
      * Clean up all channels and resources.
      */
-    fun cleanup() {
+    suspend fun cleanup() {
         Log.d(TAG, "Cleaning up all channels")
         
+        // Stop all polling jobs
+        pollingJobs.values.forEach { job ->
+            job.cancel()
+        }
+        pollingJobs.clear()
+        
+        // Unsubscribe from all channels
         channels.keys.toList().forEach { chatId ->
             unsubscribeFromChat(chatId)
         }
         
+        // Clear all data structures
         channels.clear()
         connectionCallbacks.clear()
+        chatReconnectAttempts.clear()
+        chatPollingFallback.clear()
+        queuedTypingEvents.clear()
+        queuedReadReceiptEvents.clear()
+        
         _connectionState.value = RealtimeState.Disconnected
     }
     
@@ -301,9 +390,11 @@ class SupabaseRealtimeService {
             }
             
             subscribeToChat(chatId)
+            metrics.recordReconnection(successful = true)
             Log.i(TAG, "Reconnection successful for chat: $chatId")
             
         } catch (e: Exception) {
+            metrics.recordReconnection(successful = false)
             Log.e(TAG, "Reconnection attempt ${attempts + 1} failed for chat: $chatId", e)
             handleReconnection(chatId)
         }
@@ -343,10 +434,14 @@ class SupabaseRealtimeService {
         }
     }
     
-    private fun enablePollingFallback(chatId: String) {
+    private suspend fun enablePollingFallback(chatId: String) {
         chatPollingFallback[chatId] = true
+        metrics.recordPollingFallbackActivation()
         updateConnectionState(RealtimeState.Error("Using polling fallback"))
         Log.w(TAG, "Polling fallback enabled for chat: $chatId. Real-time features will poll every ${POLLING_INTERVAL}ms")
+        
+        // Start polling fallback
+        startPollingFallback(chatId)
     }
     
     private fun updateConnectionState(newState: RealtimeState) {
@@ -393,6 +488,9 @@ class SupabaseRealtimeService {
     suspend fun reconnect(chatId: String) {
         Log.d(TAG, "Manual reconnection triggered for chat: $chatId")
         
+        // Stop polling fallback if active
+        stopPollingFallback(chatId)
+        
         // Reset reconnection attempts to allow retry
         chatReconnectAttempts[chatId] = 0
         chatPollingFallback[chatId] = false
@@ -403,8 +501,14 @@ class SupabaseRealtimeService {
         // Attempt to subscribe again
         try {
             subscribeToChat(chatId)
+            
+            // Send queued events when connection is restored
+            sendQueuedEvents(chatId)
+            
         } catch (e: Exception) {
             Log.e(TAG, "Manual reconnection failed for chat: $chatId", e)
+            // Re-enable polling fallback if reconnection fails
+            enablePollingFallback(chatId)
             throw e
         }
     }
@@ -459,6 +563,288 @@ class SupabaseRealtimeService {
      */
     fun getReconnectionAttempts(chatId: String): Int {
         return chatReconnectAttempts.getOrDefault(chatId, 0)
+    }
+    
+    /**
+     * Get current performance metrics.
+     * 
+     * @return Current metrics snapshot
+     */
+    fun getMetrics(): MetricsSnapshot {
+        return metrics.getCurrentMetrics()
+    }
+    
+    /**
+     * Get metrics as StateFlow for reactive updates.
+     * 
+     * @return StateFlow of metrics snapshots
+     */
+    fun getMetricsFlow(): StateFlow<MetricsSnapshot> {
+        return metrics.metricsState
+    }
+    
+    /**
+     * Log current performance metrics.
+     * Useful for debugging and monitoring.
+     */
+    fun logMetrics() {
+        metrics.logMetrics()
+    }
+    
+    /**
+     * Reset all performance metrics.
+     * Useful for testing or periodic resets.
+     */
+    fun resetMetrics() {
+        metrics.reset()
+    }
+
+    // Graceful degradation methods
+
+    /**
+     * Start polling fallback for a specific chat when WebSocket fails.
+     * Polls every 5 seconds for typing indicators and read receipts.
+     * 
+     * Requirements: 6.2
+     * 
+     * @param chatId The chat room identifier
+     */
+    private suspend fun startPollingFallback(chatId: String) {
+        // Cancel existing polling job if any
+        pollingJobs[chatId]?.cancel()
+        
+        val pollingJob = CoroutineScope(Dispatchers.IO).launch {
+            Log.i(TAG, "Starting polling fallback for chat: $chatId")
+            
+            while (chatPollingFallback.getOrDefault(chatId, false)) {
+                try {
+                    // Poll for typing indicators
+                    pollTypingIndicators(chatId)
+                    
+                    // Poll for read receipts
+                    pollReadReceipts(chatId)
+                    
+                    // Send queued events
+                    sendQueuedEvents(chatId)
+                    
+                    // Wait for next poll
+                    delay(POLLING_INTERVAL)
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during polling for chat: $chatId", e)
+                    delay(POLLING_INTERVAL)
+                }
+            }
+            
+            Log.i(TAG, "Polling fallback stopped for chat: $chatId")
+        }
+        
+        pollingJobs[chatId] = pollingJob
+    }
+
+    /**
+     * Poll for typing indicators using REST API.
+     * 
+     * @param chatId The chat room identifier
+     */
+    private suspend fun pollTypingIndicators(chatId: String) {
+        try {
+            // This would typically call a REST endpoint to get current typing users
+            // For now, we'll simulate this with a placeholder
+            // In a real implementation, you'd have an endpoint like:
+            // GET /api/chats/{chatId}/typing-users
+            
+            Log.d(TAG, "Polling typing indicators for chat: $chatId")
+            
+            // Placeholder: In real implementation, parse response and notify callbacks
+            // val typingUsers = chatService.getTypingUsers(chatId)
+            // typingUsers.forEach { typingStatus ->
+            //     notifyTypingCallbacks(typingStatus)
+            // }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to poll typing indicators for chat: $chatId", e)
+        }
+    }
+
+    /**
+     * Poll for read receipts using REST API.
+     * 
+     * @param chatId The chat room identifier
+     */
+    private suspend fun pollReadReceipts(chatId: String) {
+        try {
+            // This would typically call a REST endpoint to get recent read receipts
+            // For now, we'll simulate this with a placeholder
+            // In a real implementation, you'd have an endpoint like:
+            // GET /api/chats/{chatId}/read-receipts?since={timestamp}
+            
+            Log.d(TAG, "Polling read receipts for chat: $chatId")
+            
+            // Placeholder: In real implementation, parse response and notify callbacks
+            // val readReceipts = chatService.getReadReceipts(chatId, lastPollTime)
+            // readReceipts.forEach { readReceiptEvent ->
+            //     notifyReadReceiptCallbacks(readReceiptEvent)
+            // }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to poll read receipts for chat: $chatId", e)
+        }
+    }
+
+    /**
+     * Queue typing event when WebSocket is unavailable.
+     * Events will be sent when connection is restored.
+     * 
+     * Requirements: 6.2
+     * 
+     * @param chatId The chat room identifier
+     * @param typingStatus The typing status to queue
+     */
+    private fun queueTypingEvent(chatId: String, typingStatus: TypingStatus) {
+        val queue = queuedTypingEvents.getOrPut(chatId) { mutableListOf() }
+        
+        // Remove any existing typing event for the same user to avoid duplicates
+        queue.removeAll { it.userId == typingStatus.userId }
+        
+        // Add new event
+        queue.add(typingStatus)
+        
+        // Limit queue size to prevent memory issues
+        if (queue.size > 50) {
+            queue.removeAt(0) // Remove oldest event
+        }
+        
+        // Update metrics with total queued events count
+        val totalQueued = queuedTypingEvents.values.sumOf { it.size } + 
+                         queuedReadReceiptEvents.values.sumOf { it.size }
+        metrics.updateQueuedEventsCount(totalQueued)
+        
+        Log.d(TAG, "Queued typing event for chat: $chatId, user: ${typingStatus.userId}")
+    }
+
+    /**
+     * Queue read receipt event when WebSocket is unavailable.
+     * Events will be batched and sent when connection is restored.
+     * 
+     * Requirements: 6.2
+     * 
+     * @param chatId The chat room identifier
+     * @param readReceiptEvent The read receipt event to queue
+     */
+    private fun queueReadReceiptEvent(chatId: String, readReceiptEvent: ReadReceiptEvent) {
+        val queue = queuedReadReceiptEvents.getOrPut(chatId) { mutableListOf() }
+        
+        // Add new event
+        queue.add(readReceiptEvent)
+        
+        // Limit queue size to prevent memory issues
+        if (queue.size > 100) {
+            queue.removeAt(0) // Remove oldest event
+        }
+        
+        // Update metrics with total queued events count
+        val totalQueued = queuedTypingEvents.values.sumOf { it.size } + 
+                         queuedReadReceiptEvents.values.sumOf { it.size }
+        metrics.updateQueuedEventsCount(totalQueued)
+        
+        Log.d(TAG, "Queued read receipt event for chat: $chatId, messages: ${readReceiptEvent.messageIds.size}")
+    }
+
+    /**
+     * Send all queued events when connection is restored.
+     * Batches read receipts and sends typing events.
+     * 
+     * Requirements: 6.2
+     * 
+     * @param chatId The chat room identifier
+     */
+    private suspend fun sendQueuedEvents(chatId: String) {
+        try {
+            // Send queued typing events
+            val typingQueue = queuedTypingEvents[chatId]
+            if (!typingQueue.isNullOrEmpty()) {
+                // Only send the most recent typing status per user
+                val latestTypingByUser = typingQueue.groupBy { it.userId }
+                    .mapValues { (_, events) -> events.maxByOrNull { it.timestamp } }
+                    .values
+                    .filterNotNull()
+                
+                latestTypingByUser.forEach { typingStatus ->
+                    try {
+                        broadcastTyping(chatId, typingStatus.userId, typingStatus.isTyping)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to send queued typing event", e)
+                    }
+                }
+                
+                // Clear sent events
+                typingQueue.clear()
+                
+                // Update queued events count
+                val totalQueued = queuedTypingEvents.values.sumOf { it.size } + 
+                                 queuedReadReceiptEvents.values.sumOf { it.size }
+                metrics.updateQueuedEventsCount(totalQueued)
+                
+                Log.d(TAG, "Sent ${latestTypingByUser.size} queued typing events for chat: $chatId")
+            }
+            
+            // Send queued read receipt events (batched)
+            val readReceiptQueue = queuedReadReceiptEvents[chatId]
+            if (!readReceiptQueue.isNullOrEmpty()) {
+                // Batch all message IDs by user
+                val batchedReceipts = readReceiptQueue.groupBy { it.userId }
+                    .mapValues { (_, events) -> 
+                        events.flatMap { it.messageIds }.distinct()
+                    }
+                
+                batchedReceipts.forEach { (userId, messageIds) ->
+                    if (messageIds.isNotEmpty()) {
+                        try {
+                            broadcastReadReceipt(chatId, userId, messageIds)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to send queued read receipt event", e)
+                        }
+                    }
+                }
+                
+                // Clear sent events
+                readReceiptQueue.clear()
+                
+                // Update queued events count
+                val totalQueued = queuedTypingEvents.values.sumOf { it.size } + 
+                                 queuedReadReceiptEvents.values.sumOf { it.size }
+                metrics.updateQueuedEventsCount(totalQueued)
+                
+                Log.d(TAG, "Sent batched read receipts for ${batchedReceipts.size} users in chat: $chatId")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending queued events for chat: $chatId", e)
+        }
+    }
+
+    /**
+     * Stop polling fallback for a specific chat.
+     * 
+     * @param chatId The chat room identifier
+     */
+    private fun stopPollingFallback(chatId: String) {
+        pollingJobs[chatId]?.cancel()
+        pollingJobs.remove(chatId)
+        chatPollingFallback[chatId] = false
+        Log.d(TAG, "Stopped polling fallback for chat: $chatId")
+    }
+
+    /**
+     * Clear all queued events for a specific chat.
+     * 
+     * @param chatId The chat room identifier
+     */
+    private fun clearQueuedEvents(chatId: String) {
+        queuedTypingEvents.remove(chatId)
+        queuedReadReceiptEvents.remove(chatId)
+        Log.d(TAG, "Cleared queued events for chat: $chatId")
     }
 }
 

@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc.backend
 
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.chat.service.SupabaseRealtimeService
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest

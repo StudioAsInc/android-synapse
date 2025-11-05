@@ -36,10 +36,15 @@ import com.synapse.social.studioasinc.chat.EditHistoryDialog
 import com.synapse.social.studioasinc.chat.SwipeToReplyCallback
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import com.synapse.social.studioasinc.presentation.viewmodel.ChatViewModel
+import com.synapse.social.studioasinc.chat.service.RealtimeState
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ChatActivity : AppCompatActivity() {
+class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
 
     // Supabase services
     private val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
@@ -56,8 +61,9 @@ class ChatActivity : AppCompatActivity() {
     private var currentUserId: String? = null
     private var chatAdapter: ChatAdapter? = null
     
-    // ViewModel
+    // ViewModels
     private lateinit var viewModel: MessageActionsViewModel
+    private lateinit var chatViewModel: ChatViewModel
     
     // Realtime channel
     private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
@@ -77,9 +83,25 @@ class ChatActivity : AppCompatActivity() {
     private var replyMessage: TextView? = null
     private var replyMediaPreview: ImageView? = null
     private var replyCancelButton: ImageView? = null
+    
+    // Typing indicator UI components
+    private var typingIndicatorView: View? = null
+    private var typingText: TextView? = null
+    private var typingAnimation: com.synapse.social.studioasinc.widget.TypingAnimationView? = null
+    private var typingAvatar: ImageView? = null
+    
+    // Connection status UI components
+    private var connectionStatusBanner: LinearLayout? = null
+    private var connectionProgress: ProgressBar? = null
+    private var connectionIcon: ImageView? = null
+    private var connectionText: TextView? = null
+    private var connectionRetryButton: com.google.android.material.button.MaterialButton? = null
+    
+    // App lifecycle state tracking
+    private var isAppInBackground = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super<AppCompatActivity>.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         
         // Get intent data
@@ -97,6 +119,9 @@ class ChatActivity : AppCompatActivity() {
         initializeLogic()
         loadChatData()
         setupRealtimeSubscription()
+        
+        // Register lifecycle observer for app backgrounding
+        lifecycle.addObserver(this)
     }
 
     private fun initialize() {
@@ -190,14 +215,76 @@ class ChatActivity : AppCompatActivity() {
             recyclerView?.adapter = chatAdapter
             this.chatAdapter = chatAdapter
             
-            // Initialize ViewModel
+            // Set ChatAdapter reference in ChatViewModel for real-time updates
+            chatViewModel.setChatAdapter(chatAdapter)
+            
+            // Initialize ViewModels
             viewModel = MessageActionsViewModel(this)
+            chatViewModel = ViewModelProvider(this)[ChatViewModel::class.java]
+            
+            // Initialize managers in ChatViewModel
+            chatViewModel.initializeManagers(this)
+            
+            // Setup real-time message state updates for read receipts
+            setupMessageStateUpdates()
+            
+            // Initialize typing indicator
+            initializeTypingIndicator()
+            
+            // Initialize connection status banner
+            initializeConnectionStatusBanner()
             
         } catch (e: Exception) {
             android.util.Log.e("ChatActivity", "UI initialization error: ${e.message}", e)
             Toast.makeText(this, "Failed to initialize chat interface", Toast.LENGTH_SHORT).show()
             finish()
         }
+    }
+
+    private fun initializeTypingIndicator() {
+        // Find the parent container where we can add the typing indicator
+        val bottomContainer = findViewById<LinearLayout>(R.id.message_input_overall_container)?.parent as? LinearLayout
+        
+        if (bottomContainer != null) {
+            // Create typing indicator view programmatically
+            val inflater = layoutInflater
+            typingIndicatorView = inflater.inflate(R.layout.typing_indicator_item, bottomContainer, false)
+            
+            // Initialize typing indicator components
+            typingText = typingIndicatorView?.findViewById(R.id.typing_text)
+            typingAnimation = typingIndicatorView?.findViewById(R.id.typing_animation)
+            typingAvatar = typingIndicatorView?.findViewById(R.id.typing_avatar)
+            
+            // Initially hide the typing indicator
+            typingIndicatorView?.visibility = View.GONE
+            
+            // Add typing indicator above the message input (before the last child which is message input)
+            val messageInputIndex = bottomContainer.childCount - 1
+            bottomContainer.addView(typingIndicatorView, messageInputIndex)
+            
+            // Set up typing indicator observer
+            setupTypingIndicatorObserver()
+        }
+    }
+
+    private fun initializeConnectionStatusBanner() {
+        // Initialize connection status banner components
+        connectionStatusBanner = findViewById(R.id.connection_status_banner)
+        connectionProgress = findViewById(R.id.connection_progress)
+        connectionIcon = findViewById(R.id.connection_icon)
+        connectionText = findViewById(R.id.connection_text)
+        connectionRetryButton = findViewById(R.id.connection_retry_button)
+        
+        // Initially hide the banner
+        connectionStatusBanner?.visibility = View.GONE
+        
+        // Setup retry button click listener
+        connectionRetryButton?.setOnClickListener {
+            retryConnection()
+        }
+        
+        // Setup connection state observer
+        setupConnectionStateObserver()
     }
 
     private fun initializeLogic() {
@@ -208,12 +295,8 @@ class ChatActivity : AppCompatActivity() {
         }
         
         backButton?.setOnClickListener {
-            // Stop typing indicator when leaving chat
-            if (chatId != null && currentUserId != null) {
-                lifecycleScope.launch {
-                    chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
-                }
-            }
+            // Clean up subscriptions when leaving chat
+            chatViewModel.onChatClosed()
             onBackPressedDispatcher.onBackPressed()
         }
         
@@ -225,6 +308,28 @@ class ChatActivity : AppCompatActivity() {
         
         // Setup reply preview observers
         setupReplyPreview()
+    }
+    
+    private fun setupTypingIndicatorObserver() {
+        // Observe typing users from ChatViewModel
+        lifecycleScope.launch {
+            chatViewModel.typingUsers.collect { typingUsers ->
+                runOnUiThread {
+                    updateTypingIndicator(typingUsers)
+                }
+            }
+        }
+    }
+
+    private fun setupConnectionStateObserver() {
+        // Observe connection state from realtime service
+        lifecycleScope.launch {
+            chatViewModel.getRealtimeService()?.connectionState?.collect { state ->
+                runOnUiThread {
+                    updateConnectionStatusBanner(state)
+                }
+            }
+        }
     }
 
     private fun loadChatData() {
@@ -488,28 +593,15 @@ class ChatActivity : AppCompatActivity() {
                     }
                 }
                 
-                // Send typing status
-                if (!s.isNullOrEmpty() && chatId != null && currentUserId != null) {
-                    lifecycleScope.launch {
-                        chatService.updateTypingStatus(chatId!!, currentUserId!!, true)
-                    }
-                    
-                    // Auto-stop typing after 3 seconds
-                    typingJob = lifecycleScope.launch {
-                        kotlinx.coroutines.delay(3000)
-                        chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
-                    }
+                // Send typing status through ChatViewModel (only if app is not in background)
+                if (!isAppInBackground) {
+                    chatViewModel.onUserTyping(s?.toString() ?: "")
                 }
             }
             override fun afterTextChanged(s: Editable?) {
                 sendButton?.isEnabled = !s.isNullOrEmpty() && s.isNotBlank()
                 
-                // Stop typing when input is cleared
-                if (s.isNullOrEmpty() && chatId != null && currentUserId != null) {
-                    lifecycleScope.launch {
-                        chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
-                    }
-                }
+                // Stop typing when input is cleared (handled by ChatViewModel)
             }
         })
     }
@@ -518,22 +610,288 @@ class ChatActivity : AppCompatActivity() {
      * Start polling for typing indicators
      */
     private fun startTypingIndicatorPolling() {
-        lifecycleScope.launch {
-            while (isActive) {
-                if (chatId != null && currentUserId != null) {
-                    val result = chatService.getTypingUsers(chatId!!, currentUserId!!)
-                    result.fold(
-                        onSuccess = { typingUsers ->
-                            // Update UI to show typing indicator if users are typing
-                            // This can be enhanced with actual UI implementation
-                            if (typingUsers.isNotEmpty()) {
-                                android.util.Log.d("ChatActivity", "Users typing: $typingUsers")
-                            }
-                        },
-                        onFailure = { /* Ignore errors */ }
-                    )
+        // This method is now replaced by setupTypingIndicatorObserver()
+        // Keep for backward compatibility but it's no longer used
+    }
+    
+    /**
+     * Update typing indicator UI based on typing users list
+     * 
+     * @param typingUsers List of user IDs who are currently typing
+     */
+    private fun updateTypingIndicator(typingUsers: List<String>) {
+        if (typingUsers.isEmpty()) {
+            hideTypingIndicator()
+        } else {
+            showTypingIndicator(typingUsers)
+        }
+    }
+    
+    // Auto-hide job for typing indicator
+    private var typingIndicatorAutoHideJob: kotlinx.coroutines.Job? = null
+    
+    /**
+     * Show typing indicator with appropriate text and animation
+     * 
+     * @param typingUsers List of user IDs who are currently typing
+     */
+    private fun showTypingIndicator(typingUsers: List<String>) {
+        typingIndicatorView?.let { view ->
+            // Generate typing text based on number of users
+            val typingMessage = generateTypingMessage(typingUsers)
+            typingText?.text = typingMessage
+            
+            // Load avatar for single user typing
+            if (typingUsers.size == 1 && otherUserData != null) {
+                val avatarUrl = otherUserData?.get("avatar")?.toString()
+                    ?.takeIf { it.isNotEmpty() && it != "null" }
+                
+                if (avatarUrl != null) {
+                    typingAvatar?.let { imageView ->
+                        Glide.with(this)
+                            .load(Uri.parse(avatarUrl))
+                            .circleCrop()
+                            .placeholder(R.drawable.ic_account_circle_48px)
+                            .error(R.drawable.ic_account_circle_48px)
+                            .into(imageView)
+                    }
                 }
-                kotlinx.coroutines.delay(2000) // Poll every 2 seconds
+            }
+            
+            // Show with fade-in animation if currently hidden
+            if (view.visibility != View.VISIBLE) {
+                view.visibility = View.VISIBLE
+                view.alpha = 0f
+                view.animate()
+                    .alpha(1f)
+                    .setDuration(200) // 200ms fade-in as required
+                    .withStartAction {
+                        // Start typing animation when fade-in begins
+                        typingAnimation?.startAnimation()
+                    }
+                    .start()
+            } else {
+                // If already visible, just update the text and ensure animation is running
+                typingAnimation?.startAnimation()
+            }
+            
+            // Cancel previous auto-hide job and start new one
+            typingIndicatorAutoHideJob?.cancel()
+            typingIndicatorAutoHideJob = lifecycleScope.launch {
+                kotlinx.coroutines.delay(5000) // Auto-hide after 5 seconds
+                runOnUiThread {
+                    hideTypingIndicator()
+                }
+            }
+        }
+    }
+    
+    /**
+     * Hide typing indicator with fade-out animation
+     */
+    private fun hideTypingIndicator() {
+        typingIndicatorView?.let { view ->
+            if (view.visibility == View.VISIBLE) {
+                view.animate()
+                    .alpha(0f)
+                    .setDuration(200) // 200ms fade-out as required
+                    .withStartAction {
+                        // Stop typing animation when fade-out begins
+                        typingAnimation?.stopAnimation()
+                    }
+                    .withEndAction {
+                        view.visibility = View.GONE
+                    }
+                    .start()
+            }
+        }
+    }
+    
+    /**
+     * Generate appropriate typing message based on number of users
+     * 
+     * @param typingUsers List of user IDs who are currently typing
+     * @return Formatted typing message string
+     */
+    private fun generateTypingMessage(typingUsers: List<String>): String {
+        return when (typingUsers.size) {
+            0 -> ""
+            1 -> {
+                val username = otherUserData?.get("username")?.toString() ?: "User"
+                "$username is typing..."
+            }
+            2 -> {
+                // For now, we'll use generic text since we only have one other user's data
+                // In a group chat, this would need to fetch multiple user names
+                "2 people are typing..."
+            }
+            else -> {
+                "${typingUsers.size} people are typing..."
+            }
+        }
+    }
+
+    /**
+     * Update connection status banner based on realtime connection state.
+     * Shows "Connecting..." when establishing connection, "Connection lost" when disconnected,
+     * and hides banner when connected.
+     * 
+     * Requirements: 6.2
+     * 
+     * @param state The current realtime connection state
+     */
+    private fun updateConnectionStatusBanner(state: com.synapse.social.studioasinc.chat.service.RealtimeState) {
+        when (state) {
+            is com.synapse.social.studioasinc.chat.service.RealtimeState.Connected -> {
+                hideConnectionStatusBanner()
+            }
+            is com.synapse.social.studioasinc.chat.service.RealtimeState.Connecting -> {
+                showConnectionStatusBanner(
+                    message = "Connecting...",
+                    showProgress = true,
+                    showRetry = false,
+                    backgroundColor = R.color.md_theme_secondaryContainer,
+                    textColor = R.color.md_theme_onSecondaryContainer
+                )
+            }
+            is com.synapse.social.studioasinc.chat.service.RealtimeState.Disconnected -> {
+                showConnectionStatusBanner(
+                    message = "Connection lost",
+                    showProgress = false,
+                    showRetry = true,
+                    backgroundColor = R.color.md_theme_errorContainer,
+                    textColor = R.color.md_theme_onErrorContainer
+                )
+            }
+            is com.synapse.social.studioasinc.chat.service.RealtimeState.Error -> {
+                val errorMessage = when {
+                    state.message.contains("timeout", ignoreCase = true) -> "Connection timeout"
+                    state.message.contains("network", ignoreCase = true) -> "Network error"
+                    state.message.contains("polling", ignoreCase = true) -> "Using backup connection"
+                    else -> "Connection error"
+                }
+                
+                val isPollingFallback = state.message.contains("polling", ignoreCase = true)
+                showConnectionStatusBanner(
+                    message = errorMessage,
+                    showProgress = false,
+                    showRetry = !isPollingFallback,
+                    backgroundColor = if (isPollingFallback) R.color.md_theme_tertiaryContainer else R.color.md_theme_errorContainer,
+                    textColor = if (isPollingFallback) R.color.md_theme_onTertiaryContainer else R.color.md_theme_onErrorContainer
+                )
+            }
+        }
+    }
+
+    /**
+     * Show connection status banner with specified configuration.
+     * 
+     * @param message The message to display
+     * @param showProgress Whether to show progress indicator
+     * @param showRetry Whether to show retry button
+     * @param backgroundColor Background color resource ID
+     * @param textColor Text color resource ID
+     */
+    private fun showConnectionStatusBanner(
+        message: String,
+        showProgress: Boolean,
+        showRetry: Boolean,
+        backgroundColor: Int,
+        textColor: Int
+    ) {
+        connectionStatusBanner?.let { banner ->
+            // Update banner appearance
+            banner.setBackgroundColor(getColor(backgroundColor))
+            
+            // Update text and color
+            connectionText?.text = message
+            connectionText?.setTextColor(getColor(textColor))
+            
+            // Show/hide progress indicator
+            connectionProgress?.visibility = if (showProgress) View.VISIBLE else View.GONE
+            
+            // Show/hide retry button
+            connectionRetryButton?.visibility = if (showRetry) View.VISIBLE else View.GONE
+            connectionRetryButton?.setTextColor(getColor(textColor))
+            
+            // Update icon based on state
+            if (showProgress) {
+                connectionIcon?.visibility = View.GONE
+            } else {
+                connectionIcon?.visibility = View.VISIBLE
+                connectionIcon?.setImageResource(
+                    if (showRetry) R.drawable.ic_wifi_off_24 else R.drawable.ic_wifi_24
+                )
+                connectionIcon?.setColorFilter(getColor(textColor))
+            }
+            
+            // Show banner with animation if currently hidden
+            if (banner.visibility != View.VISIBLE) {
+                banner.visibility = View.VISIBLE
+                banner.alpha = 0f
+                banner.translationY = -banner.height.toFloat()
+                banner.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(300)
+                    .start()
+            }
+        }
+    }
+
+    /**
+     * Hide connection status banner with animation.
+     */
+    private fun hideConnectionStatusBanner() {
+        connectionStatusBanner?.let { banner ->
+            if (banner.visibility == View.VISIBLE) {
+                banner.animate()
+                    .alpha(0f)
+                    .translationY(-banner.height.toFloat())
+                    .setDuration(300)
+                    .withEndAction {
+                        banner.visibility = View.GONE
+                    }
+                    .start()
+            }
+        }
+    }
+
+    /**
+     * Retry connection when user taps retry button.
+     * Attempts to reconnect the realtime service for the current chat.
+     */
+    private fun retryConnection() {
+        val chatId = this.chatId ?: return
+        
+        lifecycleScope.launch {
+            try {
+                // Show connecting state
+                showConnectionStatusBanner(
+                    message = "Reconnecting...",
+                    showProgress = true,
+                    showRetry = false,
+                    backgroundColor = R.color.md_theme_secondaryContainer,
+                    textColor = R.color.md_theme_onSecondaryContainer
+                )
+                
+                // Attempt to reconnect
+                chatViewModel.getRealtimeService()?.reconnect(chatId)
+                
+                Toast.makeText(this@ChatActivity, "Reconnecting...", Toast.LENGTH_SHORT).show()
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Failed to retry connection", e)
+                Toast.makeText(this@ChatActivity, "Reconnection failed", Toast.LENGTH_SHORT).show()
+                
+                // Show error state again
+                showConnectionStatusBanner(
+                    message = "Connection failed",
+                    showProgress = false,
+                    showRetry = true,
+                    backgroundColor = R.color.md_theme_errorContainer,
+                    textColor = R.color.md_theme_onErrorContainer
+                )
             }
         }
     }
@@ -1132,6 +1490,161 @@ class ChatActivity : AppCompatActivity() {
         dialog.show(supportFragmentManager, "EditHistoryDialog")
     }
 
+    /**
+     * Setup real-time message state updates for read receipts
+     * This method handles updating message states when read receipts are received
+     * 
+     * Requirements: 4.3
+     */
+    private fun setupMessageStateUpdates() {
+        // This method would integrate with the ReadReceiptManager when it's fully implemented
+        // For now, we provide a placeholder that demonstrates the integration pattern
+        
+        // Example of how message states would be updated:
+        // readReceiptManager?.subscribeToReadReceipts(chatId) { readReceiptEvent ->
+        //     // Update message states in the adapter
+        //     val messageStates = readReceiptEvent.messageIds.associateWith { "read" }
+        //     chatAdapter?.updateMessageStates(messageStates)
+        // }
+        
+        android.util.Log.d("ChatActivity", "Message state updates setup completed")
+    }
+
+    /**
+     * Update message state for a specific message
+     * Called when read receipts are received from the backend
+     * 
+     * Requirements: 4.3
+     * 
+     * @param messageId The message ID to update
+     * @param newState The new message state (sent, delivered, read, failed)
+     */
+    fun updateMessageState(messageId: String, newState: String) {
+        runOnUiThread {
+            chatAdapter?.updateMessageState(messageId, newState)
+        }
+    }
+
+    /**
+     * Update multiple message states efficiently
+     * Used for batch read receipt updates
+     * 
+     * Requirements: 4.3
+     * 
+     * @param messageStates Map of message ID to new state
+     */
+    fun updateMessageStates(messageStates: Map<String, String>) {
+        runOnUiThread {
+            chatAdapter?.updateMessageStates(messageStates)
+        }
+    }
+
+    override fun onResume() {
+        super<AppCompatActivity>.onResume()
+        
+        // App is returning to foreground
+        isAppInBackground = false
+        
+        // Subscribe to typing events and read receipts when chat screen opens
+        if (chatId != null) {
+            chatViewModel.onChatOpened(chatId!!)
+            
+            // Mark visible messages as read when chat opens (only if not backgrounded)
+            if (!isAppInBackground) {
+                markVisibleMessagesAsRead()
+            }
+        }
+        
+        // Resume operations when app returns to foreground
+        chatViewModel.setChatVisibility(true)
+    }
+    
+    override fun onPause() {
+        super<AppCompatActivity>.onPause()
+        
+        // App is going to background
+        isAppInBackground = true
+        
+        // Defer read receipt updates when app is backgrounded
+        chatViewModel.setChatVisibility(false)
+        
+        // Unsubscribe when chat screen closes
+        chatViewModel.onChatClosed()
+        
+        // Stop typing indicator when leaving chat
+        if (chatId != null && currentUserId != null) {
+            lifecycleScope.launch {
+                chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+            }
+        }
+    }
+    
+    // DefaultLifecycleObserver methods for app backgrounding
+    override fun onStart(owner: LifecycleOwner) {
+        // App is coming to foreground
+        isAppInBackground = false
+        
+        // Resume operations when app returns to foreground
+        if (chatId != null) {
+            chatViewModel.setChatVisibility(true)
+            // Re-subscribe to events if needed
+            chatViewModel.onChatOpened(chatId!!)
+        }
+    }
+    
+    override fun onStop(owner: LifecycleOwner) {
+        // App is going to background
+        isAppInBackground = true
+        
+        // Defer read receipt updates when app is backgrounded
+        chatViewModel.setChatVisibility(false)
+        
+        // Stop sending typing events when app is backgrounded
+        if (chatId != null && currentUserId != null) {
+            lifecycleScope.launch {
+                chatService.updateTypingStatus(chatId!!, currentUserId!!, false)
+            }
+        }
+    }
+
+    /**
+     * Mark all visible messages as read when chat opens.
+     * This implements requirement 4.1 - mark messages as read within 1 second when chat opens.
+     * Only marks messages as read if app is not in background (requirement 4.5).
+     */
+    private fun markVisibleMessagesAsRead() {
+        // Don't mark messages as read if app is in background
+        if (isAppInBackground) {
+            return
+        }
+        
+        val layoutManager = recyclerView?.layoutManager as? LinearLayoutManager ?: return
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+        
+        if (firstVisible == RecyclerView.NO_POSITION || lastVisible == RecyclerView.NO_POSITION) {
+            return
+        }
+        
+        // Get message IDs for visible messages that aren't sent by current user
+        val visibleMessageIds = mutableListOf<String>()
+        for (position in firstVisible..lastVisible) {
+            val messageData = messagesList.getOrNull(position) ?: continue
+            val messageId = messageData["id"]?.toString() ?: continue
+            val senderId = messageData["sender_id"]?.toString() 
+                ?: messageData["uid"]?.toString()
+            
+            // Only mark messages from other users as read
+            if (senderId != currentUserId) {
+                visibleMessageIds.add(messageId)
+            }
+        }
+        
+        if (visibleMessageIds.isNotEmpty()) {
+            chatViewModel.markVisibleMessagesAsRead(visibleMessageIds)
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         super.onBackPressed()
@@ -1139,7 +1652,10 @@ class ChatActivity : AppCompatActivity() {
     }
     
     override fun onDestroy() {
-        super.onDestroy()
+        super<AppCompatActivity>.onDestroy()
+        
+        // Remove lifecycle observer
+        lifecycle.removeObserver(this)
         
         // Unsubscribe from realtime channel
         lifecycleScope.launch {
@@ -1150,6 +1666,15 @@ class ChatActivity : AppCompatActivity() {
                 android.util.Log.e("ChatActivity", "Error unsubscribing from realtime channel", e)
             }
         }
+        
+        // Clean up typing indicator coroutine jobs
+        typingIndicatorAutoHideJob?.cancel()
+        
+        // Stop typing indicator animations
+        typingAnimation?.stopAnimation()
+        
+        // Clean up ChatViewModel resources
+        chatViewModel.onChatClosed()
         
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null

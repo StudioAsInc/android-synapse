@@ -183,6 +183,10 @@
 			</com.google.android.material.appbar.MaterialToolbar>
 
 		</com.google.android.material.appbar.AppBarLayout>
+		
+		<!-- Connection Status Banner -->
+		<include layout="@layout/connection_status_banner" />
+		
 		<LinearLayout
 			android:id="@+id/middle"
 			android:layout_width="match_parent"
