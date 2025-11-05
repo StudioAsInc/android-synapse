@@ -30,6 +30,7 @@ import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.util.ChatHelper
 import com.synapse.social.studioasinc.chat.presentation.MessageActionsViewModel
 import com.synapse.social.studioasinc.chat.MessageActionsBottomSheet
+import com.synapse.social.studioasinc.chat.DeleteConfirmationDialog
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
@@ -1035,8 +1036,15 @@ class ChatActivity : AppCompatActivity() {
      * Show delete confirmation dialog
      */
     private fun showDeleteConfirmation(messageId: String, deleteForEveryone: Boolean) {
-        // TODO: Implement delete confirmation dialog
-        Toast.makeText(this, "Delete feature coming soon", Toast.LENGTH_SHORT).show()
+        // Determine if this is the user's own message
+        val messageData = messagesList.find { it["id"]?.toString() == messageId }
+        val senderId = messageData?.get("sender_id")?.toString() 
+            ?: messageData?.get("uid")?.toString()
+        val isOwnMessage = senderId == currentUserId
+        
+        // Show delete confirmation dialog
+        val dialog = DeleteConfirmationDialog.newInstance(messageId, isOwnMessage)
+        dialog.show(supportFragmentManager, "DeleteConfirmationDialog")
     }
     
     /**
