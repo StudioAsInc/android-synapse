@@ -225,10 +225,12 @@ class ChatAdapter(
     }
 
     // Error Message ViewHolder
-    class ErrorViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
+    class ErrorViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val errorMessageText: TextView = itemView.findViewById(R.id.error_message_text)
         val retryText: TextView = itemView.findViewById(R.id.retry_text)
         val errorIcon: ImageView = itemView.findViewById(R.id.error_icon)
+        val messageTime: TextView? = itemView.findViewById(R.id.date)
+        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
     }
 
     // Loading More ViewHolder
