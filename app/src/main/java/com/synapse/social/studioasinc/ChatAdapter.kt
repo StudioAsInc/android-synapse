@@ -225,18 +225,20 @@ class ChatAdapter(
 
     // Base ViewHolder class
     abstract class BaseMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
-        val forwardedIndicator: LinearLayout? = itemView.findViewById(R.id.forwardedIndicator)
-        val editedIndicator: TextView? = itemView.findViewById(R.id.editedIndicator)
-        val messageTime: TextView? = itemView.findViewById(R.id.date)
-        val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
-        val replyLayout: com.google.android.material.card.MaterialCardView? = itemView.findViewById(R.id.mRepliedMessageLayout)
-        val replyText: TextView? = itemView.findViewById(R.id.mRepliedMessageLayoutMessage)
-        val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
-        val messageLayout: FrameLayout? = itemView.findViewById(R.id.message_layout)
-        val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
-        val deletedMessagePlaceholder: LinearLayout? = itemView.findViewById(R.id.deletedMessagePlaceholder)
-        val messageContentContainer: LinearLayout? = itemView.findViewById(R.id.messageContentContainer)
+        val senderUsername: TextView? = try { itemView.findViewById(R.id.senderUsername) } catch (e: ClassCastException) { null }
+        val forwardedIndicator: LinearLayout? = try { itemView.findViewById(R.id.forwardedIndicator) } catch (e: ClassCastException) { null }
+        val editedIndicator: TextView? = try { itemView.findViewById(R.id.editedIndicator) } catch (e: ClassCastException) { null }
+        val messageTime: TextView? = try { itemView.findViewById(R.id.date) } catch (e: ClassCastException) { null }
+        val messageStatus: ImageView? = try { itemView.findViewById(R.id.message_state) } catch (e: ClassCastException) { null }
+        val replyLayout: com.google.android.material.card.MaterialCardView? = try { itemView.findViewById(R.id.mRepliedMessageLayout) } catch (e: ClassCastException) { null }
+        val replyUsername: TextView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutUsername) } catch (e: ClassCastException) { null }
+        val replyText: TextView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutMessage) } catch (e: ClassCastException) { null }
+        val replyImage: ImageView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutImage) } catch (e: ClassCastException) { null }
+        val messageBubble: LinearLayout? = try { itemView.findViewById(R.id.messageBG) } catch (e: ClassCastException) { null }
+        val messageLayout: FrameLayout? = try { itemView.findViewById(R.id.message_layout) } catch (e: ClassCastException) { null }
+        val bodyLayout: LinearLayout? = try { itemView.findViewById(R.id.body) } catch (e: ClassCastException) { null }
+        val deletedMessagePlaceholder: LinearLayout? = try { itemView.findViewById(R.id.deletedMessagePlaceholder) } catch (e: ClassCastException) { null }
+        val messageContentContainer: LinearLayout? = try { itemView.findViewById(R.id.messageContentContainer) } catch (e: ClassCastException) { null }
     }
 
     // Text Message ViewHolder
@@ -478,11 +480,70 @@ class ChatAdapter(
         
         // Handle reply layout
         holder.replyLayout?.let { replyLayout ->
-            val repliedMessageId = messageData["replied_message_id"]?.toString()
-            if (!repliedMessageId.isNullOrEmpty() && repliedMessagesCache.containsKey(repliedMessageId)) {
-                val repliedMessage = repliedMessagesCache[repliedMessageId]
-                holder.replyText?.text = repliedMessage?.get("message_text")?.toString() ?: "Message"
-                replyLayout.visibility = View.VISIBLE
+            val repliedMessageId = messageData["replied_message_id"]?.toString() 
+                ?: messageData["reply_to_id"]?.toString()
+            
+            if (!repliedMessageId.isNullOrEmpty()) {
+                // Try to find the replied message in the current data list
+                val repliedMessage = repliedMessagesCache[repliedMessageId] 
+                    ?: data.find { it["id"]?.toString() == repliedMessageId }
+                
+                if (repliedMessage != null) {
+                    // Set reply username
+                    val replySenderId = repliedMessage["sender_id"]?.toString() 
+                        ?: repliedMessage["uid"]?.toString()
+                    val replyUsername = if (replySenderId == myUid) {
+                        "You"
+                    } else if (isGroupChat && userNamesMap.containsKey(replySenderId)) {
+                        userNamesMap[replySenderId] ?: "User"
+                    } else {
+                        secondUserName.ifEmpty { "User" }
+                    }
+                    holder.replyUsername?.text = replyUsername
+                    
+                    // Set reply message text
+                    val replyText = repliedMessage["content"]?.toString() 
+                        ?: repliedMessage["message_text"]?.toString() 
+                        ?: "Message"
+                    holder.replyText?.text = replyText
+                    
+                    // Handle reply image preview if message has attachments
+                    val attachments = repliedMessage["attachments"] as? ArrayList<HashMap<String, Any?>>
+                    val firstAttachment = attachments?.firstOrNull()
+                    val attachmentUrl = firstAttachment?.get("url")?.toString()
+                    val attachmentType = firstAttachment?.get("type")?.toString()
+                    
+                    if (!attachmentUrl.isNullOrEmpty() && attachmentType == "image") {
+                        holder.replyImage?.visibility = View.VISIBLE
+                        context?.let { ctx ->
+                            Glide.with(ctx)
+                                .load(attachmentUrl)
+                                .transform(RoundedCorners(8))
+                                .placeholder(R.drawable.ph_imgbluredsqure)
+                                .error(R.drawable.ph_imgbluredsqure)
+                                .into(holder.replyImage!!)
+                        }
+                    } else {
+                        holder.replyImage?.visibility = View.GONE
+                    }
+                    
+                    // Set click listener to scroll to replied message
+                    replyLayout.setOnClickListener {
+                        val position = data.indexOfFirst { it["id"]?.toString() == repliedMessageId }
+                        if (position != -1) {
+                            listener.onReplyClick(repliedMessageId, replyText, replyUsername)
+                        }
+                    }
+                    
+                    replyLayout.visibility = View.VISIBLE
+                } else {
+                    // Replied message not found - show placeholder
+                    holder.replyUsername?.text = "Unknown"
+                    holder.replyText?.text = "Message not available"
+                    holder.replyImage?.visibility = View.GONE
+                    replyLayout.setOnClickListener(null)
+                    replyLayout.visibility = View.VISIBLE
+                }
             } else {
                 replyLayout.visibility = View.GONE
             }

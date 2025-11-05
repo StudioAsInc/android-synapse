@@ -672,8 +672,8 @@ class ChatViewModel : ViewModel() {
         // Initialize Realtime service
         realtimeService = SupabaseRealtimeService()
         
-        // Initialize PreferencesManager
-        preferencesManager = PreferencesManager(context)
+        // Initialize PreferencesManager (use application context to ensure singleton)
+        preferencesManager = PreferencesManager.getInstance(context.applicationContext)
         
         // Initialize TypingIndicatorManager
         typingIndicatorManager = TypingIndicatorManager(

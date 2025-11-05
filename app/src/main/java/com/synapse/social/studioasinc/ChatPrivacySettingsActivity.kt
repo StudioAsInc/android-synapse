@@ -50,7 +50,7 @@ class ChatPrivacySettingsActivity : AppCompatActivity() {
     }
     
     private fun initializePreferencesManager() {
-        preferencesManager = PreferencesManager(this)
+        preferencesManager = PreferencesManager.getInstance(this)
     }
     
     private fun setupClickListeners() {

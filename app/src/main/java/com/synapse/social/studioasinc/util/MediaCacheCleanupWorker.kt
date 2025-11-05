@@ -29,14 +29,18 @@ class MediaCacheCleanupWorker(
         fun schedulePeriodicCleanup(context: Context) {
             val constraints = Constraints.Builder()
                 .setRequiresBatteryNotLow(true)
-                .setRequiresDeviceIdle(true) // Run when device is idle
+                // Removed setRequiresDeviceIdle(true) because it conflicts with backoff criteria
                 .build()
             
             val cleanupRequest = PeriodicWorkRequestBuilder<MediaCacheCleanupWorker>(
                 CLEANUP_INTERVAL_HOURS, TimeUnit.HOURS
             )
                 .setConstraints(constraints)
-                // Note: Cannot set backoff criteria on idle mode jobs
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
                 .build()
             
             WorkManager.getInstance(context)

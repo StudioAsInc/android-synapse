@@ -22,8 +22,10 @@ private val Context.chatPreferencesDataStore: DataStore<Preferences> by preferen
  * Handles privacy settings for read receipts and typing indicators.
  * 
  * Requirements: 5.1, 5.4
+ * 
+ * IMPORTANT: Always pass applicationContext to avoid multiple DataStore instances
  */
-class PreferencesManager(private val context: Context) {
+class PreferencesManager private constructor(private val context: Context) {
     
     companion object {
         private const val TAG = "PreferencesManager"
@@ -35,6 +37,20 @@ class PreferencesManager(private val context: Context) {
         // Default values
         private const val DEFAULT_SEND_READ_RECEIPTS = true
         private const val DEFAULT_SHOW_TYPING_INDICATORS = true
+        
+        // Singleton instance
+        @Volatile
+        private var INSTANCE: PreferencesManager? = null
+        
+        /**
+         * Get singleton instance of PreferencesManager.
+         * Always uses application context to avoid multiple DataStore instances.
+         */
+        fun getInstance(context: Context): PreferencesManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: PreferencesManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
     
     // Use the singleton DataStore instance

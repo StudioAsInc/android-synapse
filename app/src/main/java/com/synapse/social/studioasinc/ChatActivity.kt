@@ -121,13 +121,19 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             return
         }
 
-        initialize()
-        initializeLogic()
-        loadChatData()
-        setupRealtimeSubscription()
-        
-        // Register lifecycle observer for app backgrounding
-        lifecycle.addObserver(this)
+        try {
+            initialize()
+            initializeLogic()
+            loadChatData()
+            setupRealtimeSubscription()
+            
+            // Register lifecycle observer for app backgrounding
+            lifecycle.addObserver(this)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatActivity", "Failed to initialize ChatActivity", e)
+            Toast.makeText(this, "Failed to initialize chat", Toast.LENGTH_SHORT).show()
+            finish()
+        }
     }
 
     private fun initialize() {
