@@ -63,6 +63,22 @@ class MediaPickerBottomSheet : BottomSheetDialogFragment() {
 
     /**
      * Listener interface for media selection callbacks
+     * 
+     * Integration with MediaPreviewActivity:
+     * When onImagesSelected is called with multiple images, the calling activity
+     * should launch MediaPreviewActivity to allow the user to preview, add captions,
+     * and confirm before uploading.
+     * 
+     * Example:
+     * ```
+     * override fun onImagesSelected(uris: List<Uri>) {
+     *     val intent = Intent(this, MediaPreviewActivity::class.java).apply {
+     *         putExtra(MediaPreviewActivity.EXTRA_CHAT_ID, chatId)
+     *         putParcelableArrayListExtra(MediaPreviewActivity.EXTRA_MEDIA_URIS, ArrayList(uris))
+     *     }
+     *     startActivityForResult(intent, REQUEST_MEDIA_PREVIEW)
+     * }
+     * ```
      */
     interface MediaPickerListener {
         fun onImagesSelected(uris: List<Uri>)

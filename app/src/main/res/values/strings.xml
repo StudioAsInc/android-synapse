@@ -403,4 +403,20 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="media_picker_option_audio">Audio</string>
     <string name="media_picker_option_documents">Documents</string>
     <string name="media_picker_option_icon">Media option icon</string>
+
+    <!-- Media Preview -->
+    <string name="media_preview_title">Preview</string>
+    <string name="media_preview_title_with_count">Preview (%1$d/%2$d)</string>
+    <string name="media_preview_upload_info">Upload Information</string>
+    <string name="media_preview_total_size">Total Size</string>
+    <string name="media_preview_estimated_time">Estimated Time</string>
+    <string name="media_preview_caption_hint">Add a caption (optional)</string>
+    <string name="media_preview_add_more">Add More</string>
+    <string name="media_preview_file_too_large">Large File Warning</string>
+    <string name="media_preview_warning_large_file">This file is larger than 50MB and may take a while to upload. Continue?</string>
+    <string name="media_preview_warning_large_file_detailed">Total size: %1$s\nEstimated upload time: %2$s\n\nThis may take a while to upload. Continue?</string>
+    <string name="media_preview_error_no_files">No files selected</string>
+    <string name="media_preview_error_file_too_large">File exceeds maximum size of %1$s</string>
+    <string name="media_preview_error_file_not_accessible">Unable to access file</string>
+    <string name="media_preview_error_file_validation">Error validating file</string>
 </resources>

@@ -277,13 +277,17 @@
     - Define `onDocumentSelected(uri: Uri)` callback
     - _Requirements: 1.1_
 
-- [-] 12. Create MediaPreviewScreen for pre-send preview
+- [ ] 12. Create MediaPreviewScreen for pre-send preview
 
 
 
 
 
-  - [ ] 12.1 Create MediaPreviewScreen layout
+
+
+  - [x] 12.1 Create MediaPreviewScreen layout
+
+
     - Create RecyclerView with GridLayoutManager (2 columns)
     - Add caption EditText at bottom
     - Add send button (FAB)
@@ -291,12 +295,16 @@
     - Show individual thumbnails for each selected file
     - _Requirements: 2.2, 11.1, 11.3, 11.4_
 
+
+
   - [ ] 12.2 Implement preview functionality
     - Implement `setupMediaGrid()` to display selected files
     - Implement `setupCaptionInput()` for text caption
     - Implement `calculateTotalSize()` for all files
     - Implement `estimateUploadTime()` based on file sizes
     - Allow removing individual files from selection
+
+
     - Allow adding more files (up to limit)
     - _Requirements: 11.2, 11.3, 11.4_
 
