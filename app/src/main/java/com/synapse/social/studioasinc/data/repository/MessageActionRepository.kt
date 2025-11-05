@@ -369,38 +369,11 @@ class MessageActionRepository(private val context: Context) {
         val result = RetryHandler.executeWithRetryResult { attemptNumber ->
             Log.d(TAG, "Deleting message for everyone: $messageId - Attempt: $attemptNumber")
 
-            // Get the message to check if it has media attachments
-            val messageResult = client.from("messages")
-                .select(columns = Columns.raw("media_url")) {
-                    filter { eq("id", messageId) }
-                    limit(1)
-                }
-                .decodeList<JsonObject>()
-
-            if (messageResult.isEmpty()) {
-                throw Exception("Message not found")
-            }
-
-            val message = messageResult.first()
-            val mediaUrl = message["media_url"]?.toString()?.removeSurrounding("\"")
-
-            // Update message to mark as deleted
-            val updateData = mutableMapOf<String, Any?>(
-                "is_deleted" to true,
-                "delete_for_everyone" to true,
-                "updated_at" to System.currentTimeMillis(),
-                "content" to "" // Clear content for privacy
-            )
-
-            // Remove media URL if present
-            if (!mediaUrl.isNullOrEmpty() && mediaUrl != "null") {
-                updateData["media_url"] = null
-            }
-
-            val updateResult = databaseService.update("messages", updateData, "id", messageId)
-            if (updateResult.isFailure) {
-                Log.e(TAG, "Failed to delete message", updateResult.exceptionOrNull())
-                throw updateResult.exceptionOrNull() ?: Exception("Failed to delete message")
+            // Use the chat service to delete the message
+            val deleteResult = chatService.deleteMessage(messageId, deleteForEveryone = true)
+            if (deleteResult.isFailure) {
+                Log.e(TAG, "Failed to delete message", deleteResult.exceptionOrNull())
+                throw deleteResult.exceptionOrNull() ?: Exception("Failed to delete message")
             }
 
             Log.d(TAG, "Message deleted for everyone successfully - MessageId: $messageId")

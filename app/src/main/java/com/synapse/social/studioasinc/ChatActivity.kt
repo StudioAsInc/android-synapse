@@ -404,13 +404,8 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                 result.fold(
                     onSuccess = { messages ->
                         messagesList.clear()
-                        // Convert messages to HashMap format for adapter
-                        // Sort by created_at to ensure proper chronological order (oldest first)
-                        val sortedMessages = messages.sortedBy { 
-                            (it["created_at"] as? Long) ?: 0L 
-                        }
-                        
-                        sortedMessages.forEach { message ->
+                        // Messages are already sorted by created_at ascending (oldest first) from the service
+                        messages.forEach { message ->
                             val messageMap = HashMap<String, Any?>()
                             messageMap["id"] = message["id"]
                             messageMap["chat_id"] = message["chat_id"]
@@ -1582,14 +1577,24 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     /**
      * Delete a message
      */
-    private fun deleteMessage(messageId: String, deleteForEveryone: Boolean) {
+    fun deleteMessage(messageId: String, deleteForEveryone: Boolean) {
         lifecycleScope.launch {
             try {
-                val result = chatService.deleteMessage(messageId)
+                val result = chatService.deleteMessage(messageId, deleteForEveryone)
                 result.fold(
                     onSuccess = {
-                        Toast.makeText(this@ChatActivity, "Message deleted", Toast.LENGTH_SHORT).show()
-                        // Update will come through realtime
+                        val message = if (deleteForEveryone) "Message deleted for everyone" else "Message deleted for you"
+                        Toast.makeText(this@ChatActivity, message, Toast.LENGTH_SHORT).show()
+                        
+                        // If deleting for me only, remove from local list immediately
+                        if (!deleteForEveryone) {
+                            val position = messagesList.indexOfFirst { it["id"]?.toString() == messageId }
+                            if (position != -1) {
+                                messagesList.removeAt(position)
+                                chatAdapter?.notifyItemRemoved(position)
+                            }
+                        }
+                        // If deleting for everyone, update will come through realtime
                     },
                     onFailure = { error ->
                         showError("Failed to delete message: ${error.message}")

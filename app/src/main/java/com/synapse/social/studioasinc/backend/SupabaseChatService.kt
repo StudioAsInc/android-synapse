@@ -367,7 +367,7 @@ class SupabaseChatService {
                             eq("chat_id", chatId)
                             eq("is_deleted", false)
                         }
-
+                        order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.ASCENDING) // Order by created_at ascending (oldest first)
                         limit(limit.toLong())
                     }
                     .decodeList<JsonObject>()
@@ -376,7 +376,7 @@ class SupabaseChatService {
                     jsonObject.toMap().mapValues { (_, value) ->
                         value.toString().removeSurrounding("\"")
                     }
-                }.reversed() // Reverse to show oldest first
+                }
                 
                 Result.success(messages)
             } catch (e: Exception) {
@@ -598,10 +598,16 @@ class SupabaseChatService {
     
     /**
      * Delete a message
+     * @param messageId The message ID to delete
+     * @param deleteForEveryone If true, deletes for all users. If false, only marks as deleted for current user
      */
-    suspend fun deleteMessage(messageId: String): Result<Unit> {
+    suspend fun deleteMessage(messageId: String, deleteForEveryone: Boolean = true): Result<Unit> {
         return try {
-            val updateData = mapOf("is_deleted" to true)
+            val updateData = mapOf(
+                "is_deleted" to true,
+                "delete_for_everyone" to deleteForEveryone,
+                "deleted_at" to System.currentTimeMillis()
+            )
             databaseService.update("messages", updateData, "id", messageId)
         } catch (e: Exception) {
             Result.failure(e)
