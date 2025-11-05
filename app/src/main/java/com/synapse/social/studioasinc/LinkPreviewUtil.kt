@@ -36,6 +36,20 @@ object LinkPreviewUtil {
             matcher.group()
         } else null
     }
+    
+    /**
+     * Extract domain from URL
+     */
+    fun extractDomain(url: String?): String? {
+        if (url.isNullOrEmpty()) return null
+        
+        return try {
+            val uri = java.net.URI(url)
+            uri.host
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     suspend fun fetchPreview(url: String): Result<LinkData> = withContext(Dispatchers.IO) {
         try {

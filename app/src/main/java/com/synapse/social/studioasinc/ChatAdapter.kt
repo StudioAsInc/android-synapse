@@ -21,10 +21,13 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.chat.interfaces.ChatAdapterListener
-import com.synapse.social.studioasinc.util.LinkPreviewUtil
 import com.synapse.social.studioasinc.util.MessageAnimations
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ChatAdapter(
     private val data: ArrayList<HashMap<String, Any?>>,
@@ -56,6 +59,9 @@ class ChatAdapter(
     // Supabase services
     private val authService = SupabaseAuthenticationService()
     private val databaseService = SupabaseDatabaseService()
+    
+    // Link preview cache to avoid refetching
+    private val linkPreviewCache = HashMap<String, LinkPreviewUtil.LinkData>()
 
     // Setter methods for configuration
     fun setSecondUserAvatar(url: String) { secondUserAvatarUrl = url }
@@ -98,7 +104,9 @@ class ChatAdapter(
                 }
             }
             else -> {
-                val messageText = item["message_text"]?.toString() ?: ""
+                val messageText = item["content"]?.toString() 
+                    ?: item["message_text"]?.toString() 
+                    ?: ""
                 if (LinkPreviewUtil.extractUrl(messageText) != null) {
                     Log.d(TAG, "Link preview message detected, returning VIEW_TYPE_LINK_PREVIEW")
                     VIEW_TYPE_LINK_PREVIEW
@@ -650,20 +658,72 @@ class ChatAdapter(
         val url = LinkPreviewUtil.extractUrl(messageText)
         if (url != null) {
             holder.linkPreviewCard.visibility = View.VISIBLE
-            holder.linkUrl.text = LinkPreviewUtil.extractDomain(url) ?: url
             
             // Set click listener to open URL
             holder.linkPreviewCard.setOnClickListener {
                 listener.onAttachmentClick(url, "link")
             }
             
-            // For now, show basic preview with domain
-            // In a full implementation, you would fetch metadata from the URL
-            holder.linkTitle.text = LinkPreviewUtil.extractDomain(url) ?: "Link"
-            holder.linkDescription.text = url
-            holder.linkImage.visibility = View.GONE
+            // Check cache first
+            if (linkPreviewCache.containsKey(url)) {
+                val cachedData = linkPreviewCache[url]!!
+                displayLinkPreview(holder, cachedData)
+            } else {
+                // Show loading state with basic info
+                holder.linkTitle.text = "Loading..."
+                holder.linkDescription.text = url
+                holder.linkUrl.text = LinkPreviewUtil.extractDomain(url) ?: url
+                holder.linkImage.visibility = View.GONE
+                
+                // Fetch metadata asynchronously
+                CoroutineScope(Dispatchers.Main).launch {
+                    val result = LinkPreviewUtil.fetchPreview(url)
+                    result.onSuccess { linkData ->
+                        // Cache the result
+                        linkPreviewCache[url] = linkData
+                        
+                        // Only update if this holder is still showing the same URL
+                        if (position < data.size) {
+                            val currentMessageText = data[position]["content"]?.toString() 
+                                ?: data[position]["message_text"]?.toString() 
+                                ?: ""
+                            val currentUrl = LinkPreviewUtil.extractUrl(currentMessageText)
+                            if (currentUrl == url) {
+                                displayLinkPreview(holder, linkData)
+                            }
+                        }
+                    }.onFailure {
+                        // On error, show basic preview
+                        holder.linkTitle.text = LinkPreviewUtil.extractDomain(url) ?: "Link"
+                        holder.linkDescription.text = url
+                        holder.linkUrl.text = LinkPreviewUtil.extractDomain(url) ?: url
+                        holder.linkImage.visibility = View.GONE
+                    }
+                }
+            }
         } else {
             holder.linkPreviewCard.visibility = View.GONE
+        }
+    }
+    
+    private fun displayLinkPreview(holder: LinkPreviewViewHolder, linkData: LinkPreviewUtil.LinkData) {
+        holder.linkTitle.text = linkData.title ?: linkData.domain ?: "Link"
+        holder.linkDescription.text = linkData.description ?: linkData.url
+        holder.linkUrl.text = linkData.domain ?: linkData.url
+        
+        // Load and display image if available
+        if (!linkData.imageUrl.isNullOrEmpty()) {
+            holder.linkImage.visibility = View.VISIBLE
+            context?.let { ctx ->
+                Glide.with(ctx)
+                    .load(linkData.imageUrl)
+                    .centerCrop()
+                    .placeholder(R.drawable.ph_imgbluredsqure)
+                    .error(R.drawable.ph_imgbluredsqure)
+                    .into(holder.linkImage)
+            }
+        } else {
+            holder.linkImage.visibility = View.GONE
         }
     }
 

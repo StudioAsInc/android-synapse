@@ -111,7 +111,10 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
      * Set up message preview text
      */
     private fun setupMessagePreview() {
-        val messageText = messageData?.get("message_text") as? String ?: ""
+        // Support both content (Supabase) and message_text (legacy) field names
+        val messageText = messageData?.get("content") as? String 
+            ?: messageData?.get("message_text") as? String 
+            ?: ""
         binding.messagePreview.text = messageText
     }
 
@@ -143,9 +146,15 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
 
         val actions = mutableListOf<MessageAction>()
         
-        val senderId = messageData["sender_id"] as? String
-        val messageText = messageData["message_text"] as? String ?: ""
-        val messageType = messageData["message_type"] as? String
+        // Support both sender_id (Supabase) and uid (legacy) field names
+        val senderId = messageData["sender_id"] as? String 
+            ?: messageData["uid"] as? String
+        // Support both content (Supabase) and message_text (legacy) field names
+        val messageText = messageData["content"] as? String 
+            ?: messageData["message_text"] as? String 
+            ?: ""
+        val messageType = messageData["message_type"] as? String 
+            ?: messageData["TYPE"] as? String
         val isDeleted = messageData["is_deleted"] as? Boolean ?: false
         val isSystemMessage = messageType == "system"
         val isOwnMessage = senderId == currentUserId
@@ -216,8 +225,13 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
      * Handle action selection
      */
     private fun onActionSelected(action: MessageAction) {
-        val messageId = messageData?.get("id") as? String ?: return
-        val messageText = messageData?.get("message_text") as? String ?: ""
+        val messageId = messageData?.get("id") as? String 
+            ?: messageData?.get("key") as? String 
+            ?: return
+        // Support both content (Supabase) and message_text (legacy) field names
+        val messageText = messageData?.get("content") as? String 
+            ?: messageData?.get("message_text") as? String 
+            ?: ""
         val senderName = messageData?.get("sender_name") as? String ?: "User"
 
         when (action.id) {

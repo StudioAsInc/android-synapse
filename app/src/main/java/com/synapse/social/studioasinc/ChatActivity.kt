@@ -33,6 +33,7 @@ import com.synapse.social.studioasinc.chat.MessageActionsBottomSheet
 import com.synapse.social.studioasinc.chat.DeleteConfirmationDialog
 import com.synapse.social.studioasinc.chat.EditMessageDialog
 import com.synapse.social.studioasinc.chat.EditHistoryDialog
+import com.synapse.social.studioasinc.chat.SwipeToReplyCallback
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
@@ -122,6 +123,9 @@ class ChatActivity : AppCompatActivity() {
                     stackFromEnd = true
                 }
                 setHasFixedSize(true)
+                
+                // Setup swipe-to-reply gesture
+                setupSwipeToReply(this)
             }
             
             // Initialize ChatAdapter with full listener implementation
@@ -532,6 +536,39 @@ class ChatActivity : AppCompatActivity() {
                 kotlinx.coroutines.delay(2000) // Poll every 2 seconds
             }
         }
+    }
+
+    /**
+     * Setup swipe-to-reply gesture on RecyclerView
+     */
+    private fun setupSwipeToReply(recyclerView: RecyclerView) {
+        val swipeToReplyCallback = SwipeToReplyCallback(this) { position ->
+            // Get message data at position
+            val messageData = messagesList.getOrNull(position) ?: return@SwipeToReplyCallback
+            
+            // Extract message details
+            val messageId = messageData["id"]?.toString() 
+                ?: messageData["key"]?.toString() 
+                ?: return@SwipeToReplyCallback
+            val messageText = messageData["content"]?.toString() 
+                ?: messageData["message_text"]?.toString() 
+                ?: ""
+            
+            // Get sender name
+            val senderId = messageData["sender_id"]?.toString() 
+                ?: messageData["uid"]?.toString()
+            val senderName = if (senderId == currentUserId) {
+                "You"
+            } else {
+                otherUserData?.get("username")?.toString() ?: "User"
+            }
+            
+            // Prepare reply
+            prepareReply(messageId, messageText, senderName)
+        }
+        
+        val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(swipeToReplyCallback)
+        itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
     /**
