@@ -217,4 +217,8 @@
     <color name="password_weak">#F44336</color>
     <color name="password_fair">#FF9800</color>
     <color name="password_strong">#4CAF50</color>
+    
+    <!-- Delete Dialog Colors -->
+    <color name="warning_color">#FF9800</color>
+    <color name="error_color">#BA1A1A</color>
 </resources>

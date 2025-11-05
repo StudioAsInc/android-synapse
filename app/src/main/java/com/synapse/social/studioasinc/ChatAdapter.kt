@@ -22,6 +22,7 @@ import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.chat.interfaces.ChatAdapterListener
 import com.synapse.social.studioasinc.util.LinkPreviewUtil
+import com.synapse.social.studioasinc.util.MessageAnimations
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -167,6 +168,8 @@ class ChatAdapter(
     // Base ViewHolder class
     abstract class BaseMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
+        val forwardedIndicator: LinearLayout? = itemView.findViewById(R.id.forwardedIndicator)
+        val editedIndicator: TextView? = itemView.findViewById(R.id.editedIndicator)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
         val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
         val replyLayout: LinearLayout? = itemView.findViewById(R.id.mRepliedMessageLayout)
@@ -174,6 +177,8 @@ class ChatAdapter(
         val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
         val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
         val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
+        val deletedMessagePlaceholder: LinearLayout? = itemView.findViewById(R.id.deletedMessagePlaceholder)
+        val messageContentContainer: LinearLayout? = itemView.findViewById(R.id.messageContentContainer)
     }
 
     // Text Message ViewHolder
@@ -242,6 +247,93 @@ class ChatAdapter(
             ?: ""
         val isMyMessage = msgUid == myUid
         
+        // Check if message is deleted
+        val isDeleted = messageData["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val deleteForEveryone = messageData["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
+        
+        // Handle deleted message display
+        if (isDeleted || deleteForEveryone) {
+            // Show deleted placeholder, hide content
+            holder.deletedMessagePlaceholder?.visibility = View.VISIBLE
+            holder.messageContentContainer?.visibility = View.GONE
+            
+            // Keep timestamp and sender info visible but hide message status
+            holder.messageStatus?.visibility = View.GONE
+            
+            // Disable long-press for deleted messages
+            holder.itemView.setOnLongClickListener(null)
+            holder.itemView.isLongClickable = false
+            
+            // Still allow regular click for navigation
+            holder.itemView.setOnClickListener {
+                val messageId = messageData["id"]?.toString() 
+                    ?: messageData["key"]?.toString() 
+                    ?: ""
+                listener.onMessageClick(messageId, position)
+            }
+            
+            // Set message layout alignment
+            holder.messageLayout?.let { layout ->
+                val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+                layoutParams?.let { params ->
+                    params.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                    layout.layoutParams = params
+                }
+            }
+            
+            // Set message bubble background for deleted messages
+            holder.messageBubble?.let { bubble ->
+                if (isMyMessage) {
+                    bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
+                } else {
+                    bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
+                }
+            }
+            
+            // Set message time
+            holder.messageTime?.let { timeView ->
+                val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
+                    ?: messageData["push_date"]?.toString()?.toLongOrNull() 
+                    ?: System.currentTimeMillis()
+                timeView.text = formatMessageTime(timestamp)
+            }
+            
+            // Handle username display for group chats
+            holder.senderUsername?.let { usernameView ->
+                if (isGroupChat && !isMyMessage && userNamesMap.containsKey(msgUid)) {
+                    usernameView.visibility = View.VISIBLE
+                    usernameView.text = userNamesMap[msgUid]
+                } else {
+                    usernameView.visibility = View.GONE
+                }
+            }
+            
+            // Apply dynamic vertical spacing
+            holder.bodyLayout?.let { bodyLayout ->
+                val layoutParams = bodyLayout.layoutParams as? ViewGroup.MarginLayoutParams
+                layoutParams?.let { params ->
+                    val context = holder.itemView.context
+                    val spacing = if (position > 0 && previousSenderId != null && previousSenderId != msgUid) {
+                        context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing_sender_change)
+                    } else {
+                        context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing)
+                    }
+                    params.topMargin = spacing
+                    bodyLayout.layoutParams = params
+                }
+            }
+            
+            // Update previous sender ID
+            previousSenderId = msgUid
+            
+            // Early return - don't process normal message content
+            return
+        }
+        
+        // Message is not deleted - show content, hide placeholder
+        holder.deletedMessagePlaceholder?.visibility = View.GONE
+        holder.messageContentContainer?.visibility = View.VISIBLE
+        
         // Apply dynamic vertical spacing based on sender changes
         holder.bodyLayout?.let { bodyLayout ->
             val layoutParams = bodyLayout.layoutParams as? ViewGroup.MarginLayoutParams
@@ -272,16 +364,40 @@ class ChatAdapter(
             }
         }
         
+        // Handle forwarded indicator display
+        holder.forwardedIndicator?.let { forwardedView ->
+            val forwardedFromMessageId = messageData["forwarded_from_message_id"]?.toString()
+            if (!forwardedFromMessageId.isNullOrEmpty()) {
+                forwardedView.visibility = View.VISIBLE
+            } else {
+                forwardedView.visibility = View.GONE
+            }
+        }
+        
         // Set message time - support both old and new field names
         holder.messageTime?.let { timeView ->
             val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
                 ?: messageData["push_date"]?.toString()?.toLongOrNull() 
                 ?: System.currentTimeMillis()
-            
-            // Show edited indicator if message was edited
+            timeView.text = formatMessageTime(timestamp)
+        }
+        
+        // Handle edited indicator display
+        holder.editedIndicator?.let { editedView ->
             val isEdited = messageData["is_edited"]?.toString()?.toBooleanStrictOrNull() ?: false
-            val timeText = formatMessageTime(timestamp) + if (isEdited) " (edited)" else ""
-            timeView.text = timeText
+            if (isEdited) {
+                editedView.visibility = View.VISIBLE
+                // Add click listener to show edit history dialog
+                editedView.setOnClickListener {
+                    val messageId = messageData["id"]?.toString() 
+                        ?: messageData["key"]?.toString() 
+                        ?: ""
+                    listener.onEditHistoryClick(messageId)
+                }
+            } else {
+                editedView.visibility = View.GONE
+                editedView.setOnClickListener(null)
+            }
         }
         
         // Set message status for sent messages - support both field names
@@ -357,6 +473,14 @@ class ChatAdapter(
             val messageId = messageData["id"]?.toString() 
                 ?: messageData["key"]?.toString() 
                 ?: ""
+            
+            // Trigger haptic feedback on long-press
+            holder.itemView.performHapticFeedback(
+                android.view.HapticFeedbackConstants.LONG_PRESS,
+                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+            )
+            
+            // Call listener and return true to consume the event
             listener.onMessageLongClick(messageId, position)
         }
     }
@@ -670,5 +794,49 @@ class ChatAdapter(
         yesterday.add(Calendar.DAY_OF_YEAR, -1)
         
         return isSameDay(messageTime, yesterday)
+    }
+
+    /**
+     * Update a message with fade animation (for edited messages)
+     */
+    fun updateMessageWithAnimation(position: Int, newMessageData: HashMap<String, Any?>) {
+        if (position >= 0 && position < data.size) {
+            data[position] = newMessageData
+            notifyItemChanged(position)
+        }
+    }
+
+    /**
+     * Remove a message with slide-out animation (for deleted messages)
+     */
+    fun removeMessageWithAnimation(position: Int, recyclerView: RecyclerView) {
+        if (position >= 0 && position < data.size) {
+            val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
+            viewHolder?.itemView?.let { view ->
+                val currentUser = authService.getCurrentUser()
+                val myUid = currentUser?.id ?: ""
+                val messageData = data[position]
+                val msgUid = messageData["sender_id"]?.toString() 
+                    ?: messageData["uid"]?.toString() 
+                    ?: ""
+                val isMyMessage = msgUid == myUid
+                
+                MessageAnimations.applyDeletedMessageAnimation(view, isMyMessage) {
+                    data.removeAt(position)
+                    notifyItemRemoved(position)
+                }
+            } ?: run {
+                // If view is not visible, remove without animation
+                data.removeAt(position)
+                notifyItemRemoved(position)
+            }
+        }
+    }
+
+    /**
+     * Scroll to a message and highlight it
+     */
+    fun scrollToMessageWithHighlight(recyclerView: RecyclerView, position: Int) {
+        MessageAnimations.scrollToMessageWithHighlight(recyclerView, position)
     }
 }

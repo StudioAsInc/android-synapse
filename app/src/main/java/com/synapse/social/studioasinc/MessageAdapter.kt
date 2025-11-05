@@ -19,7 +19,8 @@ import java.util.*
 class MessageAdapter(
     private val messages: ArrayList<HashMap<String, Any?>>,
     private val onMessageClick: ((String, Int) -> Unit)? = null,
-    private val onMessageLongClick: ((String, Int) -> Boolean)? = null
+    private val onMessageLongClick: ((String, Int) -> Boolean)? = null,
+    private val onReplyClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     companion object {
@@ -29,11 +30,17 @@ class MessageAdapter(
 
     class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val messageText: TextView = itemView.findViewById(R.id.message_text)
+        val editedIndicator: TextView? = itemView.findViewById(R.id.editedIndicator)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
         val messageStatus: ImageView? = itemView.findViewById(R.id.message_state)
         val messageBubble: LinearLayout? = itemView.findViewById(R.id.messageBG)
         val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
         val bodyLayout: LinearLayout? = itemView.findViewById(R.id.body)
+        
+        // Reply indicator components
+        val repliedMessageLayout: View? = itemView.findViewById(R.id.mRepliedMessageLayout)
+        val repliedUsername: TextView? = itemView.findViewById(R.id.mRepliedMessageLayoutUsername)
+        val repliedMessage: TextView? = itemView.findViewById(R.id.mRepliedMessageLayoutMessage)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -69,11 +76,29 @@ class MessageAdapter(
         val timestamp = message["created_at"]?.toString()?.toLongOrNull()
             ?: message["push_date"]?.toString()?.toLongOrNull()
             ?: System.currentTimeMillis()
+        holder.messageTime?.text = formatMessageTime(timestamp)
         
-        // Show edited indicator if message was edited
+        // Handle edited indicator display
         val isEdited = message["is_edited"]?.toString()?.toBooleanStrictOrNull() ?: false
-        val timeText = formatMessageTime(timestamp) + if (isEdited) " (edited)" else ""
-        holder.messageTime?.text = timeText
+        holder.editedIndicator?.let { editedView ->
+            if (isEdited) {
+                editedView.visibility = View.VISIBLE
+                // Add click listener if callback is provided
+                val messageId = message["id"]?.toString() ?: message["key"]?.toString() ?: ""
+                editedView.setOnClickListener {
+                    // For now, just show a toast since we don't have the full listener interface
+                    // This can be enhanced later when MessageAdapter is fully integrated with ChatAdapterListener
+                    android.widget.Toast.makeText(
+                        holder.itemView.context,
+                        "Edit history feature coming soon",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
+                editedView.visibility = View.GONE
+                editedView.setOnClickListener(null)
+            }
+        }
         
         // Set message status for sent messages
         holder.messageStatus?.let { statusView ->
@@ -131,6 +156,47 @@ class MessageAdapter(
             holder.messageText.setTextColor(context.getColor(R.color.md_theme_onPrimaryContainer))
         } else {
             holder.messageText.setTextColor(context.getColor(R.color.md_theme_onSurfaceVariant))
+        }
+        
+        // Handle reply indicator
+        val repliedMessageId = message["replied_message_id"]?.toString()
+        if (!repliedMessageId.isNullOrEmpty()) {
+            // Find the replied message in the list
+            val repliedMessage = messages.find { 
+                it["id"]?.toString() == repliedMessageId 
+            }
+            
+            if (repliedMessage != null) {
+                holder.repliedMessageLayout?.visibility = View.VISIBLE
+                
+                // Get sender name from replied message
+                val repliedSenderId = repliedMessage["sender_id"]?.toString()
+                    ?: repliedMessage["uid"]?.toString()
+                val repliedSenderName = if (repliedSenderId == SupabaseClient.client.auth.currentUserOrNull()?.id) {
+                    "You"
+                } else {
+                    // In a real implementation, we'd fetch the username
+                    // For now, use a placeholder
+                    "User"
+                }
+                
+                holder.repliedUsername?.text = repliedSenderName
+                
+                // Get message text and truncate to 2 lines
+                val repliedText = repliedMessage["content"]?.toString()
+                    ?: repliedMessage["message_text"]?.toString()
+                    ?: ""
+                holder.repliedMessage?.text = repliedText
+                
+                // Set click listener to scroll to original message
+                holder.repliedMessageLayout?.setOnClickListener {
+                    onReplyClick?.invoke(repliedMessageId)
+                }
+            } else {
+                holder.repliedMessageLayout?.visibility = View.GONE
+            }
+        } else {
+            holder.repliedMessageLayout?.visibility = View.GONE
         }
         
         // Set click listeners - support both id field names

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.synapse.social.studioasinc.BuildConfig
+import com.synapse.social.studioasinc.util.RetryHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -74,51 +75,51 @@ class GeminiAIService(context: Context) {
         if (isRateLimited()) {
             val resetTime = getRateLimitResetTime()
             val minutesRemaining = ((resetTime - System.currentTimeMillis()) / 60000).toInt()
+            Log.w(TAG, "Rate limited - Minutes remaining: $minutesRemaining")
             return@withContext Result.failure(
                 Exception("Rate limit reached. Try again in $minutesRemaining minutes")
             )
         }
 
-        var lastException: Exception? = null
-        var retryDelay = INITIAL_RETRY_DELAY_MS
+        // Use RetryHandler for automatic retry with exponential backoff
+        val retryConfig = RetryHandler.RetryConfig(
+            maxAttempts = MAX_RETRY_ATTEMPTS,
+            initialDelayMs = INITIAL_RETRY_DELAY_MS,
+            maxDelayMs = 4000L,
+            exponentialBase = 2.0
+        )
 
-        // Retry logic with exponential backoff
-        repeat(MAX_RETRY_ATTEMPTS) { attempt ->
-            try {
-                val result = performSummaryRequest(text, maxLength)
+        try {
+            val result = RetryHandler.executeWithRetryResult(retryConfig) { attemptNumber ->
+                Log.d(TAG, "Generating summary - Attempt: $attemptNumber, TextLength: ${text.length}")
                 
-                // Calculate metadata
-                val characterCount = text.length
-                val estimatedReadTime = calculateReadingTime(text)
-                
-                return@withContext Result.success(
+                try {
+                    val summaryText = performSummaryRequest(text, maxLength)
+                    
+                    // Calculate metadata
+                    val characterCount = text.length
+                    val estimatedReadTime = calculateReadingTime(text)
+                    
                     SummaryResult(
-                        summary = result,
+                        summary = summaryText,
                         characterCount = characterCount,
                         estimatedReadTimeMinutes = estimatedReadTime
                     )
-                )
-            } catch (e: RateLimitException) {
-                // Store rate limit reset time
-                val resetTime = System.currentTimeMillis() + (e.retryAfterMinutes * 60 * 1000)
-                prefs.edit().putLong(KEY_RATE_LIMIT_RESET_TIME, resetTime).apply()
-                
-                Log.e(TAG, "Rate limit exceeded. Reset time: $resetTime", e)
-                return@withContext Result.failure(e)
-            } catch (e: Exception) {
-                lastException = e
-                Log.e(TAG, "Summary generation attempt ${attempt + 1} failed", e)
-                
-                if (attempt < MAX_RETRY_ATTEMPTS - 1) {
-                    // Wait before retrying
-                    kotlinx.coroutines.delay(retryDelay)
-                    retryDelay *= 2 // Exponential backoff
+                } catch (e: RateLimitException) {
+                    // Store rate limit reset time
+                    val resetTime = System.currentTimeMillis() + (e.retryAfterMinutes * 60 * 1000)
+                    prefs.edit().putLong(KEY_RATE_LIMIT_RESET_TIME, resetTime).apply()
+                    
+                    Log.e(TAG, "Rate limit exceeded - Reset time: $resetTime, RetryAfter: ${e.retryAfterMinutes}min", e)
+                    // Don't retry rate limit errors
+                    throw e
                 }
             }
+            return@withContext result
+        } catch (e: Exception) {
+            Log.e(TAG, "Summary generation failed after all retries - TextLength: ${text.length}", e)
+            return@withContext Result.failure(e)
         }
-
-        // All retries failed
-        Result.failure(lastException ?: Exception("Failed to generate summary after $MAX_RETRY_ATTEMPTS attempts"))
     }
 
     /**

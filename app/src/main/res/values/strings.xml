@@ -330,4 +330,66 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_ai_summary">AI Summary</string>
+    
+    <!-- Delete Message Dialog -->
+    <string name="warning_icon">Warning icon</string>
+    <string name="delete_message_confirmation">Delete this message?</string>
+    <string name="delete_for_me">Delete for me</string>
+    <string name="delete_for_me_explanation">This message will only be removed from your device. Other participants will still see it.</string>
+    <string name="delete_for_everyone">Delete for everyone</string>
+    <string name="delete_for_everyone_explanation">This message will be removed for all participants in this conversation. This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="message_deleted_successfully">Message deleted successfully</string>
+    <string name="failed_to_delete_message">Failed to delete message. Please try again.</string>
+    
+    <!-- Comprehensive Error Messages for Message Actions -->
+    
+    <!-- Reply Errors -->
+    <string name="error_reply_generic">Unable to reply to this message</string>
+    <string name="error_reply_deleted">This message has been deleted</string>
+    
+    <!-- Forward Errors -->
+    <string name="error_forward_generic">Failed to forward message. Please try again.</string>
+    <string name="error_forward_no_permission">You don\'t have permission to send messages in %1$s</string>
+    <string name="error_forward_partial">Forwarded to %1$d of %2$d conversations</string>
+    <string name="error_forward_no_network">No network connection. Message will be forwarded when online.</string>
+    <string name="success_forward_count">Message forwarded to %1$d conversation(s)</string>
+    
+    <!-- Edit Errors -->
+    <string name="error_edit_generic">Unable to edit message. Please try again.</string>
+    <string name="error_edit_too_old">This message is too old to edit (>48 hours)</string>
+    <string name="error_edit_empty">Message content cannot be empty</string>
+    <string name="error_edit_not_found">Message not found</string>
+    <string name="error_edit_no_network">Edit queued. Will be applied when online.</string>
+    <string name="success_edit">Message edited successfully</string>
+    
+    <!-- Delete Errors -->
+    <string name="error_delete_generic">Failed to delete message. Please try again.</string>
+    <string name="error_delete_already_deleted">Unable to delete for everyone. Message may have already been deleted.</string>
+    <string name="error_delete_no_network">Delete queued. Will be applied when online.</string>
+    <string name="success_delete_for_me">Message deleted for you</string>
+    <string name="success_delete_for_everyone">Message deleted for everyone</string>
+    
+    <!-- AI Summary Errors -->
+    <string name="error_ai_summary_generic">Unable to generate summary. Please try again.</string>
+    <string name="error_ai_summary_unavailable">AI service is temporarily unavailable</string>
+    <string name="error_ai_summary_rate_limit">Rate limit reached. Try again in %1$d minutes</string>
+    <string name="error_ai_summary_too_short">Message is too short to summarize</string>
+    <string name="error_ai_summary_network">Network error. Please check your connection and try again.</string>
+    <string name="error_ai_summary_timeout">Request timed out. Please try again.</string>
+    <string name="error_ai_summary_api_key">AI service not configured. Please contact support.</string>
+    
+    <!-- Network Errors -->
+    <string name="error_network_timeout">Request timed out. Please try again.</string>
+    <string name="error_network_connection">Connection failed. Please check your internet connection.</string>
+    <string name="error_network_unavailable">No internet connection</string>
+    
+    <!-- Generic Errors -->
+    <string name="error_unexpected">An unexpected error occurred</string>
+    <string name="error_retry_action">Retry</string>
+    <string name="error_dismiss_action">Dismiss</string>
+    
+    <!-- Success Messages -->
+    <string name="success_action_queued">Action queued. Will be processed when online.</string>
+    <string name="success_processing_queued_actions">Processing pending actions…</string>
 </resources>

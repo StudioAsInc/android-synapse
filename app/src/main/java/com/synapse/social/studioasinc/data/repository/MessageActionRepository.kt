@@ -8,6 +8,7 @@ import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.MessageEdit
 import com.synapse.social.studioasinc.model.MessageForward
+import com.synapse.social.studioasinc.util.RetryHandler
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
@@ -50,19 +51,23 @@ class MessageActionRepository(private val context: Context) {
         messageData: Map<String, Any?>,
         targetChatId: String
     ): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Forwarding message to chat: $targetChatId")
-
-            // Extract message details
-            val originalMessageId = messageData["id"]?.toString() ?: return@withContext Result.failure(
-                Exception("Message ID is required")
-            )
-            val originalChatId = messageData["chat_id"]?.toString() ?: return@withContext Result.failure(
-                Exception("Chat ID is required")
-            )
-            val senderId = messageData["sender_id"]?.toString() ?: return@withContext Result.failure(
-                Exception("Sender ID is required")
-            )
+        // Extract message details first (before retry handler)
+        val originalMessageId = messageData["id"]?.toString()
+        if (originalMessageId == null) {
+            return@withContext Result.failure(Exception("Message ID is required"))
+        }
+        val originalChatId = messageData["chat_id"]?.toString()
+        if (originalChatId == null) {
+            return@withContext Result.failure(Exception("Chat ID is required"))
+        }
+        val senderId = messageData["sender_id"]?.toString()
+        if (senderId == null) {
+            return@withContext Result.failure(Exception("Sender ID is required"))
+        }
+        
+        // Use RetryHandler for network resilience
+        val result = RetryHandler.executeWithRetryResult { attemptNumber ->
+            Log.d(TAG, "Forwarding message to chat: $targetChatId - Attempt: $attemptNumber")
             val content = messageData["content"]?.toString() ?: ""
             val messageType = messageData["message_type"]?.toString() ?: "text"
             val mediaUrl = messageData["media_url"]?.toString()
@@ -92,9 +97,7 @@ class MessageActionRepository(private val context: Context) {
             val insertResult = databaseService.insert("messages", forwardedMessageData)
             if (insertResult.isFailure) {
                 Log.e(TAG, "Failed to insert forwarded message", insertResult.exceptionOrNull())
-                return@withContext Result.failure(
-                    insertResult.exceptionOrNull() ?: Exception("Failed to insert forwarded message")
-                )
+                throw insertResult.exceptionOrNull() ?: Exception("Failed to insert forwarded message")
             }
 
             // Store forward relationship in message_forwards table
@@ -118,12 +121,10 @@ class MessageActionRepository(private val context: Context) {
             // Update target chat's last message
             updateChatLastMessage(targetChatId, content, timestamp, senderId)
 
-            Log.d(TAG, "Message forwarded successfully: $newMessageId")
-            Result.success(newMessageId)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error forwarding message", e)
-            Result.failure(e)
+            Log.d(TAG, "Message forwarded successfully - NewMessageId: $newMessageId, TargetChatId: $targetChatId")
+            newMessageId
         }
+        return@withContext result
     }
 
     /**
@@ -195,13 +196,14 @@ class MessageActionRepository(private val context: Context) {
      * @return Result indicating success or failure
      */
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Editing message: $messageId")
-
-            // Validate non-empty content
-            if (newContent.isBlank()) {
-                return@withContext Result.failure(Exception("Message content cannot be empty"))
-            }
+        // Validate non-empty content first
+        if (newContent.isBlank()) {
+            return@withContext Result.failure(Exception("Message content cannot be empty"))
+        }
+        
+        // Use RetryHandler for network resilience
+        val result = RetryHandler.executeWithRetryResult { attemptNumber ->
+            Log.d(TAG, "Editing message: $messageId - Attempt: $attemptNumber, ContentLength: ${newContent.length}")
 
             // Get the current message to validate age and get current content
             val messageResult = client.from("messages")
@@ -212,7 +214,7 @@ class MessageActionRepository(private val context: Context) {
                 .decodeList<JsonObject>()
 
             if (messageResult.isEmpty()) {
-                return@withContext Result.failure(Exception("Message not found"))
+                throw Exception("Message not found")
             }
 
             val message = messageResult.first()
@@ -223,7 +225,7 @@ class MessageActionRepository(private val context: Context) {
             // Validate message age (must be <48 hours old)
             val messageAge = System.currentTimeMillis() - createdAt
             if (messageAge > FORTY_EIGHT_HOURS_MS) {
-                return@withContext Result.failure(Exception("Message is too old to edit (>48 hours)"))
+                throw Exception("Message is too old to edit (>48 hours)")
             }
 
             // Get existing edit history
@@ -259,17 +261,13 @@ class MessageActionRepository(private val context: Context) {
             val updateResult = databaseService.update("messages", updateData, "id", messageId)
             if (updateResult.isFailure) {
                 Log.e(TAG, "Failed to update message", updateResult.exceptionOrNull())
-                return@withContext Result.failure(
-                    updateResult.exceptionOrNull() ?: Exception("Failed to update message")
-                )
+                throw updateResult.exceptionOrNull() ?: Exception("Failed to update message")
             }
 
-            Log.d(TAG, "Message edited successfully: $messageId")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error editing message", e)
-            Result.failure(e)
+            Log.d(TAG, "Message edited successfully - MessageId: $messageId, NewContentLength: ${newContent.length}")
+            Unit
         }
+        return@withContext result
     }
 
     /**
@@ -278,7 +276,7 @@ class MessageActionRepository(private val context: Context) {
      * @return Result with list of MessageEdit entries
      */
     suspend fun getEditHistory(messageId: String): Result<List<MessageEdit>> = withContext(Dispatchers.IO) {
-        try {
+        return@withContext try {
             Log.d(TAG, "Getting edit history for message: $messageId")
 
             val messageResult = client.from("messages")
@@ -289,39 +287,39 @@ class MessageActionRepository(private val context: Context) {
                 .decodeList<JsonObject>()
 
             if (messageResult.isEmpty()) {
-                return@withContext Result.failure(Exception("Message not found"))
-            }
+                Result.failure(Exception("Message not found"))
+            } else {
+                val message = messageResult.first()
+                val editHistoryJson = message["edit_history"]?.toString()?.removeSurrounding("\"")
 
-            val message = messageResult.first()
-            val editHistoryJson = message["edit_history"]?.toString()?.removeSurrounding("\"")
-
-            val editHistory = try {
-                if (editHistoryJson != null && editHistoryJson != "null" && editHistoryJson.isNotEmpty()) {
-                    val jsonArray = JSONArray(editHistoryJson)
-                    val edits = mutableListOf<MessageEdit>()
-                    
-                    for (i in 0 until jsonArray.length()) {
-                        val editObj = jsonArray.getJSONObject(i)
-                        edits.add(
-                            MessageEdit(
-                                editedAt = editObj.getLong("edited_at"),
-                                previousContent = editObj.getString("previous_content"),
-                                editedBy = editObj.getString("edited_by")
+                val editHistory = try {
+                    if (editHistoryJson != null && editHistoryJson != "null" && editHistoryJson.isNotEmpty()) {
+                        val jsonArray = JSONArray(editHistoryJson)
+                        val edits = mutableListOf<MessageEdit>()
+                        
+                        for (i in 0 until jsonArray.length()) {
+                            val editObj = jsonArray.getJSONObject(i)
+                            edits.add(
+                                MessageEdit(
+                                    editedAt = editObj.getLong("edited_at"),
+                                    previousContent = editObj.getString("previous_content"),
+                                    editedBy = editObj.getString("edited_by")
+                                )
                             )
-                        )
+                        }
+                        
+                        edits
+                    } else {
+                        emptyList()
                     }
-                    
-                    edits
-                } else {
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse edit history", e)
                     emptyList()
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse edit history", e)
-                emptyList()
-            }
 
-            Log.d(TAG, "Retrieved ${editHistory.size} edit history entries")
-            Result.success(editHistory)
+                Log.d(TAG, "Retrieved ${editHistory.size} edit history entries")
+                Result.success(editHistory)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting edit history", e)
             Result.failure(e)
@@ -367,8 +365,9 @@ class MessageActionRepository(private val context: Context) {
      * @return Result indicating success or failure
      */
     suspend fun deleteMessageForEveryone(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Deleting message for everyone: $messageId")
+        // Use RetryHandler for network resilience
+        val result = RetryHandler.executeWithRetryResult { attemptNumber ->
+            Log.d(TAG, "Deleting message for everyone: $messageId - Attempt: $attemptNumber")
 
             // Get the message to check if it has media attachments
             val messageResult = client.from("messages")
@@ -379,7 +378,7 @@ class MessageActionRepository(private val context: Context) {
                 .decodeList<JsonObject>()
 
             if (messageResult.isEmpty()) {
-                return@withContext Result.failure(Exception("Message not found"))
+                throw Exception("Message not found")
             }
 
             val message = messageResult.first()
@@ -401,17 +400,13 @@ class MessageActionRepository(private val context: Context) {
             val updateResult = databaseService.update("messages", updateData, "id", messageId)
             if (updateResult.isFailure) {
                 Log.e(TAG, "Failed to delete message", updateResult.exceptionOrNull())
-                return@withContext Result.failure(
-                    updateResult.exceptionOrNull() ?: Exception("Failed to delete message")
-                )
+                throw updateResult.exceptionOrNull() ?: Exception("Failed to delete message")
             }
 
-            Log.d(TAG, "Message deleted for everyone: $messageId")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error deleting message for everyone", e)
-            Result.failure(e)
+            Log.d(TAG, "Message deleted for everyone successfully - MessageId: $messageId")
+            Unit
         }
+        return@withContext result
     }
 
     // ==================== AI Summary Caching ====================

@@ -53,6 +53,29 @@
 				android:singleLine="true"
 				android:ellipsize="end"
 				android:maxWidth="200dp" />
+			<!-- Forwarded indicator -->
+			<LinearLayout
+				android:id="@+id/forwardedIndicator"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:orientation="horizontal"
+				android:gravity="center_vertical"
+				android:layout_marginBottom="4dp"
+				android:visibility="gone">
+				<ImageView
+					android:layout_width="14dp"
+					android:layout_height="14dp"
+					android:src="@drawable/ic_forward"
+					android:layout_marginEnd="4dp"
+					app:tint="?attr/colorOnSurfaceVariant" />
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Forwarded"
+					android:textSize="11sp"
+					android:textStyle="italic"
+					android:textColor="?attr/colorOnSurfaceVariant" />
+			</LinearLayout>
 			<LinearLayout
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
@@ -70,6 +93,30 @@
 				android:focusable="true"
 				android:foreground="?attr/selectableItemBackgroundBorderless"
 				android:orientation="vertical">
+				<!-- Deleted message placeholder -->
+				<LinearLayout
+					android:id="@+id/deletedMessagePlaceholder"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:visibility="gone"
+					android:padding="12dp"
+					android:background="?attr/colorSurfaceVariant">
+					<TextView
+						android:id="@+id/deletedMessageText"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="This message was deleted"
+						android:textSize="14sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+				</LinearLayout>
+				<!-- Message content container (hidden when deleted) -->
+				<LinearLayout
+					android:id="@+id/messageContentContainer"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical">
 				<!-- Voice controls in horizontal layout -->
 				<LinearLayout
 					android:layout_width="wrap_content"
@@ -97,6 +144,8 @@
 						android:textSize="12sp"
 						android:layout_marginStart="8dp"/>
 				</LinearLayout>
+				</LinearLayout>
+				<!-- End of messageContentContainer -->
 				<!-- Metadata moved inside bubble -->
 				<LinearLayout
 					android:id="@+id/my_message_info"
@@ -107,6 +156,28 @@
 					android:gravity="right|center_vertical"
 					android:orientation="horizontal"
 					android:layout_gravity="end">
+					<TextView
+						android:id="@+id/pendingIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Pending"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorSecondary"
+						android:layout_marginRight="4dp"
+						android:visibility="gone" />
+					<TextView
+						android:id="@+id/editedIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="(edited)"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant"
+						android:layout_marginRight="4dp"
+						android:visibility="gone"
+						android:clickable="true"
+						android:focusable="true" />
 					<TextView
 						android:id="@+id/date"
 						android:focusable="false"

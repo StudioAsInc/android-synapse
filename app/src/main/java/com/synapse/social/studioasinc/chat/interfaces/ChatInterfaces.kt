@@ -11,6 +11,14 @@ interface ChatAdapterListener {
     fun onAttachmentClick(attachmentUrl: String, attachmentType: String)
     fun onUserProfileClick(userId: String)
     fun onMessageRetry(messageId: String, position: Int)
+    
+    // Message action methods
+    fun onReplyAction(messageId: String, messageText: String, senderName: String)
+    fun onForwardAction(messageId: String, messageData: Map<String, Any?>)
+    fun onEditAction(messageId: String, currentText: String)
+    fun onDeleteAction(messageId: String, deleteForEveryone: Boolean)
+    fun onAISummaryAction(messageId: String, messageText: String)
+    fun onEditHistoryClick(messageId: String)
 }
 
 /**

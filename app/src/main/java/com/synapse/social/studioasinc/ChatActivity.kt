@@ -23,8 +23,12 @@ import com.google.android.material.button.MaterialButton
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.realtime
 import kotlinx.serialization.json.JsonObject
 import com.synapse.social.studioasinc.util.ChatHelper
+import com.synapse.social.studioasinc.chat.presentation.MessageActionsViewModel
 import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
@@ -46,6 +50,12 @@ class ChatActivity : AppCompatActivity() {
     private var otherUserData: Map<String, Any?>? = null
     private var currentUserId: String? = null
     private var messagesAdapter: MessageAdapter? = null
+    
+    // ViewModel
+    private lateinit var viewModel: MessageActionsViewModel
+    
+    // Realtime channel
+    private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
 
     // UI Components
     private var recyclerView: RecyclerView? = null
@@ -55,6 +65,13 @@ class ChatActivity : AppCompatActivity() {
     private var chatNameText: TextView? = null
     private var chatAvatarImage: ImageView? = null
     private var toolContainer: LinearLayout? = null
+    
+    // Reply preview UI components
+    private var replyLayout: LinearLayout? = null
+    private var replyUsername: TextView? = null
+    private var replyMessage: TextView? = null
+    private var replyMediaPreview: ImageView? = null
+    private var replyCancelButton: ImageView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +91,7 @@ class ChatActivity : AppCompatActivity() {
         initialize()
         initializeLogic()
         loadChatData()
+        setupRealtimeSubscription()
     }
 
     private fun initialize() {
@@ -87,6 +105,13 @@ class ChatActivity : AppCompatActivity() {
             chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
             toolContainer = findViewById(R.id.toolContainer)
             
+            // Initialize reply preview components
+            replyLayout = findViewById(R.id.mMessageReplyLayout)
+            replyUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername)
+            replyMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage)
+            replyMediaPreview = findViewById(R.id.mMessageReplyLayoutMediaPreview)
+            replyCancelButton = findViewById(R.id.mMessageReplyLayoutBodyCancel)
+            
             // Setup RecyclerView with proper configuration
             recyclerView?.apply {
                 layoutManager = LinearLayoutManager(this@ChatActivity).apply {
@@ -95,9 +120,17 @@ class ChatActivity : AppCompatActivity() {
                 setHasFixedSize(true)
             }
             
-            // Initialize adapter
-            messagesAdapter = MessageAdapter(messagesList)
+            // Initialize adapter with reply click callback
+            messagesAdapter = MessageAdapter(
+                messages = messagesList,
+                onReplyClick = { repliedMessageId ->
+                    scrollToMessage(repliedMessageId)
+                }
+            )
             recyclerView?.adapter = messagesAdapter
+            
+            // Initialize ViewModel
+            viewModel = MessageActionsViewModel(this)
             
         } catch (e: Exception) {
             android.util.Log.e("ChatActivity", "UI initialization error: ${e.message}", e)
@@ -128,6 +161,9 @@ class ChatActivity : AppCompatActivity() {
         
         // Start polling for typing indicators from other users
         startTypingIndicatorPolling()
+        
+        // Setup reply preview observers
+        setupReplyPreview()
     }
 
     private fun loadChatData() {
@@ -304,6 +340,9 @@ class ChatActivity : AppCompatActivity() {
                         // Clear input immediately for better UX
                         runOnUiThread {
                             messageInput?.text?.clear()
+                            
+                            // Clear reply preview after message sent
+                            viewModel.clearReply()
                             replyMessageId = null
                         }
                         
@@ -321,6 +360,11 @@ class ChatActivity : AppCompatActivity() {
                         newMessage["is_deleted"] = false
                         newMessage["is_edited"] = false
                         newMessage["delivery_status"] = "sent"
+                        
+                        // Include reply reference if present
+                        if (replyMessageId != null) {
+                            newMessage["replied_message_id"] = replyMessageId
+                        }
                         
                         runOnUiThread {
                             messagesList.add(newMessage)
@@ -433,6 +477,397 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Setup reply preview observers and listeners
+     */
+    private fun setupReplyPreview() {
+        // Observe reply state from ViewModel
+        lifecycleScope.launch {
+            viewModel.replyState.collect { state ->
+                when (state) {
+                    is MessageActionsViewModel.ReplyState.Idle -> {
+                        hideReplyPreview()
+                    }
+                    is MessageActionsViewModel.ReplyState.Active -> {
+                        showReplyPreview(
+                            senderName = state.senderName,
+                            messageText = state.previewText,
+                            messageData = null // We'll add media support later if needed
+                        )
+                        replyMessageId = state.messageId
+                    }
+                }
+            }
+        }
+        
+        // Setup cancel button listener
+        replyCancelButton?.setOnClickListener {
+            viewModel.clearReply()
+        }
+    }
+    
+    /**
+     * Show reply preview above message input
+     * 
+     * @param senderName The name of the message sender
+     * @param messageText The message text (already truncated to 3 lines)
+     * @param messageData Optional message data for media preview
+     */
+    private fun showReplyPreview(
+        senderName: String,
+        messageText: String,
+        messageData: Map<String, Any?>?
+    ) {
+        replyLayout?.visibility = View.VISIBLE
+        replyUsername?.text = senderName
+        replyMessage?.text = messageText
+        
+        // Show media preview if message has attachments
+        val attachmentUrl = messageData?.get("attachment_url")?.toString()
+        val messageType = messageData?.get("message_type")?.toString()
+        
+        if (!attachmentUrl.isNullOrEmpty() && messageType == "image") {
+            replyMediaPreview?.visibility = View.VISIBLE
+            Glide.with(this)
+                .load(Uri.parse(attachmentUrl))
+                .centerCrop()
+                .placeholder(R.drawable.ph_imgbluredsqure)
+                .error(R.drawable.ph_imgbluredsqure)
+                .into(replyMediaPreview!!)
+        } else {
+            replyMediaPreview?.visibility = View.GONE
+        }
+        
+        // Animate the reply preview appearance
+        replyLayout?.apply {
+            alpha = 0f
+            translationY = -50f
+            animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(200)
+                .start()
+        }
+    }
+    
+    /**
+     * Hide reply preview
+     */
+    private fun hideReplyPreview() {
+        replyLayout?.animate()
+            ?.alpha(0f)
+            ?.translationY(-50f)
+            ?.setDuration(200)
+            ?.withEndAction {
+                replyLayout?.visibility = View.GONE
+                replyMessageId = null
+            }
+            ?.start()
+    }
+    
+    /**
+     * Prepare reply to a message (called from message actions)
+     * 
+     * @param messageId The ID of the message to reply to
+     * @param messageText The text content of the message
+     * @param senderName The name of the message sender
+     */
+    fun prepareReply(messageId: String, messageText: String, senderName: String) {
+        viewModel.prepareReply(messageId, messageText, senderName)
+        
+        // Focus message input
+        messageInput?.requestFocus()
+        
+        // Show keyboard
+        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.showSoftInput(messageInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+    
+    /**
+     * Scroll to a specific message and highlight it
+     * 
+     * @param messageId The ID of the message to scroll to
+     */
+    private fun scrollToMessage(messageId: String) {
+        // Find the position of the message in the list
+        val position = messagesList.indexOfFirst { 
+            it["id"]?.toString() == messageId 
+        }
+        
+        if (position != -1) {
+            // Scroll to the message with smooth animation
+            recyclerView?.smoothScrollToPosition(position)
+            
+            // Highlight the message briefly after scrolling
+            recyclerView?.postDelayed({
+                highlightMessage(position)
+            }, 300) // Wait for scroll animation to complete
+        } else {
+            // Message not found in current list
+            // In a real implementation, we would load more messages
+            Toast.makeText(
+                this,
+                "Original message not found. It may have been deleted or not loaded yet.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    
+    /**
+     * Highlight a message with a flash animation
+     * 
+     * @param position The position of the message in the list
+     */
+    private fun highlightMessage(position: Int) {
+        val viewHolder = recyclerView?.findViewHolderForAdapterPosition(position)
+        val messageView = viewHolder?.itemView?.findViewById<LinearLayout>(R.id.messageBG)
+        
+        messageView?.let { view ->
+            // Store original background
+            val originalBackground = view.background
+            
+            // Create highlight animation
+            val highlightColor = getColor(R.color.md_theme_primaryContainer)
+            view.setBackgroundColor(highlightColor)
+            
+            // Fade back to original background
+            view.animate()
+                .alpha(0.5f)
+                .setDuration(200)
+                .withEndAction {
+                    view.animate()
+                        .alpha(1f)
+                        .setDuration(200)
+                        .withEndAction {
+                            view.background = originalBackground
+                        }
+                        .start()
+                }
+                .start()
+        }
+    }
+
+    /**
+     * Set up Supabase Realtime channel for messages
+     * Subscribes to UPDATE and INSERT events on messages table filtered by chat_id
+     */
+    private fun setupRealtimeSubscription() {
+        if (chatId == null) {
+            android.util.Log.w("ChatActivity", "Cannot setup realtime: chatId is null")
+            return
+        }
+        
+        // TODO: Implement realtime subscription for live message updates
+        // The Supabase Realtime API needs to be properly configured
+        // For now, messages will be loaded on activity start and when sending
+        android.util.Log.d("ChatActivity", "Realtime subscription not yet implemented for chat: $chatId")
+    }
+    
+    /**
+     * Handle real-time message updates (edits and deletions)
+     */
+    private fun handleMessageUpdate(record: JsonObject) {
+        lifecycleScope.launch {
+            try {
+                val messageId = record["id"]?.toString()?.removeSurrounding("\"") ?: return@launch
+                val isEdited = record["is_edited"]?.toString()?.removeSurrounding("\"")?.toBooleanStrictOrNull() ?: false
+                val isDeleted = record["is_deleted"]?.toString()?.removeSurrounding("\"")?.toBooleanStrictOrNull() ?: false
+                val deleteForEveryone = record["delete_for_everyone"]?.toString()?.removeSurrounding("\"")?.toBooleanStrictOrNull() ?: false
+                
+                // Find the message in the list
+                val position = messagesList.indexOfFirst { it["id"]?.toString() == messageId }
+                
+                if (position != -1) {
+                    if (isDeleted || deleteForEveryone) {
+                        // Handle deletion
+                        handleRealtimeMessageDeletion(messageId, position)
+                    } else if (isEdited) {
+                        // Handle edit
+                        handleRealtimeMessageEdit(messageId, position, record)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error handling message update", e)
+            }
+        }
+    }
+    
+    /**
+     * Handle real-time message inserts (new messages including forwarded)
+     */
+    private fun handleMessageInsert(record: JsonObject) {
+        lifecycleScope.launch {
+            try {
+                val chatIdFromRecord = record["chat_id"]?.toString()?.removeSurrounding("\"")
+                
+                // Only process if message is for current chat
+                if (chatIdFromRecord != chatId) {
+                    return@launch
+                }
+                
+                val senderId = record["sender_id"]?.toString()?.removeSurrounding("\"")
+                
+                // Don't add if it's from current user (already added optimistically)
+                if (senderId == currentUserId) {
+                    return@launch
+                }
+                
+                handleRealtimeForwardedMessage(record)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error handling message insert", e)
+            }
+        }
+    }
+    
+    /**
+     * Handle real-time message edits
+     * Updates message in RecyclerView adapter data and refreshes the view
+     */
+    private fun handleRealtimeMessageEdit(messageId: String, position: Int, record: JsonObject) {
+        runOnUiThread {
+            try {
+                // Update message data
+                val message = messagesList[position]
+                val newContent = record["content"]?.toString()?.removeSurrounding("\"") ?: ""
+                val editedAt = record["edited_at"]?.toString()?.removeSurrounding("\"")?.toLongOrNull() ?: System.currentTimeMillis()
+                
+                message["content"] = newContent
+                message["message_text"] = newContent
+                message["is_edited"] = true
+                message["edited_at"] = editedAt
+                
+                // Refresh the specific message view with animation
+                messagesAdapter?.notifyItemChanged(position)
+                
+                // Show brief animation to indicate update
+                recyclerView?.postDelayed({
+                    val viewHolder = recyclerView?.findViewHolderForAdapterPosition(position)
+                    viewHolder?.itemView?.let { view ->
+                        view.alpha = 0.5f
+                        view.animate()
+                            .alpha(1f)
+                            .setDuration(300)
+                            .start()
+                    }
+                }, 100)
+                
+                android.util.Log.d("ChatActivity", "Message edited in real-time: $messageId")
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error updating edited message in UI", e)
+            }
+        }
+    }
+    
+    /**
+     * Handle real-time message deletions
+     * Replaces message content with deleted placeholder
+     */
+    private fun handleRealtimeMessageDeletion(messageId: String, position: Int) {
+        runOnUiThread {
+            try {
+                // Update message data
+                val message = messagesList[position]
+                message["is_deleted"] = true
+                message["delete_for_everyone"] = true
+                
+                // Refresh the specific message view with animation
+                messagesAdapter?.notifyItemChanged(position)
+                
+                // Show brief animation to indicate deletion
+                recyclerView?.postDelayed({
+                    val viewHolder = recyclerView?.findViewHolderForAdapterPosition(position)
+                    viewHolder?.itemView?.let { view ->
+                        view.alpha = 1f
+                        view.animate()
+                            .alpha(0.5f)
+                            .setDuration(200)
+                            .withEndAction {
+                                view.animate()
+                                    .alpha(1f)
+                                    .setDuration(200)
+                                    .start()
+                            }
+                            .start()
+                    }
+                }, 100)
+                
+                android.util.Log.d("ChatActivity", "Message deleted in real-time: $messageId")
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error updating deleted message in UI", e)
+            }
+        }
+    }
+    
+    /**
+     * Handle real-time forwarded messages
+     * Adds new message to RecyclerView and scrolls if user is at bottom
+     */
+    private fun handleRealtimeForwardedMessage(record: JsonObject) {
+        runOnUiThread {
+            try {
+                // Check if user is at bottom of list
+                val layoutManager = recyclerView?.layoutManager as? LinearLayoutManager
+                val lastVisiblePosition = layoutManager?.findLastCompletelyVisibleItemPosition() ?: -1
+                val isAtBottom = lastVisiblePosition >= messagesList.size - 1
+                
+                // Create message map from record
+                val newMessage = HashMap<String, Any?>()
+                newMessage["id"] = record["id"]?.toString()?.removeSurrounding("\"")
+                newMessage["chat_id"] = record["chat_id"]?.toString()?.removeSurrounding("\"")
+                newMessage["sender_id"] = record["sender_id"]?.toString()?.removeSurrounding("\"")
+                newMessage["uid"] = record["sender_id"]?.toString()?.removeSurrounding("\"")
+                newMessage["content"] = record["content"]?.toString()?.removeSurrounding("\"")
+                newMessage["message_text"] = record["content"]?.toString()?.removeSurrounding("\"")
+                newMessage["message_type"] = record["message_type"]?.toString()?.removeSurrounding("\"")
+                newMessage["created_at"] = record["created_at"]?.toString()?.removeSurrounding("\"")?.toLongOrNull() ?: System.currentTimeMillis()
+                newMessage["push_date"] = record["created_at"]?.toString()?.removeSurrounding("\"")?.toLongOrNull() ?: System.currentTimeMillis()
+                newMessage["is_deleted"] = false
+                newMessage["is_edited"] = false
+                newMessage["delivery_status"] = "delivered"
+                
+                // Check if message is forwarded
+                val forwardedFromMessageId = record["forwarded_from_message_id"]?.toString()?.removeSurrounding("\"")
+                if (!forwardedFromMessageId.isNullOrEmpty() && forwardedFromMessageId != "null") {
+                    newMessage["forwarded_from_message_id"] = forwardedFromMessageId
+                    newMessage["forwarded_from_chat_id"] = record["forwarded_from_chat_id"]?.toString()?.removeSurrounding("\"")
+                }
+                
+                // Check if message is a reply
+                val replyToId = record["reply_to_id"]?.toString()?.removeSurrounding("\"")
+                if (!replyToId.isNullOrEmpty() && replyToId != "null") {
+                    newMessage["replied_message_id"] = replyToId
+                }
+                
+                // Add message to list
+                messagesList.add(newMessage)
+                messagesAdapter?.notifyItemInserted(messagesList.size - 1)
+                
+                if (isAtBottom) {
+                    // Scroll to new message if user is at bottom
+                    recyclerView?.smoothScrollToPosition(messagesList.size - 1)
+                } else {
+                    // Show notification if user is scrolled up
+                    Toast.makeText(
+                        this,
+                        "New message received",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+                // Mark message as read if user is viewing
+                if (currentUserId != null) {
+                    lifecycleScope.launch {
+                        chatService.markMessagesAsRead(chatId!!, currentUserId!!)
+                    }
+                }
+                
+                android.util.Log.d("ChatActivity", "New message received in real-time")
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error adding new message to UI", e)
+            }
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         super.onBackPressed()
@@ -441,6 +876,17 @@ class ChatActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Unsubscribe from realtime channel
+        lifecycleScope.launch {
+            try {
+                realtimeChannel?.unsubscribe()
+                android.util.Log.d("ChatActivity", "Realtime channel unsubscribed")
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "Error unsubscribing from realtime channel", e)
+            }
+        }
+        
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null
     }

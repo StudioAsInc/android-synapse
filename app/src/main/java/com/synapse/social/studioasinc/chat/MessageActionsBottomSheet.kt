@@ -6,6 +6,7 @@ import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -64,11 +65,27 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
         // Trigger haptic feedback
         triggerHapticFeedback()
 
+        // Apply slide-up animation to bottom sheet content
+        applyBottomSheetAnimations()
+
         // Set up message preview
         setupMessagePreview()
 
         // Set up actions list
         setupActionsList()
+    }
+
+    /**
+     * Apply slide-up animation to bottom sheet appearance
+     */
+    private fun applyBottomSheetAnimations() {
+        val slideUpAnimation = AnimationUtils.loadAnimation(requireContext(), R.anim.slide_up)
+        binding.root.startAnimation(slideUpAnimation)
+        
+        // Apply fade-in animation to background dim (handled by BottomSheetDialog)
+        dialog?.window?.let { window ->
+            window.setWindowAnimations(R.style.BottomSheetAnimation)
+        }
     }
 
     /**
@@ -287,6 +304,8 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
                 }
 
                 binding.root.setOnClickListener {
+                    // Apply ripple effect on action selection
+                    com.synapse.social.studioasinc.util.MessageAnimations.applyRippleEffect(binding.root)
                     onActionClick(action)
                 }
             }
