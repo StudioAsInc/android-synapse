@@ -215,15 +215,15 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             recyclerView?.adapter = chatAdapter
             this.chatAdapter = chatAdapter
             
-            // Set ChatAdapter reference in ChatViewModel for real-time updates
-            chatViewModel.setChatAdapter(chatAdapter)
-            
-            // Initialize ViewModels
+            // Initialize ViewModels FIRST
             viewModel = MessageActionsViewModel(this)
             chatViewModel = ViewModelProvider(this)[ChatViewModel::class.java]
             
             // Initialize managers in ChatViewModel
             chatViewModel.initializeManagers(this)
+            
+            // Set ChatAdapter reference in ChatViewModel for real-time updates
+            chatViewModel.setChatAdapter(chatAdapter)
             
             // Setup real-time message state updates for read receipts
             setupMessageStateUpdates()
@@ -296,7 +296,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         
         backButton?.setOnClickListener {
             // Clean up subscriptions when leaving chat
-            chatViewModel.onChatClosed()
+            if (::chatViewModel.isInitialized) {
+                chatViewModel.onChatClosed()
+            }
             onBackPressedDispatcher.onBackPressed()
         }
         
@@ -311,6 +313,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     }
     
     private fun setupTypingIndicatorObserver() {
+        // Check if chatViewModel is initialized
+        if (!::chatViewModel.isInitialized) {
+            android.util.Log.e("ChatActivity", "setupTypingIndicatorObserver called before chatViewModel initialization")
+            return
+        }
+        
         // Observe typing users from ChatViewModel
         lifecycleScope.launch {
             chatViewModel.typingUsers.collect { typingUsers ->
@@ -322,6 +330,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     }
 
     private fun setupConnectionStateObserver() {
+        // Check if chatViewModel is initialized
+        if (!::chatViewModel.isInitialized) {
+            android.util.Log.e("ChatActivity", "setupConnectionStateObserver called before chatViewModel initialization")
+            return
+        }
+        
         // Observe connection state from realtime service
         lifecycleScope.launch {
             chatViewModel.getRealtimeService()?.connectionState?.collect { state ->
@@ -594,7 +608,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                 }
                 
                 // Send typing status through ChatViewModel (only if app is not in background)
-                if (!isAppInBackground) {
+                if (!isAppInBackground && ::chatViewModel.isInitialized) {
                     chatViewModel.onUserTyping(s?.toString() ?: "")
                 }
             }
@@ -876,7 +890,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                 )
                 
                 // Attempt to reconnect
-                chatViewModel.getRealtimeService()?.reconnect(chatId)
+                if (::chatViewModel.isInitialized) {
+                    chatViewModel.getRealtimeService()?.reconnect(chatId)
+                }
                 
                 Toast.makeText(this@ChatActivity, "Reconnecting...", Toast.LENGTH_SHORT).show()
                 
@@ -933,6 +949,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
      * Setup reply preview observers and listeners
      */
     private fun setupReplyPreview() {
+        // Check if viewModel is initialized
+        if (!::viewModel.isInitialized) {
+            android.util.Log.e("ChatActivity", "setupReplyPreview called before viewModel initialization")
+            return
+        }
+        
         // Observe reply state from ViewModel
         lifecycleScope.launch {
             viewModel.replyState.collect { state ->
@@ -1546,7 +1568,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = false
         
         // Subscribe to typing events and read receipts when chat screen opens
-        if (chatId != null) {
+        if (chatId != null && ::chatViewModel.isInitialized) {
             chatViewModel.onChatOpened(chatId!!)
             
             // Mark visible messages as read when chat opens (only if not backgrounded)
@@ -1556,7 +1578,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         }
         
         // Resume operations when app returns to foreground
-        chatViewModel.setChatVisibility(true)
+        if (::chatViewModel.isInitialized) {
+            chatViewModel.setChatVisibility(true)
+        }
     }
     
     override fun onPause() {
@@ -1566,10 +1590,12 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = true
         
         // Defer read receipt updates when app is backgrounded
-        chatViewModel.setChatVisibility(false)
-        
-        // Unsubscribe when chat screen closes
-        chatViewModel.onChatClosed()
+        if (::chatViewModel.isInitialized) {
+            chatViewModel.setChatVisibility(false)
+            
+            // Unsubscribe when chat screen closes
+            chatViewModel.onChatClosed()
+        }
         
         // Stop typing indicator when leaving chat
         if (chatId != null && currentUserId != null) {
@@ -1585,7 +1611,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = false
         
         // Resume operations when app returns to foreground
-        if (chatId != null) {
+        if (chatId != null && ::chatViewModel.isInitialized) {
             chatViewModel.setChatVisibility(true)
             // Re-subscribe to events if needed
             chatViewModel.onChatOpened(chatId!!)
@@ -1597,7 +1623,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         isAppInBackground = true
         
         // Defer read receipt updates when app is backgrounded
-        chatViewModel.setChatVisibility(false)
+        if (::chatViewModel.isInitialized) {
+            chatViewModel.setChatVisibility(false)
+        }
         
         // Stop sending typing events when app is backgrounded
         if (chatId != null && currentUserId != null) {
@@ -1640,7 +1668,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             }
         }
         
-        if (visibleMessageIds.isNotEmpty()) {
+        if (visibleMessageIds.isNotEmpty() && ::chatViewModel.isInitialized) {
             chatViewModel.markVisibleMessagesAsRead(visibleMessageIds)
         }
     }
@@ -1674,7 +1702,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         typingAnimation?.stopAnimation()
         
         // Clean up ChatViewModel resources
-        chatViewModel.onChatClosed()
+        if (::chatViewModel.isInitialized) {
+            chatViewModel.onChatClosed()
+        }
         
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null
