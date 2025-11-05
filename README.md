@@ -306,27 +306,8 @@ To maintain code quality and consistency, please follow these guidelines:
   - Leverage Kotlin extensions and Android KTX
   
 - **ViewBinding**: All UI code must use ViewBinding (no `findViewById` or synthetic imports)
-  ```kotlin
-  private lateinit var binding: ActivityMainBinding
-  
-  override fun onCreate(savedInstanceState: Bundle?) {
-      super.onCreate(savedInstanceState)
-      binding = ActivityMainBinding.inflate(layoutInflater)
-      setContentView(binding.root)
-  }
-  ```
 
 - **Coroutines for Async Operations**: Use Kotlin coroutines instead of callbacks
-  ```kotlin
-  viewModelScope.launch {
-      try {
-          val result = repository.fetchData()
-          _uiState.value = UiState.Success(result)
-      } catch (e: Exception) {
-          _uiState.value = UiState.Error(e.message)
-      }
-  }
-  ```
 
 - **MVVM Architecture Pattern**: Follow the established architecture
   - ViewModels manage UI state using StateFlow/LiveData
