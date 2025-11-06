@@ -38,6 +38,12 @@
     <dimen name="elevation_medium">4dp</dimen>
     <dimen name="elevation_large">8dp</dimen>
     
+    <!-- Post Card Elevations -->
+    <dimen name="post_card_elevation_default">1dp</dimen>
+    <dimen name="post_card_elevation_pressed">2dp</dimen>
+    <dimen name="post_card_elevation_elevated">3dp</dimen>
+    <dimen name="post_card_elevation_elevated_pressed">4dp</dimen>
+    
     <!-- Page indicator dimensions -->
     <dimen name="dot_size">6dp</dimen>
     <dimen name="dot_margin">2dp</dimen>

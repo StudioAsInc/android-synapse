@@ -426,6 +426,20 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="image_downloaded">Image saved to gallery</string>
     <string name="failed_to_download_image">Failed to download image</string>
     <string name="loading_image">Loading image…</string>
+    
+    <!-- MD3 Post Card Accessibility Strings -->
+    <string name="author_avatar">Author profile picture</string>
+    <string name="post_options">More options for post</string>
+    <string name="post_image">Post image</string>
+    <string name="like_post">Like post</string>
+    <string name="like_post_with_count">Like post, %1$d likes</string>
+    <string name="like_post_liked">Unlike post, %1$d likes</string>
+    <string name="comment_on_post">Comment on post</string>
+    <string name="comment_on_post_with_count">Comment on post, %1$d comments</string>
+    <string name="share_post">Share post</string>
+    <string name="post_by_user">Post by %1$s</string>
+    <string name="post_timestamp">Posted %1$s</string>
+    
     <string name="downloading_image">Downloading…</string>
 
     <!-- Video Player -->
@@ -452,4 +466,5 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="open_document">Open document</string>
     <string name="document_downloaded">Document saved</string>
     <string name="failed_to_download_document">Failed to download document</string>
+
 </resources>
