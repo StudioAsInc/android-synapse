@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
@@ -29,27 +30,130 @@ class PostAdapter(
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
     private val onCommentClicked: ((Post) -> Unit)? = null,
     private val onShareClicked: ((Post) -> Unit)? = null
-) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    companion object {
+        private const val VIEW_TYPE_POST = 0
+        private const val VIEW_TYPE_LOADING = 1
+        private const val VIEW_TYPE_END_OF_LIST = 2
+    }
 
     private var posts = mutableListOf<Post>()
+    private var isLoadingMore = false
+    private var isAtEnd = false
 
+    /**
+     * DiffUtil.ItemCallback for efficient list updates
+     * Implements proper areItemsTheSame() and areContentsTheSame()
+     */
+    private class PostDiffCallback(
+        private val oldList: List<Post>,
+        private val newList: List<Post>
+    ) : DiffUtil.Callback() {
+        
+        override fun getOldListSize(): Int = oldList.size
+        
+        override fun getNewListSize(): Int = newList.size
+        
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+        
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldPost = oldList[oldItemPosition]
+            val newPost = newList[newItemPosition]
+            return oldPost.postText == newPost.postText &&
+                   oldPost.postImage == newPost.postImage &&
+                   oldPost.likesCount == newPost.likesCount &&
+                   oldPost.commentsCount == newPost.commentsCount &&
+                   oldPost.timestamp == newPost.timestamp
+        }
+    }
+
+    /**
+     * Update posts using DiffUtil for efficient list updates without full refresh
+     */
     fun updatePosts(newPosts: List<Post>) {
+        val diffCallback = PostDiffCallback(posts, newPosts)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        
         posts.clear()
         posts.addAll(newPosts)
-        notifyDataSetChanged()
+        diffResult.dispatchUpdatesTo(this)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
-        val view = LayoutInflater.from(context).inflate(R.layout.item_post, parent, false)
-        return PostViewHolder(view)
+    fun setLoadingMore(loading: Boolean) {
+        val wasLoading = isLoadingMore
+        isLoadingMore = loading
+        
+        if (loading && !wasLoading) {
+            notifyItemInserted(itemCount)
+        } else if (!loading && wasLoading) {
+            notifyItemRemoved(itemCount)
+        }
     }
 
-    override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        val post = posts[position]
-        holder.bind(post)
+    fun setEndOfList(atEnd: Boolean) {
+        val wasAtEnd = isAtEnd
+        isAtEnd = atEnd
+        
+        if (atEnd && !wasAtEnd) {
+            // Remove loading indicator if present
+            if (isLoadingMore) {
+                isLoadingMore = false
+            }
+            notifyItemInserted(itemCount)
+        } else if (!atEnd && wasAtEnd) {
+            notifyItemRemoved(itemCount)
+        }
     }
 
-    override fun getItemCount(): Int = posts.size
+    override fun getItemViewType(position: Int): Int {
+        return when {
+            position < posts.size -> VIEW_TYPE_POST
+            isAtEnd -> VIEW_TYPE_END_OF_LIST
+            isLoadingMore -> VIEW_TYPE_LOADING
+            else -> VIEW_TYPE_POST
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_LOADING -> {
+                val view = LayoutInflater.from(context)
+                    .inflate(R.layout.item_loading_indicator, parent, false)
+                LoadingViewHolder(view)
+            }
+            VIEW_TYPE_END_OF_LIST -> {
+                val view = LayoutInflater.from(context)
+                    .inflate(R.layout.item_end_of_list, parent, false)
+                EndOfListViewHolder(view)
+            }
+            else -> {
+                val view = LayoutInflater.from(context).inflate(R.layout.item_post, parent, false)
+                PostViewHolder(view)
+            }
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is PostViewHolder && position < posts.size) {
+            val post = posts[position]
+            holder.bind(post)
+        }
+        // LoadingViewHolder doesn't need binding
+    }
+
+    override fun getItemCount(): Int {
+        var count = posts.size
+        if (isLoadingMore) count++
+        if (isAtEnd) count++
+        return count
+    }
+
+    class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+    
+    class EndOfListViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val postContent: TextView = itemView.findViewById(R.id.postContent)

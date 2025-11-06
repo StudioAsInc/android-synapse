@@ -1408,4 +1408,66 @@ class ChatAdapter(
             notifyItemChanged(position, "message_state_update")
         }
     }
+
+    /**
+     * Add loading indicator at the top of the chat for loading older messages
+     */
+    fun addLoadingIndicator() {
+        // Check if loading indicator already exists
+        if (data.isNotEmpty() && data[0].containsKey("isLoadingMore")) {
+            return
+        }
+        
+        // Add loading indicator at position 0
+        val loadingItem = HashMap<String, Any?>()
+        loadingItem["isLoadingMore"] = true
+        data.add(0, loadingItem)
+        notifyItemInserted(0)
+    }
+
+    /**
+     * Remove loading indicator from the top of the chat
+     */
+    fun removeLoadingIndicator() {
+        // Find and remove loading indicator
+        val loadingPosition = data.indexOfFirst { it.containsKey("isLoadingMore") }
+        if (loadingPosition != -1) {
+            data.removeAt(loadingPosition)
+            notifyItemRemoved(loadingPosition)
+        }
+    }
+
+    /**
+     * Check if loading indicator is currently shown
+     */
+    fun isLoadingMore(): Boolean {
+        return data.isNotEmpty() && data[0].containsKey("isLoadingMore")
+    }
+
+    /**
+     * Prepend older messages to the chat while preserving scroll position
+     * @param olderMessages List of older messages to prepend
+     * @param onScrollPositionCalculated Callback to restore scroll position after prepending
+     */
+    fun prependMessages(
+        olderMessages: List<HashMap<String, Any?>>,
+        onScrollPositionCalculated: ((itemsAdded: Int) -> Unit)? = null
+    ) {
+        if (olderMessages.isEmpty()) {
+            return
+        }
+        
+        // Remove loading indicator if present
+        removeLoadingIndicator()
+        
+        // Calculate the number of items to add
+        val itemsToAdd = olderMessages.size
+        
+        // Add older messages at the beginning
+        data.addAll(0, olderMessages)
+        notifyItemRangeInserted(0, itemsToAdd)
+        
+        // Notify callback with number of items added for scroll position restoration
+        onScrollPositionCalculated?.invoke(itemsToAdd)
+    }
 }

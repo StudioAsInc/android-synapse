@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
+import com.google.android.material.snackbar.Snackbar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -57,6 +58,28 @@ class HomeFragment : Fragment() {
         viewModel.loadPosts()
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Save scroll position when navigating away
+        val layoutManager = publicPostsList.layoutManager as? LinearLayoutManager
+        layoutManager?.let {
+            val position = it.findFirstVisibleItemPosition()
+            val view = it.findViewByPosition(position)
+            val offset = view?.top ?: 0
+            viewModel.saveScrollPosition(position, offset)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Restore scroll position when returning
+        val scrollPosition = viewModel.restoreScrollPosition()
+        scrollPosition?.let {
+            val layoutManager = publicPostsList.layoutManager as? LinearLayoutManager
+            layoutManager?.scrollToPositionWithOffset(it.position, it.offset)
+        }
+    }
+
     private fun initializeViews(view: View) {
         swipeLayout = view.findViewById(R.id.swipeLayout)
         publicPostsList = view.findViewById(R.id.PublicPostsList)
@@ -84,11 +107,41 @@ class HomeFragment : Fragment() {
         publicPostsList.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = concatAdapter
+            
+            // Add scroll listener for infinite scroll
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+                    
+                    val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
+                    layoutManager?.let {
+                        val totalItemCount = it.itemCount
+                        val lastVisibleItem = it.findLastVisibleItemPosition()
+                        
+                        // Calculate distance from end
+                        val distanceFromEnd = totalItemCount - lastVisibleItem - 1
+                        
+                        // Trigger load when within threshold (5 items) and not already loading
+                        if (distanceFromEnd <= 5 && !viewModel.isLoadingMore.value) {
+                            viewModel.loadNextPage()
+                        }
+                    }
+                }
+            })
         }
     }
 
     private fun setupListeners() {
+        // Set Material Design 3 color scheme for SwipeRefreshLayout
+        swipeLayout.setColorSchemeResources(
+            R.color.md_theme_primary,
+            R.color.md_theme_secondary,
+            R.color.md_theme_tertiary
+        )
+        
         swipeLayout.setOnRefreshListener {
+            // Announce refresh action for accessibility
+            swipeLayout.announceForAccessibility(getString(R.string.refreshing_posts))
             viewModel.loadPosts()
         }
     }
@@ -98,17 +151,30 @@ class HomeFragment : Fragment() {
             viewModel.posts.collect { posts ->
                 hideShimmer()
                 postAdapter.updatePosts(posts)
-                swipeLayout.isRefreshing = false
             }
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isLoading.collect { isLoading ->
+                // Control SwipeRefreshLayout refreshing state
+                swipeLayout.isRefreshing = isLoading
+                
                 if (isLoading) {
                     showShimmer()
                 } else {
                     hideShimmer()
+                    // Announce when refresh completes
+                    announceLoadingState(false, isRefresh = true)
                 }
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoadingMore.collect { isLoadingMore ->
+                // Show/hide bottom loading indicator
+                postAdapter.setLoadingMore(isLoadingMore)
+                // Announce loading state changes
+                announceLoadingState(isLoadingMore, isRefresh = false)
             }
         }
         
@@ -116,8 +182,16 @@ class HomeFragment : Fragment() {
             viewModel.error.collect { error ->
                 error?.let {
                     hideShimmer()
-                    Toast.makeText(context, "Failed to fetch posts: $it", Toast.LENGTH_LONG).show()
-                    swipeLayout.isRefreshing = false
+                    showErrorWithRetry(it)
+                }
+            }
+        }
+        
+        // Observe end of list state
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.paginationState.collect { state ->
+                if (state is com.synapse.social.studioasinc.util.PaginationManager.PaginationState.EndOfList) {
+                    announceEndOfList()
                 }
             }
         }
@@ -140,6 +214,48 @@ class HomeFragment : Fragment() {
 
     private fun hideShimmer() {
         shimmerContainer.visibility = View.GONE
+    }
+    
+    private fun showErrorWithRetry(errorMessage: String) {
+        // Create Snackbar with retry action
+        val snackbar = Snackbar.make(
+            requireView(),
+            errorMessage,
+            Snackbar.LENGTH_INDEFINITE
+        )
+        
+        snackbar.setAction(R.string.retry) {
+            // Retry loading posts
+            viewModel.loadNextPage()
+            viewModel.clearError()
+        }
+        
+        // Announce error for accessibility
+        requireView().announceForAccessibility(errorMessage)
+        
+        snackbar.show()
+    }
+    
+    /**
+     * Announce loading state changes for accessibility
+     * @param isLoading Whether content is currently loading
+     * @param isRefresh Whether this is a refresh operation (pull-to-refresh)
+     */
+    private fun announceLoadingState(isLoading: Boolean, isRefresh: Boolean) {
+        val message = when {
+            isLoading && isRefresh -> getString(R.string.loading_more_posts)
+            isLoading && !isRefresh -> getString(R.string.loading_more_posts)
+            !isLoading && isRefresh -> getString(R.string.posts_loaded)
+            else -> getString(R.string.posts_loaded)
+        }
+        requireView().announceForAccessibility(message)
+    }
+    
+    /**
+     * Announce when end of list is reached for accessibility
+     */
+    private fun announceEndOfList() {
+        requireView().announceForAccessibility(getString(R.string.no_more_posts_available))
     }
     
     private fun showMoreOptionsDialog(post: Post) {

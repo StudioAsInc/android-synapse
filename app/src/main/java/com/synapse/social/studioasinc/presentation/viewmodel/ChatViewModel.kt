@@ -24,11 +24,16 @@ import com.synapse.social.studioasinc.chat.service.MediaUploadManager
 import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.model.models.UploadProgress
 import com.synapse.social.studioasinc.model.models.MediaUploadResult
+import com.synapse.social.studioasinc.util.PaginationManager
+import com.synapse.social.studioasinc.util.ScrollPositionState
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -85,28 +90,179 @@ class ChatViewModel : ViewModel() {
     private var realtimeService: SupabaseRealtimeService? = null
     private var preferencesManager: PreferencesManager? = null
     private var mediaUploadManager: MediaUploadManager? = null
+    
+    // Pagination manager instance for messages
+    private var paginationManager: PaginationManager<Message>? = null
+    
+    // Expose messages StateFlow by mapping PaginationState
+    private val _paginatedMessages = MutableStateFlow<List<Message>>(emptyList())
+    val paginatedMessages: StateFlow<List<Message>> = _paginatedMessages.asStateFlow()
+    
+    // Expose loading states for pagination
+    private val _isPaginationLoading = MutableStateFlow(false)
+    val isPaginationLoading: StateFlow<Boolean> = _isPaginationLoading.asStateFlow()
+    
+    private val _isLoadingMoreMessages = MutableStateFlow(false)
+    val isLoadingMoreMessages: StateFlow<Boolean> = _isLoadingMoreMessages.asStateFlow()
+    
+    // Scroll position state for restoration and prepending messages
+    private var savedScrollPositionState: ScrollPositionState? = null
 
     /**
-     * Loads messages for a chat
+     * Initialize pagination manager for a specific chat
+     * Should be called when opening a chat
+     */
+    private fun initializePaginationForChat(chatId: String) {
+        // Create pagination manager with ChatRepository.getMessagesPage callback
+        paginationManager = PaginationManager<Message>(
+            pageSize = 50,
+            scrollThreshold = 10,
+            onLoadPage = { page, pageSize ->
+                // For chat messages, we use timestamp-based pagination
+                // Page 0 = latest messages, page 1+ = older messages
+                val beforeTimestamp = if (page == 0) {
+                    null
+                } else {
+                    // Get the oldest message timestamp from current items
+                    paginationManager?.getCurrentItems()?.minByOrNull { it.createdAt }?.createdAt
+                }
+                chatRepository.getMessagesPage(chatId, beforeTimestamp, pageSize)
+            },
+            onError = { error ->
+                _error.value = error
+            },
+            coroutineScope = viewModelScope
+        )
+        
+        // Observe pagination state and map to messages StateFlow
+        viewModelScope.launch {
+            paginationManager?.paginationState?.collect { state ->
+                when (state) {
+                    is PaginationManager.PaginationState.Success -> {
+                        _paginatedMessages.value = state.items
+                        _isPaginationLoading.value = false
+                        _isLoadingMoreMessages.value = false
+                    }
+                    is PaginationManager.PaginationState.LoadingMore -> {
+                        _paginatedMessages.value = state.currentItems
+                        _isLoadingMoreMessages.value = true
+                        _isPaginationLoading.value = false
+                    }
+                    is PaginationManager.PaginationState.Error -> {
+                        _paginatedMessages.value = state.currentItems
+                        _isPaginationLoading.value = false
+                        _isLoadingMoreMessages.value = false
+                    }
+                    is PaginationManager.PaginationState.EndOfList -> {
+                        _paginatedMessages.value = state.items
+                        _isPaginationLoading.value = false
+                        _isLoadingMoreMessages.value = false
+                    }
+                    is PaginationManager.PaginationState.Refreshing -> {
+                        _isPaginationLoading.value = true
+                        _isLoadingMoreMessages.value = false
+                    }
+                    is PaginationManager.PaginationState.Initial -> {
+                        _isPaginationLoading.value = false
+                        _isLoadingMoreMessages.value = false
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Loads messages for a chat using pagination
      */
     fun loadMessages(chatId: String) {
         currentChatId = chatId
-        viewModelScope.launch {
+        
+        // Initialize pagination if not already done
+        if (paginationManager == null) {
+            initializePaginationForChat(chatId)
+        }
+        
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             _isLoading.value = true
             try {
-                val result = getMessagesUseCase(chatId)
-                result.onSuccess { messageList ->
-                    _messages.value = messageList
-                    _error.value = null
-                }.onFailure { exception ->
-                    _error.value = exception.message
-                }
+                // Invalidate cache on refresh
+                chatRepository.invalidateCache()
+                // Clear saved position on refresh
+                clearScrollPosition()
+                paginationManager?.refresh()
+                _error.value = null
             } catch (e: Exception) {
                 _error.value = e.message
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+    
+    /**
+     * Load older messages (for pull-to-refresh at top of chat)
+     * Handles scroll position preservation for prepending messages
+     */
+    fun loadOlderMessages() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            try {
+                paginationManager?.loadNextPage()
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
+    }
+    
+    /**
+     * Save scroll position for restoration
+     * Called when navigating away from the chat or before loading older messages
+     * 
+     * @param position The scroll position (item index)
+     * @param offset The offset within the item
+     */
+    fun saveScrollPosition(position: Int, offset: Int) {
+        savedScrollPositionState = ScrollPositionState(position, offset)
+    }
+    
+    /**
+     * Restore scroll position if not expired
+     * Called when returning to the chat
+     * 
+     * @return ScrollPositionState if valid and not expired, null otherwise
+     */
+    fun restoreScrollPosition(): ScrollPositionState? {
+        val position = savedScrollPositionState
+        
+        // Check if position exists and is not expired (5 minutes)
+        return if (position != null && !position.isExpired()) {
+            position
+        } else {
+            // Clear expired position
+            savedScrollPositionState = null
+            null
+        }
+    }
+    
+    /**
+     * Get saved scroll position for restoration after prepending messages
+     * Returns the position and offset to restore after loading older messages
+     * This is used specifically for maintaining scroll position when prepending
+     */
+    fun getSavedScrollPosition(): Pair<Int, Int>? {
+        val position = savedScrollPositionState
+        return if (position != null) {
+            Pair(position.position, position.offset)
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Clear saved scroll position
+     * Called on refresh to reset to top
+     */
+    fun clearScrollPosition() {
+        savedScrollPositionState = null
     }
 
     /**
@@ -718,6 +874,9 @@ class ChatViewModel : ViewModel() {
         currentChatId = chatId
         currentUserId = authService.getCurrentUserId()
         
+        // Initialize pagination for this chat
+        initializePaginationForChat(chatId)
+        
         viewModelScope.launch {
             try {
                 // Subscribe to typing events
@@ -757,6 +916,13 @@ class ChatViewModel : ViewModel() {
         
         // Clear typing users
         _typingUsers.value = emptyList()
+        
+        // Reset pagination manager
+        paginationManager?.reset()
+        paginationManager = null
+        
+        // Clear scroll position
+        clearScrollPosition()
         
         currentChatId = null
     }

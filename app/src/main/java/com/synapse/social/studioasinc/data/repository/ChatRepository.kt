@@ -10,9 +10,11 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -24,6 +26,37 @@ class ChatRepository {
     private val chatService = SupabaseChatService()
     private val databaseService = SupabaseDatabaseService()
     private val client = SupabaseClient.client
+    
+    // In-memory cache for recently fetched pages
+    private data class CacheEntry<T>(
+        val data: T,
+        val timestamp: Long = System.currentTimeMillis()
+    ) {
+        fun isExpired(expirationMs: Long = CACHE_EXPIRATION_MS): Boolean {
+            return System.currentTimeMillis() - timestamp > expirationMs
+        }
+    }
+    
+    private val messagesCache = mutableMapOf<String, CacheEntry<List<Message>>>()
+    
+    companion object {
+        private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L // 5 minutes
+    }
+    
+    /**
+     * Invalidate cache on refresh operations
+     */
+    fun invalidateCache() {
+        messagesCache.clear()
+        android.util.Log.d("ChatRepository", "Cache invalidated")
+    }
+    
+    /**
+     * Get cache key for a specific chat and timestamp
+     */
+    private fun getCacheKey(chatId: String, beforeTimestamp: Long?, limit: Int): String {
+        return "messages_chat_${chatId}_before_${beforeTimestamp}_limit_${limit}"
+    }
 
     /**
      * Creates a new chat or gets existing one
@@ -68,6 +101,77 @@ class ChatRepository {
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+    
+    /**
+     * Fetch messages with pagination support (for loading older messages)
+     * @param chatId Chat conversation ID
+     * @param beforeTimestamp Load messages before this timestamp (for loading older messages)
+     * @param limit Number of messages to fetch
+     * @return Result containing list of messages
+     */
+    suspend fun getMessagesPage(
+        chatId: String,
+        beforeTimestamp: Long? = null,
+        limit: Int = 50
+    ): Result<List<Message>> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // Check cache before making network request
+            val cacheKey = getCacheKey(chatId, beforeTimestamp, limit)
+            val cachedEntry = messagesCache[cacheKey]
+            
+            if (cachedEntry != null && !cachedEntry.isExpired()) {
+                android.util.Log.d("ChatRepository", "Returning cached messages for chat $chatId")
+                return@withContext Result.success(cachedEntry.data)
+            }
+            
+            android.util.Log.d("ChatRepository", "Fetching messages page for chat $chatId, beforeTimestamp: $beforeTimestamp, limit: $limit")
+            
+            // Build query with filters
+            val messages = client.from("messages")
+                .select() {
+                    filter {
+                        // Filter by chat_id
+                        eq("chat_id", chatId)
+                        // If beforeTimestamp is provided, load messages before that timestamp
+                        beforeTimestamp?.let { 
+                            lt("created_at", it) 
+                        }
+                    }
+                    // Limit the number of results
+                    limit(limit.toLong())
+                }
+                .decodeList<Message>()
+                // Order by created_at descending (newest first)
+                .sortedByDescending { it.createdAt }
+            
+            // Store in cache
+            messagesCache[cacheKey] = CacheEntry(messages)
+            
+            android.util.Log.d("ChatRepository", "Successfully fetched ${messages.size} messages for chat $chatId")
+            Result.success(messages)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "Failed to fetch messages page: ${e.message}", e)
+            
+            // Provide detailed error messages for common failures
+            val errorMessage = when {
+                e.message?.contains("relation \"messages\" does not exist", ignoreCase = true) == true -> 
+                    "Database table 'messages' does not exist. Please create the messages table in your Supabase database."
+                e.message?.contains("connection", ignoreCase = true) == true -> 
+                    "Cannot connect to Supabase. Check your internet connection and Supabase configuration."
+                e.message?.contains("timeout", ignoreCase = true) == true -> 
+                    "Request timed out. Please check your internet connection and try again."
+                e.message?.contains("unauthorized", ignoreCase = true) == true -> 
+                    "Unauthorized access to messages. Check your API key and RLS policies."
+                e.message?.contains("serialization", ignoreCase = true) == true -> 
+                    "Data format error. The database schema might not match the expected format."
+                e.message?.contains("network", ignoreCase = true) == true -> 
+                    "Network error occurred. Please check your internet connection."
+                else -> "Failed to load messages: ${e.message ?: "Unknown error"}"
+            }
+            
+            Result.failure(Exception(errorMessage))
         }
     }
 

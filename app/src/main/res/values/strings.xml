@@ -467,4 +467,22 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="document_downloaded">Document saved</string>
     <string name="failed_to_download_document">Failed to download document</string>
 
+    <!-- Pagination -->
+    <string name="loading_more_posts">Loading more posts…</string>
+    <string name="posts_loaded">Posts loaded</string>
+    <string name="no_more_posts_available">No more posts available</string>
+    <string name="failed_to_load_posts">Failed to load posts</string>
+    <string name="check_internet_connection">Check your internet connection</string>
+    <string name="pull_to_refresh">Pull down to refresh posts</string>
+    <string name="refreshing_posts">Refreshing posts…</string>
+    <string name="loading_indicator">Loading indicator</string>
+    <string name="error_loading_posts">Unable to load posts</string>
+    <string name="error_network_posts">Network error while loading posts</string>
+    <string name="error_unknown_posts">An unexpected error occurred</string>
+    <string name="loading_more_messages">Loading more messages…</string>
+    <string name="messages_loaded">Messages loaded</string>
+    <string name="no_more_messages_available">No more messages available</string>
+    <string name="failed_to_load_messages">Failed to load messages</string>
+    <string name="end_of_list">You\'ve reached the end</string>
+
 </resources>
