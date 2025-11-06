@@ -52,6 +52,16 @@ class ChatAdapter(
         private const val VIEW_TYPE_DOCUMENT_RECEIVED = 10
     }
 
+    /**
+     * Enum representing the position of a message within a group
+     */
+    enum class MessagePosition {
+        SINGLE,    // Message not part of a group
+        FIRST,     // First message in a group
+        MIDDLE,    // Middle message in a group
+        LAST       // Last message in a group
+    }
+
     override fun getItemViewType(position: Int): Int {
         val message = getItem(position)
         val isSent = message.senderId == currentUserId
@@ -70,6 +80,117 @@ class ChatAdapter(
         }
         
         return if (isSent) VIEW_TYPE_MESSAGE_SENT else VIEW_TYPE_MESSAGE_RECEIVED
+    }
+
+    /**
+     * Checks if a message type supports grouping
+     * Excludes typing indicators, error messages, and loading indicators
+     */
+    private fun isGroupableMessageType(viewType: Int): Boolean {
+        return viewType in listOf(
+            VIEW_TYPE_MESSAGE_SENT,
+            VIEW_TYPE_MESSAGE_RECEIVED,
+            VIEW_TYPE_IMAGE_SENT,
+            VIEW_TYPE_IMAGE_RECEIVED,
+            VIEW_TYPE_VIDEO_SENT,
+            VIEW_TYPE_VIDEO_RECEIVED,
+            VIEW_TYPE_AUDIO_SENT,
+            VIEW_TYPE_AUDIO_RECEIVED,
+            VIEW_TYPE_DOCUMENT_SENT,
+            VIEW_TYPE_DOCUMENT_RECEIVED
+        )
+    }
+
+    /**
+     * Checks if the current message should group with the previous message
+     * Returns true if both messages are from the same sender and are groupable types
+     */
+    private fun shouldGroupWithPrevious(currentPosition: Int): Boolean {
+        // Bounds checking
+        if (currentPosition <= 0 || currentPosition >= itemCount) {
+            return false
+        }
+
+        val currentMessage = getItem(currentPosition)
+        val previousMessage = getItem(currentPosition - 1)
+
+        // Check if current message is deleted or null
+        if (currentMessage.isDeleted) {
+            return false
+        }
+
+        // Check if previous message is deleted or null
+        if (previousMessage.isDeleted) {
+            return false
+        }
+
+        // Check if both messages are groupable types
+        val currentViewType = getItemViewType(currentPosition)
+        val previousViewType = getItemViewType(currentPosition - 1)
+        
+        if (!isGroupableMessageType(currentViewType) || !isGroupableMessageType(previousViewType)) {
+            return false
+        }
+
+        // Check if both messages are from the same sender
+        return currentMessage.senderId == previousMessage.senderId
+    }
+
+    /**
+     * Checks if the current message should group with the next message
+     * Returns true if both messages are from the same sender and are groupable types
+     */
+    private fun shouldGroupWithNext(currentPosition: Int): Boolean {
+        // Bounds checking
+        if (currentPosition < 0 || currentPosition >= itemCount - 1) {
+            return false
+        }
+
+        val currentMessage = getItem(currentPosition)
+        val nextMessage = getItem(currentPosition + 1)
+
+        // Check if current message is deleted or null
+        if (currentMessage.isDeleted) {
+            return false
+        }
+
+        // Check if next message is deleted or null
+        if (nextMessage.isDeleted) {
+            return false
+        }
+
+        // Check if both messages are groupable types
+        val currentViewType = getItemViewType(currentPosition)
+        val nextViewType = getItemViewType(currentPosition + 1)
+        
+        if (!isGroupableMessageType(currentViewType) || !isGroupableMessageType(nextViewType)) {
+            return false
+        }
+
+        // Check if both messages are from the same sender
+        return currentMessage.senderId == nextMessage.senderId
+    }
+
+    /**
+     * Calculates the position of a message within its group
+     * Returns SINGLE, FIRST, MIDDLE, or LAST based on adjacent messages
+     */
+    private fun calculateMessagePosition(position: Int): MessagePosition {
+        // Bounds checking
+        if (position < 0 || position >= itemCount) {
+            return MessagePosition.SINGLE
+        }
+
+        val canGroupWithPrevious = shouldGroupWithPrevious(position)
+        val canGroupWithNext = shouldGroupWithNext(position)
+
+        return when {
+            !canGroupWithPrevious && !canGroupWithNext -> MessagePosition.SINGLE
+            !canGroupWithPrevious && canGroupWithNext -> MessagePosition.FIRST
+            canGroupWithPrevious && canGroupWithNext -> MessagePosition.MIDDLE
+            canGroupWithPrevious && !canGroupWithNext -> MessagePosition.LAST
+            else -> MessagePosition.SINGLE
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {

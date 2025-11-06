@@ -48,6 +48,16 @@ class ChatAdapter(
         private const val VIEW_TYPE_LOADING_MORE = 99
     }
 
+    /**
+     * Enum representing the position of a message within a group
+     */
+    enum class MessagePosition {
+        SINGLE,    // Message not part of a group
+        FIRST,     // First message in a group
+        MIDDLE,    // Middle message in a group
+        LAST       // Last message in a group
+    }
+
     private var context: Context? = null
     private var secondUserAvatarUrl = ""
     private var firstUserName = ""
@@ -309,6 +319,9 @@ class ChatAdapter(
             ?: ""
         val isMyMessage = msgUid == myUid
         
+        // Calculate message position for grouping BEFORE any other styling
+        val messagePosition = calculateMessagePosition(position)
+        
         // Check if message is deleted
         val isDeleted = messageData["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
         val deleteForEveryone = messageData["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
@@ -343,26 +356,21 @@ class ChatAdapter(
                 }
             }
             
-            // Set message bubble background for deleted messages
-            holder.messageBubble?.let { bubble ->
-                if (isMyMessage) {
-                    bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
-                } else {
-                    bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
-                }
-            }
+            // Set message bubble background for deleted messages (always use SINGLE position)
+            applyMessageBubbleBackground(holder, MessagePosition.SINGLE, isMyMessage)
             
-            // Set message time
+            // Set message time (deleted messages always show timestamp)
             holder.messageTime?.let { timeView ->
                 val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
                     ?: messageData["push_date"]?.toString()?.toLongOrNull() 
                     ?: System.currentTimeMillis()
                 timeView.text = formatMessageTime(timestamp)
+                timeView.visibility = View.VISIBLE
             }
             
-            // Handle username display for group chats
+            // Handle username display for group chats (deleted messages use SINGLE position logic)
             holder.senderUsername?.let { usernameView ->
-                if (isGroupChat && !isMyMessage && userNamesMap.containsKey(msgUid)) {
+                if (shouldShowUsername(position, MessagePosition.SINGLE, isGroupChat, isMyMessage) && userNamesMap.containsKey(msgUid)) {
                     usernameView.visibility = View.VISIBLE
                     usernameView.text = userNamesMap[msgUid]
                 } else {
@@ -416,9 +424,9 @@ class ChatAdapter(
         // Update previous sender ID for next message
         previousSenderId = msgUid
         
-        // Handle username display for group chats
+        // Handle username display for group chats using grouping logic
         holder.senderUsername?.let { usernameView ->
-            if (isGroupChat && !isMyMessage && userNamesMap.containsKey(msgUid)) {
+            if (shouldShowUsername(position, messagePosition, isGroupChat, isMyMessage) && userNamesMap.containsKey(msgUid)) {
                 usernameView.visibility = View.VISIBLE
                 usernameView.text = userNamesMap[msgUid]
             } else {
@@ -436,12 +444,18 @@ class ChatAdapter(
             }
         }
         
-        // Set message time - support both old and new field names
+        // Set message time using grouping logic - support both old and new field names
         holder.messageTime?.let { timeView ->
             val timestamp = messageData["created_at"]?.toString()?.toLongOrNull()
                 ?: messageData["push_date"]?.toString()?.toLongOrNull() 
                 ?: System.currentTimeMillis()
-            timeView.text = formatMessageTime(timestamp)
+            
+            if (shouldShowTimestamp(position, messagePosition)) {
+                timeView.text = formatMessageTime(timestamp)
+                timeView.visibility = View.VISIBLE
+            } else {
+                timeView.visibility = View.GONE
+            }
         }
         
         // Handle edited indicator display
@@ -569,14 +583,8 @@ class ChatAdapter(
             }
         }
         
-        // Set message bubble background and styling
-        holder.messageBubble?.let { bubble ->
-            if (isMyMessage) {
-                bubble.setBackgroundResource(R.drawable.shape_outgoing_message_single)
-            } else {
-                bubble.setBackgroundResource(R.drawable.shape_incoming_message_single)
-            }
-        }
+        // Set message bubble background using grouping logic
+        applyMessageBubbleBackground(holder, messagePosition, isMyMessage)
         
         // Set click listeners - support both id field names
         holder.itemView.setOnClickListener {
@@ -600,6 +608,287 @@ class ChatAdapter(
             // Call listener and return true to consume the event
             listener.onMessageLongClick(messageId, position)
             true
+        }
+    }
+
+    /**
+     * Check if a message type supports grouping
+     * Excludes typing, error, and loading indicators from grouping
+     */
+    private fun isGroupableMessageType(viewType: Int): Boolean {
+        return when (viewType) {
+            VIEW_TYPE_TEXT,
+            VIEW_TYPE_MEDIA_GRID,
+            VIEW_TYPE_VIDEO,
+            VIEW_TYPE_VOICE_MESSAGE,
+            VIEW_TYPE_LINK_PREVIEW -> true
+            VIEW_TYPE_TYPING,
+            VIEW_TYPE_ERROR,
+            VIEW_TYPE_LOADING_MORE -> false
+            else -> false
+        }
+    }
+
+    /**
+     * Check if current message should group with previous message
+     * Considers sender ID, message type, and deleted status
+     */
+    private fun shouldGroupWithPrevious(currentPosition: Int): Boolean {
+        // Validate bounds
+        if (currentPosition <= 0 || currentPosition >= data.size) {
+            return false
+        }
+        
+        val previousPosition = currentPosition - 1
+        val currentMessage = data[currentPosition]
+        val previousMessage = data[previousPosition]
+        
+        // Check if current message is groupable
+        val currentViewType = getItemViewType(currentPosition)
+        if (!isGroupableMessageType(currentViewType)) {
+            return false
+        }
+        
+        // Check if previous message is groupable
+        val previousViewType = getItemViewType(previousPosition)
+        if (!isGroupableMessageType(previousViewType)) {
+            return false
+        }
+        
+        // Check if current message is deleted
+        val currentDeleted = currentMessage["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val currentDeleteForEveryone = currentMessage["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
+        if (currentDeleted || currentDeleteForEveryone) {
+            return false
+        }
+        
+        // Check if previous message is deleted
+        val previousDeleted = previousMessage["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val previousDeleteForEveryone = previousMessage["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
+        if (previousDeleted || previousDeleteForEveryone) {
+            return false
+        }
+        
+        // Check if same sender
+        val currentSenderId = currentMessage["sender_id"]?.toString() 
+            ?: currentMessage["uid"]?.toString() 
+            ?: ""
+        val previousSenderId = previousMessage["sender_id"]?.toString() 
+            ?: previousMessage["uid"]?.toString() 
+            ?: ""
+        
+        return currentSenderId == previousSenderId && currentSenderId.isNotEmpty()
+    }
+
+    /**
+     * Check if current message should group with next message
+     * Considers sender ID, message type, and deleted status
+     */
+    private fun shouldGroupWithNext(currentPosition: Int): Boolean {
+        // Validate bounds
+        if (currentPosition < 0 || currentPosition >= data.size - 1) {
+            return false
+        }
+        
+        val nextPosition = currentPosition + 1
+        val currentMessage = data[currentPosition]
+        val nextMessage = data[nextPosition]
+        
+        // Check if current message is groupable
+        val currentViewType = getItemViewType(currentPosition)
+        if (!isGroupableMessageType(currentViewType)) {
+            return false
+        }
+        
+        // Check if next message is groupable
+        val nextViewType = getItemViewType(nextPosition)
+        if (!isGroupableMessageType(nextViewType)) {
+            return false
+        }
+        
+        // Check if current message is deleted
+        val currentDeleted = currentMessage["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val currentDeleteForEveryone = currentMessage["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
+        if (currentDeleted || currentDeleteForEveryone) {
+            return false
+        }
+        
+        // Check if next message is deleted
+        val nextDeleted = nextMessage["is_deleted"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val nextDeleteForEveryone = nextMessage["delete_for_everyone"]?.toString()?.toBooleanStrictOrNull() ?: false
+        if (nextDeleted || nextDeleteForEveryone) {
+            return false
+        }
+        
+        // Check if same sender
+        val currentSenderId = currentMessage["sender_id"]?.toString() 
+            ?: currentMessage["uid"]?.toString() 
+            ?: ""
+        val nextSenderId = nextMessage["sender_id"]?.toString() 
+            ?: nextMessage["uid"]?.toString() 
+            ?: ""
+        
+        return currentSenderId == nextSenderId && currentSenderId.isNotEmpty()
+    }
+
+    /**
+     * Calculate the position of a message within its group
+     * Returns SINGLE, FIRST, MIDDLE, or LAST based on adjacent messages
+     */
+    private fun calculateMessagePosition(position: Int): MessagePosition {
+        // Validate position
+        if (position < 0 || position >= data.size) {
+            return MessagePosition.SINGLE
+        }
+        
+        val canGroupWithPrevious = shouldGroupWithPrevious(position)
+        val canGroupWithNext = shouldGroupWithNext(position)
+        
+        return when {
+            !canGroupWithPrevious && !canGroupWithNext -> MessagePosition.SINGLE
+            !canGroupWithPrevious && canGroupWithNext -> MessagePosition.FIRST
+            canGroupWithPrevious && canGroupWithNext -> MessagePosition.MIDDLE
+            canGroupWithPrevious && !canGroupWithNext -> MessagePosition.LAST
+            else -> MessagePosition.SINGLE // Fallback
+        }
+    }
+
+    /**
+     * Apply message bubble background based on message position and direction
+     * Maps MessagePosition to appropriate drawable resources
+     */
+    private fun applyMessageBubbleBackground(
+        holder: BaseMessageViewHolder,
+        messagePosition: MessagePosition,
+        isMyMessage: Boolean
+    ) {
+        holder.messageBubble?.let { bubble ->
+            val drawableRes = when (messagePosition) {
+                MessagePosition.SINGLE -> {
+                    if (isMyMessage) {
+                        R.drawable.shape_outgoing_message_single
+                    } else {
+                        R.drawable.shape_incoming_message_single
+                    }
+                }
+                MessagePosition.FIRST -> {
+                    if (isMyMessage) {
+                        R.drawable.shape_outgoing_message_first
+                    } else {
+                        R.drawable.shape_incoming_message_first
+                    }
+                }
+                MessagePosition.MIDDLE -> {
+                    if (isMyMessage) {
+                        R.drawable.shape_outgoing_message_middle
+                    } else {
+                        R.drawable.shape_incoming_message_middle
+                    }
+                }
+                MessagePosition.LAST -> {
+                    if (isMyMessage) {
+                        R.drawable.shape_outgoing_message_last
+                    } else {
+                        R.drawable.shape_incoming_message_last
+                    }
+                }
+            }
+            bubble.setBackgroundResource(drawableRes)
+        }
+    }
+
+    /**
+     * Calculate time difference in milliseconds between two messages
+     * Handles null timestamp values with fallback to current time
+     * 
+     * @param position1 Position of first message
+     * @param position2 Position of second message
+     * @return Time difference in milliseconds, or Long.MAX_VALUE if either message is invalid
+     */
+    private fun getTimeDifference(position1: Int, position2: Int): Long {
+        // Validate positions are within bounds
+        if (position1 < 0 || position1 >= data.size || position2 < 0 || position2 >= data.size) {
+            return Long.MAX_VALUE
+        }
+        
+        val message1 = data[position1]
+        val message2 = data[position2]
+        
+        // Get timestamps with fallback to current time
+        val timestamp1 = message1["created_at"]?.toString()?.toLongOrNull()
+            ?: message1["push_date"]?.toString()?.toLongOrNull()
+            ?: System.currentTimeMillis()
+        
+        val timestamp2 = message2["created_at"]?.toString()?.toLongOrNull()
+            ?: message2["push_date"]?.toString()?.toLongOrNull()
+            ?: System.currentTimeMillis()
+        
+        return kotlin.math.abs(timestamp2 - timestamp1)
+    }
+
+    /**
+     * Determine if timestamp should be shown for a message
+     * Implements 60-second threshold logic for grouped messages
+     * 
+     * @param position Position of the message in the data list
+     * @param messagePosition Position of message within its group (SINGLE, FIRST, MIDDLE, LAST)
+     * @return true if timestamp should be displayed, false otherwise
+     */
+    private fun shouldShowTimestamp(position: Int, messagePosition: MessagePosition): Boolean {
+        // Validate position is within bounds
+        if (position < 0 || position >= data.size) {
+            return true // Show timestamp by default for invalid positions
+        }
+        
+        return when (messagePosition) {
+            // SINGLE and LAST messages always show timestamp
+            MessagePosition.SINGLE, MessagePosition.LAST -> true
+            
+            // FIRST and MIDDLE messages show timestamp only if time difference with next message > 60 seconds
+            MessagePosition.FIRST, MessagePosition.MIDDLE -> {
+                val nextPosition = position + 1
+                if (nextPosition >= data.size) {
+                    // No next message, show timestamp
+                    true
+                } else {
+                    // Check time difference with next message
+                    val timeDiff = getTimeDifference(position, nextPosition)
+                    timeDiff > 60000 // 60 seconds = 60000 milliseconds
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine if username should be shown for a message in group chats
+     * Username is shown only for SINGLE or FIRST messages in group chats
+     * 
+     * @param position Position of the message in the data list
+     * @param messagePosition Position of message within its group (SINGLE, FIRST, MIDDLE, LAST)
+     * @param isGroupChat Whether the conversation is a group chat
+     * @param isMyMessage Whether the message is from the current user
+     * @return true if username should be displayed, false otherwise
+     */
+    private fun shouldShowUsername(
+        position: Int,
+        messagePosition: MessagePosition,
+        isGroupChat: Boolean,
+        isMyMessage: Boolean
+    ): Boolean {
+        // Never show username for current user's messages
+        if (isMyMessage) {
+            return false
+        }
+        
+        // Never show username in 1-on-1 chats
+        if (!isGroupChat) {
+            return false
+        }
+        
+        // In group chats, show username only for SINGLE or FIRST message positions
+        return when (messagePosition) {
+            MessagePosition.SINGLE, MessagePosition.FIRST -> true
+            MessagePosition.MIDDLE, MessagePosition.LAST -> false
         }
     }
 
