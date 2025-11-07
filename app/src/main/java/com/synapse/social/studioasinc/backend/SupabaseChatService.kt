@@ -490,12 +490,12 @@ class SupabaseChatService {
                 
                 android.util.Log.d(TAG, "Marking ${messagesToUpdate.size} messages as read in chat: $chatId")
                 
-                // Batch update all messages in a single operation
-                val updateData = mapOf(
-                    "message_state" to "read",
-                    "read_at" to timestamp,
-                    "updated_at" to timestamp
-                )
+                // Batch update all messages in a single operation using buildJsonObject
+                val updateData = buildJsonObject {
+                    put("message_state", "read")
+                    put("read_at", timestamp)
+                    put("updated_at", timestamp)
+                }
                 
                 // Update messages using batch operation
                 client.from("messages").update(updateData) {
@@ -504,10 +504,10 @@ class SupabaseChatService {
                     }
                 }
                 
-                // Update last_read_at for the participant
-                val participantUpdateData = mapOf(
-                    "last_read_at" to timestamp
-                )
+                // Update last_read_at for the participant using buildJsonObject
+                val participantUpdateData = buildJsonObject {
+                    put("last_read_at", timestamp)
+                }
                 
                 client.from("chat_participants").update(participantUpdateData) {
                     filter {

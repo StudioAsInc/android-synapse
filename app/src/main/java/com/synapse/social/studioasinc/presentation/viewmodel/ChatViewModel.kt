@@ -117,17 +117,41 @@ class ChatViewModel : ViewModel() {
      * Should be called when opening a chat
      */
     private fun initializePaginationForChat(chatId: String) {
+        android.util.Log.d("ChatViewModel", "=== initializePaginationForChat START ===")
+        android.util.Log.d("ChatViewModel", "Initializing pagination for chatId: $chatId")
+        android.util.Log.d("ChatViewModel", "PageSize: Int.MAX_VALUE (${Int.MAX_VALUE})")
+        
         // Create pagination manager with ChatRepository.getMessagesPage callback
         // Load ALL messages to ensure complete conversation history
         paginationManager = PaginationManager<Message>(
             pageSize = Int.MAX_VALUE, // Load all messages at once
             scrollThreshold = 10,
             onLoadPage = { page, pageSize ->
+                android.util.Log.d("ChatViewModel", "onLoadPage callback - page: $page, pageSize: $pageSize")
+                android.util.Log.d("ChatViewModel", "Fetching messages from repository for chatId: $chatId")
+                
                 // For chat messages, always load ALL messages
                 // This fixes the issue where only 50 messages show when returning to chat
-                chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
+                val result = chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
+                
+                result.onSuccess { messages ->
+                    android.util.Log.d("ChatViewModel", "Successfully fetched ${messages.size} messages from repository")
+                    messages.forEachIndexed { index, message ->
+                        if (index < 5 || index >= messages.size - 5) {
+                            android.util.Log.d("ChatViewModel", "Message[$index]: id=${message.id}, content=${message.content.take(30)}, createdAt=${message.createdAt}")
+                        }
+                    }
+                    if (messages.size > 10) {
+                        android.util.Log.d("ChatViewModel", "... (${messages.size - 10} more messages)")
+                    }
+                }.onFailure { error ->
+                    android.util.Log.e("ChatViewModel", "Failed to fetch messages: ${error.message}", error)
+                }
+                
+                result
             },
             onError = { error ->
+                android.util.Log.e("ChatViewModel", "Pagination error: $error")
                 _error.value = error
             },
             coroutineScope = viewModelScope
@@ -136,38 +160,50 @@ class ChatViewModel : ViewModel() {
         // Observe pagination state and map to messages StateFlow
         viewModelScope.launch {
             paginationManager?.paginationState?.collect { state ->
+                android.util.Log.d("ChatViewModel", "Pagination state changed: ${state::class.simpleName}")
+                
                 when (state) {
                     is PaginationManager.PaginationState.Success -> {
+                        android.util.Log.d("ChatViewModel", "Success state - ${state.items.size} messages")
                         _paginatedMessages.value = state.items
                         _isPaginationLoading.value = false
                         _isLoadingMoreMessages.value = false
+                        android.util.Log.d("ChatViewModel", "Updated _paginatedMessages with ${state.items.size} items")
                     }
                     is PaginationManager.PaginationState.LoadingMore -> {
+                        android.util.Log.d("ChatViewModel", "LoadingMore state - ${state.currentItems.size} current messages")
                         _paginatedMessages.value = state.currentItems
                         _isLoadingMoreMessages.value = true
                         _isPaginationLoading.value = false
                     }
                     is PaginationManager.PaginationState.Error -> {
+                        android.util.Log.e("ChatViewModel", "Error state - ${state.currentItems.size} messages")
                         _paginatedMessages.value = state.currentItems
                         _isPaginationLoading.value = false
                         _isLoadingMoreMessages.value = false
                     }
                     is PaginationManager.PaginationState.EndOfList -> {
+                        android.util.Log.d("ChatViewModel", "EndOfList state - ${state.items.size} messages")
                         _paginatedMessages.value = state.items
                         _isPaginationLoading.value = false
                         _isLoadingMoreMessages.value = false
                     }
                     is PaginationManager.PaginationState.Refreshing -> {
+                        android.util.Log.d("ChatViewModel", "Refreshing state")
                         _isPaginationLoading.value = true
                         _isLoadingMoreMessages.value = false
                     }
                     is PaginationManager.PaginationState.Initial -> {
+                        android.util.Log.d("ChatViewModel", "Initial state")
                         _isPaginationLoading.value = false
                         _isLoadingMoreMessages.value = false
                     }
                 }
             }
         }
+        
+        android.util.Log.d("ChatViewModel", "PaginationManager created successfully")
+        android.util.Log.d("ChatViewModel", "=== initializePaginationForChat END ===")
     }
     
     /**
@@ -294,33 +330,53 @@ class ChatViewModel : ViewModel() {
      * Sends a message
      */
     fun sendMessage(chatId: String, content: String, messageType: String = "text", replyToId: String? = null) {
-        if (content.isBlank()) return
+        android.util.Log.d("ChatViewModel", "=== sendMessage START ===")
+        android.util.Log.d("ChatViewModel", "Sending message to chatId: $chatId")
+        android.util.Log.d("ChatViewModel", "Content length: ${content.length}, type: $messageType")
+        
+        if (content.isBlank()) {
+            android.util.Log.w("ChatViewModel", "Message content is blank, aborting send")
+            return
+        }
         
         viewModelScope.launch {
             try {
                 val currentUserId = authService.getCurrentUserId()
+                android.util.Log.d("ChatViewModel", "Current user ID: $currentUserId")
+                
                 if (currentUserId == null) {
+                    android.util.Log.e("ChatViewModel", "User not authenticated")
                     _error.value = "User not authenticated"
                     _messageSent.value = false
                     return@launch
                 }
                 
                 // Stop typing indicator when sending message
+                android.util.Log.d("ChatViewModel", "Stopping typing indicator")
                 typingIndicatorManager?.onUserStoppedTyping(chatId, currentUserId)
                 
+                android.util.Log.d("ChatViewModel", "Calling sendMessageUseCase")
                 val result = sendMessageUseCase(chatId, currentUserId, content, messageType, replyToId)
-                result.onSuccess {
+                
+                result.onSuccess { messageId ->
+                    android.util.Log.d("ChatViewModel", "Message sent successfully, messageId: $messageId")
                     _messageSent.value = true
                     _error.value = null
+                    
                     // Refresh messages
+                    android.util.Log.d("ChatViewModel", "Refreshing messages after send")
                     loadMessages(chatId)
                 }.onFailure { exception ->
+                    android.util.Log.e("ChatViewModel", "Failed to send message: ${exception.message}", exception)
                     _error.value = exception.message
                     _messageSent.value = false
                 }
             } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Exception in sendMessage: ${e.message}", e)
                 _error.value = e.message
                 _messageSent.value = false
+            } finally {
+                android.util.Log.d("ChatViewModel", "=== sendMessage END ===")
             }
         }
     }

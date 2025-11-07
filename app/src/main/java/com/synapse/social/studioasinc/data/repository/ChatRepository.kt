@@ -79,13 +79,30 @@ class ChatRepository {
         messageType: String = "text",
         replyToId: String? = null
     ): Result<String> {
-        return chatService.sendMessage(
+        android.util.Log.d("ChatRepository", "=== sendMessage START ===")
+        android.util.Log.d("ChatRepository", "Sending message:")
+        android.util.Log.d("ChatRepository", "  - chatId: $chatId")
+        android.util.Log.d("ChatRepository", "  - senderId: $senderId")
+        android.util.Log.d("ChatRepository", "  - content length: ${content.length}")
+        android.util.Log.d("ChatRepository", "  - messageType: $messageType")
+        android.util.Log.d("ChatRepository", "  - replyToId: $replyToId")
+        
+        val result = chatService.sendMessage(
             chatId = chatId,
             senderId = senderId,
             content = content,
             messageType = messageType,
             replyToId = replyToId
         )
+        
+        result.onSuccess { messageId ->
+            android.util.Log.d("ChatRepository", "✓ Message sent successfully, messageId: $messageId")
+        }.onFailure { error ->
+            android.util.Log.e("ChatRepository", "✗ Failed to send message: ${error.message}", error)
+        }
+        
+        android.util.Log.d("ChatRepository", "=== sendMessage END ===")
+        return result
     }
 
     /**
@@ -117,16 +134,28 @@ class ChatRepository {
         limit: Int = 50
     ): Result<List<Message>> = withContext(Dispatchers.IO) {
         return@withContext try {
+            android.util.Log.d("ChatRepository", "=== getMessagesPage START ===")
+            android.util.Log.d("ChatRepository", "Parameters: chatId=$chatId, beforeTimestamp=$beforeTimestamp, limit=$limit")
+            
             // Check cache before making network request
             val cacheKey = getCacheKey(chatId, beforeTimestamp, limit)
             val cachedEntry = messagesCache[cacheKey]
             
             if (cachedEntry != null && !cachedEntry.isExpired()) {
-                android.util.Log.d("ChatRepository", "Returning cached messages for chat $chatId")
+                android.util.Log.d("ChatRepository", "✓ Cache HIT - Returning ${cachedEntry.data.size} cached messages")
+                android.util.Log.d("ChatRepository", "=== getMessagesPage END (cached) ===")
                 return@withContext Result.success(cachedEntry.data)
             }
             
-            android.util.Log.d("ChatRepository", "Fetching messages page for chat $chatId, beforeTimestamp: $beforeTimestamp, limit: $limit")
+            android.util.Log.d("ChatRepository", "✗ Cache MISS - Fetching from database")
+            android.util.Log.d("ChatRepository", "Query details:")
+            android.util.Log.d("ChatRepository", "  - Table: messages")
+            android.util.Log.d("ChatRepository", "  - Filter: chat_id = $chatId")
+            if (beforeTimestamp != null) {
+                android.util.Log.d("ChatRepository", "  - Filter: created_at < $beforeTimestamp")
+            }
+            android.util.Log.d("ChatRepository", "  - Limit: ${if (limit == Int.MAX_VALUE) "ALL (Int.MAX_VALUE)" else limit}")
+            android.util.Log.d("ChatRepository", "  - Order: created_at DESC")
             
             // Build query with filters and ordering
             val messages = client.from("messages")
@@ -142,18 +171,31 @@ class ChatRepository {
                     // Only apply limit if it's not requesting all messages
                     if (limit < Int.MAX_VALUE) {
                         limit(limit.toLong())
+                        android.util.Log.d("ChatRepository", "Applied limit: $limit")
+                    } else {
+                        android.util.Log.d("ChatRepository", "No limit applied - fetching ALL messages")
                     }
                     // Order by created_at descending (newest first) in the query
                     order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
                 }
                 .decodeList<Message>()
             
+            android.util.Log.d("ChatRepository", "✓ Query successful - Received ${messages.size} messages")
+            
+            // Log first and last few messages for debugging
+            if (messages.isNotEmpty()) {
+                android.util.Log.d("ChatRepository", "First message: id=${messages.first().id}, content=${messages.first().content.take(30)}, createdAt=${messages.first().createdAt}")
+                android.util.Log.d("ChatRepository", "Last message: id=${messages.last().id}, content=${messages.last().content.take(30)}, createdAt=${messages.last().createdAt}")
+            }
+            
             // Store in cache
             messagesCache[cacheKey] = CacheEntry(messages)
+            android.util.Log.d("ChatRepository", "Messages cached with key: $cacheKey")
             
-            android.util.Log.d("ChatRepository", "Successfully fetched ${messages.size} messages for chat $chatId")
+            android.util.Log.d("ChatRepository", "=== getMessagesPage END (success) ===")
             Result.success(messages)
         } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "=== getMessagesPage FAILED ===")
             android.util.Log.e("ChatRepository", "Failed to fetch messages page: ${e.message}", e)
             
             // Provide detailed error messages for common failures
