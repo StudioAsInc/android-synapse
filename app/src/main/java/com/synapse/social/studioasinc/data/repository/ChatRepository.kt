@@ -108,7 +108,7 @@ class ChatRepository {
      * Fetch messages with pagination support (for loading older messages)
      * @param chatId Chat conversation ID
      * @param beforeTimestamp Load messages before this timestamp (for loading older messages)
-     * @param limit Number of messages to fetch
+     * @param limit Number of messages to fetch (use Int.MAX_VALUE for all messages)
      * @return Result containing list of messages
      */
     suspend fun getMessagesPage(
@@ -128,7 +128,7 @@ class ChatRepository {
             
             android.util.Log.d("ChatRepository", "Fetching messages page for chat $chatId, beforeTimestamp: $beforeTimestamp, limit: $limit")
             
-            // Build query with filters
+            // Build query with filters and ordering
             val messages = client.from("messages")
                 .select() {
                     filter {
@@ -139,12 +139,14 @@ class ChatRepository {
                             lt("created_at", it) 
                         }
                     }
-                    // Limit the number of results
-                    limit(limit.toLong())
+                    // Only apply limit if it's not requesting all messages
+                    if (limit < Int.MAX_VALUE) {
+                        limit(limit.toLong())
+                    }
+                    // Order by created_at descending (newest first) in the query
+                    order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
                 }
                 .decodeList<Message>()
-                // Order by created_at descending (newest first)
-                .sortedByDescending { it.createdAt }
             
             // Store in cache
             messagesCache[cacheKey] = CacheEntry(messages)

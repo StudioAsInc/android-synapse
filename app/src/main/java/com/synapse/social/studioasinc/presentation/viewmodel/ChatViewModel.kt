@@ -123,14 +123,15 @@ class ChatViewModel : ViewModel() {
             scrollThreshold = 10,
             onLoadPage = { page, pageSize ->
                 // For chat messages, we use timestamp-based pagination
-                // Page 0 = latest messages, page 1+ = older messages
-                val beforeTimestamp = if (page == 0) {
-                    null
+                // Page 0 = load ALL messages (no limit), page 1+ = older messages with pagination
+                if (page == 0) {
+                    // Initial load: fetch ALL messages to show complete conversation history
+                    chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
                 } else {
-                    // Get the oldest message timestamp from current items
-                    paginationManager?.getCurrentItems()?.minByOrNull { it.createdAt }?.createdAt
+                    // Subsequent loads: use pagination with timestamp
+                    val beforeTimestamp = paginationManager?.getCurrentItems()?.minByOrNull { it.createdAt }?.createdAt
+                    chatRepository.getMessagesPage(chatId, beforeTimestamp, pageSize)
                 }
-                chatRepository.getMessagesPage(chatId, beforeTimestamp, pageSize)
             },
             onError = { error ->
                 _error.value = error

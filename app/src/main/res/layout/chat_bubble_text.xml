@@ -14,8 +14,7 @@
 		android:animateLayoutChanges="true"
 		app:layout_constraintWidth_max="wrap"
 		app:layout_constraintWidth_percent="0.75"
-		app:layout_constraintTop_toTopOf="parent"
-		app:layout_constraintStart_toStartOf="parent">
+		app:layout_constraintTop_toTopOf="parent">
 		<!-- Selection checkbox for multi-select mode -->
 		<CheckBox
 			android:id="@+id/selection_checkbox"

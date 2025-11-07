@@ -14,8 +14,7 @@
 		android:animateLayoutChanges="true"
 		app:layout_constraintWidth_max="wrap"
 		app:layout_constraintWidth_percent="0.75"
-		app:layout_constraintTop_toTopOf="parent"
-		app:layout_constraintStart_toStartOf="parent">
+		app:layout_constraintTop_toTopOf="parent">
 		<androidx.cardview.widget.CardView
 			android:id="@+id/mProfileCard"
 			android:layout_width="34dp"

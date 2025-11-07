@@ -13,8 +13,7 @@
     android:layout_marginTop="@dimen/message_vertical_spacing"
     app:layout_constraintWidth_max="wrap"
     app:layout_constraintWidth_percent="0.75"
-    app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintStart_toStartOf="parent">
+    app:layout_constraintTop_toTopOf="parent">
 
     <LinearLayout
         android:id="@+id/message_layout"
