@@ -226,13 +226,92 @@ class ChatAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = getItem(position)
+        val messagePosition = calculateMessagePosition(position)
+        
         when (holder) {
-            is SentMessageViewHolder -> holder.bind(message)
-            is ReceivedMessageViewHolder -> holder.bind(message)
-            is ImageAttachmentViewHolder -> holder.bind(message)
-            is VideoAttachmentViewHolder -> holder.bind(message)
-            is AudioAttachmentViewHolder -> holder.bind(message)
-            is DocumentAttachmentViewHolder -> holder.bind(message)
+            is SentMessageViewHolder -> holder.bind(message, messagePosition)
+            is ReceivedMessageViewHolder -> holder.bind(message, messagePosition)
+            is ImageAttachmentViewHolder -> holder.bind(message, messagePosition)
+            is VideoAttachmentViewHolder -> holder.bind(message, messagePosition)
+            is AudioAttachmentViewHolder -> holder.bind(message, messagePosition)
+            is DocumentAttachmentViewHolder -> holder.bind(message, messagePosition)
+        }
+    }
+    
+    /**
+     * Base ViewHolder class with helper methods for corner radius and dynamic width
+     */
+    abstract inner class BaseMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        
+        /**
+         * Calculates the maximum bubble width as 75% of screen width
+         */
+        protected fun getMaxBubbleWidth(): Int {
+            val displayMetrics = itemView.context.resources.displayMetrics
+            val screenWidth = displayMetrics.widthPixels
+            return (screenWidth * 0.75).toInt()
+        }
+        
+        /**
+         * Creates a GradientDrawable with custom corner radii based on message position
+         * @param position The position of the message in the group
+         * @param isSent Whether this is a sent message (affects color)
+         * @return GradientDrawable with appropriate corners and color
+         */
+        protected fun createBubbleDrawable(position: MessagePosition, isSent: Boolean): android.graphics.drawable.GradientDrawable {
+            val drawable = android.graphics.drawable.GradientDrawable()
+            
+            // Set background color based on sent/received
+            val color = if (isSent) {
+                itemView.context.getColor(R.color.sent_message_background)
+            } else {
+                itemView.context.getColor(R.color.received_message_background)
+            }
+            drawable.setColor(color)
+            
+            // Set corner radii based on position
+            val cornerRadius = itemView.context.resources.getDimension(R.dimen.message_bubble_corner_radius)
+            val corners = when (position) {
+                MessagePosition.SINGLE -> {
+                    // All corners rounded
+                    floatArrayOf(
+                        cornerRadius, cornerRadius,  // top-left
+                        cornerRadius, cornerRadius,  // top-right
+                        cornerRadius, cornerRadius,  // bottom-right
+                        cornerRadius, cornerRadius   // bottom-left
+                    )
+                }
+                MessagePosition.FIRST -> {
+                    // Top corners rounded, bottom square
+                    floatArrayOf(
+                        cornerRadius, cornerRadius,  // top-left
+                        cornerRadius, cornerRadius,  // top-right
+                        0f, 0f,                      // bottom-right
+                        0f, 0f                       // bottom-left
+                    )
+                }
+                MessagePosition.MIDDLE -> {
+                    // All corners square
+                    floatArrayOf(
+                        0f, 0f,  // top-left
+                        0f, 0f,  // top-right
+                        0f, 0f,  // bottom-right
+                        0f, 0f   // bottom-left
+                    )
+                }
+                MessagePosition.LAST -> {
+                    // Bottom corners rounded, top square
+                    floatArrayOf(
+                        0f, 0f,                      // top-left
+                        0f, 0f,                      // top-right
+                        cornerRadius, cornerRadius,  // bottom-right
+                        cornerRadius, cornerRadius   // bottom-left
+                    )
+                }
+            }
+            drawable.cornerRadii = corners
+            
+            return drawable
         }
     }
     
@@ -242,13 +321,14 @@ class ChatAdapter(
             return
         }
         
+        val messagePosition = calculateMessagePosition(position)
         val payload = payloads[0]
         if (payload is UploadProgressPayload) {
             when (holder) {
-                is ImageAttachmentViewHolder -> holder.bind(getItem(position), payload)
-                is VideoAttachmentViewHolder -> holder.bind(getItem(position), payload)
-                is AudioAttachmentViewHolder -> holder.bind(getItem(position), payload)
-                is DocumentAttachmentViewHolder -> holder.bind(getItem(position), payload)
+                is ImageAttachmentViewHolder -> holder.bind(getItem(position), messagePosition, payload)
+                is VideoAttachmentViewHolder -> holder.bind(getItem(position), messagePosition, payload)
+                is AudioAttachmentViewHolder -> holder.bind(getItem(position), messagePosition, payload)
+                is DocumentAttachmentViewHolder -> holder.bind(getItem(position), messagePosition, payload)
                 else -> super.onBindViewHolder(holder, position, payloads)
             }
         } else {
@@ -256,13 +336,16 @@ class ChatAdapter(
         }
     }
 
-    inner class SentMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class SentMessageViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
         private val messageText: TextView = itemView.findViewById(android.R.id.text1)
         private val timeText: TextView = itemView.findViewById(android.R.id.text2)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
             messageText.text = message.getDisplayContent()
             timeText.text = formatTime(message.createdAt)
+            
+            // Note: Simple text messages use simple_list_item_2 layout which doesn't have messageBG
+            // Corner radius and width adjustments would require custom layout
             
             itemView.setOnLongClickListener {
                 onMessageLongClick(message)
@@ -271,14 +354,17 @@ class ChatAdapter(
         }
     }
 
-    inner class ReceivedMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class ReceivedMessageViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
         private val messageText: TextView = itemView.findViewById(android.R.id.text1)
         private val timeText: TextView = itemView.findViewById(android.R.id.text2)
         private val senderName: TextView = itemView.findViewById(android.R.id.text1)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
             messageText.text = "${message.senderName ?: "Unknown"}: ${message.getDisplayContent()}"
             timeText.text = formatTime(message.createdAt)
+            
+            // Note: Simple text messages use simple_list_item_2 layout which doesn't have messageBG
+            // Corner radius and width adjustments would require custom layout
             
             itemView.setOnLongClickListener {
                 onMessageLongClick(message)
@@ -329,13 +415,13 @@ class ChatAdapter(
     /**
      * ViewHolder for image attachments
      */
-    inner class ImageAttachmentViewHolder(itemView: View, private val isSent: Boolean) : RecyclerView.ViewHolder(itemView) {
+    inner class ImageAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
         private val imageGridLayout: GridLayout = itemView.findViewById(R.id.imageGridLayout)
         private val messageText: TextView = itemView.findViewById(R.id.message_text)
         private val shimmerContainer: View = itemView.findViewById(R.id.shimmer_container)
         private val timeText: TextView = itemView.findViewById(R.id.date)
         private val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
-        private val messageBG: View = itemView.findViewById(R.id.messageBG)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
         
@@ -349,17 +435,27 @@ class ChatAdapter(
         private val retryButton: View = itemView.findViewById(R.id.retryButton)
         private val uploadSuccessIcon: View = itemView.findViewById(R.id.uploadSuccessIcon)
 
-        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+        fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
             if (payload != null) {
                 updateProgress(payload)
                 return
             }
             
-            bind(message)
+            bind(message, messagePosition)
         }
         
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
+            // Apply dynamic width - set max width on the LinearLayout
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+
             // Handle deleted messages
             if (message.isDeleted) {
                 deletedMessagePlaceholder.visibility = View.VISIBLE
@@ -386,30 +482,30 @@ class ChatAdapter(
             
             // Add images to grid (2 columns)
             attachments.forEachIndexed { index, attachment ->
-                val imageView = ImageView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        if (attachments.size == 1) 600 else 280,
-                        if (attachments.size == 1) 600 else 280
-                    )
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                    setPadding(4, 4, 4, 4)
-                    
-                    // Load thumbnail with Glide
-                    Glide.with(context)
-                        .load(attachment.thumbnailUrl ?: attachment.url)
-                        .placeholder(R.drawable.ph_imgbluredsqure)
-                        .error(R.drawable.ph_imgbluredsqure)
-                        .thumbnail(0.1f) // Load low-res first
-                        .centerCrop()
-                        .into(this)
-                    
-                    // Click to open gallery
-                    setOnClickListener {
-                        val imageUrls = attachments.map { it.url }
-                        onImageClick(imageUrls, index)
-                    }
+                val imgView = ImageView(context)
+                imgView.layoutParams = ViewGroup.LayoutParams(
+                    if (attachments.size == 1) 600 else 280,
+                    if (attachments.size == 1) 600 else 280
+                )
+                imgView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imgView.setPadding(4, 4, 4, 4)
+                
+                // Load thumbnail with Glide
+                Glide.with(context)
+                    .load(attachment.thumbnailUrl ?: attachment.url)
+                    .placeholder(R.drawable.ph_imgbluredsqure)
+                    .error(R.drawable.ph_imgbluredsqure)
+                    .thumbnail(0.1f) // Load low-res first
+                    .centerCrop()
+                    .into(imgView)
+                
+                // Click to open gallery
+                imgView.setOnClickListener {
+                    val imageUrls = attachments.map { it.url }
+                    onImageClick(imageUrls, index)
                 }
-                imageGridLayout.addView(imageView)
+                
+                imageGridLayout.addView(imgView)
             }
 
             // Show caption if present
@@ -491,7 +587,7 @@ class ChatAdapter(
     /**
      * ViewHolder for video attachments
      */
-    inner class VideoAttachmentViewHolder(itemView: View, private val isSent: Boolean) : RecyclerView.ViewHolder(itemView) {
+    inner class VideoAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
         private val videoThumbnail: ImageView = itemView.findViewById(R.id.videoThumbnail)
         private val playButton: ImageView = itemView.findViewById(R.id.playButton)
         private val videoDuration: TextView? = itemView.findViewById(R.id.videoDuration)
@@ -499,20 +595,31 @@ class ChatAdapter(
         private val shimmerContainer: View = itemView.findViewById(R.id.shimmer_container)
         private val timeText: TextView = itemView.findViewById(R.id.date)
         private val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
-        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+        fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
             if (payload != null) {
                 // Video upload progress handling can be added here if needed
                 return
             }
             
-            bind(message)
+            bind(message, messagePosition)
         }
         
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
+            // Apply dynamic width - set max width on the LinearLayout
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+
             // Handle deleted messages
             if (message.isDeleted) {
                 deletedMessagePlaceholder.visibility = View.VISIBLE
@@ -581,7 +688,7 @@ class ChatAdapter(
     /**
      * ViewHolder for audio attachments
      */
-    inner class AudioAttachmentViewHolder(itemView: View, private val isSent: Boolean) : RecyclerView.ViewHolder(itemView) {
+    inner class AudioAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
         private val audioFileName: TextView = itemView.findViewById(R.id.audioFileName)
         private val playPauseButton: ImageButton = itemView.findViewById(R.id.playPauseButton)
         private val seekBar: SeekBar = itemView.findViewById(R.id.seekBar)
@@ -592,20 +699,31 @@ class ChatAdapter(
         private val shimmerContainer: View = itemView.findViewById(R.id.shimmer_container)
         private val timeText: TextView = itemView.findViewById(R.id.date)
         private val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
-        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+        fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
             if (payload != null) {
                 // Audio upload progress handling can be added here if needed
                 return
             }
             
-            bind(message)
+            bind(message, messagePosition)
         }
         
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
+            // Apply dynamic width - set max width on the LinearLayout
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+
             // Handle deleted messages
             if (message.isDeleted) {
                 deletedMessagePlaceholder.visibility = View.VISIBLE
@@ -671,7 +789,7 @@ class ChatAdapter(
     /**
      * ViewHolder for document attachments
      */
-    inner class DocumentAttachmentViewHolder(itemView: View, private val isSent: Boolean) : RecyclerView.ViewHolder(itemView) {
+    inner class DocumentAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
         private val documentIcon: ImageView = itemView.findViewById(R.id.documentIcon)
         private val documentFileName: TextView = itemView.findViewById(R.id.documentFileName)
         private val documentFileInfo: TextView = itemView.findViewById(R.id.documentFileInfo)
@@ -680,20 +798,31 @@ class ChatAdapter(
         private val shimmerContainer: View = itemView.findViewById(R.id.shimmer_container)
         private val timeText: TextView = itemView.findViewById(R.id.date)
         private val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
 
-        fun bind(message: Message, payload: UploadProgressPayload? = null) {
+        fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
             if (payload != null) {
                 // Document upload progress handling can be added here if needed
                 return
             }
             
-            bind(message)
+            bind(message, messagePosition)
         }
         
-        fun bind(message: Message) {
+        fun bind(message: Message, messagePosition: MessagePosition) {
+            // Apply dynamic width - set max width on the LinearLayout
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+
             // Handle deleted messages
             if (message.isDeleted) {
                 deletedMessagePlaceholder.visibility = View.VISIBLE

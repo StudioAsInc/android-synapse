@@ -378,16 +378,13 @@ class ChatAdapter(
                 }
             }
             
-            // Apply dynamic vertical spacing
+            // Apply dynamic vertical spacing (deleted messages always use ungrouped spacing)
             holder.bodyLayout?.let { bodyLayout ->
                 val layoutParams = bodyLayout.layoutParams as? ViewGroup.MarginLayoutParams
                 layoutParams?.let { params ->
                     val context = holder.itemView.context
-                    val spacing = if (position > 0 && previousSenderId != null && previousSenderId != msgUid) {
-                        context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing_sender_change)
-                    } else {
-                        context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing)
-                    }
+                    // Deleted messages always use ungrouped spacing since they break groups
+                    val spacing = context.resources.getDimensionPixelSize(R.dimen.message_spacing_ungrouped)
                     params.topMargin = spacing
                     bodyLayout.layoutParams = params
                 }
@@ -404,17 +401,21 @@ class ChatAdapter(
         holder.deletedMessagePlaceholder?.visibility = View.GONE
         holder.messageContentContainer?.visibility = View.VISIBLE
         
-        // Apply dynamic vertical spacing based on sender changes
+        // Apply dynamic vertical spacing based on message grouping position
         holder.bodyLayout?.let { bodyLayout ->
             val layoutParams = bodyLayout.layoutParams as? ViewGroup.MarginLayoutParams
             layoutParams?.let { params ->
                 val context = holder.itemView.context
-                val spacing = if (position > 0 && previousSenderId != null && previousSenderId != msgUid) {
-                    // Sender changed - use larger spacing
-                    context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing_sender_change)
-                } else {
-                    // Same sender - use normal spacing
-                    context.resources.getDimensionPixelSize(R.dimen.message_vertical_spacing)
+                // Use grouped spacing (2dp) for messages in a group, ungrouped spacing (12dp) otherwise
+                val spacing = when (messagePosition) {
+                    MessagePosition.MIDDLE, MessagePosition.LAST -> {
+                        // Messages in the middle or at the end of a group use tight spacing
+                        context.resources.getDimensionPixelSize(R.dimen.message_spacing_grouped)
+                    }
+                    MessagePosition.SINGLE, MessagePosition.FIRST -> {
+                        // Single messages or first in group use larger spacing
+                        context.resources.getDimensionPixelSize(R.dimen.message_spacing_ungrouped)
+                    }
                 }
                 params.topMargin = spacing
                 bodyLayout.layoutParams = params
@@ -1470,4 +1471,5 @@ class ChatAdapter(
         // Notify callback with number of items added for scroll position restoration
         onScrollPositionCalculated?.invoke(itemsToAdd)
     }
+    
 }

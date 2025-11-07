@@ -65,4 +65,8 @@
     <dimen name="message_vertical_spacing_sender_change">12dp</dimen>
     <dimen name="message_bubble_corner_radius">16dp</dimen>
     <dimen name="message_bubble_padding">12dp</dimen>
+    
+    <!-- Message Grouping Spacing -->
+    <dimen name="message_spacing_grouped">2dp</dimen>
+    <dimen name="message_spacing_ungrouped">12dp</dimen>
 </resources>

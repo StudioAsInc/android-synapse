@@ -21,6 +21,8 @@ import com.synapse.social.studioasinc.chat.service.ReadReceiptManager
 import com.synapse.social.studioasinc.chat.service.SupabaseRealtimeService
 import com.synapse.social.studioasinc.chat.service.PreferencesManager
 import com.synapse.social.studioasinc.chat.service.MediaUploadManager
+import com.synapse.social.studioasinc.chat.service.MessageSearchService
+import com.synapse.social.studioasinc.chat.service.ChatBackupService
 import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.model.models.UploadProgress
 import com.synapse.social.studioasinc.model.models.MediaUploadResult
@@ -90,6 +92,8 @@ class ChatViewModel : ViewModel() {
     private var realtimeService: SupabaseRealtimeService? = null
     private var preferencesManager: PreferencesManager? = null
     private var mediaUploadManager: MediaUploadManager? = null
+    private var messageSearchService: MessageSearchService? = null
+    private var chatBackupService: ChatBackupService? = null
     
     // Pagination manager instance for messages
     private var paginationManager: PaginationManager<Message>? = null
@@ -857,6 +861,12 @@ class ChatViewModel : ViewModel() {
             coroutineScope = viewModelScope
         )
         
+        // Initialize MessageSearchService
+        messageSearchService = MessageSearchService()
+        
+        // Initialize ChatBackupService
+        chatBackupService = ChatBackupService(context)
+        
         // Set current user ID for read receipt filtering
         currentUserId = authService.getCurrentUserId()
         readReceiptManager?.setCurrentUserId(currentUserId ?: "")
@@ -1069,6 +1079,337 @@ class ChatViewModel : ViewModel() {
      */
     fun getRealtimeService(): SupabaseRealtimeService? {
         return realtimeService
+    }
+    
+    // Message Search Methods
+    
+    /**
+     * Search messages across all chats or within a specific chat.
+     * 
+     * @param query Search query string
+     * @param chatId Optional chat ID to limit search to specific chat
+     * @param messageType Optional message type filter
+     * @param startDate Optional start date for date range filter
+     * @param endDate Optional end date for date range filter
+     * @param limit Maximum number of results
+     * @param offset Offset for pagination
+     */
+    fun searchMessages(
+        query: String,
+        chatId: String? = null,
+        messageType: String? = null,
+        startDate: Long? = null,
+        endDate: Long? = null,
+        limit: Int = 50,
+        offset: Int = 0
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    _error.value = "User not authenticated"
+                    return@launch
+                }
+                
+                val result = messageSearchService?.searchMessages(
+                    query = query,
+                    chatId = chatId,
+                    userId = userId,
+                    messageType = messageType,
+                    startDate = startDate,
+                    endDate = endDate,
+                    limit = limit,
+                    offset = offset
+                )
+                
+                result?.onSuccess { searchResults ->
+                    _messages.value = searchResults
+                    _error.value = null
+                }?.onFailure { exception ->
+                    _error.value = exception.message
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Search messages in the current chat.
+     * 
+     * @param query Search query string
+     * @param limit Maximum number of results
+     * @param offset Offset for pagination
+     */
+    fun searchInCurrentChat(
+        query: String,
+        limit: Int = 50,
+        offset: Int = 0
+    ) {
+        val chatId = currentChatId ?: return
+        searchMessages(query, chatId, limit = limit, offset = offset)
+    }
+    
+    /**
+     * Search messages by media type (images, videos, etc.).
+     * 
+     * @param messageType Message type (image, video, audio, file)
+     * @param chatId Optional chat ID to limit search
+     * @param limit Maximum number of results
+     * @param offset Offset for pagination
+     */
+    fun searchByMediaType(
+        messageType: String,
+        chatId: String? = null,
+        limit: Int = 50,
+        offset: Int = 0
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    _error.value = "User not authenticated"
+                    return@launch
+                }
+                
+                val result = messageSearchService?.searchByMediaType(
+                    messageType = messageType,
+                    userId = userId,
+                    chatId = chatId,
+                    limit = limit,
+                    offset = offset
+                )
+                
+                result?.onSuccess { searchResults ->
+                    _messages.value = searchResults
+                    _error.value = null
+                }?.onFailure { exception ->
+                    _error.value = exception.message
+                }
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    // Chat Backup and Restore Methods
+    
+    /**
+     * Create a full backup of all user's chats and messages.
+     * 
+     * @param includeMedia Whether to include media files in backup
+     * @param onSuccess Callback with backup file URI
+     * @param onError Callback with error message
+     */
+    fun createFullBackup(
+        includeMedia: Boolean = false,
+        onSuccess: (Uri) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    onError("User not authenticated")
+                    return@launch
+                }
+                
+                val result = chatBackupService?.createFullBackup(userId, includeMedia)
+                
+                result?.onSuccess { backupUri ->
+                    onSuccess(backupUri)
+                    _error.value = null
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to create backup")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to create backup")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Create a backup of specific chats.
+     * 
+     * @param chatIds List of chat IDs to backup
+     * @param onSuccess Callback with backup file URI
+     * @param onError Callback with error message
+     */
+    fun createSelectiveBackup(
+        chatIds: List<String>,
+        onSuccess: (Uri) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    onError("User not authenticated")
+                    return@launch
+                }
+                
+                val result = chatBackupService?.createSelectiveBackup(userId, chatIds)
+                
+                result?.onSuccess { backupUri ->
+                    onSuccess(backupUri)
+                    _error.value = null
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to create backup")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to create backup")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Upload backup to cloud storage.
+     * 
+     * @param backupUri Local backup file URI
+     * @param onSuccess Callback with cloud storage URL
+     * @param onError Callback with error message
+     */
+    fun uploadBackupToCloud(
+        backupUri: Uri,
+        onSuccess: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    onError("User not authenticated")
+                    return@launch
+                }
+                
+                val result = chatBackupService?.uploadBackupToCloud(backupUri, userId)
+                
+                result?.onSuccess { cloudUrl ->
+                    onSuccess(cloudUrl)
+                    _error.value = null
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to upload backup")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to upload backup")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Restore chat data from backup file.
+     * 
+     * @param backupUri Backup file URI
+     * @param mergeWithExisting Whether to merge with existing data or replace
+     * @param onSuccess Callback with number of restored chats and messages
+     * @param onError Callback with error message
+     */
+    fun restoreFromBackup(
+        backupUri: Uri,
+        mergeWithExisting: Boolean = true,
+        onSuccess: (Int, Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    onError("User not authenticated")
+                    return@launch
+                }
+                
+                val result = chatBackupService?.restoreFromBackup(backupUri, userId, mergeWithExisting)
+                
+                result?.onSuccess { (chatsCount, messagesCount) ->
+                    onSuccess(chatsCount, messagesCount)
+                    _error.value = null
+                    // Reload chats after restore
+                    loadUserChats()
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to restore backup")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to restore backup")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * List available backups for the current user.
+     * 
+     * @param onSuccess Callback with list of backup metadata
+     * @param onError Callback with error message
+     */
+    fun listBackups(
+        onSuccess: (List<ChatBackupService.BackupMetadata>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val userId = authService.getCurrentUserId()
+                if (userId == null) {
+                    onError("User not authenticated")
+                    return@launch
+                }
+                
+                val result = chatBackupService?.listBackups(userId)
+                
+                result?.onSuccess { backups ->
+                    onSuccess(backups)
+                    _error.value = null
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to list backups")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to list backups")
+            }
+        }
+    }
+    
+    /**
+     * Delete a backup file.
+     * 
+     * @param backupUri Backup file URI
+     * @param onSuccess Callback on successful deletion
+     * @param onError Callback with error message
+     */
+    fun deleteBackup(
+        backupUri: Uri,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val result = chatBackupService?.deleteBackup(backupUri)
+                
+                result?.onSuccess {
+                    onSuccess()
+                    _error.value = null
+                }?.onFailure { exception ->
+                    onError(exception.message ?: "Failed to delete backup")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to delete backup")
+            }
+        }
     }
 }
 

@@ -517,6 +517,48 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             return
         }
         
+        // Generate temporary message ID using timestamp
+        val tempId = "temp_${System.currentTimeMillis()}"
+        
+        // Create optimistic message map with temp ID
+        val optimisticMessage = HashMap<String, Any?>()
+        optimisticMessage["id"] = tempId
+        optimisticMessage["chat_id"] = chatId
+        optimisticMessage["sender_id"] = currentUserId
+        optimisticMessage["uid"] = currentUserId
+        optimisticMessage["content"] = messageText
+        optimisticMessage["message_text"] = messageText
+        optimisticMessage["message_type"] = "text"
+        optimisticMessage["created_at"] = System.currentTimeMillis()
+        optimisticMessage["push_date"] = System.currentTimeMillis()
+        optimisticMessage["is_deleted"] = false
+        optimisticMessage["is_edited"] = false
+        optimisticMessage["delivery_status"] = "sending"
+        optimisticMessage["is_optimistic"] = true
+        optimisticMessage["temp_id"] = tempId
+        
+        // Include reply reference if present
+        val currentReplyId = replyMessageId
+        if (currentReplyId != null) {
+            optimisticMessage["replied_message_id"] = currentReplyId
+        }
+        
+        // Add optimistic message to messagesList immediately
+        messagesList.add(optimisticMessage)
+        
+        // Clear input field immediately after adding to list
+        messageInput?.text?.clear()
+        
+        // Clear reply preview after message sent
+        viewModel.clearReply()
+        replyMessageId = null
+        
+        // Notify adapter of new message insertion
+        chatAdapter?.notifyItemInserted(messagesList.size - 1)
+        
+        // Scroll to bottom to show new message
+        recyclerView?.scrollToPosition(messagesList.size - 1)
+        
         // Disable send button to prevent double-sending
         sendButton?.isEnabled = false
         
@@ -527,57 +569,145 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                     senderId = currentUserId!!,
                     content = messageText,
                     messageType = "text",
-                    replyToId = replyMessageId
+                    replyToId = currentReplyId
                 )
                 
                 result.fold(
                     onSuccess = { messageId ->
-                        // Clear input immediately for better UX
-                        runOnUiThread {
-                            messageInput?.text?.clear()
+                        // Find message by temp ID in messagesList
+                        val position = messagesList.indexOfFirst { 
+                            it["temp_id"]?.toString() == tempId 
+                        }
+                        
+                        if (position != -1) {
+                            // Update message with real ID from server
+                            val message = messagesList[position]
+                            message["id"] = messageId
+                            message["delivery_status"] = "sent"
+                            message["is_optimistic"] = false
+                            message.remove("temp_id")
                             
-                            // Clear reply preview after message sent
-                            viewModel.clearReply()
-                            replyMessageId = null
-                        }
-                        
-                        // Add message optimistically to UI
-                        val newMessage = HashMap<String, Any?>()
-                        newMessage["id"] = messageId
-                        newMessage["chat_id"] = chatId
-                        newMessage["sender_id"] = currentUserId
-                        newMessage["uid"] = currentUserId
-                        newMessage["content"] = messageText
-                        newMessage["message_text"] = messageText
-                        newMessage["message_type"] = "text"
-                        newMessage["created_at"] = System.currentTimeMillis()
-                        newMessage["push_date"] = System.currentTimeMillis()
-                        newMessage["is_deleted"] = false
-                        newMessage["is_edited"] = false
-                        newMessage["delivery_status"] = "sent"
-                        
-                        // Include reply reference if present
-                        if (replyMessageId != null) {
-                            newMessage["replied_message_id"] = replyMessageId
-                        }
-                        
-                        runOnUiThread {
-                            messagesList.add(newMessage)
-                            chatAdapter?.notifyItemInserted(messagesList.size - 1)
-                            recyclerView?.scrollToPosition(messagesList.size - 1)
+                            // Notify adapter of item change
+                            runOnUiThread {
+                                chatAdapter?.notifyItemChanged(position)
+                            }
                         }
                     },
                     onFailure = { error ->
+                        // Find message by temp ID in messagesList
+                        val position = messagesList.indexOfFirst { 
+                            it["temp_id"]?.toString() == tempId 
+                        }
+                        
+                        if (position != -1) {
+                            // Update message delivery status to "failed"
+                            val message = messagesList[position]
+                            message["delivery_status"] = "failed"
+                            message["is_optimistic"] = false
+                            
+                            // Notify adapter of item change
+                            runOnUiThread {
+                                chatAdapter?.notifyItemChanged(position)
+                            }
+                        }
+                        
                         showError("Failed to send message: ${error.message}")
                     }
                 )
             } catch (e: Exception) {
+                // Find message by temp ID in messagesList
+                val position = messagesList.indexOfFirst { 
+                    it["temp_id"]?.toString() == tempId 
+                }
+                
+                if (position != -1) {
+                    // Update message delivery status to "failed"
+                    val message = messagesList[position]
+                    message["delivery_status"] = "failed"
+                    message["is_optimistic"] = false
+                    
+                    // Notify adapter of item change
+                    runOnUiThread {
+                        chatAdapter?.notifyItemChanged(position)
+                    }
+                }
+                
                 showError("Error sending message: ${e.message}")
             } finally {
                 // Re-enable send button
                 runOnUiThread {
                     sendButton?.isEnabled = true
                 }
+            }
+        }
+    }
+    
+    /**
+     * Retry sending a failed message
+     * 
+     * @param messageId The ID of the failed message (temp ID)
+     * @param position The position of the message in the list
+     */
+    private fun retryFailedMessage(messageId: String, position: Int) {
+        val message = messagesList.getOrNull(position) ?: return
+        
+        // Verify this is a failed message
+        if (message["delivery_status"] != "failed") {
+            return
+        }
+        
+        val messageText = message["content"]?.toString() ?: return
+        val replyToId = message["replied_message_id"]?.toString()
+        
+        // Update status to sending
+        message["delivery_status"] = "sending"
+        chatAdapter?.notifyItemChanged(position)
+        
+        lifecycleScope.launch {
+            try {
+                val result = chatService.sendMessage(
+                    chatId = chatId!!,
+                    senderId = currentUserId!!,
+                    content = messageText,
+                    messageType = "text",
+                    replyToId = replyToId
+                )
+                
+                result.fold(
+                    onSuccess = { newMessageId ->
+                        // Update message with real ID from server
+                        message["id"] = newMessageId
+                        message["delivery_status"] = "sent"
+                        message["is_optimistic"] = false
+                        message.remove("temp_id")
+                        
+                        // Notify adapter of item change
+                        runOnUiThread {
+                            chatAdapter?.notifyItemChanged(position)
+                        }
+                    },
+                    onFailure = { error ->
+                        // Update message delivery status back to "failed"
+                        message["delivery_status"] = "failed"
+                        
+                        // Notify adapter of item change
+                        runOnUiThread {
+                            chatAdapter?.notifyItemChanged(position)
+                        }
+                        
+                        showError("Failed to send message: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                // Update message delivery status back to "failed"
+                message["delivery_status"] = "failed"
+                
+                // Notify adapter of item change
+                runOnUiThread {
+                    chatAdapter?.notifyItemChanged(position)
+                }
+                
+                showError("Error sending message: ${e.message}")
             }
         }
     }
@@ -1153,6 +1283,31 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     }
     
     /**
+     * Calculate which message positions are affected by a new message insertion
+     * and need their grouping recalculated.
+     * 
+     * When a new message is added:
+     * - The previous message may change from LAST to MIDDLE or from SINGLE to FIRST
+     * - The new message needs its grouping calculated
+     * 
+     * @param newMessagePosition The position of the newly added message
+     * @return List of positions that need grouping recalculation
+     */
+    private fun calculateAffectedPositions(newMessagePosition: Int): List<Int> {
+        val affectedPositions = mutableListOf<Int>()
+        
+        // The new message itself is affected
+        affectedPositions.add(newMessagePosition)
+        
+        // The previous message (if exists) is affected because it may change grouping position
+        if (newMessagePosition > 0) {
+            affectedPositions.add(newMessagePosition - 1)
+        }
+        
+        return affectedPositions
+    }
+    
+    /**
      * Handle real-time message updates (edits and deletions)
      */
     private fun handleMessageUpdate(record: JsonObject) {
@@ -1290,18 +1445,21 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     /**
      * Handle real-time forwarded messages
      * Adds new message to RecyclerView and scrolls if user is at bottom
+     * Implements deduplication to prevent duplicate messages from appearing
      */
     private fun handleRealtimeForwardedMessage(record: JsonObject) {
         runOnUiThread {
             try {
-                // Check if user is at bottom of list
-                val layoutManager = recyclerView?.layoutManager as? LinearLayoutManager
-                val lastVisiblePosition = layoutManager?.findLastCompletelyVisibleItemPosition() ?: -1
-                val isAtBottom = lastVisiblePosition >= messagesList.size - 1
+                val newMessageId = record["id"]?.toString()?.removeSurrounding("\"")
+                
+                // Check if incoming message ID already exists in messagesList (deduplication)
+                val existingIndex = messagesList.indexOfFirst { 
+                    it["id"]?.toString() == newMessageId 
+                }
                 
                 // Create message map from record
                 val newMessage = HashMap<String, Any?>()
-                newMessage["id"] = record["id"]?.toString()?.removeSurrounding("\"")
+                newMessage["id"] = newMessageId
                 newMessage["chat_id"] = record["chat_id"]?.toString()?.removeSurrounding("\"")
                 newMessage["sender_id"] = record["sender_id"]?.toString()?.removeSurrounding("\"")
                 newMessage["uid"] = record["sender_id"]?.toString()?.removeSurrounding("\"")
@@ -1327,20 +1485,45 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                     newMessage["replied_message_id"] = replyToId
                 }
                 
-                // Add message to list
-                messagesList.add(newMessage)
-                chatAdapter?.notifyItemInserted(messagesList.size - 1)
-                
-                if (isAtBottom) {
-                    // Scroll to new message if user is at bottom
-                    recyclerView?.smoothScrollToPosition(messagesList.size - 1)
+                if (existingIndex != -1) {
+                    // Message already exists, update existing message instead of adding new one
+                    messagesList[existingIndex] = newMessage
+                    chatAdapter?.notifyItemChanged(existingIndex)
+                    android.util.Log.d("ChatActivity", "Updated existing message in real-time: $newMessageId")
                 } else {
-                    // Show notification if user is scrolled up
-                    Toast.makeText(
-                        this,
-                        "New message received",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    // New message, add it to list
+                    messagesList.add(newMessage)
+                    
+                    // Calculate affected range for grouping updates (will be implemented in subtask 5.2)
+                    val affectedPositions = calculateAffectedPositions(messagesList.size - 1)
+                    
+                    chatAdapter?.notifyItemInserted(messagesList.size - 1)
+                    
+                    // Notify adapter of grouping changes for affected messages
+                    affectedPositions.forEach { position ->
+                        if (position != messagesList.size - 1) {
+                            chatAdapter?.notifyItemChanged(position)
+                        }
+                    }
+                    
+                    // Check if user is at bottom of list
+                    val layoutManager = recyclerView?.layoutManager as? LinearLayoutManager
+                    val lastVisiblePosition = layoutManager?.findLastCompletelyVisibleItemPosition() ?: -1
+                    val isAtBottom = lastVisiblePosition >= messagesList.size - 2 // Account for newly added message
+                    
+                    if (isAtBottom) {
+                        // Scroll to new message if user is at bottom
+                        recyclerView?.smoothScrollToPosition(messagesList.size - 1)
+                    } else {
+                        // Show notification if user is scrolled up
+                        Toast.makeText(
+                            this,
+                            "New message received",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    
+                    android.util.Log.d("ChatActivity", "New message received in real-time: $newMessageId")
                 }
                 
                 // Mark message as read if user is viewing
@@ -1349,8 +1532,6 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                         chatService.markMessagesAsRead(chatId!!, currentUserId!!)
                     }
                 }
-                
-                android.util.Log.d("ChatActivity", "New message received in real-time")
             } catch (e: Exception) {
                 android.util.Log.e("ChatActivity", "Error adding new message to UI", e)
             }
@@ -1505,13 +1686,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         startActivity(intent)
     }
     
-    /**
-     * Retry failed message
-     */
-    private fun retryFailedMessage(messageId: String, position: Int) {
-        // TODO: Implement message retry logic
-        Toast.makeText(this, "Retry feature coming soon", Toast.LENGTH_SHORT).show()
-    }
+
     
     /**
      * Show forward message dialog
