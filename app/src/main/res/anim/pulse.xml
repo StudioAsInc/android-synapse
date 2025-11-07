@@ -1,20 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pulse animation for attention/success states: 1.05x → 1.0x -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:interpolator="@android:anim/decelerate_interpolator">
+    android:interpolator="@android:anim/overshoot_interpolator">
     <scale
-        android:duration="800"
-        android:fromXScale="1.0"
-        android:fromYScale="1.0"
+        android:duration="500"
+        android:fromXScale="1.05"
+        android:fromYScale="1.05"
         android:pivotX="50%"
         android:pivotY="50%"
-        android:repeatCount="infinite"
-        android:repeatMode="reverse"
-        android:toXScale="1.1"
-        android:toYScale="1.1" />
-    <alpha
-        android:duration="800"
-        android:fromAlpha="1.0"
-        android:repeatCount="infinite"
-        android:repeatMode="reverse"
-        android:toAlpha="0.5" />
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
 </set>

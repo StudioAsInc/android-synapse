@@ -2,4 +2,5 @@
 <resources>
     <!-- Auth Screen Tablet Dimensions -->
     <dimen name="auth_horizontal_margin">48dp</dimen>
+    <dimen name="auth_form_max_width">600dp</dimen>
 </resources>

@@ -17,33 +17,20 @@
             android:paddingHorizontal="48dp"
             android:paddingVertical="32dp">
 
-            <!-- Vertical Guideline for centering content -->
-            <androidx.constraintlayout.widget.Guideline
-                android:id="@+id/guidelineStart"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                app:layout_constraintGuide_percent="0.15" />
 
-            <androidx.constraintlayout.widget.Guideline
-                android:id="@+id/guidelineEnd"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                app:layout_constraintGuide_percent="0.85" />
 
             <!-- Logo and Title Section -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardLogo"
-                android:layout_width="112dp"
-                android:layout_height="112dp"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
                 android:layout_marginTop="64dp"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="6dp"
                 app:strokeWidth="0dp"
                 app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                app:layout_constraintEnd_toStartOf="@id/guidelineEnd"
-                app:layout_constraintStart_toEndOf="@id/guidelineStart"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
 
                 <TextView
@@ -52,7 +39,7 @@
                     android:layout_gravity="center"
                     android:text="S"
                     android:textColor="?attr/colorOnPrimaryContainer"
-                    android:textSize="56sp"
+                    android:textSize="60sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/product_sans" />
             </com.google.android.material.card.MaterialCardView>
@@ -64,11 +51,11 @@
                 android:layout_marginTop="20dp"
                 android:text="Synapse"
                 android:textColor="?attr/colorOnSurface"
-                android:textSize="42sp"
+                android:textSize="40sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/product_sans"
-                app:layout_constraintEnd_toStartOf="@id/guidelineEnd"
-                app:layout_constraintStart_toEndOf="@id/guidelineStart"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/cardLogo" />
 
             <TextView
@@ -80,8 +67,8 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="20sp"
                 android:fontFamily="@font/product_sans"
-                app:layout_constraintEnd_toStartOf="@id/guidelineEnd"
-                app:layout_constraintStart_toEndOf="@id/guidelineStart"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvAppName" />
 
             <!-- Main Form Container -->
@@ -95,9 +82,10 @@
                 app:strokeWidth="1dp"
                 app:strokeColor="?attr/colorOutlineVariant"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
-                app:layout_constraintEnd_toStartOf="@id/guidelineEnd"
-                app:layout_constraintStart_toEndOf="@id/guidelineStart"
-                app:layout_constraintTop_toBottomOf="@id/tvWelcome">
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvWelcome"
+                app:layout_constraintWidth_max="@dimen/auth_form_max_width">
 
                 <LinearLayout
                     android:id="@+id/layoutMainForm"
@@ -316,9 +304,10 @@
                 app:cardElevation="10dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="?attr/colorOutlineVariant"
-                app:layout_constraintEnd_toStartOf="@id/guidelineEnd"
-                app:layout_constraintStart_toEndOf="@id/guidelineStart"
-                app:layout_constraintTop_toBottomOf="@id/tvWelcome">
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvWelcome"
+                app:layout_constraintWidth_max="@dimen/auth_form_max_width">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -344,7 +333,7 @@
                         android:layout_marginBottom="10dp"
                         android:text="Verify Your Email"
                         android:textColor="?attr/colorOnSurface"
-                        android:textSize="26sp"
+                        android:textSize="22sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/product_sans" />
 
@@ -385,12 +374,12 @@
                         android:id="@+id/btnResendVerification"
                         style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="56dp"
                         android:minHeight="@dimen/auth_min_touch_target"
                         android:layout_marginBottom="16dp"
                         android:text="Resend Verification Email"
-                        android:textSize="16sp"
-                        app:cornerRadius="14dp"
+                        android:textSize="14sp"
+                        app:cornerRadius="12dp"
                         app:icon="@android:drawable/ic_menu_send"
                         app:iconGravity="textStart"
                         android:fontFamily="@font/product_sans" />
@@ -406,13 +395,14 @@
                         
                         <com.google.android.material.progressindicator.CircularProgressIndicator
                             android:id="@+id/progressResendCooldown"
-                            android:layout_width="52dp"
-                            android:layout_height="52dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:layout_gravity="center"
-                            app:indicatorSize="52dp"
+                            app:indicatorSize="56dp"
                             app:trackThickness="5dp"
                             app:indicatorColor="?attr/colorPrimary"
                             app:trackColor="?attr/colorSurfaceVariant"
+                            app:trackCornerRadius="2.5dp"
                             app:indicatorDirectionCircular="counterclockwise" />
                         
                         <TextView
@@ -440,12 +430,13 @@
                         
                         <com.google.android.material.progressindicator.CircularProgressIndicator
                             android:id="@+id/progressAutoRefresh"
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_marginEnd="10dp"
-                            app:indicatorSize="22dp"
-                            app:trackThickness="2.5dp"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginEnd="8dp"
+                            app:indicatorSize="24dp"
+                            app:trackThickness="3dp"
                             app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
                             android:indeterminate="true" />
                         
                         <TextView
@@ -454,7 +445,7 @@
                             android:layout_height="wrap_content"
                             android:text="Checking verification status..."
                             android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="14sp"
+                            android:textSize="13sp"
                             android:fontFamily="@font/product_sans" />
                     </LinearLayout>
 
@@ -465,7 +456,8 @@
                         android:layout_height="wrap_content"
                         android:minHeight="@dimen/auth_min_touch_target"
                         android:text="Back to Sign In"
-                        android:textSize="16sp"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
                         android:textColor="?attr/colorPrimary"
                         android:fontFamily="@font/product_sans" />
                 </LinearLayout>

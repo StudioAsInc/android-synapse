@@ -52,15 +52,12 @@
       "env": {
         "CONTEXT7_API_KEY": "94eb9030-9b06-491b-9821-82d40ebc7427"
       },
-      "disabled": true,
+      "disabled": false,
       "autoApprove": [
         "resolve-library-id",
         "get-library-docs"
       ],
-      "disabledTools": [
-        "resolve-library-id",
-        "get-library-docs"
-      ]
+      "disabledTools": []
     },
     "hugeicons": {
       "command": "npx",

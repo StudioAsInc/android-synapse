@@ -266,9 +266,9 @@ class AuthActivity : AppCompatActivity() {
         val reduceMotion = shouldReduceMotion()
         
         binding.apply {
-            // Sign in/up button press animation
+            // Sign in/up button press animation - refined to 0.95x scale, 100ms
             btnSignIn.setOnTouchListener { view, event ->
-                if (!reduceMotion) {
+                if (!reduceMotion && view.isEnabled) {
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
                             view.animate()
@@ -315,6 +315,122 @@ class AuthActivity : AppCompatActivity() {
     }
     
     /**
+     * Setup social button press animations with scale down/up on touch events
+     */
+    private fun setupSocialButtonAnimations() {
+        val reduceMotion = shouldReduceMotion()
+        
+        binding.apply {
+            // Google button press animation
+            btnGoogleAuth?.setOnTouchListener { view, event ->
+                if (!reduceMotion) {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.animate()
+                                .scaleX(0.95f)
+                                .scaleY(0.95f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
+                    }
+                }
+                false // Return false to allow click event to proceed
+            }
+            
+            // Facebook button press animation
+            btnFacebookAuth?.setOnTouchListener { view, event ->
+                if (!reduceMotion) {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.animate()
+                                .scaleX(0.95f)
+                                .scaleY(0.95f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
+                    }
+                }
+                false // Return false to allow click event to proceed
+            }
+            
+            // Apple button press animation
+            btnAppleAuth?.setOnTouchListener { view, event ->
+                if (!reduceMotion) {
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.animate()
+                                .scaleX(0.95f)
+                                .scaleY(0.95f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
+                    }
+                }
+                false // Return false to allow click event to proceed
+            }
+        }
+    }
+    
+    /**
+     * Handle social authentication button clicks with haptic feedback and placeholder messages
+     */
+    private fun handleSocialAuthClick(provider: String) {
+        // Add haptic feedback on button press
+        // CONTEXT_CLICK provides a light haptic feedback within 50ms requirement
+        binding.root.performHapticFeedback(
+            HapticFeedbackConstants.CONTEXT_CLICK,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+        )
+        
+        // Show placeholder toast message for OAuth flow
+        Toast.makeText(
+            this,
+            "Sign in with $provider - OAuth integration coming soon",
+            Toast.LENGTH_SHORT
+        ).show()
+        
+        // TODO: Implement OAuth flow for $provider
+        // This will be implemented in a separate task
+    }
+    
+    /**
+     * Handle forgot password link click with haptic feedback and navigation
+     */
+    private fun handleForgotPasswordClick() {
+        // Add haptic feedback on tap
+        // CONTEXT_CLICK provides a light haptic feedback within 50ms requirement
+        binding.tvForgotPassword?.performHapticFeedback(
+            HapticFeedbackConstants.CONTEXT_CLICK,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+        )
+        
+        // Navigate to ForgotPasswordActivity
+        val intent = Intent(this, ForgotPasswordActivity::class.java)
+        startActivity(intent)
+    }
+    
+    /**
      * Setup accessibility content descriptions for all interactive elements
      */
     private fun setupAccessibilityDescriptions() {
@@ -332,6 +448,7 @@ class AuthActivity : AppCompatActivity() {
             // Buttons
             btnSignIn.contentDescription = "Sign in button. Double tap to sign in with your credentials"
             tvToggleMode.contentDescription = "Switch authentication mode. Double tap to toggle between sign in and sign up"
+            tvForgotPassword?.contentDescription = "Forgot password link. Double tap to reset your password"
             
             // Verification screen elements
             btnResendVerification.contentDescription = "Resend verification email button. Double tap to send a new verification email"
@@ -340,6 +457,11 @@ class AuthActivity : AppCompatActivity() {
             // Logo and branding
             cardLogo.contentDescription = "Synapse application logo"
             tvAppName.contentDescription = "Synapse"
+            
+            // Social authentication buttons
+            btnGoogleAuth?.contentDescription = "Sign in with Google. Double tap to authenticate using your Google account"
+            btnFacebookAuth?.contentDescription = "Sign in with Facebook. Double tap to authenticate using your Facebook account"
+            btnAppleAuth?.contentDescription = "Sign in with Apple. Double tap to authenticate using your Apple ID"
             
             // Loading overlay
             loadingOverlay.contentDescription = "Loading. Please wait while we process your request"
@@ -507,6 +629,27 @@ class AuthActivity : AppCompatActivity() {
                 handleBackToSignIn()
             }
             
+            // Forgot password link click listener
+            tvForgotPassword?.setOnClickListener {
+                handleForgotPasswordClick()
+            }
+            
+            // Social authentication button click listeners
+            btnGoogleAuth?.setOnClickListener {
+                handleSocialAuthClick("Google")
+            }
+            
+            btnFacebookAuth?.setOnClickListener {
+                handleSocialAuthClick("Facebook")
+            }
+            
+            btnAppleAuth?.setOnClickListener {
+                handleSocialAuthClick("Apple")
+            }
+            
+            // Setup social button press animations
+            setupSocialButtonAnimations()
+            
             // Real-time email validation with debounce
             etEmail.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -613,10 +756,20 @@ class AuthActivity : AppCompatActivity() {
             when (state) {
                 is AuthUIState.Loading -> {
                     loadingOverlay.visibility = View.VISIBLE
-                    loadingOverlay.alpha = 0f
-                    loadingOverlay.animate().alpha(1f).setDuration(200).start()
-                    setButtonLoadingState(true)
                     cardError.visibility = View.GONE
+                    
+                    // Update loading state transitions with smooth fade
+                    if (!shouldReduceMotion()) {
+                        loadingOverlay.alpha = 0f
+                        loadingOverlay.animate()
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        loadingOverlay.alpha = 1f
+                    }
+                    
+                    setButtonLoadingState(true)
                     
                     // Apply blur effect to background content (API 31+)
                     applyBlurEffect()
@@ -634,54 +787,100 @@ class AuthActivity : AppCompatActivity() {
                     layoutMainForm.visibility = View.VISIBLE
                     layoutEmailVerification.visibility = View.GONE
                     
-                    // Hide password strength indicator in sign-in mode
-                    layoutPasswordStrength.visibility = View.GONE
+                    // Show forgot password link in sign-in mode
+                    tvForgotPassword?.visibility = View.VISIBLE
                     
-                    // Animate username field out
+                    // Hide password strength indicator in sign-in mode with fade out
+                    if (layoutPasswordStrength.visibility == View.VISIBLE) {
+                        if (!shouldReduceMotion()) {
+                            layoutPasswordStrength.animate()
+                                .alpha(0f)
+                                .setDuration(150)
+                                .withEndAction {
+                                    layoutPasswordStrength.visibility = View.GONE
+                                    layoutPasswordStrength.alpha = 1f
+                                }
+                                .start()
+                        } else {
+                            layoutPasswordStrength.visibility = View.GONE
+                        }
+                    }
+                    
+                    // Animate username field out with smooth slide up transition (300ms)
                     if (tilUsername.visibility == View.VISIBLE) {
-                        tilUsername.animate()
-                            .alpha(0f)
-                            .translationY(-20f)
-                            .setDuration(200)
-                            .withEndAction {
-                                tilUsername.visibility = View.GONE
-                                tilUsername.alpha = 1f
-                                tilUsername.translationY = 0f
-                            }
-                            .start()
+                        if (!shouldReduceMotion()) {
+                            tilUsername.animate()
+                                .alpha(0f)
+                                .translationY(-20f)
+                                .setDuration(300)
+                                .withEndAction {
+                                    tilUsername.visibility = View.GONE
+                                    tilUsername.alpha = 1f
+                                    tilUsername.translationY = 0f
+                                }
+                                .start()
+                        } else {
+                            tilUsername.visibility = View.GONE
+                        }
                     }
                     
                     setButtonEnabledState(true)
-                    btnSignIn.text = "Sign In"
-                    setButtonIcon(R.drawable.ic_arrow_forward)
+                    
+                    // Update button text and icon smoothly with crossfade
+                    if (!shouldReduceMotion()) {
+                        btnSignIn.animate()
+                            .alpha(0f)
+                            .setDuration(75)
+                            .withEndAction {
+                                btnSignIn.text = "Sign In"
+                                setButtonIcon(R.drawable.ic_arrow_forward)
+                                btnSignIn.animate()
+                                    .alpha(1f)
+                                    .setDuration(75)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        btnSignIn.text = "Sign In"
+                        setButtonIcon(R.drawable.ic_arrow_forward)
+                    }
                     
                     // Update accessibility descriptions for sign in mode
                     updateAccessibilityForMode(false)
                     
-                    // Animate text changes with crossfade
-                    tvWelcome.animate()
-                        .alpha(0f)
-                        .setDuration(150)
-                        .withEndAction {
-                            tvWelcome.text = "Welcome back"
-                            tvWelcome.animate()
-                                .alpha(1f)
-                                .setDuration(150)
-                                .start()
-                        }
-                        .start()
+                    // Crossfade welcome text (150ms)
+                    if (!shouldReduceMotion()) {
+                        tvWelcome.animate()
+                            .alpha(0f)
+                            .setDuration(150)
+                            .withEndAction {
+                                tvWelcome.text = "Welcome back"
+                                tvWelcome.animate()
+                                    .alpha(1f)
+                                    .setDuration(150)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        tvWelcome.text = "Welcome back"
+                    }
                     
-                    tvToggleMode.animate()
-                        .alpha(0f)
-                        .setDuration(150)
-                        .withEndAction {
-                            tvToggleMode.text = "Don't have an account? Sign Up"
-                            tvToggleMode.animate()
-                                .alpha(1f)
-                                .setDuration(150)
-                                .start()
-                        }
-                        .start()
+                    // Crossfade toggle text (150ms)
+                    if (!shouldReduceMotion()) {
+                        tvToggleMode.animate()
+                            .alpha(0f)
+                            .setDuration(150)
+                            .withEndAction {
+                                tvToggleMode.text = "Don't have an account? Sign Up"
+                                tvToggleMode.animate()
+                                    .alpha(1f)
+                                    .setDuration(150)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        tvToggleMode.text = "Don't have an account? Sign Up"
+                    }
                     
                     cardError.visibility = View.GONE
                 }
@@ -696,55 +895,89 @@ class AuthActivity : AppCompatActivity() {
                     layoutMainForm.visibility = View.VISIBLE
                     layoutEmailVerification.visibility = View.GONE
                     
+                    // Hide forgot password link in sign-up mode
+                    tvForgotPassword?.visibility = View.GONE
+                    
                     // Trigger password validation to show strength indicator if password exists
                     val currentPassword = etPassword.text?.toString() ?: ""
                     if (currentPassword.isNotEmpty()) {
                         validatePasswordRealtime(currentPassword)
                     }
                     
-                    // Animate username field in with slide down
+                    // Animate username field in with smooth slide down transition (300ms)
                     if (tilUsername.visibility != View.VISIBLE) {
                         tilUsername.visibility = View.VISIBLE
-                        tilUsername.alpha = 0f
-                        tilUsername.translationY = -20f
-                        tilUsername.animate()
-                            .alpha(1f)
-                            .translationY(0f)
-                            .setDuration(300)
-                            .start()
+                        if (!shouldReduceMotion()) {
+                            tilUsername.alpha = 0f
+                            tilUsername.translationY = -20f
+                            tilUsername.animate()
+                                .alpha(1f)
+                                .translationY(0f)
+                                .setDuration(300)
+                                .start()
+                        } else {
+                            tilUsername.alpha = 1f
+                            tilUsername.translationY = 0f
+                        }
                     }
                     
                     setButtonEnabledState(true)
-                    btnSignIn.text = "Create Account"
-                    setButtonIcon(R.drawable.ic_arrow_forward)
+                    
+                    // Update button text and icon smoothly with crossfade
+                    if (!shouldReduceMotion()) {
+                        btnSignIn.animate()
+                            .alpha(0f)
+                            .setDuration(75)
+                            .withEndAction {
+                                btnSignIn.text = "Create Account"
+                                setButtonIcon(R.drawable.ic_arrow_forward)
+                                btnSignIn.animate()
+                                    .alpha(1f)
+                                    .setDuration(75)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        btnSignIn.text = "Create Account"
+                        setButtonIcon(R.drawable.ic_arrow_forward)
+                    }
                     
                     // Update accessibility descriptions for sign up mode
                     updateAccessibilityForMode(true)
                     
-                    // Animate text changes with crossfade
-                    tvWelcome.animate()
-                        .alpha(0f)
-                        .setDuration(150)
-                        .withEndAction {
-                            tvWelcome.text = "Create your account"
-                            tvWelcome.animate()
-                                .alpha(1f)
-                                .setDuration(150)
-                                .start()
-                        }
-                        .start()
+                    // Crossfade welcome text (150ms)
+                    if (!shouldReduceMotion()) {
+                        tvWelcome.animate()
+                            .alpha(0f)
+                            .setDuration(150)
+                            .withEndAction {
+                                tvWelcome.text = "Create your account"
+                                tvWelcome.animate()
+                                    .alpha(1f)
+                                    .setDuration(150)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        tvWelcome.text = "Create your account"
+                    }
                     
-                    tvToggleMode.animate()
-                        .alpha(0f)
-                        .setDuration(150)
-                        .withEndAction {
-                            tvToggleMode.text = "Already have an account? Sign In"
-                            tvToggleMode.animate()
-                                .alpha(1f)
-                                .setDuration(150)
-                                .start()
-                        }
-                        .start()
+                    // Crossfade toggle text (150ms)
+                    if (!shouldReduceMotion()) {
+                        tvToggleMode.animate()
+                            .alpha(0f)
+                            .setDuration(150)
+                            .withEndAction {
+                                tvToggleMode.text = "Already have an account? Sign In"
+                                tvToggleMode.animate()
+                                    .alpha(1f)
+                                    .setDuration(150)
+                                    .start()
+                            }
+                            .start()
+                    } else {
+                        tvToggleMode.text = "Already have an account? Sign In"
+                    }
                     
                     cardError.visibility = View.GONE
                 }
@@ -849,21 +1082,47 @@ class AuthActivity : AppCompatActivity() {
      * Set button to loading state with progress indicator
      */
     private fun setButtonLoadingState(loading: Boolean) {
+        val reduceMotion = shouldReduceMotion()
+        
         binding.btnSignIn.apply {
             if (loading) {
-                // Disable button and show loading state
+                // Disable button and show loading state with smooth transition
                 isEnabled = false
-                alpha = 0.6f
-                text = ""
-                icon = null
+                
+                if (!reduceMotion) {
+                    animate()
+                        .alpha(0.6f)
+                        .setDuration(150)
+                        .withEndAction {
+                            text = ""
+                            icon = null
+                        }
+                        .start()
+                } else {
+                    alpha = 0.6f
+                    text = ""
+                    icon = null
+                }
                 
                 // Note: For a true inline progress indicator, we would need to add
                 // a ProgressBar to the button layout. For now, we use the overlay.
             } else {
-                // Reset to normal state
-                setButtonEnabledState(true)
-                text = if (isSignUpMode) "Create Account" else "Sign In"
-                setButtonIcon(R.drawable.ic_arrow_forward)
+                // Reset to normal state with smooth transition
+                if (!reduceMotion) {
+                    text = if (isSignUpMode) "Create Account" else "Sign In"
+                    setButtonIcon(R.drawable.ic_arrow_forward)
+                    animate()
+                        .alpha(1f)
+                        .setDuration(150)
+                        .withEndAction {
+                            setButtonEnabledState(true)
+                        }
+                        .start()
+                } else {
+                    setButtonEnabledState(true)
+                    text = if (isSignUpMode) "Create Account" else "Sign In"
+                    setButtonIcon(R.drawable.ic_arrow_forward)
+                }
             }
         }
     }
@@ -882,6 +1141,8 @@ class AuthActivity : AppCompatActivity() {
      * Show brief success state with checkmark icon before navigation
      */
     private fun showButtonSuccessState() {
+        val reduceMotion = shouldReduceMotion()
+        
         binding.btnSignIn.apply {
             // Show success state
             isEnabled = false
@@ -899,32 +1160,39 @@ class AuthActivity : AppCompatActivity() {
                 HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
             )
             
-            // Animate button with subtle pulse
-            animate()
-                .scaleX(1.05f)
-                .scaleY(1.05f)
-                .setDuration(150)
-                .withEndAction {
-                    animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(150)
-                        .start()
-                }
-                .start()
+            // Enhanced success state with pulse (1.05x → 1.0x)
+            if (!reduceMotion) {
+                animate()
+                    .scaleX(1.05f)
+                    .scaleY(1.05f)
+                    .setDuration(150)
+                    .withEndAction {
+                        animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(150)
+                            .start()
+                    }
+                    .start()
+            }
         }
         
         // Start fade out animation for entire auth screen after brief success display
         binding.root.postDelayed({
-            // Fade out entire auth screen
-            binding.root.animate()
-                .alpha(0f)
-                .setDuration(300)
-                .withEndAction {
-                    // Navigate to main after fade out completes
-                    navigateToMain()
-                }
-                .start()
+            // Add screen fade-out before navigation (300ms)
+            if (!reduceMotion) {
+                binding.root.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction {
+                        // Navigate to main after fade out completes
+                        navigateToMain()
+                    }
+                    .start()
+            } else {
+                // Skip fade animation if reduced motion is enabled
+                navigateToMain()
+            }
         }, 500) // Delay navigation by 500ms to show success feedback
     }
 
@@ -1069,7 +1337,7 @@ class AuthActivity : AppCompatActivity() {
             val reduceMotion = shouldReduceMotion()
             
             if (isValid) {
-                // Show green checkmark icon
+                // Show green checkmark icon with smooth transition
                 tilEmail.endIconMode = com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM
                 tilEmail.setEndIconDrawable(android.R.drawable.checkbox_on_background)
                 tilEmail.setEndIconTintList(android.content.res.ColorStateList.valueOf(
@@ -1080,7 +1348,7 @@ class AuthActivity : AppCompatActivity() {
                 // Announce success for accessibility
                 tilEmail.announceForAccessibility("Email address is valid")
                 
-                // Animate the entire TextInputLayout with subtle scale
+                // Add validation success pulse animation (1.01x → 1.0x)
                 if (!reduceMotion) {
                     tilEmail.animate()
                         .scaleX(1.01f)
@@ -1108,7 +1376,7 @@ class AuthActivity : AppCompatActivity() {
                 // Announce error for accessibility (TalkBack)
                 tilEmail.announceForAccessibility("Email validation error: $errorMessage")
                 
-                // Animate error appearance with subtle shake
+                // Refine validation error shake animation
                 if (!reduceMotion) {
                     tilEmail.animate()
                         .translationX(-5f)
@@ -1119,8 +1387,20 @@ class AuthActivity : AppCompatActivity() {
                                 .setDuration(50)
                                 .withEndAction {
                                     tilEmail.animate()
-                                        .translationX(0f)
+                                        .translationX(-5f)
                                         .setDuration(50)
+                                        .withEndAction {
+                                            tilEmail.animate()
+                                                .translationX(5f)
+                                                .setDuration(50)
+                                                .withEndAction {
+                                                    tilEmail.animate()
+                                                        .translationX(0f)
+                                                        .setDuration(50)
+                                                        .start()
+                                                }
+                                                .start()
+                                        }
                                         .start()
                                 }
                                 .start()

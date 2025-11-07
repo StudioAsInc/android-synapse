@@ -4,43 +4,14 @@ inclusion: always
 
 # Agent Guidelines
 
-## Code Style & Conventions
+**Code**: Kotlin, View Binding mandatory, null safety (`?.`, `?:`, `!!`), coroutines (`viewModelScope`/`lifecycleScope`), no hardcoded strings/colors/dimensions (use XML resources)
 
-- **Language**: Use Kotlin exclusively for new code. Java-to-Kotlin migration is ongoing.
-- **View Binding**: Mandatory for all UI code. Never use `findViewById()`.
-- **Null Safety**: Leverage Kotlin's null safety features. Use `?.`, `?:`, and `!!` appropriately.
-- **Coroutines**: Use `suspend` functions for async operations. Prefer `viewModelScope` and `lifecycleScope`.
-- **Naming**: Use camelCase for variables/functions, PascalCase for classes, UPPER_SNAKE_CASE for constants.
+**Architecture**: MVVM, Repository pattern in `data/`, SupabaseClient.kt singleton only, domain for business logic
 
-## Architecture Patterns
+**Supabase**: Use `SupabaseClient.client` singleton, respect RLS, test with different users, Realtime for live updates
 
-- **MVVM**: ViewModels expose StateFlow/LiveData, Fragments/Activities observe and update UI.
-- **Repository Pattern**: Repositories in `data/` abstract Supabase and local data sources.
-- **Single Source of Truth**: SupabaseClient.kt is the singleton for all backend operations.
-- **Separation of Concerns**: Keep business logic in domain layer, UI logic in presentation layer.
+**Docs**: Only in `Docs/` directory, never auto-create without permission
 
-## Supabase Integration
+**Testing**: Run `./gradlew build` before commit, test RLS and null handling
 
-- **Client Access**: Always use `SupabaseClient.client` singleton, never create new instances.
-- **RLS Policies**: All database operations respect Row Level Security. Test with different user contexts.
-- **Realtime**: Use Supabase Realtime for live updates (chat, notifications, feed).
-- **Storage**: Use Supabase Storage for media uploads with proper bucket policies.
-
-## Documentation Rules
-
-- **Location**: All documentation MUST go in `Docs/` directory only.
-- **No Auto-Creation**: Never create markdown documentation files without explicit user permission.
-- **Existing Docs**: Reference and update existing docs rather than creating new ones.
-
-## Testing & Validation
-
-- **Build Before Commit**: Run `./gradlew build` to verify compilation.
-- **RLS Testing**: Test database operations with different authenticated users.
-- **Null Checks**: Verify null handling for all Supabase responses.
-
-## Common Pitfalls
-
-- Don't mix `adapter/` and `adapters/` packages - prefer `adapters/` for new code.
-- Don't bypass ViewBinding with direct view references.
-- Don't create Supabase client instances - use the singleton.
-- Don't place documentation outside `Docs/` directory.
+**Avoid**: `findViewById()`, new Supabase instances, mixing `adapter/`+`adapters/` (use `adapters/`), docs outside `Docs/`

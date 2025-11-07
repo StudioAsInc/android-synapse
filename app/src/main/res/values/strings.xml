@@ -485,4 +485,19 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="failed_to_load_messages">Failed to load messages</string>
     <string name="end_of_list">You\'ve reached the end</string>
 
+    <!-- Social Authentication -->
+    <string name="social_auth_divider">Or Continue With Account</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_in_with_facebook">Sign in with Facebook</string>
+    <string name="sign_in_with_apple">Sign in with Apple</string>
+    <string name="forgot_password_link">Forgot Password?</string>
+
+    <!-- Forgot Password Screen -->
+    <string name="forgot_password_title">Forgot Password</string>
+    <string name="forgot_password_subtitle">Enter your email address and we\'ll send you a link to reset your password</string>
+    <string name="forgot_password_continue">Continue</string>
+    <string name="forgot_password_back">Back to Sign In</string>
+    <string name="forgot_password_success">Password reset link sent! Please check your email.</string>
+    <string name="forgot_password_error">Unable to send reset link. Please try again.</string>
+
 </resources>
