@@ -5,8 +5,10 @@ import android.content.Context
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.ScrollView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.NestedScrollView
 
 /**
  * Utility for managing keyboard visibility and behavior
@@ -125,7 +127,7 @@ object KeyboardUtil {
      * Smooth scroll to view when keyboard appears
      * Ensures the focused view is visible above the keyboard
      * 
-     * @param scrollView The parent scroll view
+     * @param scrollView The parent scroll view (ScrollView or NestedScrollView)
      * @param targetView The view to scroll to
      */
     fun scrollToViewWhenKeyboardAppears(scrollView: View, targetView: View) {
@@ -141,7 +143,10 @@ object KeyboardUtil {
                 // Check if target view is hidden by keyboard
                 if (targetBottom > screenHeight - keyboardHeight) {
                     val scrollAmount = targetBottom - (screenHeight - keyboardHeight) + 50 // 50dp extra padding
-                    scrollView.smoothScrollBy(0, scrollAmount)
+                    when (scrollView) {
+                        is NestedScrollView -> scrollView.smoothScrollBy(0, scrollAmount)
+                        is ScrollView -> scrollView.smoothScrollBy(0, scrollAmount)
+                    }
                 }
             }
         })
