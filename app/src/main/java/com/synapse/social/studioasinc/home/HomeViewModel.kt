@@ -77,20 +77,16 @@ class HomeViewModel(
 
     // Implement loadPosts() function calling paginationManager.refresh()
     fun loadPosts() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-            // Invalidate cache on refresh
-            postRepository.invalidateCache()
-            // Clear saved position on refresh
-            savedScrollPosition = null
-            paginationManager.refresh()
-        }
+        // Invalidate cache on refresh
+        postRepository.invalidateCache()
+        // Clear saved position on refresh
+        savedScrollPosition = null
+        paginationManager.refresh()
     }
 
     // Implement loadNextPage() function calling paginationManager.loadNextPage()
     fun loadNextPage() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-            paginationManager.loadNextPage()
-        }
+        paginationManager.loadNextPage()
     }
 
     fun refreshPosts() {

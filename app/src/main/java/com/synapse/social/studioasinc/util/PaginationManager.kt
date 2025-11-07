@@ -78,7 +78,13 @@ class PaginationManager<T>(
      * Refresh the list by resetting state and loading the first page
      * Prevents concurrent refresh operations and cancels pending loadNextPage jobs
      */
-    suspend fun refresh() {
+    fun refresh() {
+        // Prevent concurrent refresh operations
+        if (isLoading && _paginationState.value is PaginationState.Refreshing) {
+            android.util.Log.d("PaginationManager", "Refresh already in progress, skipping")
+            return
+        }
+        
         // Cancel pending loadNextPage jobs when refresh is triggered
         loadJob?.cancel()
         scrollJob?.cancel()
@@ -148,7 +154,7 @@ class PaginationManager<T>(
      * Load the next page of data
      * Checks to prevent loading when already loading or at end of list
      */
-    suspend fun loadNextPage() {
+    fun loadNextPage() {
         // Prevent loading if already loading or at end of list
         if (isLoading || !hasMoreData) {
             return
@@ -259,7 +265,9 @@ class PaginationManager<T>(
                     scrollJob?.cancel()
                     scrollJob = coroutineScope.launch {
                         delay(300)
-                        loadNextPage()
+                        if (!isLoading && hasMoreData) {
+                            loadNextPage()
+                        }
                     }
                 }
             }
