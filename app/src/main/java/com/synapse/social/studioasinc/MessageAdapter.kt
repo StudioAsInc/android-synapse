@@ -158,7 +158,7 @@ class MessageAdapter(
             holder.messageText.setTextColor(context.getColor(R.color.md_theme_onSurfaceVariant))
         }
         
-        // Handle reply indicator
+        // Handle reply indicator with WhatsApp-style display
         val repliedMessageId = message["replied_message_id"]?.toString()
         if (!repliedMessageId.isNullOrEmpty()) {
             // Find the replied message in the list
@@ -169,20 +169,20 @@ class MessageAdapter(
             if (repliedMessage != null) {
                 holder.repliedMessageLayout?.visibility = View.VISIBLE
                 
-                // Get sender name from replied message
+                // Get sender name from replied message - always show "You" for current user
                 val repliedSenderId = repliedMessage["sender_id"]?.toString()
                     ?: repliedMessage["uid"]?.toString()
                 val repliedSenderName = if (repliedSenderId == SupabaseClient.client.auth.currentUserOrNull()?.id) {
                     "You"
                 } else {
-                    // In a real implementation, we'd fetch the username
-                    // For now, use a placeholder
+                    // In a real implementation, we'd fetch the username from a cache or database
+                    // For now, use a placeholder that can be enhanced later
                     "User"
                 }
                 
                 holder.repliedUsername?.text = repliedSenderName
                 
-                // Get message text and truncate to 2 lines
+                // Get message text - already truncated to 2 lines by maxLines in XML
                 val repliedText = repliedMessage["content"]?.toString()
                     ?: repliedMessage["message_text"]?.toString()
                     ?: ""
@@ -193,6 +193,7 @@ class MessageAdapter(
                     onReplyClick?.invoke(repliedMessageId)
                 }
             } else {
+                // Message not found - might be deleted or not loaded
                 holder.repliedMessageLayout?.visibility = View.GONE
             }
         } else {

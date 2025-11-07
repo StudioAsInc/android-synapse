@@ -9,8 +9,7 @@
         android:paddingBottom="@dimen/spacing_normal"
         android:background="@android:color/transparent"
         android:gravity="center_horizontal|center_vertical"
-        android:orientation="horizontal"
-        android:animateLayoutChanges="true">
+        android:orientation="horizontal">
         <LinearLayout
                 android:id="@+id/message_input_outlined_round"
                 android:layout_width="0dp"
@@ -19,8 +18,7 @@
                 android:background="@drawable/bg_message_input"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:layout_weight="1"
-                android:animateLayoutChanges="true">
+                android:layout_weight="1">
                 <com.synapse.social.studioasinc.FadeEditText
                         android:id="@+id/message_et"
                         android:layout_width="0dp"

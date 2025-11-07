@@ -726,28 +726,28 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                 
                 // Animate toolContainer visibility based on text input
                 toolContainer?.let { container ->
-                    if (!s.isNullOrEmpty() && container.visibility == View.VISIBLE) {
-                        // Hide toolContainer with animation when user starts typing
+                    val isEmpty = s.isNullOrEmpty()
+                    val shouldShow = isEmpty && container.visibility != View.VISIBLE
+                    val shouldHide = !isEmpty && container.visibility == View.VISIBLE
+                    
+                    if (shouldHide) {
+                        // Hide toolContainer with smooth fade-out only
                         container.animate()
                             .alpha(0f)
-                            .scaleX(0.8f)
-                            .scaleY(0.8f)
-                            .setDuration(200)
+                            .setDuration(150)
+                            .setInterpolator(android.view.animation.AccelerateInterpolator())
                             .withEndAction {
                                 container.visibility = View.GONE
                             }
                             .start()
-                    } else if (s.isNullOrEmpty() && container.visibility == View.GONE) {
-                        // Show toolContainer with animation when input is empty
+                    } else if (shouldShow) {
+                        // Show toolContainer with smooth fade-in only
                         container.visibility = View.VISIBLE
                         container.alpha = 0f
-                        container.scaleX = 0.8f
-                        container.scaleY = 0.8f
                         container.animate()
                             .alpha(1f)
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(200)
+                            .setDuration(150)
+                            .setInterpolator(android.view.animation.DecelerateInterpolator())
                             .start()
                     }
                 }

@@ -35,6 +35,9 @@ import com.synapse.social.studioasinc.util.FileUtil
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.util.*
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class CreatePostActivity : AppCompatActivity() {
 
@@ -274,6 +277,20 @@ class CreatePostActivity : AppCompatActivity() {
         
         // Create post object
         val postKey = "post_${System.currentTimeMillis()}_${(1000..9999).random()}"
+        val currentTimestamp = System.currentTimeMillis()
+        
+        // Convert timestamp to ISO 8601 format for PostgreSQL
+        val publishDateFormatted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            Instant.ofEpochMilli(currentTimestamp)
+                .atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        } else {
+            // Fallback for older Android versions
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date(currentTimestamp))
+        }
+        
         var post = Post(
             key = postKey,
             authorUid = currentUser.id,
@@ -283,7 +300,8 @@ class CreatePostActivity : AppCompatActivity() {
             postHideCommentsCount = if (hideCommentsCountSwitch.isChecked) "true" else "false",
             postDisableComments = if (disableCommentsSwitch.isChecked) "true" else "false",
             postVisibility = if (postVisibilitySpinner.selectedItemPosition == 0) "public" else "private",
-            publishDate = System.currentTimeMillis().toString()
+            publishDate = publishDateFormatted,
+            timestamp = currentTimestamp
         )
         
         if (selectedMediaItems.isEmpty()) {

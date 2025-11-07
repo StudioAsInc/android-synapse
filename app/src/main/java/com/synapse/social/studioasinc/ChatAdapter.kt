@@ -240,7 +240,7 @@ class ChatAdapter(
         val editedIndicator: TextView? = try { itemView.findViewById(R.id.editedIndicator) } catch (e: ClassCastException) { null }
         val messageTime: TextView? = try { itemView.findViewById(R.id.date) } catch (e: ClassCastException) { null }
         val messageStatus: ImageView? = try { itemView.findViewById(R.id.message_state) } catch (e: ClassCastException) { null }
-        val replyLayout: com.google.android.material.card.MaterialCardView? = try { itemView.findViewById(R.id.mRepliedMessageLayout) } catch (e: ClassCastException) { null }
+        val replyLayout: LinearLayout? = try { itemView.findViewById(R.id.mRepliedMessageLayout) } catch (e: ClassCastException) { null }
         val replyUsername: TextView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutUsername) } catch (e: ClassCastException) { null }
         val replyText: TextView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutMessage) } catch (e: ClassCastException) { null }
         val replyImage: ImageView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutImage) } catch (e: ClassCastException) { null }
@@ -493,7 +493,7 @@ class ChatAdapter(
             }
         }
         
-        // Handle reply layout
+        // Handle reply layout with WhatsApp-style display
         holder.replyLayout?.let { replyLayout ->
             val repliedMessageId = messageData["replied_message_id"]?.toString() 
                 ?: messageData["reply_to_id"]?.toString()
@@ -504,7 +504,7 @@ class ChatAdapter(
                     ?: data.find { it["id"]?.toString() == repliedMessageId }
                 
                 if (repliedMessage != null) {
-                    // Set reply username
+                    // Set reply username - always show "You" for current user's messages
                     val replySenderId = repliedMessage["sender_id"]?.toString() 
                         ?: repliedMessage["uid"]?.toString()
                     val replyUsername = if (replySenderId == myUid) {
@@ -516,7 +516,7 @@ class ChatAdapter(
                     }
                     holder.replyUsername?.text = replyUsername
                     
-                    // Set reply message text
+                    // Set reply message text (maxLines=2 is set in XML)
                     val replyText = repliedMessage["content"]?.toString() 
                         ?: repliedMessage["message_text"]?.toString() 
                         ?: "Message"
