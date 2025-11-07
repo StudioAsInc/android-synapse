@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.adapter
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -55,6 +56,7 @@ class ChatAdapter(
         }
 
     companion object {
+        private const val TAG = "ChatAdapter"
         private const val VIEW_TYPE_MESSAGE_SENT = 1
         private const val VIEW_TYPE_MESSAGE_RECEIVED = 2
         private const val VIEW_TYPE_IMAGE_SENT = 3
@@ -678,14 +680,19 @@ class ChatAdapter(
                 imgView.scaleType = ImageView.ScaleType.CENTER_CROP
                 imgView.setPadding(4, 4, 4, 4)
                 
-                // Load thumbnail with Glide
-                Glide.with(context)
-                    .load(attachment.thumbnailUrl ?: attachment.url)
-                    .placeholder(R.drawable.ph_imgbluredsqure)
-                    .error(R.drawable.ph_imgbluredsqure)
-                    .thumbnail(0.1f) // Load low-res first
-                    .centerCrop()
-                    .into(imgView)
+                // Load thumbnail with Glide - use applicationContext to avoid destroyed activity crash
+                try {
+                    Glide.with(context.applicationContext)
+                        .load(attachment.thumbnailUrl ?: attachment.url)
+                        .placeholder(R.drawable.ph_imgbluredsqure)
+                        .error(R.drawable.ph_imgbluredsqure)
+                        .thumbnail(0.1f) // Load low-res first
+                        .centerCrop()
+                        .into(imgView)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load image with Glide", e)
+                    imgView.setImageResource(R.drawable.ph_imgbluredsqure)
+                }
                 
                 // Click to open gallery (or toggle selection in multi-select mode)
                 imgView.setOnClickListener {
@@ -870,14 +877,19 @@ class ChatAdapter(
             val attachment = message.attachments?.firstOrNull { it.type == "video" }
             
             if (attachment != null) {
-                // Load video thumbnail with Glide
-                Glide.with(context)
-                    .load(attachment.thumbnailUrl ?: attachment.url)
-                    .placeholder(R.drawable.ph_imgbluredsqure)
-                    .error(R.drawable.ph_imgbluredsqure)
-                    .thumbnail(0.1f) // Load low-res first
-                    .centerCrop()
-                    .into(videoThumbnail)
+                // Load video thumbnail with Glide - use applicationContext to avoid destroyed activity crash
+                try {
+                    Glide.with(context.applicationContext)
+                        .load(attachment.thumbnailUrl ?: attachment.url)
+                        .placeholder(R.drawable.ph_imgbluredsqure)
+                        .error(R.drawable.ph_imgbluredsqure)
+                        .thumbnail(0.1f) // Load low-res first
+                        .centerCrop()
+                        .into(videoThumbnail)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load video thumbnail with Glide", e)
+                    videoThumbnail.setImageResource(R.drawable.ph_imgbluredsqure)
+                }
                 
                 // Show duration overlay
                 attachment.duration?.let { duration ->

@@ -118,12 +118,12 @@ class ChatViewModel : ViewModel() {
      */
     private fun initializePaginationForChat(chatId: String) {
         // Create pagination manager with ChatRepository.getMessagesPage callback
+        // Load ALL messages to ensure complete conversation history
         paginationManager = PaginationManager<Message>(
-            pageSize = 50,
+            pageSize = Int.MAX_VALUE, // Load all messages at once
             scrollThreshold = 10,
             onLoadPage = { page, pageSize ->
-                // For chat messages, we use timestamp-based pagination
-                // ALWAYS load ALL messages to ensure complete conversation history
+                // For chat messages, always load ALL messages
                 // This fixes the issue where only 50 messages show when returning to chat
                 chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
             },
@@ -174,6 +174,10 @@ class ChatViewModel : ViewModel() {
      * Loads messages for a chat using pagination
      */
     fun loadMessages(chatId: String) {
+        android.util.Log.d("ChatViewModel", "=== loadMessages START ===")
+        android.util.Log.d("ChatViewModel", "Loading messages for chatId: $chatId")
+        android.util.Log.d("ChatViewModel", "Current message count: ${_paginatedMessages.value.size}")
+        
         currentChatId = chatId
         
         // Always reinitialize pagination for the chat to ensure fresh state
@@ -182,17 +186,28 @@ class ChatViewModel : ViewModel() {
         
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             _isLoading.value = true
+            android.util.Log.d("ChatViewModel", "Set isLoading = true")
             try {
                 // Invalidate cache on refresh
                 chatRepository.invalidateCache()
+                android.util.Log.d("ChatViewModel", "Cache invalidated")
+                
                 // Clear saved position on refresh
                 clearScrollPosition()
+                android.util.Log.d("ChatViewModel", "Scroll position cleared")
+                
                 paginationManager?.refresh()
+                android.util.Log.d("ChatViewModel", "Pagination manager refreshed")
+                
                 _error.value = null
             } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Error loading messages", e)
                 _error.value = e.message
             } finally {
                 _isLoading.value = false
+                android.util.Log.d("ChatViewModel", "Set isLoading = false")
+                android.util.Log.d("ChatViewModel", "Final message count: ${_paginatedMessages.value.size}")
+                android.util.Log.d("ChatViewModel", "=== loadMessages END ===")
             }
         }
     }

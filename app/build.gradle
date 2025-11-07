@@ -206,6 +206,7 @@ dependencies {
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     implementation 'com.airbnb.android:lottie:6.6.0'
     implementation 'com.onesignal:OneSignal:[5.1.6, 5.1.99]'
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
 
     // Local AARs
     implementation files('libs/android-image-cropper-2.8.0.aar')

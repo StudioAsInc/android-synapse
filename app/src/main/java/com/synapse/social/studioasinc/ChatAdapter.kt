@@ -325,6 +325,17 @@ class ChatAdapter(
         val messageData = data[position]
         val currentUser = authService.getCurrentUser()
         val myUid = currentUser?.id ?: ""
+        
+        // Apply entrance animation for new messages
+        if (position == data.size - 1 && messageData["is_new"] == true) {
+            val isMyMessage = (messageData["sender_id"]?.toString() ?: messageData["uid"]?.toString()) == myUid
+            com.synapse.social.studioasinc.util.MessageAnimationHelper.animateMessageReceive(
+                holder.itemView, 
+                isMyMessage
+            ) {
+                messageData.remove("is_new")
+            }
+        }
         // Support both old (uid) and new (sender_id) field names
         val msgUid = messageData["sender_id"]?.toString() 
             ?: messageData["uid"]?.toString() 
