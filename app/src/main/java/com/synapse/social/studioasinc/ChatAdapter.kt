@@ -359,12 +359,20 @@ class ChatAdapter(
                 listener.onMessageClick(messageId, position)
             }
             
-            // Set message layout alignment
-            holder.messageLayout?.let { layout ->
-                val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+            // Set message layout alignment using ConstraintLayout
+            holder.bodyLayout?.let { body ->
+                val layoutParams = body.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
                 layoutParams?.let { params ->
-                    params.gravity = if (isMyMessage) Gravity.END else Gravity.START
-                    layout.layoutParams = params
+                    if (isMyMessage) {
+                        // Align to right
+                        params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                    } else {
+                        // Align to left
+                        params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                        params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                    }
+                    body.layoutParams = params
                 }
             }
             
