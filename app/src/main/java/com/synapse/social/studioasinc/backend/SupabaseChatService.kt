@@ -151,13 +151,15 @@ class SupabaseChatService {
                 
                 if (existingChat == null) {
                     // Try to insert new chat
+                    // Convert milliseconds to seconds for PostgreSQL timestamptz
+                    val timestampSeconds = System.currentTimeMillis() / 1000
                     val chatData = mapOf(
                         "chat_id" to chatId,
                         "is_group" to false,
                         "created_by" to userId1,
                         "participants_count" to 2,
                         "is_active" to true,
-                        "created_at" to System.currentTimeMillis()
+                        "created_at" to timestampSeconds
                     )
                     
                     val insertResult = databaseService.insert("chats", chatData)
@@ -259,6 +261,8 @@ class SupabaseChatService {
                 
                 val messageId = UUID.randomUUID().toString()
                 val timestamp = System.currentTimeMillis()
+                // Convert milliseconds to seconds for PostgreSQL timestamptz
+                val timestampSeconds = timestamp / 1000
                 
                 // Determine message type based on attachments
                 val finalMessageType = if (!attachments.isNullOrEmpty()) {
@@ -272,8 +276,8 @@ class SupabaseChatService {
                     "sender_id" to senderId,
                     "content" to content,
                     "message_type" to finalMessageType,
-                    "created_at" to timestamp,
-                    "updated_at" to timestamp,
+                    "created_at" to timestampSeconds,
+                    "updated_at" to timestampSeconds,
                     "message_state" to "sent",  // Set initial state to SENT
                     "delivered_at" to null,      // Initially null
                     "read_at" to null,           // Initially null
@@ -319,7 +323,7 @@ class SupabaseChatService {
                         } else {
                             content
                         }
-                        updateChatLastMessage(chatId, lastMessageText, timestamp, senderId)
+                        updateChatLastMessage(chatId, lastMessageText, timestampSeconds, senderId)
                         Result.success(messageId)
                     },
                     onFailure = { error -> Result.failure(error) }
@@ -490,11 +494,14 @@ class SupabaseChatService {
                 
                 android.util.Log.d(TAG, "Marking ${messagesToUpdate.size} messages as read in chat: $chatId")
                 
+                // Convert milliseconds to seconds for PostgreSQL timestamptz
+                val timestampSeconds = timestamp / 1000
+                
                 // Batch update all messages in a single operation using buildJsonObject
                 val updateData = buildJsonObject {
                     put("message_state", "read")
-                    put("read_at", timestamp)
-                    put("updated_at", timestamp)
+                    put("read_at", timestampSeconds)
+                    put("updated_at", timestampSeconds)
                 }
                 
                 // Update messages using batch operation
@@ -506,7 +513,7 @@ class SupabaseChatService {
                 
                 // Update last_read_at for the participant using buildJsonObject
                 val participantUpdateData = buildJsonObject {
-                    put("last_read_at", timestamp)
+                    put("last_read_at", timestampSeconds)
                 }
                 
                 client.from("chat_participants").update(participantUpdateData) {
@@ -555,15 +562,17 @@ class SupabaseChatService {
         return withContext(Dispatchers.IO) {
             try {
                 val timestamp = System.currentTimeMillis()
+                // Convert milliseconds to seconds for PostgreSQL timestamptz
+                val timestampSeconds = timestamp / 1000
                 
                 android.util.Log.d(TAG, "Updating message $messageId to DELIVERED state")
                 
                 // Update message state to DELIVERED
                 val updateData = mapOf(
                     "message_state" to "delivered",
-                    "delivered_at" to timestamp,
+                    "delivered_at" to timestampSeconds,
                     "delivery_status" to "delivered",
-                    "updated_at" to timestamp
+                    "updated_at" to timestampSeconds
                 )
                 
                 databaseService.update("messages", updateData, "id", messageId).fold(
@@ -603,10 +612,12 @@ class SupabaseChatService {
      */
     suspend fun deleteMessage(messageId: String, deleteForEveryone: Boolean = true): Result<Unit> {
         return try {
+            // Convert milliseconds to seconds for PostgreSQL timestamptz
+            val timestampSeconds = System.currentTimeMillis() / 1000
             val updateData = mapOf(
                 "is_deleted" to true,
                 "delete_for_everyone" to deleteForEveryone,
-                "deleted_at" to System.currentTimeMillis()
+                "deleted_at" to timestampSeconds
             )
             databaseService.update("messages", updateData, "id", messageId)
         } catch (e: Exception) {
@@ -741,6 +752,8 @@ class SupabaseChatService {
         return withContext(Dispatchers.IO) {
             try {
                 val timestamp = System.currentTimeMillis()
+                // Convert milliseconds to seconds for PostgreSQL timestamptz
+                val timestampSeconds = timestamp / 1000
                 
                 // Get current message content before editing
                 val currentMessage = client.from("messages")
@@ -762,7 +775,7 @@ class SupabaseChatService {
                         "message_id" to messageId,
                         "previous_content" to previousContent,
                         "edited_by" to senderId,
-                        "edited_at" to timestamp
+                        "edited_at" to timestampSeconds
                     )
                     val historyResult = databaseService.insert("message_edit_history", historyData)
                     if (historyResult.isFailure) {
@@ -775,8 +788,8 @@ class SupabaseChatService {
                 val updateData = mapOf(
                     "content" to newContent,
                     "is_edited" to true,
-                    "edited_at" to timestamp,
-                    "updated_at" to timestamp
+                    "edited_at" to timestampSeconds,
+                    "updated_at" to timestampSeconds
                 )
                 databaseService.update("messages", updateData, "id", messageId)
             } catch (e: Exception) {
@@ -804,11 +817,13 @@ class SupabaseChatService {
                     return@withContext Result.failure(Exception("Supabase not configured"))
                 }
                 if (isTyping) {
+                    // Convert milliseconds to seconds for PostgreSQL timestamptz
+                    val timestampSeconds = System.currentTimeMillis() / 1000
                     val typingData = mapOf(
                         "chat_id" to chatId,
                         "user_id" to userId,
                         "is_typing" to isTyping,
-                        "timestamp" to System.currentTimeMillis()
+                        "timestamp" to timestampSeconds
                     )
                     databaseService.upsert("typing_status", typingData)
                 } else {
@@ -839,7 +854,8 @@ class SupabaseChatService {
     suspend fun getTypingUsers(chatId: String, excludeUserId: String): Result<List<String>> {
         return withContext(Dispatchers.IO) {
             try {
-                val fiveSecondsAgo = System.currentTimeMillis() - 5000
+                // Convert milliseconds to seconds for PostgreSQL timestamptz comparison
+                val fiveSecondsAgo = (System.currentTimeMillis() - 5000) / 1000
                 
                 val typingUsers = client.from("typing_status")
                     .select(columns = Columns.raw("user_id")) {
@@ -892,9 +908,11 @@ class SupabaseChatService {
         status: String
     ): Result<Unit> {
         return try {
+            // Convert milliseconds to seconds for PostgreSQL timestamptz
+            val timestampSeconds = System.currentTimeMillis() / 1000
             val updateData = mapOf(
                 "delivery_status" to status,
-                "updated_at" to System.currentTimeMillis()
+                "updated_at" to timestampSeconds
             )
             databaseService.update("messages", updateData, "id", messageId)
         } catch (e: Exception) {
@@ -951,12 +969,14 @@ class SupabaseChatService {
         return withContext(Dispatchers.IO) {
             try {
                 val reactionId = UUID.randomUUID().toString()
+                // Convert milliseconds to seconds for PostgreSQL timestamptz
+                val timestampSeconds = System.currentTimeMillis() / 1000
                 val reactionData = mapOf(
                     "id" to reactionId,
                     "message_id" to messageId,
                     "user_id" to userId,
                     "emoji" to emoji,
-                    "created_at" to System.currentTimeMillis()
+                    "created_at" to timestampSeconds
                 )
                 
                 databaseService.insert("message_reactions", reactionData).fold(
