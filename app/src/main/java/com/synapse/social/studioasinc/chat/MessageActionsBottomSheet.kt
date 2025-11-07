@@ -207,15 +207,31 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
             )
         }
 
-        // AI Summary - only for messages with >100 characters
+        // AI Summary / See Original - only for messages with >100 characters
         if (messageText.length > 100) {
-            actions.add(
-                MessageAction(
-                    id = "ai_summary",
-                    label = getString(R.string.action_ai_summary),
-                    icon = R.drawable.ic_ai_summary
+            // Check if AI summary is currently being shown
+            val showingSummary = messageData["showing_ai_summary"] as? Boolean ?: false
+            val hasSummary = messageData["ai_summary"] as? String != null
+            
+            if (showingSummary && hasSummary) {
+                // Show "See Original" option
+                actions.add(
+                    MessageAction(
+                        id = "see_original",
+                        label = "See Original",
+                        icon = R.drawable.ic_text_fields_48px
+                    )
                 )
-            )
+            } else {
+                // Show "AI Summary" option
+                actions.add(
+                    MessageAction(
+                        id = "ai_summary",
+                        label = getString(R.string.action_ai_summary),
+                        icon = R.drawable.ic_ai_summary
+                    )
+                )
+            }
         }
 
         return actions
@@ -240,6 +256,7 @@ class MessageActionsBottomSheet : BottomSheetDialogFragment() {
             "edit" -> listener?.onEditAction(messageId, messageText)
             "delete" -> listener?.onDeleteAction(messageId)
             "ai_summary" -> listener?.onAISummaryAction(messageId, messageText)
+            "see_original" -> listener?.onAISummaryAction(messageId, messageText) // Toggle back to original
         }
 
         dismiss()

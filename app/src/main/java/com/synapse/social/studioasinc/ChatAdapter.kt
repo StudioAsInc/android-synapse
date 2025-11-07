@@ -943,11 +943,22 @@ class ChatAdapter(
             ?: ""
         val isMyMessage = msgUid == myUid
         
+        // Check if AI summary is being shown
+        val showingSummary = messageData["showing_ai_summary"]?.toString()?.toBooleanStrictOrNull() ?: false
+        val aiSummary = messageData["ai_summary"]?.toString()
+        
         // Support both content (Supabase) and message_text (legacy) field names
-        val messageText = messageData["content"]?.toString() 
+        val originalText = messageData["content"]?.toString() 
             ?: messageData["message_text"]?.toString() 
             ?: ""
-        holder.messageText.text = messageText
+        
+        // Display summary or original text
+        val displayText = if (showingSummary && !aiSummary.isNullOrEmpty()) {
+            aiSummary
+        } else {
+            originalText
+        }
+        holder.messageText.text = displayText
         
         // Apply text color based on message type
         val context = holder.itemView.context

@@ -2066,11 +2066,85 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     }
     
     /**
-     * Show AI summary dialog
+     * Show AI summary inline in the message bubble or toggle back to original
      */
     private fun showAISummary(messageId: String, messageText: String) {
-        // TODO: Implement AI summary dialog
-        Toast.makeText(this, "AI Summary feature coming soon", Toast.LENGTH_SHORT).show()
+        // Find the message in the list
+        val position = messagesList.indexOfFirst { 
+            it["id"]?.toString() == messageId 
+        }
+        
+        if (position == -1) {
+            Toast.makeText(this, "Message not found", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val messageData = messagesList[position]
+        
+        // Check if currently showing summary (user wants to see original)
+        val showingSummary = messageData["showing_ai_summary"]?.toString()?.toBooleanStrictOrNull() ?: false
+        if (showingSummary) {
+            // Toggle back to original text
+            messageData["showing_ai_summary"] = false
+            chatAdapter?.notifyItemChanged(position)
+            return
+        }
+        
+        // Check if summary already exists
+        val existingSummary = messageData["ai_summary"]?.toString()
+        if (!existingSummary.isNullOrEmpty()) {
+            // Toggle to show summary
+            messageData["showing_ai_summary"] = true
+            chatAdapter?.notifyItemChanged(position)
+            return
+        }
+        
+        // Show loading state
+        Toast.makeText(this, "Generating AI summary...", Toast.LENGTH_SHORT).show()
+        
+        lifecycleScope.launch {
+            try {
+                viewModel.generateAISummary(messageId, messageText).collect { state ->
+                    when {
+                        state.isGenerating -> {
+                            // Loading state already shown
+                        }
+                        state.summary != null -> {
+                            // Store summary in message data
+                            messageData["ai_summary"] = state.summary
+                            messageData["showing_ai_summary"] = true
+                            
+                            // Update the message bubble
+                            runOnUiThread {
+                                chatAdapter?.notifyItemChanged(position)
+                                Toast.makeText(
+                                    this@ChatActivity,
+                                    "AI summary generated",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        state.error != null -> {
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@ChatActivity,
+                                    "Failed to generate summary: ${state.error}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(
+                        this@ChatActivity,
+                        "Error generating summary: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
     
     /**
