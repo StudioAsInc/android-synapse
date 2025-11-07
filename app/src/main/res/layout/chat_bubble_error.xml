@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <LinearLayout
     android:id="@+id/body"
-    android:layout_width="wrap_content"
+    android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingLeft="8dp"
     android:paddingRight="8dp"
-    android:layout_marginTop="@dimen/message_vertical_spacing">
+    android:layout_marginTop="@dimen/message_vertical_spacing"
+    app:layout_constraintWidth_max="wrap"
+    app:layout_constraintWidth_percent="0.75"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent">
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/message_layout"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <LinearLayout
             android:id="@+id/errorBubble"
@@ -79,6 +83,6 @@
                     android:textColor="?attr/colorOnErrorContainer" />
             </LinearLayout>
         </LinearLayout>
-        </LinearLayout>
-    </FrameLayout>
+    </LinearLayout>
 </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

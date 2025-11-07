@@ -867,19 +867,20 @@ class AuthActivity : AppCompatActivity() {
                     
                     // Crossfade toggle text (150ms)
                     if (!shouldReduceMotion()) {
-                        tvToggleMode.animate()
+                        val toggleButton = tvToggleMode
+                        toggleButton.animate()
                             .alpha(0f)
                             .setDuration(150)
                             .withEndAction {
-                                tvToggleMode.text = "Don't have an account? Sign Up"
-                                tvToggleMode.animate()
+                                (toggleButton as? android.widget.TextView)?.text = "Don't have an account? Sign Up"
+                                toggleButton.animate()
                                     .alpha(1f)
                                     .setDuration(150)
                                     .start()
                             }
                             .start()
                     } else {
-                        tvToggleMode.text = "Don't have an account? Sign Up"
+                        (tvToggleMode as? android.widget.TextView)?.text = "Don't have an account? Sign Up"
                     }
                     
                     cardError.visibility = View.GONE
@@ -964,19 +965,20 @@ class AuthActivity : AppCompatActivity() {
                     
                     // Crossfade toggle text (150ms)
                     if (!shouldReduceMotion()) {
-                        tvToggleMode.animate()
+                        val toggleButton = tvToggleMode
+                        toggleButton.animate()
                             .alpha(0f)
                             .setDuration(150)
                             .withEndAction {
-                                tvToggleMode.text = "Already have an account? Sign In"
-                                tvToggleMode.animate()
+                                (toggleButton as? android.widget.TextView)?.text = "Already have an account? Sign In"
+                                toggleButton.animate()
                                     .alpha(1f)
                                     .setDuration(150)
                                     .start()
                             }
                             .start()
                     } else {
-                        tvToggleMode.text = "Already have an account? Sign In"
+                        (tvToggleMode as? android.widget.TextView)?.text = "Already have an account? Sign In"
                     }
                     
                     cardError.visibility = View.GONE

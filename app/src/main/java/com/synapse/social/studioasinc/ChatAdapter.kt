@@ -245,7 +245,7 @@ class ChatAdapter(
         val replyText: TextView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutMessage) } catch (e: ClassCastException) { null }
         val replyImage: ImageView? = try { itemView.findViewById(R.id.mRepliedMessageLayoutImage) } catch (e: ClassCastException) { null }
         val messageBubble: LinearLayout? = try { itemView.findViewById(R.id.messageBG) } catch (e: ClassCastException) { null }
-        val messageLayout: FrameLayout? = try { itemView.findViewById(R.id.message_layout) } catch (e: ClassCastException) { null }
+        val messageLayout: LinearLayout? = try { itemView.findViewById(R.id.message_layout) } catch (e: ClassCastException) { null }
         val bodyLayout: LinearLayout? = try { itemView.findViewById(R.id.body) } catch (e: ClassCastException) { null }
         val deletedMessagePlaceholder: LinearLayout? = try { itemView.findViewById(R.id.deletedMessagePlaceholder) } catch (e: ClassCastException) { null }
         val messageContentContainer: LinearLayout? = try { itemView.findViewById(R.id.messageContentContainer) } catch (e: ClassCastException) { null }
@@ -300,7 +300,7 @@ class ChatAdapter(
         val retryText: TextView = itemView.findViewById(R.id.retry_text)
         val errorIcon: ImageView = itemView.findViewById(R.id.error_icon)
         val messageTime: TextView? = itemView.findViewById(R.id.date)
-        val messageLayout: FrameLayout? = itemView.findViewById(R.id.message_layout)
+        val messageLayout: LinearLayout? = itemView.findViewById(R.id.message_layout)
     }
 
     // Loading More ViewHolder
@@ -564,26 +564,13 @@ class ChatAdapter(
             }
         }
         
-        // Set message layout alignment - message_layout is now a FrameLayout
+        // Set message layout alignment - message_layout is now a LinearLayout
         holder.messageLayout?.let { layout ->
-            // Set the FrameLayout to wrap_content width and align it
-            val frameParams = layout.layoutParams as? LinearLayout.LayoutParams
-            if (frameParams != null) {
-                frameParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                frameParams.gravity = if (isMyMessage) Gravity.END else Gravity.START
-                layout.layoutParams = frameParams
-            }
-            
-            // Find the inner LinearLayout that contains the message bubble
-            val innerLayout = layout.getChildAt(0) as? LinearLayout
-            innerLayout?.let { inner ->
-                val params = inner.layoutParams as? FrameLayout.LayoutParams
-                if (params != null) {
-                    params.gravity = if (isMyMessage) Gravity.END else Gravity.START
-                    params.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                    inner.layoutParams = params
-                    inner.requestLayout()
-                }
+            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+            if (layoutParams != null) {
+                layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                layoutParams.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                layout.layoutParams = layoutParams
             }
         }
         
@@ -1166,15 +1153,11 @@ class ChatAdapter(
         
         // Set message layout alignment (error messages are always from current user)
         holder.messageLayout?.let { layout ->
-            // Find the inner LinearLayout that contains the message bubble
-            val innerLayout = layout.getChildAt(0) as? LinearLayout
-            innerLayout?.let { inner ->
-                val params = inner.layoutParams as? FrameLayout.LayoutParams
-                if (params != null) {
-                    params.gravity = Gravity.END
-                    inner.layoutParams = params
-                    inner.requestLayout()
-                }
+            val layoutParams = layout.layoutParams as? LinearLayout.LayoutParams
+            if (layoutParams != null) {
+                layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                layoutParams.gravity = Gravity.END
+                layout.layoutParams = layoutParams
             }
         }
         
