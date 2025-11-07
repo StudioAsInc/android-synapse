@@ -1,42 +1,70 @@
 # Implementation Plan
 
-- [ ] 1. Set up database schema and migration
+- [x] 1. Set up database schema and migration
+
+
+
+
+
   - Create the `user_deleted_messages` table in Supabase with proper columns (id, user_id, message_id, deleted_at)
   - Set up RLS policies for user-specific access control
   - Create indexes for efficient querying
   - Test the table creation and RLS policies with sample data
   - _Requirements: 6.3, 6.4_
 
-- [ ] 2. Implement MessageDeletionRepository
+
+
+- [x] 2. Implement MessageDeletionRepository
+
+
+
 - [ ] 2.1 Create repository class and basic structure
   - Create `MessageDeletionRepository.kt` in the `data/repository` package
   - Add Supabase client initialization
+
+
   - Define suspend functions for delete operations
   - _Requirements: 6.4, 6.5_
 
-- [ ] 2.2 Implement delete for me operation
+- [x] 2.2 Implement delete for me operation
+
+
   - Write `deleteForMe()` function that inserts records into `user_deleted_messages` table
   - Add batch insert support for multiple message IDs
   - Implement error handling with proper Result types
   - _Requirements: 1.1, 1.4, 6.5_
 
+
+
 - [ ] 2.3 Implement delete for everyone operation
   - Write `deleteForEveryone()` function that updates `is_deleted` and `delete_for_everyone` fields
+
+
+
   - Add ownership validation to ensure only message owners can delete for everyone
+
+
   - Implement batch update support
   - Remove any references to `deleted_at` column to fix the current bug
   - _Requirements: 2.1, 2.4, 2.5, 6.2_
 
-- [ ] 2.4 Add helper functions for message queries
+- [x] 2.4 Add helper functions for message queries
+
   - Implement `getMessagesBySenderId()` to validate ownership
   - Add function to fetch user-deleted message IDs for current user
   - Implement retry logic with exponential backoff for network failures
   - _Requirements: 2.3, 6.5_
 
+
+
+
 - [ ] 3. Create MessageDeletionViewModel
+
 - [ ] 3.1 Set up ViewModel with state management
   - Create `MessageDeletionViewModel.kt` in the `presentation/viewmodel` package
   - Define `DeletionState` sealed class (Idle, Deleting, Success, Error)
+
+
   - Set up StateFlow for deletion state and SharedFlow for errors
   - Inject MessageDeletionRepository
   - _Requirements: 6.5_
@@ -44,17 +72,22 @@
 - [ ] 3.2 Implement deletion business logic
   - Write `deleteMessagesForMe()` function with proper state updates
   - Write `deleteMessagesForEveryone()` function with ownership validation
+
+
   - Add `validateMessageOwnership()` helper function
   - Implement error handling and user-friendly error messages
   - _Requirements: 1.1, 2.1, 2.3, 5.4, 6.5_
 
 - [ ] 4. Implement MultiSelectManager
+
 - [ ] 4.1 Create MultiSelectManager class
   - Create `MultiSelectManager.kt` in the `chat` package
   - Add properties for selection state (selectedMessageIds, isMultiSelectMode)
   - Implement `enterMultiSelectMode()` and `exitMultiSelectMode()` functions
   - Add `toggleMessageSelection()` and selection query functions
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+
 
 - [ ] 4.2 Implement action toolbar management
   - Add references to action toolbar and standard toolbar
@@ -64,12 +97,14 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
 - [ ] 5. Create action toolbar layout and menu
+
 - [ ] 5.1 Design action toolbar XML layout
   - Create `action_toolbar.xml` with MaterialToolbar
   - Add close/cancel navigation icon
   - Add TextView for selection count display
   - Apply Material 3 styling and theming
   - _Requirements: 4.1, 4.2, 4.6_
+
 
 - [ ] 5.2 Create message action menu
   - Create `message_action_menu.xml` with delete action item
@@ -78,12 +113,14 @@
   - _Requirements: 4.4_
 
 - [ ] 6. Update ChatAdapter for multi-select support
+
 - [ ] 6.1 Add selection UI components to message layouts
   - Add CheckBox for selection indicator to message item layouts
   - Add selection overlay View with Material 3 styling
   - Set initial visibility to GONE
   - Update all message layout variants (sent, received, media, etc.)
   - _Requirements: 3.2, 8.1_
+
 
 - [ ] 6.2 Implement selection logic in adapter
   - Add `isMultiSelectMode` property to ChatAdapter
@@ -95,9 +132,11 @@
   - _Requirements: 3.1, 3.2, 3.3, 8.2_
 
 - [ ] 7. Create MessageDeletionCoordinator
+
 - [ ] 7.1 Implement coordinator class
   - Create `MessageDeletionCoordinator.kt` in the `chat` package
   - Add constructor parameters for activity, viewModel, and currentUserId
+
   - Implement `initiateDelete()` function to start deletion flow
   - Add `validateOwnership()` helper to check if user owns all selected messages
   - _Requirements: 2.3, 5.4_
@@ -110,6 +149,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
 - [ ] 8. Update DeleteConfirmationDialog
+
 - [ ] 8.1 Modify dialog to support multi-select
   - Update `newInstance()` to accept List<String> of message IDs
   - Add parameter for `canDeleteForEveryone` boolean
@@ -124,6 +164,8 @@
   - _Requirements: 5.3, 5.4, 5.5_
 
 - [ ] 9. Integrate components in ChatActivity
+
+
 - [ ] 9.1 Initialize multi-select components
   - Instantiate MultiSelectManager with activity and adapter references
   - Instantiate MessageDeletionViewModel using ViewModelProvider
@@ -145,6 +187,7 @@
   - Collect errorState flow and display error messages
   - _Requirements: 6.5_
 
+
 - [ ] 9.4 Update adapter initialization
   - Pass MultiSelectManager reference to ChatAdapter constructor
   - Set up adapter callbacks for long-click to enter multi-select mode
@@ -152,11 +195,13 @@
   - _Requirements: 3.1, 3.2_
 
 - [ ] 10. Implement Realtime sync for deletions
+
 - [ ] 10.1 Subscribe to message update events
   - Update existing Realtime subscription to listen for message updates
   - Filter for updates where `is_deleted` or `delete_for_everyone` changed
   - Handle deletion events in `handleMessageUpdate()` callback
   - _Requirements: 7.1, 7.2_
+
 
 - [ ] 10.2 Update UI on deletion events
   - Refresh message display when deletion event received
@@ -171,7 +216,9 @@
   - Handle reconnection scenarios gracefully
   - _Requirements: 7.4_
 
+
 - [ ] 11. Implement message display logic for deleted messages
+
 - [ ] 11.1 Update message rendering in adapter
   - Check if message is deleted for everyone (use `isDeleted` && `deleteForEveryone`)
   - Check if message is deleted for current user (query `user_deleted_messages` table)
@@ -186,7 +233,9 @@
   - Use cached IDs to determine message visibility during rendering
   - _Requirements: 1.3, 1.4_
 
+
 - [ ] 12. Handle multi-select mode stability
+
 - [ ] 12.1 Prevent disruptions during selection
   - Disable automatic scrolling when in multi-select mode
   - Disable message animations when in multi-select mode
@@ -200,6 +249,7 @@
   - _Requirements: 8.4_
 
 - [ ] 13. Add error handling and user feedback
+
 - [ ] 13.1 Implement error messages
   - Create string resources for all error scenarios
   - Display appropriate error message for network failures
@@ -215,6 +265,7 @@
   - _Requirements: 5.6_
 
 - [ ] 14. Optimize performance
+
 - [ ] 14.1 Implement batch operations
   - Ensure repository performs batch inserts/updates in single transaction
   - Optimize database queries to minimize round trips
@@ -229,6 +280,7 @@
   - _Requirements: 7.2_
 
 - [ ] 15. Final testing and bug fixes
+
 - [ ] 15.1 Test single message deletion
   - Test delete for me on own message
   - Test delete for me on others' message

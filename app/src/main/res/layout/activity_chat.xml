@@ -34,6 +34,9 @@
 			android:background="@android:color/transparent"
 			app:elevation="0dp">
 
+			<!-- Action Toolbar for Multi-Select Mode -->
+			<include layout="@layout/action_toolbar" />
+
 			<com.google.android.material.appbar.MaterialToolbar
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
