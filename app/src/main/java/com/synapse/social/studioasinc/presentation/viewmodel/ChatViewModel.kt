@@ -123,15 +123,9 @@ class ChatViewModel : ViewModel() {
             scrollThreshold = 10,
             onLoadPage = { page, pageSize ->
                 // For chat messages, we use timestamp-based pagination
-                // Page 0 = load ALL messages (no limit), page 1+ = older messages with pagination
-                if (page == 0) {
-                    // Initial load: fetch ALL messages to show complete conversation history
-                    chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
-                } else {
-                    // Subsequent loads: use pagination with timestamp
-                    val beforeTimestamp = paginationManager?.getCurrentItems()?.minByOrNull { it.createdAt }?.createdAt
-                    chatRepository.getMessagesPage(chatId, beforeTimestamp, pageSize)
-                }
+                // ALWAYS load ALL messages to ensure complete conversation history
+                // This fixes the issue where only 50 messages show when returning to chat
+                chatRepository.getMessagesPage(chatId, null, Int.MAX_VALUE)
             },
             onError = { error ->
                 _error.value = error
@@ -182,10 +176,9 @@ class ChatViewModel : ViewModel() {
     fun loadMessages(chatId: String) {
         currentChatId = chatId
         
-        // Initialize pagination if not already done
-        if (paginationManager == null) {
-            initializePaginationForChat(chatId)
-        }
+        // Always reinitialize pagination for the chat to ensure fresh state
+        // This fixes the issue where returning to chat only shows 50 messages
+        initializePaginationForChat(chatId)
         
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             _isLoading.value = true
