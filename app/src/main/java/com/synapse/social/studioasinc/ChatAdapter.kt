@@ -566,10 +566,13 @@ class ChatAdapter(
         
         // Set message layout alignment - message_layout is now a FrameLayout
         holder.messageLayout?.let { layout ->
-            // Set the FrameLayout to match_parent width
-            val frameParams = layout.layoutParams
-            frameParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-            layout.layoutParams = frameParams
+            // Set the FrameLayout to wrap_content width and align it
+            val frameParams = layout.layoutParams as? LinearLayout.LayoutParams
+            if (frameParams != null) {
+                frameParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                frameParams.gravity = if (isMyMessage) Gravity.END else Gravity.START
+                layout.layoutParams = frameParams
+            }
             
             // Find the inner LinearLayout that contains the message bubble
             val innerLayout = layout.getChildAt(0) as? LinearLayout
