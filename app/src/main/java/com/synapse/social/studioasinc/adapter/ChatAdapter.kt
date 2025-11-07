@@ -33,11 +33,26 @@ class ChatAdapter(
     private val onImageClick: (List<String>, Int) -> Unit = { _, _ -> },
     private val onVideoClick: (String) -> Unit = {},
     private val onAudioClick: (String) -> Unit = {},
-    private val onDocumentClick: (ChatAttachmentImpl) -> Unit = {}
+    private val onDocumentClick: (ChatAttachmentImpl) -> Unit = {},
+    private val multiSelectManager: com.synapse.social.studioasinc.chat.MultiSelectManager? = null
 ) : ListAdapter<Message, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     private val authService = SupabaseAuthenticationService()
     private val currentUserId = authService.getCurrentUserId()
+    
+    // User-deleted message IDs cache
+    var userDeletedMessageIds: Set<String> = emptySet()
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+    
+    // Multi-select mode state
+    var isMultiSelectMode: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     companion object {
         private const val VIEW_TYPE_MESSAGE_SENT = 1
@@ -197,12 +212,12 @@ class ChatAdapter(
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
             VIEW_TYPE_MESSAGE_SENT -> {
-                val view = inflater.inflate(android.R.layout.simple_list_item_2, parent, false)
-                SentMessageViewHolder(view)
+                val view = inflater.inflate(R.layout.chat_bubble_text, parent, false)
+                SentMessageViewHolder(view, true)
             }
             VIEW_TYPE_MESSAGE_RECEIVED -> {
-                val view = inflater.inflate(android.R.layout.simple_list_item_2, parent, false)
-                ReceivedMessageViewHolder(view)
+                val view = inflater.inflate(R.layout.chat_bubble_text, parent, false)
+                ReceivedMessageViewHolder(view, false)
             }
             VIEW_TYPE_IMAGE_SENT, VIEW_TYPE_IMAGE_RECEIVED -> {
                 val view = inflater.inflate(R.layout.chat_bubble_image, parent, false)
@@ -243,6 +258,10 @@ class ChatAdapter(
      */
     abstract inner class BaseMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         
+        // Selection UI components
+        protected val selectionCheckbox: android.widget.CheckBox? = itemView.findViewById(R.id.selection_checkbox)
+        protected val selectionOverlay: View? = itemView.findViewById(R.id.selection_overlay)
+        
         /**
          * Calculates the maximum bubble width as 75% of screen width
          */
@@ -250,6 +269,43 @@ class ChatAdapter(
             val displayMetrics = itemView.context.resources.displayMetrics
             val screenWidth = displayMetrics.widthPixels
             return (screenWidth * 0.75).toInt()
+        }
+        
+        /**
+         * Updates selection UI based on multi-select mode and selection state
+         */
+        protected fun updateSelectionUI(message: Message) {
+            val isSelected = multiSelectManager?.isMessageSelected(message.id) ?: false
+            
+            if (isMultiSelectMode) {
+                selectionCheckbox?.visibility = View.VISIBLE
+                selectionCheckbox?.isChecked = isSelected
+                selectionOverlay?.visibility = if (isSelected) View.VISIBLE else View.GONE
+            } else {
+                selectionCheckbox?.visibility = View.GONE
+                selectionOverlay?.visibility = View.GONE
+            }
+        }
+        
+        /**
+         * Sets up click handlers for multi-select mode
+         */
+        protected fun setupClickHandlers(message: Message) {
+            itemView.setOnClickListener {
+                if (isMultiSelectMode) {
+                    multiSelectManager?.toggleMessageSelection(message.id)
+                }
+            }
+            
+            itemView.setOnLongClickListener {
+                if (!isMultiSelectMode) {
+                    multiSelectManager?.enterMultiSelectMode(message.id)
+                    true
+                } else {
+                    onMessageLongClick(message)
+                    true
+                }
+            }
         }
         
         /**
@@ -336,40 +392,139 @@ class ChatAdapter(
         }
     }
 
-    inner class SentMessageViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
-        private val messageText: TextView = itemView.findViewById(android.R.id.text1)
-        private val timeText: TextView = itemView.findViewById(android.R.id.text2)
+    inner class SentMessageViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
+        private val messageText: TextView = itemView.findViewById(R.id.message_text)
+        private val timeText: TextView = itemView.findViewById(R.id.date)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
+        private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
+        private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition) {
+            // Apply dynamic width
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
+            
+            // Handle deleted messages
+            if (isDeletedForCurrentUser) {
+                // Show deleted message placeholder
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
+                
+                timeText.text = formatTime(message.createdAt)
+                return
+            }
+            
             messageText.text = message.getDisplayContent()
             timeText.text = formatTime(message.createdAt)
             
-            // Note: Simple text messages use simple_list_item_2 layout which doesn't have messageBG
-            // Corner radius and width adjustments would require custom layout
+            // Update selection UI
+            updateSelectionUI(message)
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
     }
 
-    inner class ReceivedMessageViewHolder(itemView: View) : BaseMessageViewHolder(itemView) {
-        private val messageText: TextView = itemView.findViewById(android.R.id.text1)
-        private val timeText: TextView = itemView.findViewById(android.R.id.text2)
-        private val senderName: TextView = itemView.findViewById(android.R.id.text1)
+    inner class ReceivedMessageViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
+        private val messageText: TextView = itemView.findViewById(R.id.message_text)
+        private val timeText: TextView = itemView.findViewById(R.id.date)
+        private val senderUsername: TextView? = itemView.findViewById(R.id.senderUsername)
+        private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
+        private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
+        private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition) {
-            messageText.text = "${message.senderName ?: "Unknown"}: ${message.getDisplayContent()}"
+            // Apply dynamic width
+            val maxWidth = getMaxBubbleWidth()
+            val layoutParams = messageBG.layoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            messageBG.layoutParams = layoutParams
+            
+            // Apply corner radii
+            messageBG.background = createBubbleDrawable(messagePosition, isSent)
+            
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
+            
+            // Handle deleted messages
+            if (isDeletedForCurrentUser) {
+                // Show deleted message placeholder
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Hide sender name for deleted messages
+                senderUsername?.visibility = View.GONE
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
+                
+                timeText.text = formatTime(message.createdAt)
+                return
+            }
+            
+            // Show sender name for received messages
+            if (!isSent && message.senderName != null) {
+                senderUsername?.visibility = View.VISIBLE
+                senderUsername?.text = message.senderName
+            } else {
+                senderUsername?.visibility = View.GONE
+            }
+            
+            messageText.text = message.getDisplayContent()
             timeText.text = formatTime(message.createdAt)
             
-            // Note: Simple text messages use simple_list_item_2 layout which doesn't have messageBG
-            // Corner radius and width adjustments would require custom layout
+            // Update selection UI
+            updateSelectionUI(message)
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
     }
 
@@ -416,6 +571,7 @@ class ChatAdapter(
      * ViewHolder for image attachments
      */
     inner class ImageAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
         private val imageGridLayout: GridLayout = itemView.findViewById(R.id.imageGridLayout)
         private val messageText: TextView = itemView.findViewById(R.id.message_text)
         private val shimmerContainer: View = itemView.findViewById(R.id.shimmer_container)
@@ -434,6 +590,19 @@ class ChatAdapter(
         private val uploadErrorText: TextView = itemView.findViewById(R.id.uploadErrorText)
         private val retryButton: View = itemView.findViewById(R.id.retryButton)
         private val uploadSuccessIcon: View = itemView.findViewById(R.id.uploadSuccessIcon)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
@@ -455,16 +624,35 @@ class ChatAdapter(
             // Apply corner radii
             messageBG.background = createBubbleDrawable(messagePosition, isSent)
             
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
 
-            // Handle deleted messages
-            if (message.isDeleted) {
-                deletedMessagePlaceholder.visibility = View.VISIBLE
-                messageContentContainer.visibility = View.GONE
+            // Handle deleted messages - hide media content
+            if (isDeletedForCurrentUser) {
+                // Hide image grid
+                imageGridLayout.visibility = View.GONE
+                imageGridLayout.removeAllViews()
+                
+                // Show deleted message text
+                shimmerContainer.visibility = View.VISIBLE
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Hide sender name for deleted messages
+                senderUsername?.visibility = View.GONE
+                
                 timeText.text = formatTime(message.createdAt)
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
                 return
             } else {
-                deletedMessagePlaceholder.visibility = View.GONE
-                messageContentContainer.visibility = View.VISIBLE
+                // Show image grid for non-deleted messages
+                imageGridLayout.visibility = View.VISIBLE
             }
 
             // Show sender name for received messages
@@ -499,10 +687,14 @@ class ChatAdapter(
                     .centerCrop()
                     .into(imgView)
                 
-                // Click to open gallery
+                // Click to open gallery (or toggle selection in multi-select mode)
                 imgView.setOnClickListener {
-                    val imageUrls = attachments.map { it.url }
-                    onImageClick(imageUrls, index)
+                    if (isMultiSelectMode) {
+                        multiSelectManager?.toggleMessageSelection(message.id)
+                    } else {
+                        val imageUrls = attachments.map { it.url }
+                        onImageClick(imageUrls, index)
+                    }
                 }
                 
                 imageGridLayout.addView(imgView)
@@ -521,10 +713,11 @@ class ChatAdapter(
             // Hide upload progress overlay by default
             uploadProgressOverlay.visibility = View.GONE
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Update selection UI
+            updateSelectionUI(message)
+            
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
         
         private fun updateProgress(payload: UploadProgressPayload) {
@@ -588,6 +781,7 @@ class ChatAdapter(
      * ViewHolder for video attachments
      */
     inner class VideoAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
         private val videoThumbnail: ImageView = itemView.findViewById(R.id.videoThumbnail)
         private val playButton: ImageView = itemView.findViewById(R.id.playButton)
         private val videoDuration: TextView? = itemView.findViewById(R.id.videoDuration)
@@ -598,6 +792,19 @@ class ChatAdapter(
         private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
@@ -619,16 +826,37 @@ class ChatAdapter(
             // Apply corner radii
             messageBG.background = createBubbleDrawable(messagePosition, isSent)
             
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
 
-            // Handle deleted messages
-            if (message.isDeleted) {
-                deletedMessagePlaceholder.visibility = View.VISIBLE
-                messageContentContainer.visibility = View.GONE
+            // Handle deleted messages - hide video content
+            if (isDeletedForCurrentUser) {
+                // Hide video thumbnail and play button
+                videoThumbnail.visibility = View.GONE
+                playButton.visibility = View.GONE
+                videoDuration?.visibility = View.GONE
+                
+                // Show deleted message text
+                shimmerContainer.visibility = View.VISIBLE
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Hide sender name for deleted messages
+                senderUsername?.visibility = View.GONE
+                
                 timeText.text = formatTime(message.createdAt)
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
                 return
             } else {
-                deletedMessagePlaceholder.visibility = View.GONE
-                messageContentContainer.visibility = View.VISIBLE
+                // Show video content for non-deleted messages
+                videoThumbnail.visibility = View.VISIBLE
+                playButton.visibility = View.VISIBLE
             }
 
             // Show sender name for received messages
@@ -659,12 +887,20 @@ class ChatAdapter(
                     videoDuration?.visibility = View.GONE
                 }
                 
-                // Click to play video
+                // Click to play video (or toggle selection in multi-select mode)
                 videoThumbnail.setOnClickListener {
-                    onVideoClick(attachment.url)
+                    if (isMultiSelectMode) {
+                        multiSelectManager?.toggleMessageSelection(message.id)
+                    } else {
+                        onVideoClick(attachment.url)
+                    }
                 }
                 playButton.setOnClickListener {
-                    onVideoClick(attachment.url)
+                    if (isMultiSelectMode) {
+                        multiSelectManager?.toggleMessageSelection(message.id)
+                    } else {
+                        onVideoClick(attachment.url)
+                    }
                 }
             }
 
@@ -678,10 +914,11 @@ class ChatAdapter(
 
             timeText.text = formatTime(message.createdAt)
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Update selection UI
+            updateSelectionUI(message)
+            
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
     }
 
@@ -689,6 +926,7 @@ class ChatAdapter(
      * ViewHolder for audio attachments
      */
     inner class AudioAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
         private val audioFileName: TextView = itemView.findViewById(R.id.audioFileName)
         private val playPauseButton: ImageButton = itemView.findViewById(R.id.playPauseButton)
         private val seekBar: SeekBar = itemView.findViewById(R.id.seekBar)
@@ -702,6 +940,19 @@ class ChatAdapter(
         private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
@@ -723,16 +974,43 @@ class ChatAdapter(
             // Apply corner radii
             messageBG.background = createBubbleDrawable(messagePosition, isSent)
             
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
 
-            // Handle deleted messages
-            if (message.isDeleted) {
-                deletedMessagePlaceholder.visibility = View.VISIBLE
-                messageContentContainer.visibility = View.GONE
+            // Handle deleted messages - hide audio content
+            if (isDeletedForCurrentUser) {
+                // Hide audio controls
+                audioFileName.visibility = View.GONE
+                playPauseButton.visibility = View.GONE
+                seekBar.visibility = View.GONE
+                currentTime.visibility = View.GONE
+                totalDuration.visibility = View.GONE
+                loadingIndicator.visibility = View.GONE
+                
+                // Show deleted message text
+                shimmerContainer.visibility = View.VISIBLE
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Hide sender name for deleted messages
+                senderUsername?.visibility = View.GONE
+                
                 timeText.text = formatTime(message.createdAt)
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
                 return
             } else {
-                deletedMessagePlaceholder.visibility = View.GONE
-                messageContentContainer.visibility = View.VISIBLE
+                // Show audio controls for non-deleted messages
+                audioFileName.visibility = View.VISIBLE
+                playPauseButton.visibility = View.VISIBLE
+                seekBar.visibility = View.VISIBLE
+                currentTime.visibility = View.VISIBLE
+                totalDuration.visibility = View.VISIBLE
             }
 
             // Show sender name for received messages
@@ -763,9 +1041,13 @@ class ChatAdapter(
                 // Hide loading indicator (will be shown during playback)
                 loadingIndicator.visibility = View.GONE
                 
-                // Click to play audio
+                // Click to play audio (or toggle selection in multi-select mode)
                 playPauseButton.setOnClickListener {
-                    onAudioClick(attachment.url)
+                    if (isMultiSelectMode) {
+                        multiSelectManager?.toggleMessageSelection(message.id)
+                    } else {
+                        onAudioClick(attachment.url)
+                    }
                 }
             }
 
@@ -779,10 +1061,11 @@ class ChatAdapter(
 
             timeText.text = formatTime(message.createdAt)
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Update selection UI
+            updateSelectionUI(message)
+            
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
     }
 
@@ -790,6 +1073,7 @@ class ChatAdapter(
      * ViewHolder for document attachments
      */
     inner class DocumentAttachmentViewHolder(itemView: View, private val isSent: Boolean) : BaseMessageViewHolder(itemView) {
+        private val body: View = itemView.findViewById(R.id.body)
         private val documentIcon: ImageView = itemView.findViewById(R.id.documentIcon)
         private val documentFileName: TextView = itemView.findViewById(R.id.documentFileName)
         private val documentFileInfo: TextView = itemView.findViewById(R.id.documentFileInfo)
@@ -801,6 +1085,19 @@ class ChatAdapter(
         private val messageBG: android.widget.LinearLayout = itemView.findViewById(R.id.messageBG)
         private val deletedMessagePlaceholder: View = itemView.findViewById(R.id.deletedMessagePlaceholder)
         private val messageContentContainer: View = itemView.findViewById(R.id.messageContentContainer)
+        
+        init {
+            // Set alignment based on sent/received
+            val params = body.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            if (isSent) {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                params.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            }
+            body.layoutParams = params
+        }
 
         fun bind(message: Message, messagePosition: MessagePosition, payload: UploadProgressPayload? = null) {
             // Handle payload updates for progress
@@ -822,16 +1119,40 @@ class ChatAdapter(
             // Apply corner radii
             messageBG.background = createBubbleDrawable(messagePosition, isSent)
             
+            // Check if message is deleted for current user
+            val isDeletedForCurrentUser = currentUserId?.let { userId ->
+                message.isDeletedForUser(userId, userDeletedMessageIds)
+            } ?: false
 
-            // Handle deleted messages
-            if (message.isDeleted) {
-                deletedMessagePlaceholder.visibility = View.VISIBLE
-                messageContentContainer.visibility = View.GONE
+            // Handle deleted messages - hide document content
+            if (isDeletedForCurrentUser) {
+                // Hide document controls
+                documentIcon.visibility = View.GONE
+                documentFileName.visibility = View.GONE
+                documentFileInfo.visibility = View.GONE
+                downloadButton.visibility = View.GONE
+                
+                // Show deleted message text
+                shimmerContainer.visibility = View.VISIBLE
+                messageText.text = currentUserId?.let { userId ->
+                    message.getDeletedMessageText(userId, userDeletedMessageIds)
+                } ?: "This message was deleted"
+                
+                // Hide sender name for deleted messages
+                senderUsername?.visibility = View.GONE
+                
                 timeText.text = formatTime(message.createdAt)
+                
+                // Update selection UI even for deleted messages
+                updateSelectionUI(message)
+                setupClickHandlers(message)
                 return
             } else {
-                deletedMessagePlaceholder.visibility = View.GONE
-                messageContentContainer.visibility = View.VISIBLE
+                // Show document controls for non-deleted messages
+                documentIcon.visibility = View.VISIBLE
+                documentFileName.visibility = View.VISIBLE
+                documentFileInfo.visibility = View.VISIBLE
+                downloadButton.visibility = View.VISIBLE
             }
 
             // Show sender name for received messages
@@ -857,13 +1178,13 @@ class ChatAdapter(
                     fileType
                 }
                 
-                // Click to open document
+                // Click to open document (handled by setupClickHandlers for multi-select)
                 downloadButton.setOnClickListener {
-                    onDocumentClick(attachment)
+                    if (!isMultiSelectMode) {
+                        onDocumentClick(attachment)
+                    }
                 }
-                itemView.setOnClickListener {
-                    onDocumentClick(attachment)
-                }
+                // Note: itemView click is handled by setupClickHandlers
             }
 
             // Show caption if present
@@ -876,10 +1197,11 @@ class ChatAdapter(
 
             timeText.text = formatTime(message.createdAt)
             
-            itemView.setOnLongClickListener {
-                onMessageLongClick(message)
-                true
-            }
+            // Update selection UI
+            updateSelectionUI(message)
+            
+            // Setup click handlers for multi-select
+            setupClickHandlers(message)
         }
     }
 

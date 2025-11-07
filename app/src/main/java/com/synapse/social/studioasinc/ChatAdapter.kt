@@ -67,6 +67,18 @@ class ChatAdapter(
     private var userNamesMap = HashMap<String, String>()
     private var previousSenderId: String? = null
     
+    // Multi-select mode state
+    var isMultiSelectMode: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+    
+    // Multi-select callbacks
+    var onEnterMultiSelectMode: ((String) -> Unit)? = null
+    var onToggleMessageSelection: ((String) -> Unit)? = null
+    var isMessageSelected: ((String) -> Boolean)? = null
+    
     // Supabase services
     private val authService = SupabaseAuthenticationService()
     private val databaseService = SupabaseDatabaseService()
@@ -582,7 +594,14 @@ class ChatAdapter(
             val messageId = messageData["id"]?.toString() 
                 ?: messageData["key"]?.toString() 
                 ?: ""
-            listener.onMessageClick(messageId, position)
+            
+            if (isMultiSelectMode) {
+                // Toggle selection in multi-select mode
+                onToggleMessageSelection?.invoke(messageId)
+            } else {
+                // Normal click behavior
+                listener.onMessageClick(messageId, position)
+            }
         }
         
         holder.itemView.setOnLongClickListener {
@@ -596,9 +615,15 @@ class ChatAdapter(
                 android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
             )
             
-            // Call listener and return true to consume the event
-            listener.onMessageLongClick(messageId, position)
-            true
+            // Enter multi-select mode if not already in it
+            if (!isMultiSelectMode) {
+                onEnterMultiSelectMode?.invoke(messageId)
+                true
+            } else {
+                // Call listener for message actions if already in multi-select mode
+                listener.onMessageLongClick(messageId, position)
+                true
+            }
         }
     }
 
@@ -1168,7 +1193,15 @@ class ChatAdapter(
         
         // Also allow long click for message options
         holder.itemView.setOnLongClickListener {
-            listener.onMessageLongClick(messageId, position)
+            // Enter multi-select mode if not already in it
+            if (!isMultiSelectMode) {
+                onEnterMultiSelectMode?.invoke(messageId)
+                true
+            } else {
+                // Call listener for message actions if already in multi-select mode
+                listener.onMessageLongClick(messageId, position)
+                true
+            }
         }
     }
 

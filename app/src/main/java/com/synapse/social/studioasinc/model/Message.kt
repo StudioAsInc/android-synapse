@@ -69,6 +69,35 @@ data class Message(
             else -> content
         }
     }
+    
+    /**
+     * Checks if message is deleted for a specific user
+     * Returns true if deleted for everyone OR if user has deleted it for themselves
+     * 
+     * Requirements: 1.2, 2.2
+     */
+    fun isDeletedForUser(userId: String, userDeletedMessageIds: Set<String>): Boolean {
+        return when {
+            deleteForEveryone && isDeleted -> true
+            userDeletedMessageIds.contains(id) -> true
+            else -> false
+        }
+    }
+    
+    /**
+     * Gets the appropriate deleted message placeholder text
+     * Returns "This message was deleted" for messages deleted for everyone
+     * Returns "You deleted this message" for messages deleted by current user only
+     * 
+     * Requirements: 1.2, 2.2
+     */
+    fun getDeletedMessageText(userId: String, userDeletedMessageIds: Set<String>): String {
+        return when {
+            deleteForEveryone && isDeleted -> "This message was deleted"
+            userDeletedMessageIds.contains(id) -> "You deleted this message"
+            else -> content
+        }
+    }
 }
 
 /**

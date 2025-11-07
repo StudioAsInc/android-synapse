@@ -20,6 +20,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- Selection checkbox for multi-select mode -->
+        <CheckBox
+            android:id="@+id/selection_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone"
+            style="@style/Widget.Material3.CompoundButton.CheckBox" />
+
         <!-- Profile image for group chats -->
         <androidx.cardview.widget.CardView
             android:id="@+id/mProfileCard"
@@ -46,20 +57,31 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/messageBG"
+                <FrameLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="0dp"
-                    android:layout_marginRight="0dp"
-                    android:paddingLeft="4dp"
-                    android:paddingTop="4dp"
-                    android:paddingRight="4dp"
-                    android:paddingBottom="8dp"
-                    android:background="@android:color/transparent"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:orientation="vertical">
+                    android:layout_height="wrap_content">
+                    <!-- Selection overlay -->
+                    <View
+                        android:id="@+id/selection_overlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/colorPrimaryContainer"
+                        android:alpha="0.1"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:id="@+id/messageBG"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="0dp"
+                        android:layout_marginRight="0dp"
+                        android:paddingLeft="4dp"
+                        android:paddingTop="4dp"
+                        android:paddingRight="4dp"
+                        android:paddingBottom="8dp"
+                        android:background="@android:color/transparent"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:orientation="vertical">
 
                     <!-- Username for group chats -->
                     <TextView
@@ -386,6 +408,7 @@
                             android:scaleType="centerInside" />
                     </LinearLayout>
                 </LinearLayout>
+                </FrameLayout>
         </LinearLayout>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

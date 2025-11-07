@@ -334,6 +334,7 @@ Please explain the following message from %3$s in detail, considering the contex
     <!-- Delete Message Dialog -->
     <string name="warning_icon">Warning icon</string>
     <string name="delete_message_confirmation">Delete this message?</string>
+    <string name="delete_messages_confirmation">Delete %d messages?</string>
     <string name="delete_for_me">Delete for me</string>
     <string name="delete_for_me_explanation">This message will only be removed from your device. Other participants will still see it.</string>
     <string name="delete_for_everyone">Delete for everyone</string>
@@ -499,5 +500,21 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="forgot_password_back">Back to Sign In</string>
     <string name="forgot_password_success">Password reset link sent! Please check your email.</string>
     <string name="forgot_password_error">Unable to send reset link. Please try again.</string>
+
+    <!-- Message Deletion Error Messages -->
+    <string name="error_deletion_network">Unable to delete messages. Please check your connection.</string>
+    <string name="error_deletion_permission">You can only delete your own messages for everyone.</string>
+    <string name="error_deletion_generic">Failed to delete messages. Please try again.</string>
+    <string name="error_deletion_no_messages">No messages selected</string>
+    <string name="error_deletion_user_required">User ID is required</string>
+    
+    <!-- Message Deletion Success Messages -->
+    <string name="success_deletion_single">Message deleted</string>
+    <string name="success_deletion_multiple">%d messages deleted</string>
+    <string name="success_deletion_for_me">Message deleted for you</string>
+    <string name="success_deletion_for_everyone">Message deleted for everyone</string>
+    
+    <!-- Message Deletion Loading Messages -->
+    <string name="loading_deletion">Deleting messages…</string>
 
 </resources>
