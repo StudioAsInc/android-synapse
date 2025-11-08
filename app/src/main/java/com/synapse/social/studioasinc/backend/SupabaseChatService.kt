@@ -357,8 +357,15 @@ class SupabaseChatService {
     
     /**
      * Get messages for a chat
+     * @param chatId The chat ID
+     * @param limit Maximum number of messages to fetch
+     * @param beforeTimestamp Optional timestamp to fetch messages before (for pagination)
      */
-    suspend fun getMessages(chatId: String, limit: Int = 50): Result<List<Map<String, Any?>>> {
+    suspend fun getMessages(
+        chatId: String, 
+        limit: Int = 50,
+        beforeTimestamp: Long? = null
+    ): Result<List<Map<String, Any?>>> {
         return withContext(Dispatchers.IO) {
             try {
                 // Check if Supabase is properly configured
@@ -370,8 +377,13 @@ class SupabaseChatService {
                         filter {
                             eq("chat_id", chatId)
                             eq("is_deleted", false)
+                            // If beforeTimestamp is provided, only fetch messages before that timestamp
+                            beforeTimestamp?.let {
+                                lt("created_at", it / 1000) // Convert to seconds
+                            }
                         }
-                        order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.ASCENDING) // Order by created_at ascending (oldest first)
+                        // Order by created_at DESCENDING to get the most recent messages first
+                        order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
                         limit(limit.toLong())
                     }
                     .decodeList<JsonObject>()
@@ -382,7 +394,8 @@ class SupabaseChatService {
                     }
                 }
                 
-                Result.success(messages)
+                // Reverse the list so oldest messages are first (for display)
+                Result.success(messages.reversed())
             } catch (e: Exception) {
                 Result.failure(e)
             }

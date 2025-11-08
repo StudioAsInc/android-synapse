@@ -81,6 +81,10 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     
     // Realtime channel
     private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
+    
+    // Pagination state
+    private var isLoadingMoreMessages = false
+    private var hasMoreMessages = true
 
     // UI Components
     private var recyclerView: RecyclerView? = null
@@ -162,13 +166,27 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             
             // Setup RecyclerView with proper configuration
             recyclerView?.apply {
-                layoutManager = LinearLayoutManager(this@ChatActivity).apply {
+                val linearLayoutManager = LinearLayoutManager(this@ChatActivity).apply {
                     stackFromEnd = true
                 }
+                layoutManager = linearLayoutManager
                 setHasFixedSize(true)
                 
                 // Setup swipe-to-reply gesture
                 setupSwipeToReply(this)
+                
+                // Setup scroll listener for pagination
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                        super.onScrolled(recyclerView, dx, dy)
+                        
+                        // Check if user scrolled to the top
+                        val firstVisiblePosition = linearLayoutManager.findFirstVisibleItemPosition()
+                        if (firstVisiblePosition == 0 && !isLoadingMoreMessages && hasMoreMessages) {
+                            loadMoreMessages()
+                        }
+                    }
+                })
             }
             
             // Initialize ChatAdapter with full listener implementation
@@ -602,7 +620,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                 // Load user-deleted messages first
                 loadUserDeletedMessages()
                 
-                val result = chatService.getMessages(chatId!!)
+                val result = chatService.getMessages(chatId!!, limit = 50)
                 result.fold(
                     onSuccess = { messages ->
                         messagesList.clear()
@@ -624,6 +642,9 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                             messagesList.add(messageMap)
                         }
                         
+                        // Check if there might be more messages
+                        hasMoreMessages = messages.size >= 50
+                        
                         chatAdapter?.notifyDataSetChanged()
                         if (messagesList.isNotEmpty()) {
                             recyclerView?.scrollToPosition(messagesList.size - 1)
@@ -644,6 +665,85 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             } catch (e: Exception) {
                 showError("Error loading messages: ${e.message}")
                 loadingDialog(false)
+            }
+        }
+    }
+    
+    private fun loadMoreMessages() {
+        if (isLoadingMoreMessages || !hasMoreMessages || messagesList.isEmpty()) return
+        
+        lifecycleScope.launch {
+            try {
+                isLoadingMoreMessages = true
+                
+                // Get the timestamp of the oldest message currently loaded
+                val oldestMessage = messagesList.firstOrNull() ?: return@launch
+                val oldestTimestamp = oldestMessage["created_at"]?.toString()?.toLongOrNull() ?: return@launch
+                
+                Log.d(TAG, "Loading more messages before timestamp: $oldestTimestamp")
+                
+                val result = chatService.getMessages(
+                    chatId = chatId!!,
+                    limit = 50,
+                    beforeTimestamp = oldestTimestamp
+                )
+                
+                result.fold(
+                    onSuccess = { messages ->
+                        if (messages.isEmpty()) {
+                            hasMoreMessages = false
+                            Log.d(TAG, "No more messages to load")
+                        } else {
+                            // Remember the current first item position
+                            val layoutManager = recyclerView?.layoutManager as? LinearLayoutManager
+                            val firstVisiblePosition = layoutManager?.findFirstVisibleItemPosition() ?: 0
+                            
+                            // Add older messages to the beginning of the list
+                            val newMessages = messages.map { message ->
+                                HashMap<String, Any?>().apply {
+                                    put("id", message["id"])
+                                    put("chat_id", message["chat_id"])
+                                    put("sender_id", message["sender_id"])
+                                    put("uid", message["sender_id"])
+                                    put("content", message["content"])
+                                    put("message_text", message["content"])
+                                    put("message_type", message["message_type"])
+                                    put("created_at", message["created_at"])
+                                    put("push_date", message["created_at"])
+                                    put("is_deleted", message["is_deleted"])
+                                    put("is_edited", message["is_edited"])
+                                    put("delete_for_everyone", message["delete_for_everyone"])
+                                }
+                            }
+                            
+                            messagesList.addAll(0, newMessages)
+                            
+                            // Check if there might be more messages
+                            hasMoreMessages = messages.size >= 50
+                            
+                            // Notify adapter and maintain scroll position
+                            chatAdapter?.notifyItemRangeInserted(0, newMessages.size)
+                            
+                            // Restore scroll position (add the number of new items to the old position)
+                            layoutManager?.scrollToPositionWithOffset(
+                                firstVisiblePosition + newMessages.size,
+                                0
+                            )
+                            
+                            Log.d(TAG, "Loaded ${newMessages.size} more messages")
+                        }
+                        
+                        isLoadingMoreMessages = false
+                    },
+                    onFailure = { error ->
+                        showError("Failed to load more messages: ${error.message}")
+                        isLoadingMoreMessages = false
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading more messages: ${e.message}", e)
+                showError("Error loading more messages: ${e.message}")
+                isLoadingMoreMessages = false
             }
         }
     }
@@ -2379,4 +2479,5 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null
     }
+    
 }

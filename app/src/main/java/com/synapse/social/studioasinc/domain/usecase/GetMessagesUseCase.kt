@@ -9,7 +9,7 @@ import com.synapse.social.studioasinc.model.Message
 class GetMessagesUseCase(
     private val chatRepository: ChatRepository = ChatRepository()
 ) {
-    suspend operator fun invoke(chatId: String, limit: Int = 50, offset: Int = 0): Result<List<Message>> {
-        return chatRepository.getMessages(chatId, limit, offset)
+    suspend operator fun invoke(chatId: String, limit: Int = 50, beforeTimestamp: Long? = null): Result<List<Message>> {
+        return chatRepository.getMessages(chatId, limit, beforeTimestamp)
     }
 }

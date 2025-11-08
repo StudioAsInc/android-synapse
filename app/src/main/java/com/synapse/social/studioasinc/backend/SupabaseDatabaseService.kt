@@ -80,7 +80,7 @@ class SupabaseDatabaseService : IDatabaseService {
         val timestampFields = listOf(
             "created_at", "updated_at", "last_seen", "timestamp", 
             "publish_date", "last_message_time", "joined_at", 
-            "last_read_at", "edited_at", "push_date"
+            "last_read_at", "edited_at", "push_date", "read_at", "delivered_at"
         )
         
         return when {

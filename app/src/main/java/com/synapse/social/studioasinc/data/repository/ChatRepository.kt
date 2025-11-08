@@ -107,10 +107,17 @@ class ChatRepository {
 
     /**
      * Gets messages for a chat with proper data mapping
+     * @param chatId The chat ID
+     * @param limit Maximum number of messages to fetch
+     * @param beforeTimestamp Optional timestamp to fetch messages before (for pagination)
      */
-    suspend fun getMessages(chatId: String, limit: Int = 50, offset: Int = 0): Result<List<Message>> {
+    suspend fun getMessages(
+        chatId: String, 
+        limit: Int = 50, 
+        beforeTimestamp: Long? = null
+    ): Result<List<Message>> {
         return try {
-            val result = chatService.getMessages(chatId, limit)
+            val result = chatService.getMessages(chatId, limit, beforeTimestamp)
             result.map { messagesList ->
                 messagesList.map { messageData ->
                     mapToMessage(messageData)
