@@ -157,22 +157,22 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         // Initialize UI components from layout
         try {
             recyclerView = findViewById(R.id.ChatMessagesListRecycler)
-            messageInput = findViewById(R.id.message_et)
-            sendButton = findViewById(R.id.btn_sendMessage)
+            messageInput = findViewById(R.id.etMessageInput)
+            sendButton = findViewById(R.id.btnSendMessage)
             backButton = findViewById(R.id.back)
             chatNameText = findViewById(R.id.topProfileLayoutUsername)
             chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
             
             // Initialize message input container
-            messageInputContainer = findViewById(R.id.message_input_container)
+            messageInputContainer = findViewById(R.id.layoutMessageInputContainer)
             
             // Initialize reply preview components
-            replyPreviewContainer = findViewById(R.id.mMessageReplyLayout)
-            replyLayout = findViewById(R.id.mMessageReplyLayout)
-            replyUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername)
-            replyMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage)
-            replyMediaPreview = findViewById(R.id.mMessageReplyLayoutMediaPreview)
-            replyCancelButton = findViewById(R.id.mMessageReplyLayoutBodyCancel)
+            replyPreviewContainer = findViewById(R.id.layoutReplyPreview)
+            replyLayout = findViewById(R.id.layoutReplyPreview)
+            replyUsername = findViewById(R.id.tvReplyUsername)
+            replyMessage = findViewById(R.id.tvReplyMessage)
+            replyMediaPreview = findViewById(R.id.ivReplyMediaPreview)
+            replyCancelButton = findViewById(R.id.btnCancelReply)
             
             // Setup RecyclerView with proper configuration
             recyclerView?.apply {
@@ -335,7 +335,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
 
     private fun initializeTypingIndicator() {
         // Find the parent container where we can add the typing indicator
-        val bottomContainer = findViewById<LinearLayout>(R.id.message_input_overall_container)?.parent as? LinearLayout
+        val bottomContainer = findViewById<LinearLayout>(R.id.layoutChatInputRoot)?.parent as? LinearLayout
         
         if (bottomContainer != null) {
             // Create typing indicator view programmatically
