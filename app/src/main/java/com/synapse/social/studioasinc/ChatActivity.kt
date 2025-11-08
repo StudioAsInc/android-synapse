@@ -100,8 +100,8 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     private var messageInputContainer: LinearLayout? = null
     
     // Reply preview UI components
-    private var replyPreviewContainer: com.google.android.material.card.MaterialCardView? = null
-    private var replyLayout: com.google.android.material.card.MaterialCardView? = null
+    private var replyPreviewContainer: androidx.constraintlayout.widget.ConstraintLayout? = null
+    private var replyLayout: androidx.constraintlayout.widget.ConstraintLayout? = null
     private var replyUsername: TextView? = null
     private var replyMessage: TextView? = null
     private var replyMediaPreview: ImageView? = null
