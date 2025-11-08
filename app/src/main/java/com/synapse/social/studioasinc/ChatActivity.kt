@@ -45,6 +45,8 @@ import com.synapse.social.studioasinc.presentation.viewmodel.ChatViewModel
 import com.synapse.social.studioasinc.chat.service.RealtimeState
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
 
@@ -94,7 +96,11 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
     private var chatNameText: TextView? = null
     private var chatAvatarImage: ImageView? = null
     
+    // Message input container
+    private var messageInputContainer: LinearLayout? = null
+    
     // Reply preview UI components
+    private var replyPreviewContainer: com.google.android.material.card.MaterialCardView? = null
     private var replyLayout: LinearLayout? = null
     private var replyUsername: TextView? = null
     private var replyMessage: TextView? = null
@@ -157,7 +163,11 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
             chatNameText = findViewById(R.id.topProfileLayoutUsername)
             chatAvatarImage = findViewById(R.id.topProfileLayoutProfileImage)
             
+            // Initialize message input container
+            messageInputContainer = findViewById(R.id.message_input_container)
+            
             // Initialize reply preview components
+            replyPreviewContainer = findViewById(R.id.mMessageReplyLayout)
             replyLayout = findViewById(R.id.mMessageReplyLayout)
             replyUsername = findViewById(R.id.mMessageReplyLayoutBodyRightUsername)
             replyMessage = findViewById(R.id.mMessageReplyLayoutBodyRightMessage)
@@ -887,8 +897,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         messageInput?.text?.clear()
         
         // Clear reply preview after message sent
-        viewModel.clearReply()
-        replyMessageId = null
+        cancelReply()
         
         // Notify adapter of new message insertion
         chatAdapter?.notifyItemInserted(messagesList.size - 1)
@@ -1399,116 +1408,170 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
         itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
+    // Animation state tracking to prevent conflicts (Requirement 7.3)
+    private var replyAnimationJob: kotlinx.coroutines.Job? = null
+    
+    // Debounce timestamp for close button clicks (Requirement 7.3)
+    private var lastCancelClickTime = 0L
+    private val CANCEL_CLICK_DEBOUNCE_MS = 300L
+    
     /**
      * Setup reply preview observers and listeners
+     * Wires close button to cancelReply() method
+     * Adds haptic feedback on click
+     * Ensures proper touch feedback
+     * Implements debouncing for rapid clicks
+     * 
+     * Requirements: 2.2, 2.4, 7.3
      */
     private fun setupReplyPreview() {
-        // Check if viewModel is initialized
-        if (!::viewModel.isInitialized) {
-            android.util.Log.e("ChatActivity", "setupReplyPreview called before viewModel initialization")
-            return
-        }
-        
-        // Observe reply state from ViewModel
-        lifecycleScope.launch {
-            viewModel.replyState.collect { state ->
-                when (state) {
-                    is MessageActionsViewModel.ReplyState.Idle -> {
-                        hideReplyPreview()
-                    }
-                    is MessageActionsViewModel.ReplyState.Active -> {
-                        showReplyPreview(
-                            senderName = state.senderName,
-                            messageText = state.previewText,
-                            messageData = null // We'll add media support later if needed
-                        )
-                        replyMessageId = state.messageId
-                    }
-                }
-            }
-        }
-        
-        // Setup cancel button listener
+        // Setup close button click listener with debouncing
         replyCancelButton?.setOnClickListener {
-            viewModel.clearReply()
-        }
-    }
-    
-    /**
-     * Show reply preview above message input
-     * 
-     * @param senderName The name of the message sender
-     * @param messageText The message text (already truncated to 3 lines)
-     * @param messageData Optional message data for media preview
-     */
-    private fun showReplyPreview(
-        senderName: String,
-        messageText: String,
-        messageData: Map<String, Any?>?
-    ) {
-        replyLayout?.visibility = View.VISIBLE
-        replyUsername?.text = senderName
-        replyMessage?.text = messageText
-        
-        // Show media preview if message has attachments
-        val attachmentUrl = messageData?.get("attachment_url")?.toString()
-        val messageType = messageData?.get("message_type")?.toString()
-        
-        if (!attachmentUrl.isNullOrEmpty() && messageType == "image") {
-            replyMediaPreview?.visibility = View.VISIBLE
-            Glide.with(this)
-                .load(Uri.parse(attachmentUrl))
-                .centerCrop()
-                .placeholder(R.drawable.ph_imgbluredsqure)
-                .error(R.drawable.ph_imgbluredsqure)
-                .into(replyMediaPreview!!)
-        } else {
-            replyMediaPreview?.visibility = View.GONE
-        }
-        
-        // Animate the reply preview appearance
-        replyLayout?.apply {
-            alpha = 0f
-            translationY = -50f
-            animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setDuration(200)
-                .start()
-        }
-    }
-    
-    /**
-     * Hide reply preview
-     */
-    private fun hideReplyPreview() {
-        replyLayout?.animate()
-            ?.alpha(0f)
-            ?.translationY(-50f)
-            ?.setDuration(200)
-            ?.withEndAction {
-                replyLayout?.visibility = View.GONE
-                replyMessageId = null
+            // Debounce rapid clicks (Requirement 7.3)
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastCancelClickTime < CANCEL_CLICK_DEBOUNCE_MS) {
+                return@setOnClickListener
             }
-            ?.start()
+            lastCancelClickTime = currentTime
+            
+            // Add haptic feedback on click
+            try {
+                it.performHapticFeedback(
+                    android.view.HapticFeedbackConstants.CONTEXT_CLICK,
+                    android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                )
+            } catch (e: Exception) {
+                // Haptic feedback not available on this device
+                android.util.Log.d(TAG, "Haptic feedback not available: ${e.message}")
+            }
+            
+            // Cancel reply
+            cancelReply()
+        }
     }
+    
+
     
     /**
      * Prepare reply to a message (called from message actions)
+     * Sets reply username and message text
+     * Handles media preview visibility and loading with error handling
+     * Shows reply preview with animation
+     * Maintains keyboard focus on text input
+     * Prevents animation conflicts
+     * 
+     * Requirements: 3.1, 3.2, 3.3, 5.1, 5.4, 7.2, 7.3
      * 
      * @param messageId The ID of the message to reply to
      * @param messageText The text content of the message
      * @param senderName The name of the message sender
      */
     fun prepareReply(messageId: String, messageText: String, senderName: String) {
-        viewModel.prepareReply(messageId, messageText, senderName)
+        // Cancel any ongoing animation to prevent conflicts (Requirement 7.3)
+        replyAnimationJob?.cancel()
+        replyPreviewContainer?.animate()?.cancel()
         
-        // Focus message input
+        // Store reply message ID
+        replyMessageId = messageId
+        
+        // Set reply username and message text
+        replyUsername?.text = senderName
+        replyMessage?.text = messageText
+        
+        // Find the message data to check for media
+        val messageData = messagesList.find { it["id"]?.toString() == messageId }
+        
+        // Handle media preview visibility and loading with error handling (Requirement 7.2)
+        val attachmentUrl = messageData?.get("attachment_url")?.toString()
+        val messageType = messageData?.get("message_type")?.toString()
+        
+        if (!attachmentUrl.isNullOrEmpty() && attachmentUrl != "null" && messageType == "image") {
+            replyMediaPreview?.visibility = View.VISIBLE
+            replyMediaPreview?.let { imageView ->
+                Glide.with(this)
+                    .load(Uri.parse(attachmentUrl))
+                    .centerCrop()
+                    .placeholder(R.drawable.ph_imgbluredsqure) // Loading placeholder (Requirement 7.2)
+                    .error(R.drawable.ph_imgbluredsqure) // Error placeholder (Requirement 7.2)
+                    .into(imageView)
+            }
+        } else {
+            replyMediaPreview?.visibility = View.GONE
+        }
+        
+        // Set content description for accessibility
+        replyPreviewContainer?.contentDescription = getString(R.string.replying_to, senderName)
+        
+        // Show reply preview with animation (Requirement 5.1, 7.3)
+        replyAnimationJob = lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                replyPreviewContainer?.apply {
+                    alpha = 0f
+                    translationY = -20f
+                    visibility = View.VISIBLE
+                    animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(200)
+                        .setInterpolator(android.view.animation.DecelerateInterpolator())
+                        .start()
+                }
+            }
+        }
+        
+        // Maintain keyboard focus on text input
         messageInput?.requestFocus()
         
         // Show keyboard
         val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
         imm?.showSoftInput(messageInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+    
+    /**
+     * Cancel reply action
+     * Clears reply state (replyMessageId = null)
+     * Hides reply preview with animation
+     * Clears reply text fields
+     * Hides media preview
+     * Prevents animation conflicts
+     * 
+     * Requirements: 2.2, 5.2, 7.3
+     */
+    private fun cancelReply() {
+        // Cancel any ongoing animation to prevent conflicts (Requirement 7.3)
+        replyAnimationJob?.cancel()
+        replyPreviewContainer?.animate()?.cancel()
+        
+        // Clear reply state
+        replyMessageId = null
+        
+        // Hide reply preview with animation (Requirement 5.2, 7.3)
+        replyAnimationJob = lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                replyPreviewContainer?.apply {
+                    animate()
+                        .alpha(0f)
+                        .translationY(-20f)
+                        .setDuration(150)
+                        .setInterpolator(android.view.animation.AccelerateInterpolator())
+                        .withEndAction {
+                            visibility = View.GONE
+                            translationY = 0f
+                            
+                            // Clear reply text fields
+                            replyUsername?.text = ""
+                            replyMessage?.text = ""
+                            
+                            // Hide media preview
+                            replyMediaPreview?.visibility = View.GONE
+                            
+                            // Clear content description for accessibility
+                            contentDescription = null
+                        }
+                        .start()
+                }
+            }
+        }
     }
     
     /**

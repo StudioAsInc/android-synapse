@@ -550,4 +550,8 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="reduce_animations_title">Reduce animations</string>
     <string name="reduce_animations_subtitle">Minimize motion for accessibility</string>
 
+    <!-- Inline Reply Accessibility -->
+    <string name="cancel_reply">Cancel reply</string>
+    <string name="replying_to">Replying to %s</string>
+
 </resources>

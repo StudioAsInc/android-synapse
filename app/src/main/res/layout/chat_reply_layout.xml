@@ -1,36 +1,41 @@
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/mMessageReplyLayout"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:orientation="vertical"
 	android:visibility="gone"
-	android:elevation="4dp">
-	<LinearLayout
+	app:cardCornerRadius="16dp"
+	app:cardBackgroundColor="@color/md_theme_surfaceContainerLow"
+	app:cardElevation="1dp"
+	android:layout_margin="8dp">
+	<androidx.constraintlayout.widget.ConstraintLayout
 		android:id="@+id/mMessageReplyLayoutBody"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:paddingTop="12dp"
 		android:paddingBottom="12dp"
 		android:paddingStart="16dp"
-		android:paddingEnd="16dp"
-		android:background="@color/md_theme_surfaceContainerLow"
-		android:orientation="horizontal">
+		android:paddingEnd="16dp">
 		<!-- Left border indicator -->
 		<View
 			android:id="@+id/mMessageReplyLayoutLeftBorder"
 			android:layout_width="4dp"
-			android:layout_height="match_parent"
+			android:layout_height="0dp"
 			android:layout_marginEnd="12dp"
-			android:background="?attr/colorPrimary" />
+			android:background="?attr/colorPrimary"
+			app:layout_constraintTop_toTopOf="parent"
+			app:layout_constraintBottom_toBottomOf="parent"
+			app:layout_constraintStart_toStartOf="parent" />
 		<LinearLayout
 			android:id="@+id/mMessageReplyLayoutBodyRight"
 			android:layout_width="0dp"
 			android:layout_height="wrap_content"
-			android:layout_weight="1"
-			android:gravity="center_vertical"
-			android:orientation="vertical">
+			android:orientation="vertical"
+			app:layout_constraintTop_toTopOf="parent"
+			app:layout_constraintBottom_toBottomOf="parent"
+			app:layout_constraintStart_toEndOf="@id/mMessageReplyLayoutLeftBorder"
+			app:layout_constraintEnd_toStartOf="@id/mMessageReplyLayoutBodyCancel">
 			<TextView
 				android:id="@+id/mMessageReplyLayoutBodyRightUsername"
 				android:layout_width="wrap_content"
@@ -62,14 +67,15 @@
 		</LinearLayout>
 		<ImageView
 			android:id="@+id/mMessageReplyLayoutBodyCancel"
-			android:layout_width="32dp"
-			android:layout_height="32dp"
-			android:layout_marginStart="12dp"
-			android:layout_gravity="center_vertical"
-			android:padding="6dp"
+			android:layout_width="24dp"
+			android:layout_height="24dp"
+			android:padding="4dp"
 			android:src="@drawable/ic_close_48px"
 			android:scaleType="centerInside"
 			android:background="?attr/selectableItemBackgroundBorderless"
-			app:tint="@color/md_theme_onSurfaceVariant" />
-	</LinearLayout>
-</LinearLayout>
+			android:contentDescription="@string/cancel_reply"
+			app:tint="@color/md_theme_onSurfaceVariant"
+			app:layout_constraintTop_toTopOf="parent"
+			app:layout_constraintEnd_toEndOf="parent" />
+	</androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
