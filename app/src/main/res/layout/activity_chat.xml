@@ -34,6 +34,9 @@
 			android:background="@android:color/transparent"
 			app:elevation="0dp">
 
+			<!-- Action Toolbar for Multi-Select Mode -->
+			<include layout="@layout/action_toolbar" />
+
 			<com.google.android.material.appbar.MaterialToolbar
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
@@ -183,6 +186,10 @@
 			</com.google.android.material.appbar.MaterialToolbar>
 
 		</com.google.android.material.appbar.AppBarLayout>
+		
+		<!-- Connection Status Banner -->
+		<include layout="@layout/connection_status_banner" />
+		
 		<LinearLayout
 			android:id="@+id/middle"
 			android:layout_width="match_parent"
@@ -272,7 +279,6 @@
 				app:tint="@color/white"
 				android:elevation="@dimen/elevation_small" />
 		</RelativeLayout>
-		<include layout="@layout/chat_reply_layout" />
-		<include layout="@layout/chat_message_input_bar" />
+		<include layout="@layout/message_input_layout" />
 	</LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

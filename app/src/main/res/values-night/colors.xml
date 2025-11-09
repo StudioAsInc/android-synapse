@@ -159,6 +159,57 @@
     <!-- Additional missing colors -->
     <color name="shimmer_placeholder">#333333</color>
     <color name="pureWhite">#FFFFFF</color>
+    <color name="white">#FFFFFF</color>
     <color name="bars_colors">@color/md_theme_surfaceContainerLow</color>
     <color name="semi_trans">#80000000</color>
+    <color name="semi_black">#80000000</color>
+    <color name="quarter_black">#40000000</color>
+    <color name="reply_text_color">#7BB3F0</color>
+    <color name="hint_text_color">#90A4AE</color>
+
+    <!-- User Status Colors (Dark theme variants) -->
+    <color name="status_banned_text">#757575</color>
+    <color name="status_online_text">#64B5F6</color>
+    <color name="status_offline_text">#9E9E9E</color>
+
+    <!-- Refactoring Colors (Dark theme variants) -->
+    <color name="error_red">#EF5350</color>
+    <color name="light_grey">#424242</color>
+    <color name="link_blue">#7BB3F0</color>
+    <color name="success_green">#66BB6A</color>
+    <color name="light_red_ripple">#FFCDD2</color>
+    <color name="light_blue_ripple">#BBDEFB</color>
+
+    <!-- Colors for User Profile Status (Dark theme variants) -->
+    <color name="online_green">#66BB6A</color>
+    <color name="offline_gray">#9E9E9E</color>
+    
+    <!-- Follow feature colors (Dark theme variants) -->
+    <color name="primary">@color/md_theme_primary</color>
+    <color name="primary_dark">@color/md_theme_primary_mediumContrast</color>
+    <color name="background">@color/md_theme_background</color>
+    <color name="surface">@color/md_theme_surface</color>
+    <color name="text_primary">@color/md_theme_onBackground</color>
+    <color name="text_secondary">@color/md_theme_onSurfaceVariant</color>
+    <color name="gray_light">@color/md_theme_surfaceVariant</color>
+    
+    <!-- Gradient overlay colors -->
+    <color name="gradient_transparent">#00000000</color>
+    <color name="gradient_semi_black">#80000000</color>
+    
+    <!-- Layout specific colors (Dark theme variants) -->
+    <color name="card_background">@color/md_theme_surface</color>
+    <color name="username_text">@color/md_theme_onSurface</color>
+    <color name="secondary_text">@color/md_theme_onSurfaceVariant</color>
+    <color name="status_indicator_online">#64B5F6</color>
+    <color name="status_indicator_active">#66BB6A</color>
+    <color name="overlay_dark">#1E1E1E</color>
+    <color name="overlay_text">#BDBDBD</color>
+    <color name="video_duration_bg">#757575</color>
+    <color name="border_color">#42A5F5</color>
+    <color name="rocket_pay_accent">#F06292</color>
+    
+    <!-- Message Bubble Colors -->
+    <color name="sent_message_background">@color/md_theme_primaryContainer</color>
+    <color name="received_message_background">@color/md_theme_surfaceVariant</color>
 </resources>

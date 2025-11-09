@@ -7,8 +7,11 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
+import com.google.android.material.snackbar.Snackbar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -17,13 +20,16 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.home.HeaderAdapter
 import com.synapse.social.studioasinc.home.HomeViewModel
 import com.synapse.social.studioasinc.home.PostAdapter
-import com.synapse.social.studioasinc.home.StoryAdapter
-
+import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
+import com.synapse.social.studioasinc.SupabaseClient
+import android.content.Intent
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.gotrue.auth
 class HomeFragment : Fragment() {
 
     private lateinit var viewModel: HomeViewModel
     private lateinit var postAdapter: PostAdapter
-    private lateinit var storyAdapter: StoryAdapter
     private lateinit var headerAdapter: HeaderAdapter
     private lateinit var concatAdapter: ConcatAdapter
 
@@ -45,12 +51,33 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeViews(view)
-        setupViewModel()
         setupRecyclerView()
+        setupViewModel()
         setupListeners()
 
-        viewModel.fetchPosts()
-        viewModel.fetchStories()
+        viewModel.loadPosts()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Save scroll position when navigating away
+        val layoutManager = publicPostsList.layoutManager as? LinearLayoutManager
+        layoutManager?.let {
+            val position = it.findFirstVisibleItemPosition()
+            val view = it.findViewByPosition(position)
+            val offset = view?.top ?: 0
+            viewModel.saveScrollPosition(position, offset)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Restore scroll position when returning
+        val scrollPosition = viewModel.restoreScrollPosition()
+        scrollPosition?.let {
+            val layoutManager = publicPostsList.layoutManager as? LinearLayoutManager
+            layoutManager?.scrollToPositionWithOffset(it.position, it.offset)
+        }
     }
 
     private fun initializeViews(view: View) {
@@ -67,50 +94,112 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        postAdapter = PostAdapter(this, emptyList())
-        storyAdapter = StoryAdapter(requireContext(), emptyList())
-        headerAdapter = HeaderAdapter(requireContext(), storyAdapter)
+        postAdapter = PostAdapter(
+            context = requireContext(),
+            lifecycleOwner = this,
+            onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
+            onCommentClicked = { post -> showCommentsDialog(post) },
+            onShareClicked = { post -> sharePost(post) }
+        )
+        headerAdapter = HeaderAdapter(requireContext(), this)
 
         concatAdapter = ConcatAdapter(headerAdapter, postAdapter)
         publicPostsList.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = concatAdapter
+            
+            // Add scroll listener for infinite scroll
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+                    
+                    val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
+                    layoutManager?.let {
+                        val totalItemCount = it.itemCount
+                        val lastVisibleItem = it.findLastVisibleItemPosition()
+                        
+                        // Calculate distance from end
+                        val distanceFromEnd = totalItemCount - lastVisibleItem - 1
+                        
+                        // Trigger load when within threshold (5 items) and not already loading
+                        if (distanceFromEnd <= 5 && !viewModel.isLoadingMore.value) {
+                            viewModel.loadNextPage()
+                        }
+                    }
+                }
+            })
         }
     }
 
     private fun setupListeners() {
+        // Set Material Design 3 color scheme for SwipeRefreshLayout
+        swipeLayout.setColorSchemeResources(
+            R.color.md_theme_primary,
+            R.color.md_theme_secondary,
+            R.color.md_theme_tertiary
+        )
+        
         swipeLayout.setOnRefreshListener {
-            viewModel.fetchPosts()
-            viewModel.fetchStories()
+            // Announce refresh action for accessibility
+            swipeLayout.announceForAccessibility(getString(R.string.refreshing_posts))
+            viewModel.loadPosts()
         }
     }
 
     private fun observePosts() {
-        viewModel.posts.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is HomeViewModel.State.Loading -> showShimmer()
-                is HomeViewModel.State.Success -> {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.posts.collect { posts ->
+                hideShimmer()
+                postAdapter.updatePosts(posts)
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoading.collect { isLoading ->
+                // Control SwipeRefreshLayout refreshing state
+                swipeLayout.isRefreshing = isLoading
+                
+                if (isLoading) {
+                    showShimmer()
+                } else {
                     hideShimmer()
-                    postAdapter.updatePosts(state.data)
-                    swipeLayout.isRefreshing = false
+                    // Announce when refresh completes
+                    announceLoadingState(false, isRefresh = true)
                 }
-                is HomeViewModel.State.Error -> {
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoadingMore.collect { isLoadingMore ->
+                // Show/hide bottom loading indicator
+                postAdapter.setLoadingMore(isLoadingMore)
+                // Announce loading state changes
+                announceLoadingState(isLoadingMore, isRefresh = false)
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.error.collect { error ->
+                error?.let {
                     hideShimmer()
-                    Toast.makeText(context, "Failed to fetch posts: ${state.message}", Toast.LENGTH_LONG).show()
-                    swipeLayout.isRefreshing = false
+                    showErrorWithRetry(it)
+                }
+            }
+        }
+        
+        // Observe end of list state
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.paginationState.collect { state ->
+                if (state is com.synapse.social.studioasinc.util.PaginationManager.PaginationState.EndOfList) {
+                    announceEndOfList()
                 }
             }
         }
     }
 
     private fun observeStories() {
-        viewModel.stories.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is HomeViewModel.State.Loading -> {}
-                is HomeViewModel.State.Success -> storyAdapter.updateStories(state.data)
-                is HomeViewModel.State.Error -> Toast.makeText(context, "Failed to fetch stories: ${state.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        // Stories functionality can be implemented later
+        // For now, we'll just show empty stories
     }
 
     private fun showShimmer() {
@@ -125,5 +214,205 @@ class HomeFragment : Fragment() {
 
     private fun hideShimmer() {
         shimmerContainer.visibility = View.GONE
+    }
+    
+    private fun showErrorWithRetry(errorMessage: String) {
+        // Create Snackbar with retry action
+        val snackbar = Snackbar.make(
+            requireView(),
+            errorMessage,
+            Snackbar.LENGTH_INDEFINITE
+        )
+        
+        snackbar.setAction(R.string.retry) {
+            // Retry loading posts
+            viewModel.loadNextPage()
+            viewModel.clearError()
+        }
+        
+        // Announce error for accessibility
+        requireView().announceForAccessibility(errorMessage)
+        
+        snackbar.show()
+    }
+    
+    /**
+     * Announce loading state changes for accessibility
+     * @param isLoading Whether content is currently loading
+     * @param isRefresh Whether this is a refresh operation (pull-to-refresh)
+     */
+    private fun announceLoadingState(isLoading: Boolean, isRefresh: Boolean) {
+        val message = when {
+            isLoading && isRefresh -> getString(R.string.loading_more_posts)
+            isLoading && !isRefresh -> getString(R.string.loading_more_posts)
+            !isLoading && isRefresh -> getString(R.string.posts_loaded)
+            else -> getString(R.string.posts_loaded)
+        }
+        requireView().announceForAccessibility(message)
+    }
+    
+    /**
+     * Announce when end of list is reached for accessibility
+     */
+    private fun announceEndOfList() {
+        requireView().announceForAccessibility(getString(R.string.no_more_posts_available))
+    }
+    
+    private fun showMoreOptionsDialog(post: Post) {
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id
+        val isOwnPost = post.authorUid == currentUid
+        
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val sheetBinding = com.synapse.social.studioasinc.databinding.BottomSheetPostOptionsBinding.inflate(layoutInflater)
+        bottomSheet.setContentView(sheetBinding.root)
+        
+        // Show/hide options based on ownership
+        if (isOwnPost) {
+            sheetBinding.optionEdit.visibility = View.VISIBLE
+            sheetBinding.optionDelete.visibility = View.VISIBLE
+            sheetBinding.optionStatistics.visibility = View.VISIBLE
+            sheetBinding.optionReport.visibility = View.GONE
+            sheetBinding.optionHide.visibility = View.GONE
+        } else {
+            sheetBinding.optionEdit.visibility = View.GONE
+            sheetBinding.optionDelete.visibility = View.GONE
+            sheetBinding.optionStatistics.visibility = View.GONE
+            sheetBinding.optionReport.visibility = View.VISIBLE
+            sheetBinding.optionHide.visibility = View.VISIBLE
+        }
+        
+        // Set click listeners
+        sheetBinding.optionEdit.setOnClickListener {
+            editPost(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionDelete.setOnClickListener {
+            bottomSheet.dismiss()
+            deletePost(post)
+        }
+        
+        sheetBinding.optionCopyLink.setOnClickListener {
+            copyPostLink(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionStatistics.setOnClickListener {
+            bottomSheet.dismiss()
+            showPostStatistics(post)
+        }
+        
+        sheetBinding.optionReport.setOnClickListener {
+            bottomSheet.dismiss()
+            reportPost(post)
+        }
+        
+        sheetBinding.optionHide.setOnClickListener {
+            bottomSheet.dismiss()
+            hidePost(post)
+        }
+        
+        bottomSheet.show()
+    }
+    
+    private fun showCommentsDialog(post: Post) {
+        val commentsDialog = PostCommentsBottomSheetDialog()
+        val bundle = Bundle()
+        bundle.putString("postKey", post.id)
+        bundle.putString("postAuthorUid", post.authorUid)
+        commentsDialog.arguments = bundle
+        commentsDialog.show(parentFragmentManager, commentsDialog.tag)
+    }
+    
+    private fun sharePost(post: Post) {
+        val shareText = "${post.postText}\n\nShared via Synapse"
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            type = "text/plain"
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share post via"))
+    }
+    
+    private fun editPost(post: Post) {
+        val editIntent = Intent(requireActivity(), com.synapse.social.studioasinc.EditPostActivity::class.java).apply {
+            putExtra("postKey", post.id)
+            putExtra("postText", post.postText)
+            putExtra("postImg", post.postImage)
+        }
+        startActivity(editIntent)
+    }
+    
+    private fun deletePost(post: Post) {
+        lifecycleScope.launch {
+            try {
+                // Delete from Supabase
+                SupabaseClient.client.from("posts").delete {
+                    filter {
+                        eq("id", post.id)
+                    }
+                }
+                Toast.makeText(requireContext(), "Post deleted", Toast.LENGTH_SHORT).show()
+                // Refresh posts
+                viewModel.loadPosts()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Failed to delete post: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun copyPostLink(post: Post) {
+        val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Post Link", "https://synapse.app/post/${post.id}")
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(requireContext(), "Link copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun showPostStatistics(post: Post) {
+        // TODO: Implement post statistics dialog
+        Toast.makeText(requireContext(), "Statistics feature coming soon", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun reportPost(post: Post) {
+        lifecycleScope.launch {
+            try {
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    val reportData = mapOf(
+                        "reporter_uid" to currentUser.id,
+                        "reported_post_id" to post.id,
+                        "reported_user_uid" to post.authorUid,
+                        "report_reason" to "Inappropriate content",
+                        "created_at" to System.currentTimeMillis()
+                    )
+                    SupabaseClient.client.from("reports").insert(reportData)
+                    Toast.makeText(requireContext(), "Post reported. Thank you for keeping Synapse safe.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Failed to report post: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun hidePost(post: Post) {
+        lifecycleScope.launch {
+            try {
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    val hideData = mapOf(
+                        "user_uid" to currentUser.id,
+                        "hidden_post_id" to post.id,
+                        "hidden_at" to System.currentTimeMillis()
+                    )
+                    SupabaseClient.client.from("hidden_posts").insert(hideData)
+                    Toast.makeText(requireContext(), "Post hidden. You won't see posts like this.", Toast.LENGTH_SHORT).show()
+                    // Refresh posts
+                    viewModel.loadPosts()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

@@ -1,17 +1,19 @@
-<LinearLayout
+<androidx.constraintlayout.widget.ConstraintLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
-	android:layout_height="wrap_content"
-	android:orientation="vertical">
+	android:layout_height="wrap_content">
 	<LinearLayout
 		android:id="@+id/body"
-		android:layout_width="match_parent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:paddingLeft="0dp"
-		android:paddingRight="0dp"
-		android:orientation="horizontal">
+		android:paddingLeft="8dp"
+		android:paddingRight="8dp"
+		android:orientation="horizontal"
+		app:layout_constraintWidth_max="wrap"
+		app:layout_constraintWidth_percent="0.75"
+		app:layout_constraintTop_toTopOf="parent">
 		<androidx.cardview.widget.CardView
 			android:id="@+id/mProfileCard"
 			android:layout_width="34dp"
@@ -38,8 +40,9 @@
 				android:id="@+id/messageBG"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
+				android:maxWidth="@dimen/message_bubble_max_width"
 			android:layout_marginLeft="0dp"
-				android:layout_marginTop="2dp"
+				android:layout_marginTop="@dimen/message_vertical_spacing"
 			android:layout_marginRight="0dp"
 				android:layout_marginBottom="2dp"
 				android:paddingLeft="4dp"
@@ -47,10 +50,71 @@
 				android:paddingRight="4dp"
 				android:paddingBottom="8dp"
 				android:background="#00000000"
-				android:clickable="true"
-				android:focusable="true"
-				android:foreground="?attr/selectableItemBackgroundBorderless"
+				android:clickable="false"
+				android:focusable="false"
 				android:orientation="vertical">
+				<!-- Username for group chats -->
+				<TextView
+					android:id="@+id/senderUsername"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginBottom="4dp"
+					android:layout_marginLeft="8dp"
+					android:textSize="12sp"
+					android:textColor="?attr/colorPrimary"
+					android:textStyle="bold"
+					android:visibility="gone"
+					android:singleLine="true"
+					android:ellipsize="end"
+					android:maxWidth="200dp" />
+				<!-- Forwarded indicator -->
+				<LinearLayout
+					android:id="@+id/forwardedIndicator"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="horizontal"
+					android:gravity="center_vertical"
+					android:layout_marginBottom="4dp"
+					android:layout_marginLeft="8dp"
+					android:visibility="gone">
+					<ImageView
+						android:layout_width="14dp"
+						android:layout_height="14dp"
+						android:src="@drawable/ic_forward"
+						android:layout_marginEnd="4dp"
+						app:tint="?attr/colorOnSurfaceVariant" />
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Forwarded"
+						android:textSize="11sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+				</LinearLayout>
+				<!-- Deleted message placeholder -->
+				<LinearLayout
+					android:id="@+id/deletedMessagePlaceholder"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:visibility="gone"
+					android:padding="12dp"
+					android:background="?attr/colorSurfaceVariant">
+					<TextView
+						android:id="@+id/deletedMessageText"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="This message was deleted"
+						android:textSize="14sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+				</LinearLayout>
+				<!-- Message content container (hidden when deleted) -->
+				<LinearLayout
+					android:id="@+id/messageContentContainer"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical">
 				<androidx.cardview.widget.CardView
 					android:id="@+id/mediaContainerCard"
 					android:layout_width="wrap_content"
@@ -61,19 +125,6 @@
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
 						android:orientation="vertical">
-						<!-- Username for group chats -->
-						<TextView
-							android:id="@+id/senderUsername"
-							android:layout_width="wrap_content"
-							android:layout_height="wrap_content"
-							android:layout_marginBottom="4dp"
-							android:textSize="12sp"
-							android:textColor="?attr/colorPrimary"
-							android:textStyle="bold"
-							android:visibility="gone"
-							android:singleLine="true"
-							android:ellipsize="end"
-							android:maxWidth="200dp" />
 						<!-- SIMPLIFIED LAYOUT - TESTING -->
 						<!-- Original grid layout for compatibility -->
 						<androidx.gridlayout.widget.GridLayout
@@ -197,32 +248,58 @@
 						android:autoLink="all"
 						android:textColorLink="#FFFF00" />
 				</com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
-			</LinearLayout>
-			<LinearLayout
-				android:id="@+id/my_message_info"
-				android:layout_width="wrap_content"
-				android:layout_height="16dp"
-				android:layout_marginRight="8dp"
-				android:gravity="right|center_vertical"
-				android:orientation="horizontal"
-				android:layout_gravity="right">
-				<TextView
-					android:id="@+id/date"
-					android:focusable="false"
+				</LinearLayout>
+				<!-- End of messageContentContainer -->
+				<!-- Metadata moved inside bubble -->
+				<LinearLayout
+					android:id="@+id/my_message_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginRight="4dp"
-					android:text="00:00"
-					android:textSize="12sp"
-					android:textColor="#000000" />
-				<ImageView
-					android:id="@+id/message_state"
-					android:focusable="false"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
-					android:src="@drawable/ic_check_black"
-					android:scaleType="centerInside" />
+					android:layout_marginTop="4dp"
+					android:layout_marginRight="8dp"
+					android:gravity="right|center_vertical"
+					android:orientation="horizontal"
+					android:layout_gravity="end">
+					<TextView
+						android:id="@+id/pendingIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Pending"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorSecondary"
+						android:layout_marginRight="4dp"
+						android:visibility="gone" />
+					<TextView
+						android:id="@+id/editedIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="(edited)"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant"
+						android:layout_marginRight="4dp"
+						android:visibility="gone"
+						android:clickable="true"
+						android:focusable="true" />
+					<TextView
+						android:id="@+id/date"
+						android:focusable="false"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginRight="4dp"
+						android:text="00:00"
+						android:textSize="11sp"
+						android:textColor="#000000" />
+					<ImageView
+						android:id="@+id/message_state"
+						android:focusable="false"
+						android:layout_width="12dp"
+						android:layout_height="12dp"
+						android:src="@drawable/ic_check_black"
+						android:scaleType="centerInside" />
+				</LinearLayout>
 			</LinearLayout>
 		</LinearLayout>
 	</LinearLayout>
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

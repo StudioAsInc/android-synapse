@@ -318,4 +318,241 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="chat_settings_ai_settings_title">AI Settings</string>
     <string name="chat_settings_ai_settings_summary">Setup your artificial intelligence settings</string>
     <string name="cancel">Cancel</string>
+    
+    <!-- Error messages -->
+    <string name="failed_to_send">Failed to send</string>
+    <string name="tap_to_retry">Tap to retry</string>
+    <string name="error_icon">Error icon</string>
+
+    <!-- Message Actions -->
+    <string name="action_reply">Reply</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_ai_summary">AI Summary</string>
+    
+    <!-- Delete Message Dialog -->
+    <string name="warning_icon">Warning icon</string>
+    <string name="delete_message_confirmation">Delete this message?</string>
+    <string name="delete_messages_confirmation">Delete %d messages?</string>
+    <string name="delete_for_me">Delete for me</string>
+    <string name="delete_for_me_explanation">This message will only be removed from your device. Other participants will still see it.</string>
+    <string name="delete_for_everyone">Delete for everyone</string>
+    <string name="delete_for_everyone_explanation">This message will be removed for all participants in this conversation. This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="message_deleted_successfully">Message deleted successfully</string>
+    <string name="failed_to_delete_message">Failed to delete message. Please try again.</string>
+    
+    <!-- Comprehensive Error Messages for Message Actions -->
+    
+    <!-- Reply Errors -->
+    <string name="error_reply_generic">Unable to reply to this message</string>
+    <string name="error_reply_deleted">This message has been deleted</string>
+    
+    <!-- Forward Errors -->
+    <string name="error_forward_generic">Failed to forward message. Please try again.</string>
+    <string name="error_forward_no_permission">You don\'t have permission to send messages in %1$s</string>
+    <string name="error_forward_partial">Forwarded to %1$d of %2$d conversations</string>
+    <string name="error_forward_no_network">No network connection. Message will be forwarded when online.</string>
+    <string name="success_forward_count">Message forwarded to %1$d conversation(s)</string>
+    
+    <!-- Edit Errors -->
+    <string name="error_edit_generic">Unable to edit message. Please try again.</string>
+    <string name="error_edit_too_old">This message is too old to edit (>48 hours)</string>
+    <string name="error_edit_empty">Message content cannot be empty</string>
+    <string name="error_edit_not_found">Message not found</string>
+    <string name="error_edit_no_network">Edit queued. Will be applied when online.</string>
+    <string name="success_edit">Message edited successfully</string>
+    
+    <!-- Delete Errors -->
+    <string name="error_delete_generic">Failed to delete message. Please try again.</string>
+    <string name="error_delete_already_deleted">Unable to delete for everyone. Message may have already been deleted.</string>
+    <string name="error_delete_no_network">Delete queued. Will be applied when online.</string>
+    <string name="success_delete_for_me">Message deleted for you</string>
+    <string name="success_delete_for_everyone">Message deleted for everyone</string>
+    
+    <!-- AI Summary Errors -->
+    <string name="error_ai_summary_generic">Unable to generate summary. Please try again.</string>
+    <string name="error_ai_summary_unavailable">AI service is temporarily unavailable</string>
+    <string name="error_ai_summary_rate_limit">Rate limit reached. Try again in %1$d minutes</string>
+    <string name="error_ai_summary_too_short">Message is too short to summarize</string>
+    <string name="error_ai_summary_network">Network error. Please check your connection and try again.</string>
+    <string name="error_ai_summary_timeout">Request timed out. Please try again.</string>
+    <string name="error_ai_summary_api_key">AI service not configured. Please contact support.</string>
+    
+    <!-- Network Errors -->
+    <string name="error_network_timeout">Request timed out. Please try again.</string>
+    <string name="error_network_connection">Connection failed. Please check your internet connection.</string>
+    <string name="error_network_unavailable">No internet connection</string>
+    
+    <!-- Generic Errors -->
+    <string name="error_unexpected">An unexpected error occurred</string>
+    <string name="error_retry_action">Retry</string>
+    <string name="error_dismiss_action">Dismiss</string>
+    
+    <!-- Success Messages -->
+    <string name="success_action_queued">Action queued. Will be processed when online.</string>
+    <string name="success_processing_queued_actions">Processing pending actions…</string>
+    
+    <!-- Typing Indicator -->
+    <string name="typing_indicator_text">is typing</string>
+
+    <!-- Media Picker -->
+    <string name="media_picker_title">Select Media Type</string>
+    <string name="media_picker_option_photos">Photos</string>
+    <string name="media_picker_option_videos">Videos</string>
+    <string name="media_picker_option_audio">Audio</string>
+    <string name="media_picker_option_documents">Documents</string>
+    <string name="media_picker_option_icon">Media option icon</string>
+
+    <!-- Media Preview -->
+    <string name="media_preview_title">Preview</string>
+    <string name="media_preview_title_with_count">Preview (%1$d/%2$d)</string>
+    <string name="media_preview_upload_info">Upload Information</string>
+    <string name="media_preview_total_size">Total Size</string>
+    <string name="media_preview_estimated_time">Estimated Time</string>
+    <string name="media_preview_caption_hint">Add a caption (optional)</string>
+    <string name="media_preview_add_more">Add More</string>
+    <string name="media_preview_file_too_large">Large File Warning</string>
+    <string name="media_preview_warning_large_file">This file is larger than 50MB and may take a while to upload. Continue?</string>
+    <string name="media_preview_warning_large_file_detailed">Total size: %1$s\nEstimated upload time: %2$s\n\nThis may take a while to upload. Continue?</string>
+    <string name="media_preview_error_no_files">No files selected</string>
+    <string name="media_preview_error_file_too_large">File exceeds maximum size of %1$s</string>
+    <string name="media_preview_error_file_not_accessible">Unable to access file</string>
+    <string name="media_preview_error_file_validation">Error validating file</string>
+
+    <!-- Image Gallery -->
+    <string name="download_image">Download image</string>
+    <string name="failed_to_load_image">Failed to load image</string>
+    <string name="image_downloaded">Image saved to gallery</string>
+    <string name="failed_to_download_image">Failed to download image</string>
+    <string name="loading_image">Loading image…</string>
+    
+    <!-- MD3 Post Card Accessibility Strings -->
+    <string name="author_avatar">Author profile picture</string>
+    <string name="post_options">More options for post</string>
+    <string name="post_image">Post image</string>
+    <string name="like_post">Like post</string>
+    <string name="like_post_with_count">Like post, %1$d likes</string>
+    <string name="like_post_liked">Unlike post, %1$d likes</string>
+    <string name="comment_on_post">Comment on post</string>
+    <string name="comment_on_post_with_count">Comment on post, %1$d comments</string>
+    <string name="share_post">Share post</string>
+    <string name="post_by_user">Post by %1$s</string>
+    <string name="post_timestamp">Posted %1$s</string>
+    
+    <string name="downloading_image">Downloading…</string>
+
+    <!-- Video Player -->
+    <string name="play_pause">Play/Pause</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="rewind">Rewind</string>
+    <string name="forward">Fast forward</string>
+    <string name="fullscreen_toggle">Toggle fullscreen</string>
+    <string name="video_loading">Loading video…</string>
+    <string name="video_buffering">Buffering…</string>
+    <string name="video_error">Error playing video</string>
+    <string name="video_error_retry">Tap to retry</string>
+
+    <!-- Audio Player -->
+    <string name="play_audio">Play audio</string>
+    <string name="pause_audio">Pause audio</string>
+    <string name="audio_loading">Loading audio…</string>
+    <string name="audio_buffering">Buffering…</string>
+    <string name="audio_error">Error playing audio</string>
+
+    <!-- Document Viewer -->
+    <string name="download_document">Download document</string>
+    <string name="open_document">Open document</string>
+    <string name="document_downloaded">Document saved</string>
+    <string name="failed_to_download_document">Failed to download document</string>
+
+    <!-- Pagination -->
+    <string name="loading_more_posts">Loading more posts…</string>
+    <string name="posts_loaded">Posts loaded</string>
+    <string name="no_more_posts_available">No more posts available</string>
+    <string name="failed_to_load_posts">Failed to load posts</string>
+    <string name="check_internet_connection">Check your internet connection</string>
+    <string name="pull_to_refresh">Pull down to refresh posts</string>
+    <string name="refreshing_posts">Refreshing posts…</string>
+    <string name="loading_indicator">Loading indicator</string>
+    <string name="error_loading_posts">Unable to load posts</string>
+    <string name="error_network_posts">Network error while loading posts</string>
+    <string name="error_unknown_posts">An unexpected error occurred</string>
+    <string name="loading_more_messages">Loading more messages…</string>
+    <string name="messages_loaded">Messages loaded</string>
+    <string name="no_more_messages_available">No more messages available</string>
+    <string name="failed_to_load_messages">Failed to load messages</string>
+    <string name="end_of_list">You\'ve reached the end</string>
+
+    <!-- Social Authentication -->
+    <string name="social_auth_divider">Or Continue With Account</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_in_with_facebook">Sign in with Facebook</string>
+    <string name="sign_in_with_apple">Sign in with Apple</string>
+    <string name="forgot_password_link">Forgot Password?</string>
+
+    <!-- Forgot Password Screen -->
+    <string name="forgot_password_title">Forgot Password</string>
+    <string name="forgot_password_subtitle">Enter your email address and we\'ll send you a link to reset your password</string>
+    <string name="forgot_password_continue">Continue</string>
+    <string name="forgot_password_back">Back to Sign In</string>
+    <string name="forgot_password_success">Password reset link sent! Please check your email.</string>
+    <string name="forgot_password_error">Unable to send reset link. Please try again.</string>
+
+    <!-- Message Deletion Error Messages -->
+    <string name="error_deletion_network">Unable to delete messages. Please check your connection.</string>
+    <string name="error_deletion_permission">You can only delete your own messages for everyone.</string>
+    <string name="error_deletion_generic">Failed to delete messages. Please try again.</string>
+    <string name="error_deletion_no_messages">No messages selected</string>
+    <string name="error_deletion_user_required">User ID is required</string>
+    
+    <!-- Message Deletion Success Messages -->
+    <string name="success_deletion_single">Message deleted</string>
+    <string name="success_deletion_multiple">%d messages deleted</string>
+    <string name="success_deletion_for_me">Message deleted for you</string>
+    <string name="success_deletion_for_everyone">Message deleted for everyone</string>
+    
+    <!-- Message Deletion Loading Messages -->
+    <string name="loading_deletion">Deleting messages…</string>
+
+    <!-- Connection Status -->
+    <string name="connection_status_connected">Connected</string>
+    <string name="connection_status_connecting">Connecting…</string>
+    <string name="connection_status_disconnected">No connection</string>
+    <string name="connection_status_reconnecting">Reconnecting…</string>
+    <string name="connection_type_wifi">Wi-Fi</string>
+    <string name="connection_type_cellular">Mobile data</string>
+    <string name="connection_type_ethernet">Ethernet</string>
+    <string name="connection_retry">Retry</string>
+
+    <!-- Loading States -->
+    <string name="loading_messages">Loading messages…</string>
+    <string name="loading_profile">Loading profile…</string>
+    <string name="loading_posts">Loading posts…</string>
+    <string name="loading_comments">Loading comments…</string>
+    <string name="sending_message">Sending…</string>
+    <string name="message_sent">Sent</string>
+
+    <!-- Pull to Refresh -->
+    <string name="pull_to_refresh_messages">Pull to refresh messages</string>
+    <string name="release_to_refresh">Release to refresh</string>
+    <string name="refreshing">Refreshing…</string>
+
+    <!-- Haptic Feedback Settings -->
+    <string name="haptic_feedback_title">Haptic feedback</string>
+    <string name="haptic_feedback_subtitle">Vibrate on interactions</string>
+
+    <!-- Smooth Animations -->
+    <string name="animations_title">Animations</string>
+    <string name="animations_subtitle">Enable smooth transitions</string>
+    <string name="reduce_animations_title">Reduce animations</string>
+    <string name="reduce_animations_subtitle">Minimize motion for accessibility</string>
+
+    <!-- Inline Reply Accessibility -->
+    <string name="cancel_reply">Cancel reply</string>
+    <string name="replying_to">Replying to %s</string>
+    <string name="reply_media_preview">Reply media preview</string>
+
 </resources>

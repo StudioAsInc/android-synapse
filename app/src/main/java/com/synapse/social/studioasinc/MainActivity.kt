@@ -14,7 +14,12 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
 import com.synapse.social.studioasinc.databinding.DialogErrorBinding
 import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
@@ -22,7 +27,17 @@ import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: MainViewModel by viewModels()
+    private val authRepository = AuthRepository()
+    private val userRepository = UserRepository()
+    
+    private val viewModel: MainViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return MainViewModel(application, authRepository, userRepository) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,14 +94,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.appLogo.setOnLongClickListener {
-            if (FirebaseAuth.getInstance().currentUser?.email == BuildConfig.DEVELOPER_EMAIL) {
-                finish()
-            }
+            // Developer access check - implement with Supabase user metadata if needed
+            // For now, just allow long press to exit
+            finish()
             true
         }
     }
 
     private fun setupObservers() {
+        // Check if Supabase is configured first
+        if (!com.synapse.social.studioasinc.SupabaseClient.isConfigured()) {
+            // Log the configuration issue for debugging
+            android.util.Log.e("MainActivity", "Supabase not configured - URL: ${BuildConfig.SUPABASE_URL}, Key length: ${BuildConfig.SUPABASE_ANON_KEY.length}")
+            
+            showErrorDialog("Supabase Configuration Missing\n\nThe app is not properly configured. Please contact the developer to set up the backend services.\n\nConfiguration needed:\n• Supabase URL\n• Supabase API Key\n\nThis is a development/deployment issue that needs to be resolved by the app developer.")
+            return
+        }
+        
         viewModel.updateState.observe(this) { state ->
             when (state) {
                 is UpdateState.UpdateAvailable -> showUpdateDialog(state.title, state.versionName, state.changelog, state.updateLink, state.isCancelable)
@@ -98,20 +122,28 @@ class MainActivity : AppCompatActivity() {
         viewModel.authState.observe(this) { state ->
             when (state) {
                 is AuthState.Authenticated -> {
-                    startActivity(Intent(this, HomeActivity::class.java))
+                    // Navigate to home screen
+                    val intent = Intent(this, HomeActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Unauthenticated -> {
-                    startActivity(Intent(this, AuthActivity::class.java))
+                    // Navigate to auth screen
+                    val intent = Intent(this, AuthActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Banned -> {
                     Toast.makeText(this, "You are banned & Signed Out.", Toast.LENGTH_LONG).show()
-                    FirebaseAuth.getInstance().signOut()
+                    lifecycleScope.launch {
+                        authRepository.signOut()
+                    }
                     finish()
                 }
                 is AuthState.NeedsProfileCompletion -> {
-                    startActivity(Intent(this, CompleteProfileActivity::class.java))
+                    // Navigate to complete profile screen
+                    val intent = Intent(this, CompleteProfileActivity::class.java)
+                    startActivity(intent)
                     finish()
                 }
                 is AuthState.Error -> showErrorDialog(state.message)
@@ -163,14 +195,21 @@ class MainActivity : AppCompatActivity() {
 
         dialogBinding.okButton.setOnClickListener {
             dialog.dismiss()
-            viewModel.checkUserAuthentication()
+            // If Supabase is not configured, close the app instead of retrying
+            if (!com.synapse.social.studioasinc.SupabaseClient.isConfigured()) {
+                finishAffinity()
+            } else {
+                viewModel.checkUserAuthentication()
+            }
         }
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.show()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        super.onBackPressed()
         finishAffinity()
     }
 }

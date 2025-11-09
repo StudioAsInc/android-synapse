@@ -10,7 +10,7 @@
 		android:id="@+id/body"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:background="#FFFFFF"
+		android:background="?attr/colorSurface"
 		android:orientation="vertical">
 		<LinearLayout
 			android:id="@+id/top"
@@ -18,7 +18,7 @@
 			android:layout_height="wrap_content"
 			android:paddingLeft="8dp"
 			android:paddingRight="8dp"
-			android:background="#FFFFFF"
+			android:background="?attr/colorSurface"
 			android:gravity="center_horizontal|center_vertical"
 			android:orientation="horizontal">
 			<ImageView
@@ -36,7 +36,7 @@
 				android:layout_marginRight="8dp"
 				android:gravity="center_horizontal|center_vertical"
 				android:textSize="20sp"
-				android:textColor="#000000"
+				android:textColor="?attr/colorOnSurface"
 				android:layout_weight="1"
 				tools:replace="android:text"
 				android:text="@string/edit_profile" />
@@ -63,7 +63,9 @@
 					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
 					android:layout_marginBottom="14dp"
-					app:cardElevation="0dp">
+					android:background="@drawable/bg_profile_edit_profile_card"
+					app:cardElevation="0dp"
+					app:cardCornerRadius="28dp">
 					<RelativeLayout
 						android:id="@+id/stage1Relative"
 						android:layout_width="match_parent"
@@ -85,7 +87,9 @@
 								android:id="@+id/stage1RelativeUpProfileCard"
 								android:layout_width="85dp"
 								android:layout_height="85dp"
-								app:cardElevation="2dp">
+								android:background="@drawable/bg_profile_edit_profile_image"
+								app:cardElevation="2dp"
+								app:cardCornerRadius="300dp">
 								<ImageView
 									android:id="@+id/stage1RelativeUpProfileImage"
 									android:layout_width="match_parent"
@@ -102,10 +106,10 @@
 					android:layout_height="wrap_content"
 					android:layout_marginBottom="14dp"
 					android:padding="16dp"
-					android:background="@android:color/transparent"
+					android:background="@drawable/bg_profile_edit_input_selector"
 					android:textSize="18sp"
-					android:textColor="#000000"
-					android:textColorHint="#757575"
+					android:textColor="?attr/colorOnSurface"
+					android:textColorHint="?attr/colorOnSurfaceVariant"
 					android:singleLine="true"
 					tools:replace="android:hint"
 					android:hint="@string/username"
@@ -116,10 +120,10 @@
 					android:layout_height="wrap_content"
 					android:layout_marginBottom="14dp"
 					android:padding="16dp"
-					android:background="@android:color/transparent"
+					android:background="@drawable/bg_profile_edit_input_selector"
 					android:textSize="18sp"
-					android:textColor="#000000"
-					android:textColorHint="#757575"
+					android:textColor="?attr/colorOnSurface"
+					android:textColorHint="?attr/colorOnSurfaceVariant"
 					android:singleLine="true"
 					tools:replace="android:hint"
 					android:hint="@string/nickname" />
@@ -128,10 +132,10 @@
 					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
 					android:padding="16dp"
-					android:background="@android:color/transparent"
+					android:background="@drawable/bg_profile_edit_input_selector"
 					android:textSize="18sp"
-					android:textColor="#000000"
-					android:textColorHint="#757575"
+					android:textColor="?attr/colorOnSurface"
+					android:textColorHint="?attr/colorOnSurfaceVariant"
 					tools:replace="android:hint"
 					android:hint="@string/biography" />
 				<LinearLayout
@@ -141,7 +145,7 @@
 					android:layout_marginTop="14dp"
 					android:layout_marginBottom="14dp"
 					android:padding="14dp"
-					android:background="#FFFFFF"
+					android:background="@drawable/bg_profile_edit_container"
 					android:orientation="vertical">
 					<TextView
 						android:id="@+id/gender_title"
@@ -150,7 +154,7 @@
 						android:layout_marginBottom="4dp"
 						android:textSize="20sp"
 						android:textStyle="bold"
-						android:textColor="#000000"
+						android:textColor="?attr/colorOnSurface"
 						tools:replace="android:text"
 						android:text="@string/gender_title" />
 					<TextView
@@ -160,7 +164,7 @@
 						android:layout_marginBottom="18dp"
 						android:text="By specifying your gender in your profile, you can get other people to know you, and you can be recommended to people who use filters, thus increasing your interaction."
 						android:textSize="14sp"
-						android:textColor="#757575" />
+						android:textColor="?attr/colorOnSurfaceVariant" />
 					<LinearLayout
 						android:id="@+id/gender_male"
 						android:layout_width="match_parent"
@@ -184,7 +188,7 @@
 							android:layout_marginLeft="8dp"
 							android:layout_marginRight="8dp"
 							android:textSize="18sp"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1"
 							tools:replace="android:text"
 							android:text="@string/male" />
@@ -202,7 +206,7 @@
 						android:layout_height="1dp"
 						android:layout_marginLeft="48dp"
 						android:padding="8dp"
-						android:background="#EEEEEE"
+						android:background="?attr/colorSurfaceVariant"
 						android:orientation="horizontal" />
 					<LinearLayout
 						android:id="@+id/gender_female"
@@ -227,7 +231,7 @@
 							android:layout_marginLeft="8dp"
 							android:layout_marginRight="8dp"
 							android:textSize="18sp"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1"
 							tools:replace="android:text"
 							android:text="@string/female" />
@@ -245,7 +249,7 @@
 						android:layout_height="1dp"
 						android:layout_marginLeft="48dp"
 						android:padding="8dp"
-						android:background="#EEEEEE"
+						android:background="?attr/colorSurfaceVariant"
 						android:orientation="horizontal" />
 					<LinearLayout
 						android:id="@+id/gender_gone"
@@ -270,7 +274,7 @@
 							android:layout_marginLeft="8dp"
 							android:layout_marginRight="8dp"
 							android:textSize="18sp"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1"
 							tools:replace="android:text"
 							android:text="@string/gender_gone_title" />
@@ -288,7 +292,7 @@
 					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
 					android:padding="14dp"
-					android:background="#FFFFFF"
+					android:background="@drawable/bg_profile_edit_container"
 					android:orientation="vertical">
 					<LinearLayout
 						android:id="@+id/region_top"
@@ -303,7 +307,7 @@
 							android:layout_height="wrap_content"
 							android:textSize="20sp"
 							android:textStyle="bold"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1"
 							tools:replace="android:text"
 							android:text="@string/region" />
@@ -320,7 +324,7 @@
 						android:layout_height="wrap_content"
 						android:text="By setting the region, you can show your country's flag badge in your full profile and activate local posts filtered by the country you choose."
 						android:textSize="14sp"
-						android:textColor="#757575" />
+						android:textColor="?attr/colorOnSurfaceVariant" />
 				</LinearLayout>
 				<LinearLayout
 					android:id="@+id/profile_image_history_stage"
@@ -328,7 +332,7 @@
 					android:layout_height="wrap_content"
 					android:layout_marginTop="14dp"
 					android:padding="14dp"
-					android:background="#FFFFFF"
+					android:background="@drawable/bg_profile_edit_container"
 					android:orientation="vertical">
 					<LinearLayout
 						android:id="@+id/profile_image_history_stage_top"
@@ -344,7 +348,7 @@
 							android:text="Previous profile photos"
 							android:textSize="20sp"
 							android:textStyle="bold"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1" />
 						<ImageView
 							android:id="@+id/profile_image_history_stage_arrow"
@@ -359,7 +363,7 @@
 						android:layout_height="wrap_content"
 						android:text="Manage your all profile photos uploaded on Synapse and manually select one."
 						android:textSize="14sp"
-						android:textColor="#757575" />
+						android:textColor="?attr/colorOnSurfaceVariant" />
 				</LinearLayout>
 				<LinearLayout
 					android:id="@+id/cover_image_history_stage"
@@ -367,7 +371,7 @@
 					android:layout_height="wrap_content"
 					android:layout_marginTop="14dp"
 					android:padding="14dp"
-					android:background="#FFFFFF"
+					android:background="@drawable/bg_profile_edit_container"
 					android:orientation="vertical">
 					<LinearLayout
 						android:id="@+id/cover_image_history_stage_top"
@@ -383,7 +387,7 @@
 							android:text="Previous cover photos"
 							android:textSize="20sp"
 							android:textStyle="bold"
-							android:textColor="#000000"
+							android:textColor="?attr/colorOnSurface"
 							android:layout_weight="1" />
 						<ImageView
 							android:id="@+id/cover_image_history_stage_arrow"
@@ -398,7 +402,7 @@
 						android:layout_height="wrap_content"
 						android:text="You can manage all your previously added cover photos here."
 						android:textSize="14sp"
-						android:textColor="#757575" />
+						android:textColor="?attr/colorOnSurfaceVariant" />
 				</LinearLayout>
 			</LinearLayout>
 		</ScrollView>
@@ -418,3 +422,4 @@
 		</LinearLayout>
 	</LinearLayout>
 </LinearLayout>
+

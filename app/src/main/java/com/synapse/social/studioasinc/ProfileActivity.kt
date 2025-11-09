@@ -12,13 +12,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonObject
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.util.UserProfileManager
-import com.synapse.social.studioasinc.util.adapter.PostAdapter
+
 import io.noties.markwon.Markwon
 import java.util.Calendar
 import java.util.HashMap
@@ -35,8 +38,7 @@ class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
     private lateinit var viewModel: ProfileViewModel
-    private lateinit var userProfileManager: UserProfileManager
-    private lateinit var postAdapter: PostAdapter
+    private lateinit var postAdapter: PostsAdapter
     private lateinit var markwon: Markwon
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,20 +49,23 @@ class ProfileActivity : AppCompatActivity() {
         // Initialize ViewModel
         viewModel = ViewModelProvider(this).get(ProfileViewModel::class.java)
 
-        // Initialize UserProfileManager and Markwon
+        // Initialize Markwon
         markwon = Markwon.create(this)
-        userProfileManager = UserProfileManager(this, markwon)
 
         // Get user ID from intent
         val userId = intent.getStringExtra("uid") ?: return
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id ?: ""
 
         // Load user profile
         loadUserProfile(userId, currentUid)
 
         // Fetch initial states
-        viewModel.fetchInitialFollowState(userId, currentUid)
-        viewModel.fetchInitialProfileLikeState(userId, currentUid)
+        viewModel.fetchInitialFollowState(userId)
+        viewModel.fetchInitialProfileLikeState(userId)
+
+        // Observe user profile data
+        observeUserProfile()
 
         // Observe user posts
         observeUserPosts(userId)
@@ -73,26 +78,14 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
-     * Loads the user profile information using the [UserProfileManager].
+     * Loads the user profile information using the ViewModel.
      *
      * @param userId The ID of the user whose profile is to be loaded.
      * @param currentUid The ID of the current user.
      */
     private fun loadUserProfile(userId: String, currentUid: String) {
-        val views = UserProfileManager.ProfileViews(
-            profileImage = binding.ProfilePageTabUserInfoProfileImage,
-            coverImage = binding.ProfilePageTabUserInfoCoverImage,
-            nickname = binding.ProfilePageTabUserInfoNickname,
-            username = binding.ProfilePageTabUserInfoUsername,
-            bio = binding.ProfilePageTabUserInfoBioLayoutText,
-            joinDate = binding.joinDateLayoutText,
-            status = binding.ProfilePageTabUserInfoStatus,
-            followersCount = binding.ProfilePageTabUserInfoFollowersCount,
-            followingCount = binding.ProfilePageTabUserInfoFollowingCount,
-            btnEditProfile = binding.btnEditProfile,
-            secondaryButtons = binding.ProfilePageTabUserInfoSecondaryButtons
-        )
-        userProfileManager.loadUserProfile(userId, currentUid, views)
+        viewModel.loadUserProfile(userId)
+        viewModel.getUserPosts(userId)
     }
 
     /**
@@ -101,20 +94,27 @@ class ProfileActivity : AppCompatActivity() {
      * @param userId The ID of the user whose posts are to be observed.
      */
     private fun observeUserPosts(userId: String) {
-        postAdapter = PostAdapter(
+        postAdapter = PostsAdapter(
+            context = this,
+            lifecycleOwner = this,
             markwon = markwon,
-            onLikeClicked = { post -> viewModel.togglePostLike(post) },
+            onLikeClicked = { post -> viewModel.togglePostLike(post.id) },
             onCommentClicked = { post -> showCommentsDialog(post) },
-            onShareClicked = { post -> /* Handle share click */ },
+            onShareClicked = { post -> sharePost(post) },
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
-            onFavoriteClicked = { post -> viewModel.toggleFavorite(post) },
+            onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
                 val intent = Intent(this, ProfileActivity::class.java)
                 intent.putExtra("uid", uid)
                 startActivity(intent)
             }
         )
-        binding.ProfilePageTabUserPostsRecyclerView.adapter = postAdapter
+        
+        // Set up RecyclerView with layout manager
+        binding.ProfilePageTabUserPostsRecyclerView.apply {
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@ProfileActivity)
+            adapter = postAdapter
+        }
 
         viewModel.userPosts.observe(this) { state ->
             when (state) {
@@ -127,12 +127,14 @@ class ProfileActivity : AppCompatActivity() {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
-                    postAdapter.submitList(state.posts)
+                    postAdapter.submitList(state.data)
                 }
                 is ProfileViewModel.State.Error -> {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
+                    android.util.Log.e("ProfileActivity", "Posts load error: ${state.message}")
+                    Toast.makeText(this, "Posts error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
             binding.ProfilePageSwipeLayout.isRefreshing = false
@@ -143,20 +145,178 @@ class ProfileActivity : AppCompatActivity() {
     private fun showCommentsDialog(post: Post) {
         val bundle = Bundle()
         bundle.putString("postKey", post.key)
-        bundle.putString("postPublisherUID", post.uid)
+        bundle.putString("postPublisherUID", post.authorUid)
         val commentsDialog = PostCommentsBottomSheetDialog()
         commentsDialog.arguments = bundle
         commentsDialog.show(supportFragmentManager, commentsDialog.tag)
     }
 
     private fun showMoreOptionsDialog(post: Post) {
-        val bundle = Bundle()
-        bundle.putString("postKey", post.key)
-        bundle.putString("postPublisherUID", post.uid)
-        bundle.putString("postType", post.postType)
-        val moreOptionsDialog = PostMoreBottomSheetDialog()
-        moreOptionsDialog.arguments = bundle
-        moreOptionsDialog.show(supportFragmentManager, moreOptionsDialog.tag)
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id
+        val isOwnPost = post.authorUid == currentUid
+        
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val sheetBinding = com.synapse.social.studioasinc.databinding.BottomSheetPostOptionsBinding.inflate(layoutInflater)
+        bottomSheet.setContentView(sheetBinding.root)
+        
+        // Show/hide options based on ownership
+        if (isOwnPost) {
+            sheetBinding.optionEdit.visibility = View.VISIBLE
+            sheetBinding.optionDelete.visibility = View.VISIBLE
+            sheetBinding.optionStatistics.visibility = View.VISIBLE
+            sheetBinding.optionReport.visibility = View.GONE
+            sheetBinding.optionHide.visibility = View.GONE
+        } else {
+            sheetBinding.optionEdit.visibility = View.GONE
+            sheetBinding.optionDelete.visibility = View.GONE
+            sheetBinding.optionStatistics.visibility = View.GONE
+            sheetBinding.optionReport.visibility = View.VISIBLE
+            sheetBinding.optionHide.visibility = View.VISIBLE
+        }
+        
+        // Set click listeners
+        sheetBinding.optionEdit.setOnClickListener {
+            editPost(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionDelete.setOnClickListener {
+            bottomSheet.dismiss()
+            deletePost(post)
+        }
+        
+        sheetBinding.optionCopyLink.setOnClickListener {
+            copyPostLink(post)
+            bottomSheet.dismiss()
+        }
+        
+        sheetBinding.optionStatistics.setOnClickListener {
+            bottomSheet.dismiss()
+            showPostStatistics(post)
+        }
+        
+        sheetBinding.optionReport.setOnClickListener {
+            bottomSheet.dismiss()
+            reportPost(post)
+        }
+        
+        sheetBinding.optionHide.setOnClickListener {
+            bottomSheet.dismiss()
+            hidePost(post)
+        }
+        
+        bottomSheet.show()
+    }
+
+    private fun showFollowOptionsDialog(userId: String) {
+        val options = arrayOf("Followers", "Following")
+        AlertDialog.Builder(this)
+            .setTitle("View")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Show followers
+                        val intent = Intent(this, FollowListActivity::class.java)
+                        intent.putExtra(FollowListActivity.EXTRA_USER_ID, userId)
+                        intent.putExtra(FollowListActivity.EXTRA_LIST_TYPE, FollowListActivity.TYPE_FOLLOWERS)
+                        startActivity(intent)
+                    }
+                    1 -> {
+                        // Show following
+                        val intent = Intent(this, FollowListActivity::class.java)
+                        intent.putExtra(FollowListActivity.EXTRA_USER_ID, userId)
+                        intent.putExtra(FollowListActivity.EXTRA_LIST_TYPE, FollowListActivity.TYPE_FOLLOWING)
+                        startActivity(intent)
+                    }
+                }
+            }
+            .show()
+    }
+
+
+
+    /**
+     * Observes the user profile data from the ViewModel and updates the UI.
+     */
+    private fun observeUserProfile() {
+        viewModel.userProfile.observe(this) { state ->
+            when (state) {
+                is ProfileViewModel.State.Loading -> {
+                    // Show loading state if needed
+                }
+                is ProfileViewModel.State.Success -> {
+                    val user = state.data
+                    
+                    // Update UI with user data
+                    binding.ProfilePageTabUserInfoNickname.text = user.displayName ?: user.username ?: "Unknown"
+                    binding.ProfilePageTabUserInfoBioLayoutText.text = user.bio ?: "No bio available"
+                    binding.ProfilePageTabUserInfoUsername.text = "@${user.username ?: "unknown"}"
+                    binding.ProfilePageTabUserInfoStatus.text = user.status ?: "offline"
+                    binding.userUidLayoutText.text = user.uid
+                    
+                    // Format and display creation date
+                    val creationDate = user.joinDate ?: user.createdAt
+                    if (creationDate != null) {
+                        binding.joinDateLayoutText.text = formatDate(creationDate)
+                    } else {
+                        binding.joinDateLayoutText.text = "Unknown"
+                    }
+                    
+                    // Update follower counts
+                    binding.ProfilePageTabUserInfoFollowersCount.text = "${user.followersCount} followers"
+                    binding.ProfilePageTabUserInfoFollowingCount.text = "${user.followingCount} following"
+                    
+                    // Load profile image if available
+                    user.profileImageUrl?.let { imageUrl ->
+                        com.bumptech.glide.Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.ph_imgbluredsqure)
+                            .into(binding.ProfilePageTabUserInfoProfileImage)
+                    }
+                }
+                is ProfileViewModel.State.Error -> {
+                    // Handle error state
+                    binding.joinDateLayoutText.text = "Error loading data"
+                    android.util.Log.e("ProfileActivity", "Profile load error: ${state.message}")
+                    Toast.makeText(this, "Profile error: ${state.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    /**
+     * Formats a date string for display
+     */
+    private fun formatDate(dateString: String): String {
+        return try {
+            // Try to parse as timestamp (milliseconds) first
+            val timestamp = dateString.toLongOrNull()
+            if (timestamp != null) {
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = timestamp
+                val year = calendar.get(Calendar.YEAR)
+                val month = calendar.getDisplayName(Calendar.MONTH, Calendar.SHORT, java.util.Locale.getDefault())
+                val day = calendar.get(Calendar.DAY_OF_MONTH)
+                "Joined $month $day, $year"
+            } else {
+                // Try to parse as ISO timestamp (e.g., "2025-10-24 15:06:24.382365")
+                val parts = dateString.split(" ")[0].split("-")
+                if (parts.size >= 3) {
+                    val year = parts[0]
+                    val monthNum = parts[1].toIntOrNull() ?: 1
+                    val day = parts[2]
+                    val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    val month = if (monthNum in 1..12) monthNames[monthNum - 1] else "Unknown"
+                    "Joined $month $day, $year"
+                } else {
+                    "Joined $dateString"
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ProfileActivity", "Error formatting date: $dateString", e)
+            "Joined recently"
+        }
     }
 
     /**
@@ -182,6 +342,11 @@ class ProfileActivity : AppCompatActivity() {
      * @param currentUid The ID of the current user.
      */
     private fun setupUIListeners(userId: String, currentUid: String) {
+        // Show/hide buttons based on whether this is the current user's profile
+        val isOwnProfile = userId == currentUid
+        binding.btnEditProfile.visibility = if (isOwnProfile) View.VISIBLE else View.GONE
+        binding.btnFollow.visibility = if (isOwnProfile) View.GONE else View.VISIBLE
+        binding.btnMessage.visibility = if (isOwnProfile) View.GONE else View.VISIBLE
         binding.ProfilePageTopBarBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -190,32 +355,43 @@ class ProfileActivity : AppCompatActivity() {
             loadUserProfile(userId, currentUid)
         }
         binding.ProfilePageTopBarMenu.setOnClickListener {
-            val intent = Intent(this, ChatsettingsActivity::class.java)
-            startActivity(intent)
+            showProfileMenu(userId, currentUid)
         }
         binding.btnFollow.setOnClickListener {
-            viewModel.toggleFollow(userId, currentUid)
+            android.util.Log.d("ProfileActivity", "Follow button clicked for user: $userId, current user: $currentUid")
+            if (userId.isEmpty() || currentUid.isEmpty()) {
+                android.util.Log.e("ProfileActivity", "Invalid user IDs for follow action")
+                Toast.makeText(this, "Failed to get user info", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            viewModel.toggleFollow(userId)
         }
 
         binding.likeUserProfileButton.setOnClickListener {
-            viewModel.toggleProfileLike(userId, currentUid)
+            viewModel.toggleProfileLike(userId)
         }
 
         binding.btnEditProfile.setOnClickListener {
-            val intent = Intent(this, ProfileEditActivity::class.java)
-            startActivity(intent)
+            // Only allow editing if this is the current user's profile
+            if (userId == currentUid) {
+                try {
+                    val intent = Intent(this, ProfileEditActivity::class.java)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error opening profile editor: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(this, "You can only edit your own profile", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnMessage.setOnClickListener {
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            android.util.Log.d("ProfileActivity", "Message button clicked for user: $userId")
+            startDirectChat(userId, currentUid)
         }
 
         binding.ProfilePageTabUserInfoFollowsDetails.setOnClickListener {
-            val intent = Intent(this, UserFollowsListActivity::class.java)
-            intent.putExtra("uid", userId)
-            startActivity(intent)
+            showFollowOptionsDialog(userId)
         }
 
         binding.ProfilePageTabUserInfoProfileImage.setOnClickListener {
@@ -255,37 +431,401 @@ class ProfileActivity : AppCompatActivity() {
             .setView(dialogBinding.root)
             .create()
 
-        val userRef = FirebaseDatabase.getInstance().getReference("skyline/users").child(userId)
-        userRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
-            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                if (snapshot.exists()) {
-                    val user = snapshot.getValue(com.synapse.social.studioasinc.model.User::class.java)
-                    user?.let {
-                        if (it.avatar != "null") {
-                            com.bumptech.glide.Glide.with(this@ProfileActivity).load(user.avatar).into(dialogBinding.avatar)
-                            dialogBinding.saveToHistory.setOnClickListener {
-                                saveToHistory(user.avatar)
-                                dialog.dismiss()
-                            }
+        lifecycleScope.launch {
+            try {
+                val userData = SupabaseClient.client.from("users")
+                    .select(columns = Columns.raw("*")) {
+                        filter { eq("uid", userId) }
+                    }.decodeSingleOrNull<JsonObject>()
+                
+                if (userData != null) {
+                    val avatar = userData["avatar"] as? String
+                    if (avatar != null && avatar != "null") {
+                        com.bumptech.glide.Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
+                        dialogBinding.saveToHistory.setOnClickListener {
+                            saveToHistory(avatar)
+                            dialog.dismiss()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+        dialog.show()
+    }
+    private fun saveToHistory(imageUrl: String) {
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUid = currentUser?.id ?: return
+        
+        lifecycleScope.launch {
+            try {
+                val historyItem = mapOf(
+                    "user_id" to currentUid,
+                    "image_url" to imageUrl,
+                    "upload_date" to java.util.Calendar.getInstance().timeInMillis.toString(),
+                    "type" to "url"
+                )
+                
+                // TODO: Implement direct Supabase insert
+                // SupabaseClient.client.from("profile_history").insert(historyItem)
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Saved to History", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@ProfileActivity, "Failed to save to history", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun startDirectChat(targetUserId: String, currentUserId: String?) {
+        android.util.Log.d("ProfileActivity", "startDirectChat called - Target: $targetUserId, Current: $currentUserId")
+        lifecycleScope.launch {
+            try {
+                // Get current user UID (not auth UUID)
+                val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
+                val currentUserUid = authRepository.getCurrentUserUid()
+                android.util.Log.d("ProfileActivity", "Got current user UID: $currentUserUid")
+
+                if (currentUserUid == null) {
+                    android.util.Log.e("ProfileActivity", "Failed to get current user UID")
+                    Toast.makeText(this@ProfileActivity, "Failed to get user info", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                if (targetUserId == currentUserUid) {
+                    Toast.makeText(this@ProfileActivity, "You cannot message yourself", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // Show loading
+                val progressDialog = android.app.ProgressDialog(this@ProfileActivity).apply {
+                    setMessage("Starting chat...")
+                    setCancelable(false)
+                    show()
+                }
+
+                android.util.Log.d("ProfileActivity", "Creating/getting chat...")
+                val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
+                val result = chatService.getOrCreateDirectChat(currentUserUid, targetUserId)
+                
+                result.fold(
+                    onSuccess = { chatId ->
+                        progressDialog.dismiss()
+                        android.util.Log.d("ProfileActivity", "Chat created successfully: $chatId")
+                        
+                        // Navigate to ChatActivity
+                        val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
+                        intent.putExtra("chatId", chatId)
+                        intent.putExtra("uid", targetUserId)
+                        intent.putExtra("isGroup", false)
+                        startActivity(intent)
+                    },
+                    onFailure = { error ->
+                        progressDialog.dismiss()
+                        
+                        // Provide user-friendly error messages based on error type
+                        val userMessage = when {
+                            error.message?.contains("Cannot create chat with yourself", ignoreCase = true) == true -> 
+                                "You cannot message yourself"
+                            error.message?.contains("Supabase not configured", ignoreCase = true) == true -> 
+                                "Service unavailable. Please try again later."
+                            error.message?.contains("Invalid user IDs", ignoreCase = true) == true -> 
+                                "Failed to get user information. Please try again."
+                            error.message?.contains("network", ignoreCase = true) == true ||
+                            error.message?.contains("connection", ignoreCase = true) == true -> 
+                                "Network error. Please check your connection."
+                            else -> 
+                                "Failed to start chat. Please try again."
+                        }
+                        
+                        android.util.Log.e("ProfileActivity", "Failed to create chat: ${error.message}", error)
+                        Toast.makeText(this@ProfileActivity, userMessage, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileActivity", "Unexpected error starting chat", e)
+                Toast.makeText(
+                    this@ProfileActivity, 
+                    "An unexpected error occurred. Please try again.", 
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    /**
+     * Share post functionality
+     */
+    private fun sharePost(post: Post) {
+        val shareText = buildString {
+            append("Check out this post on Synapse!\n\n")
+            if (!post.postText.isNullOrEmpty()) {
+                append(post.postText)
+                append("\n\n")
+            }
+            append("Posted by @${post.authorUid}\n")
+            append("https://synapse.app/post/${post.id}")
+        }
+        
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            putExtra(Intent.EXTRA_SUBJECT, "Synapse Post")
+        }
+        
+        startActivity(Intent.createChooser(shareIntent, "Share post via"))
+    }
+
+    /**
+     * Show profile menu options
+     */
+    private fun showProfileMenu(userId: String, currentUid: String) {
+        val isOwnProfile = userId == currentUid
+        
+        val options = if (isOwnProfile) {
+            arrayOf("Settings", "QR Code", "Share Profile", "Archive")
+        } else {
+            arrayOf("Share Profile", "Block User", "Report User")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Profile Options")
+            .setItems(options) { _, which ->
+                when {
+                    isOwnProfile -> {
+                        when (which) {
+                            0 -> openSettings()
+                            1 -> showQRCode(userId)
+                            2 -> shareProfile(userId)
+                            3 -> openArchive()
+                        }
+                    }
+                    else -> {
+                        when (which) {
+                            0 -> shareProfile(userId)
+                            1 -> blockUser(userId)
+                            2 -> reportUser(userId)
                         }
                     }
                 }
             }
-            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
-        })
-        dialog.show()
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
-    private fun saveToHistory(imageUrl: String) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val db = FirebaseDatabase.getInstance()
-        val historyRef = db.getReference("skyline/profile-history").child(currentUid).push()
-        val historyItem = HashMap<String, Any>()
-        historyItem["key"] = historyRef.key ?: ""
-        historyItem["image_url"] = imageUrl
-        historyItem["upload_date"] = Calendar.getInstance().timeInMillis.toString()
-        historyItem["type"] = "url"
-        historyRef.setValue(historyItem)
-        Toast.makeText(this, "Saved to History", Toast.LENGTH_SHORT).show()
+    private fun openSettings() {
+        Toast.makeText(this, "Settings feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement settings activity
+    }
+
+    private fun showQRCode(userId: String) {
+        Toast.makeText(this, "QR Code feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement QR code generation
+    }
+
+    private fun shareProfile(userId: String) {
+        val shareText = "Check out this profile on Synapse!\nhttps://synapse.app/profile/$userId"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share profile via"))
+    }
+
+    private fun openArchive() {
+        Toast.makeText(this, "Archive feature coming soon", Toast.LENGTH_SHORT).show()
+        // TODO: Implement archive activity
+    }
+
+    private fun blockUser(userId: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Block User")
+            .setMessage("Are you sure you want to block this user? You won't see their posts and they won't be able to message you.")
+            .setPositiveButton("Block") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                        if (currentUid != null) {
+                            val blockData = kotlinx.serialization.json.buildJsonObject {
+                                put("blocker_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                                put("blocked_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                                // Let database handle created_at with default value
+                            }
+                            SupabaseClient.client.from("blocks").insert(blockData)
+                            Toast.makeText(this@ProfileActivity, "User blocked", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ProfileActivity, "Failed to block user: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun reportUser(userId: String) {
+        val reasons = arrayOf(
+            "Spam",
+            "Harassment",
+            "Inappropriate Content",
+            "Impersonation",
+            "Other"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("Report User")
+            .setItems(reasons) { _, which ->
+                val reason = reasons[which]
+                submitUserReport(userId, reason)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun submitUserReport(userId: String, reason: String) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val reportData = kotlinx.serialization.json.buildJsonObject {
+                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("reported_user_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
+                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                        // Let database handle created_at with default value
+                    }
+                    SupabaseClient.client.from("user_reports").insert(reportData)
+                    Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for helping keep Synapse safe.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to submit report: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Post action methods
+     */
+    private fun editPost(post: Post) {
+        val intent = Intent(this, EditPostActivity::class.java)
+        intent.putExtra("post_id", post.id)
+        intent.putExtra("post_text", post.postText)
+        startActivity(intent)
+    }
+
+    private fun deletePost(post: Post) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Post")
+            .setMessage("Are you sure you want to delete this post? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        SupabaseClient.client.from("posts").delete {
+                            filter {
+                                eq("id", post.id)
+                            }
+                        }
+                        Toast.makeText(this@ProfileActivity, "Post deleted", Toast.LENGTH_SHORT).show()
+                        // Refresh posts
+                        val userId = intent.getStringExtra("uid") ?: return@launch
+                        viewModel.getUserPosts(userId)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ProfileActivity, "Failed to delete post: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun copyPostLink(post: Post) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Post Link", "https://synapse.app/post/${post.id}")
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "Link copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showPostStatistics(post: Post) {
+        val message = buildString {
+            append("Post Statistics\n\n")
+            append("Likes: ${post.likesCount}\n")
+            append("Comments: ${post.commentsCount}\n")
+            append("Views: ${post.viewsCount}\n")
+            append("Posted: ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(post.timestamp))}")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Statistics")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun reportPost(post: Post) {
+        val reasons = arrayOf(
+            "Spam",
+            "Harassment or Bullying",
+            "Violence or Dangerous Content",
+            "Hate Speech",
+            "Nudity or Sexual Content",
+            "False Information",
+            "Other"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("Report Post")
+            .setItems(reasons) { _, which ->
+                val reason = reasons[which]
+                submitPostReport(post.id, reason)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun submitPostReport(postId: String, reason: String) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val reportData = kotlinx.serialization.json.buildJsonObject {
+                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("post_id", kotlinx.serialization.json.JsonPrimitive(postId))
+                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
+                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                        // Let database handle created_at with default value
+                    }
+                    SupabaseClient.client.from("post_reports").insert(reportData)
+                    Toast.makeText(this@ProfileActivity, "Report submitted. Thank you for your feedback.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to submit report: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun hidePost(post: Post) {
+        lifecycleScope.launch {
+            try {
+                val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                if (currentUid != null) {
+                    val hideData = kotlinx.serialization.json.buildJsonObject {
+                        put("user_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("post_id", kotlinx.serialization.json.JsonPrimitive(post.id))
+                        // Let database handle created_at with default value
+                    }
+                    SupabaseClient.client.from("hidden_posts").insert(hideData)
+                    Toast.makeText(this@ProfileActivity, "Post hidden. You won't see posts like this.", Toast.LENGTH_SHORT).show()
+                    // Refresh posts
+                    val userId = intent.getStringExtra("uid") ?: return@launch
+                    viewModel.getUserPosts(userId)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

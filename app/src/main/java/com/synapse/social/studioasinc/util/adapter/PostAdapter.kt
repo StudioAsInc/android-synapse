@@ -1,174 +1,188 @@
 package com.synapse.social.studioasinc.util.adapter
 
-import android.content.Intent
-import android.net.Uri
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.synapse.social.studioasinc.ProfileViewModel
 import com.synapse.social.studioasinc.R
-import com.synapse.social.studioasinc.databinding.SynapsePostCvBinding
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
+import com.synapse.social.studioasinc.data.repository.LikeRepository
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.model.User
-import com.synapse.social.studioasinc.util.DateFormatter
-import com.synapse.social.studioasinc.util.NumberFormatter
-import io.noties.markwon.Markwon
+import kotlinx.coroutines.launch
+import android.widget.LinearLayout
 
-/**
- * Adapter for the list of posts in the profile screen.
- */
 class PostAdapter(
-    private val markwon: Markwon,
-    private val onLikeClicked: (Post) -> Unit,
-    private val onCommentClicked: (Post) -> Unit,
-    private val onShareClicked: (Post) -> Unit,
-    private val onMoreOptionsClicked: (Post) -> Unit,
-    private val onFavoriteClicked: (Post) -> Unit,
-    private val onUserClicked: (String) -> Unit
-) : ListAdapter<ProfileViewModel.PostUiState, PostAdapter.PostViewHolder>(PostDiffCallback()) {
+    private val context: Context,
+    private val lifecycleOwner: LifecycleOwner,
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val postRepository: PostRepository = PostRepository(),
+    private val userRepository: UserRepository = UserRepository(),
+    private val likeRepository: LikeRepository = LikeRepository(),
+    private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
+    private val onCommentClicked: ((Post) -> Unit)? = null,
+    private val onShareClicked: ((Post) -> Unit)? = null
+) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
+
+    private var posts = mutableListOf<Post>()
+
+    fun updatePosts(newPosts: List<Post>) {
+        posts.clear()
+        posts.addAll(newPosts)
+        notifyDataSetChanged()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
-        val binding = SynapsePostCvBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return PostViewHolder(binding)
+        val view = LayoutInflater.from(context).inflate(R.layout.item_post, parent, false)
+        return PostViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val post = posts[position]
+        holder.bind(post)
     }
 
-    /**
-     * ViewHolder for a post item.
-     */
-    inner class PostViewHolder(private val binding: SynapsePostCvBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    override fun getItemCount(): Int = posts.size
 
-        init {
-            binding.likeButton.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onLikeClicked(getItem(bindingAdapterPosition).post)
-                }
+    inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val postContent: TextView = itemView.findViewById(R.id.postContent)
+        private val postImage: ImageView = itemView.findViewById(R.id.postImage)
+        private val authorName: TextView = itemView.findViewById(R.id.authorName)
+        private val likeButton: LinearLayout = itemView.findViewById(R.id.likeButton)
+        private val likeIcon: ImageView = itemView.findViewById(R.id.likeIcon)
+        private val likeCount: TextView = itemView.findViewById(R.id.likeCount)
+        private val commentButton: LinearLayout = itemView.findViewById(R.id.commentButton)
+        private val commentCount: TextView = itemView.findViewById(R.id.commentCount)
+        private val shareButton: ImageView = itemView.findViewById(R.id.shareButton)
+        private val moreButton: ImageView = itemView.findViewById(R.id.postOptions)
+
+        fun bind(post: Post) {
+            // Set post content
+            postContent.text = post.postText ?: ""
+            
+            // Load post image if available
+            post.postImage?.let { imageUrl ->
+                postImage.visibility = View.VISIBLE
+                Glide.with(context)
+                    .load(imageUrl)
+                    .into(postImage)
+            } ?: run {
+                postImage.visibility = View.GONE
             }
-            binding.commentsButton.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onCommentClicked(getItem(bindingAdapterPosition).post)
-                }
+
+            // Load author information
+            lifecycleOwner.lifecycleScope.launch {
+                userRepository.getUserById(post.authorUid)
+                    .onSuccess { user ->
+                        authorName.text = user?.username ?: "Unknown User"
+                    }
+                    .onFailure {
+                        authorName.text = "Unknown User"
+                    }
             }
-            binding.shareButton.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onShareClicked(getItem(bindingAdapterPosition).post)
-                }
+            
+            // Load like status and count
+            loadLikeStatus(post)
+            
+            // Set up click listeners
+            likeButton.setOnClickListener {
+                handleLikeClick(post)
             }
-            binding.topMoreButton.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onMoreOptionsClicked(getItem(bindingAdapterPosition).post)
-                }
+            
+            commentButton.setOnClickListener {
+                onCommentClicked?.invoke(post)
             }
-            binding.favoritePostButton.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onFavoriteClicked(getItem(bindingAdapterPosition).post)
-                }
+            
+            shareButton.setOnClickListener {
+                onShareClicked?.invoke(post)
             }
-            binding.userInfo.setOnClickListener {
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onUserClicked(getItem(bindingAdapterPosition).post.uid)
+            
+            moreButton.setOnClickListener {
+                onMoreOptionsClicked?.invoke(post)
+            }
+            
+            // Set comment count
+            commentCount.text = post.commentsCount.toString()
+        }
+        
+        private fun loadLikeStatus(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    // Check if user is logged in first
+                    if (authRepository.isUserLoggedIn()) {
+                        val currentUserId = authRepository.getCurrentUserId()
+                        if (currentUserId != null) {
+                            // Check if user has liked this post
+                            likeRepository.isLiked(currentUserId, post.id, "post")
+                                .onSuccess { isLiked ->
+                                    updateLikeIcon(isLiked)
+                                }
+                        }
+                    }
+                    
+                    // Get like count (always show this regardless of login status)
+                    likeRepository.getLikeCount(post.id, "post")
+                        .onSuccess { count ->
+                            likeCount.text = count.toString()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Failed to load like status", e)
                 }
             }
         }
-
-        /**
-         * Binds the post data to the views.
-         */
-        fun bind(postState: ProfileViewModel.PostUiState) {
-            val post = postState.post
-            val user = postState.user
-            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-
-            // Handle visibility of private posts
-            if (post.postVisibility == "private" && post.uid != currentUid) {
-                binding.root.visibility = View.GONE
-                binding.root.layoutParams = RecyclerView.LayoutParams(0, 0)
-                return
+        
+        private fun handleLikeClick(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    // Check if user is logged in first using the synchronous method
+                    if (!authRepository.isUserLoggedIn()) {
+                        android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
+                    val currentUserId = authRepository.getCurrentUserId()
+                    if (currentUserId == null) {
+                        android.widget.Toast.makeText(context, "Failed to get user information", android.widget.Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
+                    // Toggle like
+                    likeRepository.toggleLike(currentUserId, post.id, "post")
+                        .onSuccess { isLiked ->
+                            updateLikeIcon(isLiked)
+                            
+                            // Update like count
+                            likeRepository.getLikeCount(post.id, "post")
+                                .onSuccess { count ->
+                                    likeCount.text = count.toString()
+                                }
+                        }
+                        .onFailure { error ->
+                            android.util.Log.e("PostAdapter", "Failed to toggle like", error)
+                            android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Error handling like click", e)
+                    android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        private fun updateLikeIcon(isLiked: Boolean) {
+            if (isLiked) {
+                likeIcon.setImageResource(R.drawable.post_icons_1_2) // Filled heart
+                likeIcon.setColorFilter(context.getColor(android.R.color.holo_red_light))
             } else {
-                binding.root.visibility = View.VISIBLE
-                binding.root.layoutParams = RecyclerView.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                likeIcon.setImageResource(R.drawable.post_icons_1_1) // Outline heart
+                likeIcon.clearColorFilter()
             }
-
-            markwon.setMarkdown(binding.postMessageTextMiddle, post.postText ?: "")
-
-            // Load post image
-            if (post.postImage != "null") {
-                binding.postImage.visibility = View.VISIBLE
-                Glide.with(binding.root.context)
-                    .load(Uri.parse(post.postImage))
-                    .into(binding.postImage)
-                binding.postImage.setOnClickListener {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(post.postImage))
-                    binding.root.context.startActivity(intent)
-                }
-            } else {
-                binding.postImage.visibility = View.GONE
-            }
-
-            // User Info
-            user?.let {
-                binding.userInfoUsername.text = if (it.nickname == "null") "@${it.username}" else it.nickname
-                if (it.avatar == "null") {
-                    binding.userInfoProfileImage.setImageResource(R.drawable.avatar)
-                } else {
-                    Glide.with(binding.root.context)
-                        .load(Uri.parse(it.avatar))
-                        .into(binding.userInfoProfileImage)
-                }
-            }
-
-            // Post Stats
-            binding.likeButtonCount.text = NumberFormatter.format(postState.likeCount.toDouble())
-            binding.commentsButtonCount.text = NumberFormatter.format(postState.commentCount.toDouble())
-            binding.postPublishDate.text = DateFormatter.format(binding.root.context, post.publishDate.toLong())
-
-            // Post State
-            binding.likeButtonCount.visibility = if (post.postHideLikeCount == "true") View.GONE else View.VISIBLE
-            binding.commentsButton.visibility = if (post.postDisableComments == "true") View.GONE else View.VISIBLE
-            binding.commentsButtonCount.visibility = if (post.postHideCommentsCount == "true") View.GONE else View.VISIBLE
-            binding.postPrivateStateIcon.visibility = if (post.postVisibility == "private") View.VISIBLE else View.GONE
-
-            // Like and Favorite Buttons
-            updateLikeButton(postState.isLiked)
-            updateFavoriteButton(postState.isFavorited)
-        }
-
-        private fun updateLikeButton(isLiked: Boolean) {
-            val icon = if (isLiked) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1
-            val color = if (isLiked) R.color.md_theme_primary else R.color.md_theme_onSurface
-            binding.likeButtonIc.setImageResource(icon)
-            binding.likeButtonIc.setColorFilter(ContextCompat.getColor(binding.root.context, color))
-        }
-
-        private fun updateFavoriteButton(isFavorited: Boolean) {
-            val favIcon = if (isFavorited) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic
-            binding.favoritePostButton.setImageResource(favIcon)
-        }
-    }
-
-    /**
-     * DiffUtil callback for the list of posts.
-     */
-    private class PostDiffCallback : DiffUtil.ItemCallback<ProfileViewModel.PostUiState>() {
-        override fun areItemsTheSame(oldItem: ProfileViewModel.PostUiState, newItem: ProfileViewModel.PostUiState): Boolean {
-            return oldItem.post.key == newItem.post.key
-        }
-
-        override fun areContentsTheSame(oldItem: ProfileViewModel.PostUiState, newItem: ProfileViewModel.PostUiState): Boolean {
-            return oldItem == newItem
         }
     }
 }

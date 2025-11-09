@@ -1,45 +1,34 @@
 package com.synapse.social.studioasinc
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
-import com.synapse.social.studioasinc.model.Post
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.synapse.social.studioasinc.model.User
-import com.synapse.social.studioasinc.repository.UserRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.Follow
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
- * ViewModel for the [ProfileActivity].
- *
- * This ViewModel is responsible for fetching and managing the data
- * related to a user's profile, such as their posts, follow status,
- * and profile likes.
+ * ViewModel for managing profile data and operations
+ * Uses direct Supabase calls without wrapper services
  */
 class ProfileViewModel : ViewModel() {
 
-    data class PostUiState(
-        val post: Post,
-        val user: User?,
-        val likeCount: Long,
-        val commentCount: Long,
-        val isLiked: Boolean,
-        val isFavorited: Boolean
-    )
+    private val client = SupabaseClient.client
 
-    sealed class State {
-        object Loading : State()
-        data class Success(val posts: List<PostUiState>) : State()
-        object Error : State()
-    }
+    private val _userProfile = MutableLiveData<State<User>>()
+    val userProfile: LiveData<State<User>> = _userProfile
 
-    private val _userPosts = MutableLiveData<State>()
-    val userPosts: LiveData<State> = _userPosts
+    private val _userPosts = MutableLiveData<State<List<Post>>>()
+    val userPosts: LiveData<State<List<Post>>> = _userPosts
 
     private val _isFollowing = MutableLiveData<Boolean>()
     val isFollowing: LiveData<Boolean> = _isFollowing
@@ -47,170 +36,326 @@ class ProfileViewModel : ViewModel() {
     private val _isProfileLiked = MutableLiveData<Boolean>()
     val isProfileLiked: LiveData<Boolean> = _isProfileLiked
 
-    private var postsListener: ValueEventListener? = null
-    private var postsRef: Query? = null
-
-    fun getUserPosts(userId: String) {
-        _userPosts.postValue(State.Loading)
-        postsRef = FirebaseDatabase.getInstance().getReference("skyline/posts")
-            .orderByChild("uid").equalTo(userId)
-
-        postsListener = postsRef?.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val posts = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    enrichPostsWithState(posts)
-                } else {
-                    _userPosts.postValue(State.Success(emptyList()))
+    sealed class State<out T> {
+        object Loading : State<Nothing>()
+        data class Success<T>(val data: T) : State<T>()
+        data class Error(val message: String) : State<Nothing>()
+    }
+    
+    private suspend fun getCurrentUserUid(): String? {
+        return try {
+            val authId = client.auth.currentUserOrNull()?.id
+            if (authId == null) {
+                android.util.Log.e("ProfileViewModel", "No authenticated user found")
+                return null
+            }
+            
+            android.util.Log.d("ProfileViewModel", "Auth ID: $authId")
+            
+            // In this app, the auth ID IS the UID (stored in users.uid column)
+            // Verify the user exists in the database
+            val userCheck = client.from("users")
+                .select(columns = Columns.raw("uid")) {
+                    filter { eq("uid", authId) }
                 }
+                .decodeSingleOrNull<JsonObject>()
+            
+            if (userCheck != null) {
+                android.util.Log.d("ProfileViewModel", "User found in database with UID: $authId")
+                return authId
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                _userPosts.postValue(State.Error)
-            }
-        })
+            
+            android.util.Log.e("ProfileViewModel", "User not found in database with UID: $authId")
+            null
+        } catch (e: Exception) {
+            android.util.Log.e("ProfileViewModel", "Failed to get user UID: ${e.message}", e)
+            null
+        }
     }
 
-    private fun enrichPostsWithState(posts: List<Post>) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        if (posts.isEmpty()) {
-            _userPosts.postValue(State.Success(emptyList()))
-            return
-        }
-
+    /**
+     * Loads user profile data - direct Supabase call
+     */
+    fun loadUserProfile(uid: String) {
         viewModelScope.launch {
-            val enrichedPosts = posts.map { post ->
-                async {
-                    val userDeferred = async { UserRepository.getUser(post.uid) }
-                    val likesDeferred = async { getLikes(post.key, currentUid) }
-                    val commentsDeferred = async { getCommentCount(post.key) }
-                    val favoritesDeferred = async { getFavoriteStatus(post.key, currentUid) }
-
-                    val user = userDeferred.await()
-                    val (likeCount, isLiked) = likesDeferred.await()
-                    val commentCount = commentsDeferred.await()
-                    val isFavorited = favoritesDeferred.await()
-
-                    PostUiState(post, user, likeCount, commentCount, isLiked, isFavorited)
+            try {
+                _userProfile.value = State.Loading
+                
+                val result = client.from("users")
+                    .select(columns = Columns.raw("*")) {
+                        filter { eq("uid", uid) }
+                    }
+                    .decodeSingleOrNull<JsonObject>()
+                
+                if (result != null) {
+                    val user = User(
+                        uid = result["uid"]?.toString()?.removeSurrounding("\"") ?: uid,
+                        username = result["username"]?.toString()?.removeSurrounding("\""),
+                        email = result["email"]?.toString()?.removeSurrounding("\""),
+                        displayName = result["display_name"]?.toString()?.removeSurrounding("\"") 
+                            ?: result["nickname"]?.toString()?.removeSurrounding("\""),
+                        profileImageUrl = result["avatar"]?.toString()?.removeSurrounding("\"") 
+                            ?: result["profile_image_url"]?.toString()?.removeSurrounding("\""),
+                        bio = result["bio"]?.toString()?.removeSurrounding("\"") 
+                            ?: result["biography"]?.toString()?.removeSurrounding("\""),
+                        joinDate = result["join_date"]?.toString()?.removeSurrounding("\""),
+                        createdAt = result["created_at"]?.toString()?.removeSurrounding("\""),
+                        followersCount = result["followers_count"]?.toString()?.toIntOrNull() ?: 0,
+                        followingCount = result["following_count"]?.toString()?.toIntOrNull() ?: 0,
+                        postsCount = result["posts_count"]?.toString()?.toIntOrNull() ?: 0,
+                        status = result["status"]?.toString()?.removeSurrounding("\"") ?: "offline"
+                    )
+                    _userProfile.value = State.Success(user)
+                } else {
+                    _userProfile.value = State.Error("User not found")
                 }
-            }.awaitAll()
-            _userPosts.postValue(State.Success(enrichedPosts))
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Failed to load profile", e)
+                _userProfile.value = State.Error(e.message ?: "Unknown error")
+            }
         }
     }
 
-    private suspend fun getLikes(postKey: String, currentUid: String): Pair<Long, Boolean> {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(postKey)
-        val snapshot = ref.get().await()
-        return Pair(snapshot.childrenCount, snapshot.hasChild(currentUid))
-    }
-
-    private suspend fun getCommentCount(postKey: String): Long {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/posts-comments").child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.childrenCount
-    }
-
-    private suspend fun getFavoriteStatus(postKey: String, currentUid: String): Boolean {
-        val ref = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-        val snapshot = ref.get().await()
-        return snapshot.exists()
-    }
-
-
-    fun fetchInitialFollowState(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isFollowing.postValue(snapshot.exists())
+    /**
+     * Gets user posts
+     */
+    fun getUserPosts(uid: String) {
+        viewModelScope.launch {
+            try {
+                _userPosts.value = State.Loading
+                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
+                postRepository.getUserPosts(uid)
+                    .onSuccess { posts ->
+                        _userPosts.value = State.Success(posts)
+                    }
+                    .onFailure { exception ->
+                        _userPosts.value = State.Error(exception.message ?: "Failed to load posts")
+                    }
+            } catch (e: Exception) {
+                _userPosts.value = State.Error(e.message ?: "Unknown error")
             }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun fetchInitialProfileLikeState(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _isProfileLiked.postValue(snapshot.exists())
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-
-    fun toggleFollow(userId: String, currentUid: String) {
-        val followersRef = FirebaseDatabase.getInstance().getReference("skyline/followers").child(userId).child(currentUid)
-        val followingRef = FirebaseDatabase.getInstance().getReference("skyline/following").child(currentUid).child(userId)
-
-        followersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    followersRef.removeValue()
-                    followingRef.removeValue()
-                    _isFollowing.postValue(false)
-                } else {
-                    followersRef.setValue(true)
-                    followingRef.setValue(true)
-                    _isFollowing.postValue(true)
+    /**
+     * Toggles follow status - direct Supabase call
+     */
+    fun toggleFollow(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("ProfileViewModel", "toggleFollow called for target: $targetUid")
+                val currentUid = getCurrentUserUid()
+                if (currentUid == null) {
+                    android.util.Log.e("ProfileViewModel", "Failed to get current user UID")
+                    return@launch
                 }
-            }
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-    fun toggleProfileLike(userId: String, currentUid: String) {
-        val profileLikesRef = FirebaseDatabase.getInstance().getReference("skyline/profile-likes").child(userId).child(currentUid)
-
-        profileLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    profileLikesRef.removeValue()
-                    _isProfileLiked.postValue(false)
+                android.util.Log.d("ProfileViewModel", "Current user UID: $currentUid")
+                
+                val isCurrentlyFollowing = _isFollowing.value ?: false
+                android.util.Log.d("ProfileViewModel", "Currently following: $isCurrentlyFollowing")
+                
+                if (isCurrentlyFollowing) {
+                    // Unfollow
+                    android.util.Log.d("ProfileViewModel", "Attempting to unfollow...")
+                    client.from("follows").delete {
+                        filter {
+                            eq("follower_id", currentUid)
+                            eq("following_id", targetUid)
+                        }
+                    }
+                    _isFollowing.value = false
+                    android.util.Log.d("ProfileViewModel", "Unfollowed successfully")
                 } else {
-                    profileLikesRef.setValue(true)
-                    _isProfileLiked.postValue(true)
+                    // Follow
+                    android.util.Log.d("ProfileViewModel", "Attempting to follow...")
+                    val followData = buildJsonObject {
+                        put("follower_id", currentUid)
+                        put("following_id", targetUid)
+                        // Don't set created_at - let database handle it with default value
+                    }
+                    client.from("follows").insert(followData)
+                    _isFollowing.value = true
+                    android.util.Log.d("ProfileViewModel", "Followed successfully")
                 }
+                
+                // Refresh profile to update counts
+                loadUserProfile(targetUid)
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling follow", e)
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun togglePostLike(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val postLikesRef = FirebaseDatabase.getInstance().getReference("skyline/posts-likes").child(post.key).child(currentUid)
-
-        postLikesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    postLikesRef.removeValue()
+    /**
+     * Toggles profile like status - direct Supabase call
+     */
+    fun toggleProfileLike(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                val isCurrentlyLiked = _isProfileLiked.value ?: false
+                
+                if (isCurrentlyLiked) {
+                    // Unlike profile
+                    client.from("profile_likes").delete {
+                        filter {
+                            eq("liker_uid", currentUid)
+                            eq("profile_uid", targetUid)
+                        }
+                    }
+                    _isProfileLiked.value = false
+                    android.util.Log.d("ProfileViewModel", "Profile unliked successfully")
                 } else {
-                    postLikesRef.setValue(true)
+                    // Like profile - use JsonObject to avoid serialization issues
+                    val likeData = kotlinx.serialization.json.buildJsonObject {
+                        put("liker_uid", kotlinx.serialization.json.JsonPrimitive(currentUid))
+                        put("profile_uid", kotlinx.serialization.json.JsonPrimitive(targetUid))
+                    }
+                    client.from("profile_likes").insert(likeData)
+                    _isProfileLiked.value = true
+                    android.util.Log.d("ProfileViewModel", "Profile liked successfully")
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling profile like", e)
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    fun toggleFavorite(post: Post) {
-        val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val favoriteRef = FirebaseDatabase.getInstance().getReference("skyline/favorite-posts").child(currentUid).child(post.key)
 
-        favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    favoriteRef.removeValue()
+
+    /**
+     * Fetches initial follow state - direct Supabase call
+     */
+    fun fetchInitialFollowState(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                val result = client.from("follows")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("follower_id", currentUid)
+                            eq("following_id", targetUid)
+                        }
+                    }
+                    .decodeList<JsonObject>()
+                
+                _isFollowing.value = result.isNotEmpty()
+                android.util.Log.d("ProfileViewModel", "Follow state: ${result.isNotEmpty()}")
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error fetching follow state", e)
+                _isFollowing.value = false
+            }
+        }
+    }
+
+    /**
+     * Fetches initial profile like state - direct Supabase call
+     */
+    fun fetchInitialProfileLikeState(targetUid: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                val result = client.from("profile_likes")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("liker_uid", currentUid)
+                            eq("profile_uid", targetUid)
+                        }
+                    }
+                    .decodeList<JsonObject>()
+                
+                _isProfileLiked.value = result.isNotEmpty()
+                android.util.Log.d("ProfileViewModel", "Profile like state: ${result.isNotEmpty()}")
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error fetching profile like state", e)
+                _isProfileLiked.value = false
+            }
+        }
+    }
+
+    /**
+     * Toggles post like status - direct Supabase call
+     */
+    fun togglePostLike(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                // Check if post is already liked
+                val existingLike = client.from("post_likes")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    .decodeSingleOrNull<JsonObject>()
+                
+                if (existingLike != null) {
+                    // Unlike post
+                    client.from("post_likes").delete {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    android.util.Log.d("ProfileViewModel", "Post unliked successfully")
                 } else {
-                    favoriteRef.setValue(true)
+                    // Like post
+                    val likeData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(postId))
+                    }
+                    client.from("post_likes").insert(likeData)
+                    android.util.Log.d("ProfileViewModel", "Post liked successfully")
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling post like", e)
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        postsListener?.let { postsRef?.removeEventListener(it) }
+    /**
+     * Toggles favorite status for a post - direct Supabase call
+     */
+    fun toggleFavorite(postId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUid = getCurrentUserUid() ?: return@launch
+                
+                // Check if post is already favorited
+                val existingFavorite = client.from("favorites")
+                    .select(columns = Columns.raw("id")) {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    .decodeSingleOrNull<JsonObject>()
+                
+                if (existingFavorite != null) {
+                    // Remove from favorites
+                    client.from("favorites").delete {
+                        filter {
+                            eq("user_id", currentUid)
+                            eq("post_id", postId)
+                        }
+                    }
+                    android.util.Log.d("ProfileViewModel", "Post removed from favorites")
+                } else {
+                    // Add to favorites
+                    val favoriteData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(postId))
+                    }
+                    client.from("favorites").insert(favoriteData)
+                    android.util.Log.d("ProfileViewModel", "Post added to favorites")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileViewModel", "Error toggling favorite", e)
+            }
+        }
     }
 }

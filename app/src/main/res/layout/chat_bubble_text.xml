@@ -1,18 +1,30 @@
-<LinearLayout
+<androidx.constraintlayout.widget.ConstraintLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
-	android:layout_height="wrap_content"
-	android:orientation="vertical">
+	android:layout_height="wrap_content">
 	<LinearLayout
 		android:id="@+id/body"
-		android:layout_width="match_parent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:paddingLeft="0dp"
-		android:paddingRight="0dp"
+		android:paddingLeft="8dp"
+		android:paddingRight="8dp"
 		android:orientation="horizontal"
-		android:animateLayoutChanges="true">
+		android:animateLayoutChanges="true"
+		app:layout_constraintWidth_max="wrap"
+		app:layout_constraintWidth_percent="0.75"
+		app:layout_constraintTop_toTopOf="parent">
+		<!-- Selection checkbox for multi-select mode -->
+		<CheckBox
+			android:id="@+id/selection_checkbox"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="8dp"
+			android:layout_marginEnd="8dp"
+			android:layout_gravity="center_vertical"
+			android:visibility="gone"
+			style="@style/Widget.Material3.CompoundButton.CheckBox" />
 		<androidx.cardview.widget.CardView
 			android:id="@+id/mProfileCard"
 			android:layout_width="34dp"
@@ -40,21 +52,28 @@
 				android:layout_width="match_parent"
 				android:layout_height="0dp"
 				android:orientation="horizontal" />
-			<LinearLayout
-				android:id="@+id/messageBG"
+			<FrameLayout
 				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_marginLeft="0dp"
-				android:layout_marginRight="0dp"
-				android:paddingLeft="12dp"
-				android:paddingTop="10dp"
-				android:paddingRight="12dp"
-				android:paddingBottom="10dp"
-				android:background="@android:color/transparent"
-				android:clickable="true"
-				android:focusable="true"
-				android:foreground="?attr/selectableItemBackgroundBorderless"
-				android:orientation="vertical">
+				android:layout_height="wrap_content">
+				<!-- Selection overlay -->
+				<View
+					android:id="@+id/selection_overlay"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:background="?attr/colorPrimaryContainer"
+					android:alpha="0.1"
+					android:visibility="gone" />
+				<LinearLayout
+					android:id="@+id/messageBG"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginLeft="0dp"
+					android:layout_marginRight="0dp"
+					android:padding="@dimen/message_bubble_padding"
+					android:background="@android:color/transparent"
+					android:clickable="false"
+					android:focusable="false"
+					android:orientation="vertical">
 				<!-- Username for group chats -->
 				<TextView
 					android:id="@+id/senderUsername"
@@ -68,67 +87,111 @@
 					android:singleLine="true"
 					android:ellipsize="end"
 					android:maxWidth="200dp" />
-				<com.google.android.material.card.MaterialCardView
+				<!-- Forwarded indicator -->
+				<LinearLayout
+					android:id="@+id/forwardedIndicator"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="horizontal"
+					android:gravity="center_vertical"
+					android:layout_marginBottom="4dp"
+					android:visibility="gone">
+					<ImageView
+						android:layout_width="14dp"
+						android:layout_height="14dp"
+						android:src="@drawable/ic_forward"
+						android:layout_marginEnd="4dp"
+						app:tint="?attr/colorOnSurfaceVariant" />
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Forwarded"
+						android:textSize="11sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+				</LinearLayout>
+				<!-- Deleted message placeholder -->
+				<LinearLayout
+					android:id="@+id/deletedMessagePlaceholder"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:visibility="gone"
+					android:padding="8dp"
+					android:background="?attr/colorSurfaceVariant">
+					<TextView
+						android:id="@+id/deletedMessageText"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="This message was deleted"
+						android:textSize="14sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+				</LinearLayout>
+				<!-- Message content container (hidden when deleted) -->
+				<LinearLayout
+					android:id="@+id/messageContentContainer"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical">
+				<!-- WhatsApp-style reply indicator -->
+				<LinearLayout
 					android:id="@+id/mRepliedMessageLayout"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_marginBottom="8dp"
 					android:visibility="gone"
-					app:cardElevation="0dp"
-					app:cardCornerRadius="6dp">
+					android:orientation="horizontal"
+					android:background="@android:color/transparent"
+					android:paddingStart="8dp"
+					android:paddingEnd="8dp"
+					android:paddingTop="6dp"
+					android:paddingBottom="6dp">
+					<!-- Left border indicator -->
+					<View
+						android:id="@+id/mRepliedMessageLayoutLeftBar"
+						android:layout_width="3dp"
+						android:layout_height="match_parent"
+						android:layout_marginEnd="8dp"
+						android:background="?attr/colorPrimary" />
 					<LinearLayout
-						android:id="@+id/linear2"
-						android:layout_width="match_parent"
+						android:id="@+id/mRepliedMessageLayoutRightBody"
+						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
-						android:padding="8dp"
-						android:orientation="horizontal">
-						<LinearLayout
-							android:id="@+id/mRepliedMessageLayoutLeftBar"
-							android:layout_width="4dp"
-							android:layout_height="match_parent"
-							android:layout_marginRight="8dp"
-							android:background="?attr/colorPrimary"
-							android:orientation="vertical" />
-						<LinearLayout
-							android:id="@+id/mRepliedMessageLayoutRightBody"
+						android:orientation="vertical">
+						<TextView
+							android:id="@+id/mRepliedMessageLayoutUsername"
+							android:focusable="false"
 							android:layout_width="wrap_content"
 							android:layout_height="wrap_content"
-							android:orientation="vertical">
-							<TextView
-								android:id="@+id/mRepliedMessageLayoutUsername"
-								android:focusable="false"
-								android:layout_width="wrap_content"
-								android:layout_height="wrap_content"
-								android:text="@string/ph_username"
-								android:textSize="12sp"
-								android:textColor="?attr/colorPrimary"
-								android:singleLine="true" />
-							<!-- CRITICAL FIX: Add ImageView for reply image previews with rounded corners -->
-							<ImageView
-								android:id="@+id/mRepliedMessageLayoutImage"
-								android:layout_width="60dp"
-								android:layout_height="60dp"
-								android:layout_marginTop="4dp"
-								android:layout_marginBottom="4dp"
-								android:scaleType="centerCrop"
-								android:background="@drawable/ph_imgbluredsqure"
-								android:visibility="gone"
-								android:clipToOutline="true" />
-							<TextView
-								android:id="@+id/mRepliedMessageLayoutMessage"
-								android:focusable="false"
-								android:layout_width="wrap_content"
-								android:layout_height="wrap_content"
-								android:paddingRight="4dp"
-								android:text="@string/ph_replied_message"
-								android:textSize="16sp"
-								android:autoLink="all"
-								android:maxLines="3"
-								android:ellipsize="end"
-								android:textColorLink="?attr/colorPrimary" />
-						</LinearLayout>
+							android:text="@string/ph_username"
+							android:textSize="13sp"
+							android:textColor="?attr/colorPrimary"
+							android:textStyle="bold"
+							android:singleLine="true" />
+						<!-- Image preview for replied messages -->
+						<ImageView
+							android:id="@+id/mRepliedMessageLayoutImage"
+							android:layout_width="60dp"
+							android:layout_height="60dp"
+							android:layout_marginTop="4dp"
+							android:layout_marginBottom="4dp"
+							android:scaleType="centerCrop"
+							android:background="@drawable/ph_imgbluredsqure"
+							android:visibility="gone"
+							android:clipToOutline="true" />
+						<TextView
+							android:id="@+id/mRepliedMessageLayoutMessage"
+							android:focusable="false"
+							android:layout_width="wrap_content"
+							android:layout_height="wrap_content"
+							android:text="@string/ph_replied_message"
+							android:textSize="14sp"
+							android:textColor="?attr/colorOnSurfaceVariant"
+							android:maxLines="2"
+							android:ellipsize="end" />
 					</LinearLayout>
-				</com.google.android.material.card.MaterialCardView>
+				</LinearLayout>
 				<com.synapse.social.studioasinc.animations.ShimmerFrameLayout
 					android:id="@+id/shimmer_container"
 					android:layout_width="wrap_content"
@@ -144,36 +207,59 @@
 						android:autoLink="all"
 						android:textColorLink="?attr/colorPrimary" />
 				</com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
-			</LinearLayout>
-			<LinearLayout
-				android:id="@+id/my_message_info"
-				android:layout_width="wrap_content"
-				android:layout_height="16dp"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
-				android:layout_marginBottom="2dp"
-				android:gravity="right|center_vertical"
-				android:orientation="horizontal"
-				android:layout_gravity="right">
-				<TextView
-					android:id="@+id/date"
-					android:focusable="false"
+				</LinearLayout>
+				<!-- End of messageContentContainer -->
+				<LinearLayout
+					android:id="@+id/my_message_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_marginLeft="4dp"
-					android:layout_marginRight="4dp"
-					android:text="00:00"
-					android:textSize="12sp"
-					android:textColor="?attr/colorOnSurfaceVariant" />
-				<ImageView
-					android:id="@+id/message_state"
-					android:focusable="false"
-					android:layout_width="14dp"
-					android:layout_height="14dp"
-					android:layout_marginRight="4dp"
-					android:src="@drawable/ic_check_black"
-					android:scaleType="centerInside" />
+					android:layout_gravity="end"
+					android:layout_marginTop="4dp"
+					android:gravity="center_vertical"
+					android:orientation="horizontal">
+					<TextView
+						android:id="@+id/pendingIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Pending"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorSecondary"
+						android:layout_marginRight="4dp"
+						android:visibility="gone" />
+					<TextView
+						android:id="@+id/editedIndicator"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="(edited)"
+						android:textSize="10sp"
+						android:textStyle="italic"
+						android:textColor="?attr/colorOnSurfaceVariant"
+						android:layout_marginRight="4dp"
+						android:visibility="gone"
+						android:clickable="true"
+						android:focusable="true" />
+					<TextView
+						android:id="@+id/date"
+						android:focusable="false"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginLeft="4dp"
+						android:layout_marginRight="4dp"
+						android:text="00:00"
+						android:textSize="11sp"
+						android:textColor="?attr/colorOnSurfaceVariant" />
+					<ImageView
+						android:id="@+id/message_state"
+						android:focusable="false"
+						android:layout_width="12dp"
+						android:layout_height="12dp"
+						android:layout_marginRight="4dp"
+						android:src="@drawable/ic_check_black"
+						android:scaleType="centerInside" />
+				</LinearLayout>
 			</LinearLayout>
+			</FrameLayout>
 		</LinearLayout>
 	</LinearLayout>
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,394 +1,310 @@
 package com.synapse.social.studioasinc.home
 
 import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.PorterDuff
-import android.net.Uri
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.cardview.widget.CardView
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
-import com.synapse.social.studioasinc.PostMoreBottomSheetDialog
-import com.synapse.social.studioasinc.ProfileActivity
 import com.synapse.social.studioasinc.R
-import com.synapse.social.studioasinc.styling.MarkdownRenderer
-import com.synapse.social.studioasinc.util.NotificationUtils
-import java.text.DecimalFormat
-import java.text.SimpleDateFormat
-import java.util.*
-import java.util.concurrent.Executors
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
+import com.synapse.social.studioasinc.data.repository.LikeRepository
+import com.synapse.social.studioasinc.model.Post
+import kotlinx.coroutines.launch
+import android.widget.LinearLayout
 
 class PostAdapter(
-    private val fragment: Fragment,
-    private var posts: List<Post>
-) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
+    private val context: Context,
+    private val lifecycleOwner: LifecycleOwner,
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val postRepository: PostRepository = PostRepository(),
+    private val userRepository: UserRepository = UserRepository(),
+    private val likeRepository: LikeRepository = LikeRepository(),
+    private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
+    private val onCommentClicked: ((Post) -> Unit)? = null,
+    private val onShareClicked: ((Post) -> Unit)? = null
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private val context = fragment.requireContext()
-    private val userInfoCache = mutableMapOf<String, User>()
-    private val postLikeCountCache = mutableMapOf<String, Long>()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    private val currentUser = auth.currentUser
-    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    companion object {
+        private const val VIEW_TYPE_POST = 0
+        private const val VIEW_TYPE_LOADING = 1
+        private const val VIEW_TYPE_END_OF_LIST = 2
+    }
 
+    private var posts = mutableListOf<Post>()
+    private var isLoadingMore = false
+    private var isAtEnd = false
+
+    /**
+     * DiffUtil.ItemCallback for efficient list updates
+     * Implements proper areItemsTheSame() and areContentsTheSame()
+     */
+    private class PostDiffCallback(
+        private val oldList: List<Post>,
+        private val newList: List<Post>
+    ) : DiffUtil.Callback() {
+        
+        override fun getOldListSize(): Int = oldList.size
+        
+        override fun getNewListSize(): Int = newList.size
+        
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+        
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldPost = oldList[oldItemPosition]
+            val newPost = newList[newItemPosition]
+            return oldPost.postText == newPost.postText &&
+                   oldPost.postImage == newPost.postImage &&
+                   oldPost.likesCount == newPost.likesCount &&
+                   oldPost.commentsCount == newPost.commentsCount &&
+                   oldPost.timestamp == newPost.timestamp
+        }
+    }
+
+    /**
+     * Update posts using DiffUtil for efficient list updates without full refresh
+     */
     fun updatePosts(newPosts: List<Post>) {
-        posts = newPosts
-        notifyDataSetChanged()
+        val diffCallback = PostDiffCallback(posts, newPosts)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        
+        posts.clear()
+        posts.addAll(newPosts)
+        diffResult.dispatchUpdatesTo(this)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
-        val view = LayoutInflater.from(context).inflate(R.layout.synapse_post_cv, parent, false)
-        return PostViewHolder(view)
+    fun setLoadingMore(loading: Boolean) {
+        val wasLoading = isLoadingMore
+        isLoadingMore = loading
+        
+        if (loading && !wasLoading) {
+            notifyItemInserted(itemCount)
+        } else if (!loading && wasLoading) {
+            notifyItemRemoved(itemCount)
+        }
     }
 
-    override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        val post = posts[position]
-        holder.bind(post)
+    fun setEndOfList(atEnd: Boolean) {
+        val wasAtEnd = isAtEnd
+        isAtEnd = atEnd
+        
+        if (atEnd && !wasAtEnd) {
+            // Remove loading indicator if present
+            if (isLoadingMore) {
+                isLoadingMore = false
+            }
+            notifyItemInserted(itemCount)
+        } else if (!atEnd && wasAtEnd) {
+            notifyItemRemoved(itemCount)
+        }
     }
 
-    override fun getItemCount(): Int = posts.size
+    override fun getItemViewType(position: Int): Int {
+        return when {
+            position < posts.size -> VIEW_TYPE_POST
+            isAtEnd -> VIEW_TYPE_END_OF_LIST
+            isLoadingMore -> VIEW_TYPE_LOADING
+            else -> VIEW_TYPE_POST
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_LOADING -> {
+                val view = LayoutInflater.from(context)
+                    .inflate(R.layout.item_loading_indicator, parent, false)
+                LoadingViewHolder(view)
+            }
+            VIEW_TYPE_END_OF_LIST -> {
+                val view = LayoutInflater.from(context)
+                    .inflate(R.layout.item_end_of_list, parent, false)
+                EndOfListViewHolder(view)
+            }
+            else -> {
+                val view = LayoutInflater.from(context).inflate(R.layout.item_post, parent, false)
+                PostViewHolder(view)
+            }
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is PostViewHolder && position < posts.size) {
+            val post = posts[position]
+            holder.bind(post)
+        }
+        // LoadingViewHolder doesn't need binding
+    }
+
+    override fun getItemCount(): Int {
+        var count = posts.size
+        if (isLoadingMore) count++
+        if (isAtEnd) count++
+        return count
+    }
+
+    class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+    
+    class EndOfListViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val body: LinearLayout = itemView.findViewById(R.id.body)
-        private val topMoreButton: ImageView = itemView.findViewById(R.id.topMoreButton)
-        private val userInfoProfileCard: CardView = itemView.findViewById(R.id.userInfoProfileCard)
-        private val userInfoProfileImage: ImageView = itemView.findViewById(R.id.userInfoProfileImage)
-        private val userInfoUsername: TextView = itemView.findViewById(R.id.userInfoUsername)
-        private val userInfoGenderBadge: ImageView = itemView.findViewById(R.id.userInfoGenderBadge)
-        private val userInfoUsernameVerifiedBadge: ImageView = itemView.findViewById(R.id.userInfoUsernameVerifiedBadge)
-        private val postPublishDate: TextView = itemView.findViewById(R.id.postPublishDate)
-        private val postPrivateStateIcon: ImageView = itemView.findViewById(R.id.postPrivateStateIcon)
-        private val postMessageTextMiddle: TextView = itemView.findViewById(R.id.postMessageTextMiddle)
+        private val postContent: TextView = itemView.findViewById(R.id.postContent)
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
+        private val authorName: TextView = itemView.findViewById(R.id.authorName)
         private val likeButton: LinearLayout = itemView.findViewById(R.id.likeButton)
-        private val commentsButton: LinearLayout = itemView.findViewById(R.id.commentsButton)
-        private val favoritePostButton: ImageView = itemView.findViewById(R.id.favoritePostButton)
-        private val likeButtonIc: ImageView = itemView.findViewById(R.id.likeButtonIc)
-        private val likeButtonCount: TextView = itemView.findViewById(R.id.likeButtonCount)
-        private val commentsButtonCount: TextView = itemView.findViewById(R.id.commentsButtonCount)
+        private val likeIcon: ImageView = itemView.findViewById(R.id.likeIcon)
+        private val likeCount: TextView = itemView.findViewById(R.id.likeCount)
+        private val commentButton: LinearLayout = itemView.findViewById(R.id.commentButton)
+        private val commentCount: TextView = itemView.findViewById(R.id.commentCount)
+        private val shareButton: ImageView = itemView.findViewById(R.id.shareButton)
+        private val moreButton: ImageView = itemView.findViewById(R.id.postOptions)
 
         fun bind(post: Post) {
-            body.visibility = View.GONE
-            userInfoProfileCard.background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 300f
-                setColor(Color.TRANSPARENT)
-            }
-            _imageColor(postPrivateStateIcon, 0xFF616161.toInt())
-            _viewGraphics(topMoreButton, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 300.0, 0.0, Color.TRANSPARENT)
-
-            post.post_text?.let {
-                MarkdownRenderer.get(context).render(postMessageTextMiddle, it)
-                postMessageTextMiddle.visibility = View.VISIBLE
-            } ?: run {
-                postMessageTextMiddle.visibility = View.GONE
-            }
-
-            post.post_image?.let {
-                Glide.with(context).load(Uri.parse(it)).into(postImage)
-                postImage.setOnClickListener { _openWebView(post.post_image) }
+            // Set post content
+            postContent.text = post.postText ?: ""
+            
+            // Load post image if available
+            post.postImage?.let { imageUrl ->
                 postImage.visibility = View.VISIBLE
+                Glide.with(context)
+                    .load(imageUrl)
+                    .into(postImage)
             } ?: run {
                 postImage.visibility = View.GONE
             }
 
-            likeButtonCount.visibility = if (post.post_hide_like_count == "true") View.GONE else View.VISIBLE
-            commentsButtonCount.visibility = if (post.post_hide_comments_count == "true") View.GONE else View.VISIBLE
-            commentsButton.visibility = if (post.post_disable_comments == "true") View.GONE else View.VISIBLE
-
-            _setTime(post.publish_date.toDouble(), postPublishDate)
-
-            fetchAndDisplayUserInfo(post)
-            setupActionListeners(post)
-        }
-
-        private fun fetchAndDisplayUserInfo(post: Post) {
-            val postUid = post.uid
-            if (userInfoCache.containsKey(postUid)) {
-                userInfoCache[postUid]?.let {
-                    _updatePostViewVisibility(body, postPrivateStateIcon, post.uid, post.post_visibility)
-                    _displayUserInfoFromCache(it, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge)
-                }
-            } else {
-                val mExecutorService = Executors.newSingleThreadExecutor()
-                val mMainHandler = Handler(Looper.getMainLooper())
-                mExecutorService.execute {
-                    val userRef = firebaseDatabase.getReference("skyline/users").child(postUid)
-                    userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(dataSnapshot: DataSnapshot) {
-                            if (dataSnapshot.exists()) {
-                                val user = dataSnapshot.getValue(User::class.java)!!
-                                userInfoCache[postUid] = user
-                                mMainHandler.post {
-                                    _updatePostViewVisibility(body, postPrivateStateIcon, post.uid, post.post_visibility)
-                                    _displayUserInfoFromCache(user, userInfoProfileImage, userInfoUsername, userInfoGenderBadge, userInfoUsernameVerifiedBadge)
-                                }
-                            } else {
-                                mMainHandler.post {
-                                    userInfoProfileImage.setImageResource(R.drawable.avatar)
-                                    userInfoUsername.text = "Unknown User"
-                                    userInfoGenderBadge.visibility = View.GONE
-                                    userInfoUsernameVerifiedBadge.visibility = View.GONE
-                                    body.visibility = View.GONE
-                                }
-                            }
-                        }
-
-                        override fun onCancelled(databaseError: DatabaseError) {
-                            mMainHandler.post {
-                                userInfoProfileImage.setImageResource(R.drawable.avatar)
-                                userInfoUsername.text = "Error User"
-                                userInfoGenderBadge.visibility = View.GONE
-                                userInfoUsernameVerifiedBadge.visibility = View.GONE
-                                body.visibility = View.GONE
-                            }
-                        }
-                    })
-                }
+            // Load author information
+            lifecycleOwner.lifecycleScope.launch {
+                userRepository.getUserById(post.authorUid)
+                    .onSuccess { user ->
+                        authorName.text = user?.username ?: "Unknown User"
+                    }
+                    .onFailure {
+                        authorName.text = "Unknown User"
+                    }
             }
-        }
-
-        private fun setupActionListeners(post: Post) {
-            val postKey = post.key
-            val currentUid = currentUser?.uid ?: ""
-
-            val getLikeCheck = firebaseDatabase.getReference("skyline/posts-likes").child(postKey).child(currentUid)
-            val getCommentsCount = firebaseDatabase.getReference("skyline/posts-comments").child(postKey)
-            val getLikesCount = firebaseDatabase.getReference("skyline/posts-likes").child(postKey)
-            val getFavoriteCheck = firebaseDatabase.getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-
-            getLikeCheck.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    likeButtonIc.setImageResource(if (dataSnapshot.exists()) R.drawable.post_icons_1_2 else R.drawable.post_icons_1_1)
-                }
-                override fun onCancelled(databaseError: DatabaseError) {}
-            })
-
-            getCommentsCount.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    _setCount(commentsButtonCount, dataSnapshot.childrenCount.toDouble())
-                }
-                override fun onCancelled(databaseError: DatabaseError) {}
-            })
-
-            getLikesCount.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    val count = dataSnapshot.childrenCount
-                    _setCount(likeButtonCount, count.toDouble())
-                    postLikeCountCache[postKey] = count
-                }
-                override fun onCancelled(databaseError: DatabaseError) {}
-            })
-
-            getFavoriteCheck.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    favoritePostButton.setImageResource(if (dataSnapshot.exists()) R.drawable.delete_favorite_post_ic else R.drawable.add_favorite_post_ic)
-                }
-                override fun onCancelled(databaseError: DatabaseError) {}
-            })
-
+            
+            // Load like status and count
+            loadLikeStatus(post)
+            
+            // Set up click listeners
             likeButton.setOnClickListener {
-                val likeRef = firebaseDatabase.getReference("skyline/posts-likes").child(postKey).child(currentUid)
-                likeRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(dataSnapshot: DataSnapshot) {
-                        var currentLikes = postLikeCountCache[postKey] ?: 0L
-                        if (dataSnapshot.exists()) {
-                            likeRef.removeValue()
-                            currentLikes--
-                            likeButtonIc.setImageResource(R.drawable.post_icons_1_1)
-                        } else {
-                            likeRef.setValue(currentUid)
-                            NotificationUtils.sendPostLikeNotification(postKey, post.uid)
-                            currentLikes++
-                            likeButtonIc.setImageResource(R.drawable.post_icons_1_2)
-                        }
-                        postLikeCountCache[postKey] = currentLikes
-                        _setCount(likeButtonCount, currentLikes.toDouble())
-                    }
-                    override fun onCancelled(databaseError: DatabaseError) {}
-                })
-                vibrator.vibrate(24L)
+                handleLikeClick(post)
             }
-
-            commentsButton.setOnClickListener {
-                val sendPostKey = Bundle().apply {
-                    putString("postKey", postKey)
-                    putString("postPublisherUID", post.uid)
-                    userInfoCache[post.uid]?.let { putString("postPublisherAvatar", it.avatar) }
-                }
-                PostCommentsBottomSheetDialog().apply {
-                    arguments = sendPostKey
-                    show(fragment.childFragmentManager, tag)
-                }
+            
+            commentButton.setOnClickListener {
+                onCommentClicked?.invoke(post)
             }
-
-            userInfoProfileImage.setOnClickListener {
-                context.startActivity(Intent(context, ProfileActivity::class.java).putExtra("uid", post.uid))
+            
+            shareButton.setOnClickListener {
+                onShareClicked?.invoke(post)
             }
-
-            favoritePostButton.setOnClickListener {
-                val favoriteRef = firebaseDatabase.getReference("skyline/favorite-posts").child(currentUid).child(postKey)
-                favoriteRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(dataSnapshot: DataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            favoriteRef.removeValue()
-                        } else {
-                            favoriteRef.setValue(postKey)
+            
+            moreButton.setOnClickListener {
+                onMoreOptionsClicked?.invoke(post)
+            }
+            
+            // Set comment count
+            commentCount.text = post.commentsCount.toString()
+        }
+        
+        private fun loadLikeStatus(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    // Check if user is logged in first
+                    if (authRepository.isUserLoggedIn()) {
+                        val currentUserUid = authRepository.getCurrentUserUid()
+                        if (currentUserUid != null) {
+                            // Check if user has liked this post
+                            likeRepository.isLiked(currentUserUid, post.id, "post")
+                                .onSuccess { isLiked ->
+                                    updateLikeIcon(isLiked)
+                                }
                         }
                     }
-                    override fun onCancelled(databaseError: DatabaseError) {}
-                })
-                vibrator.vibrate(24L)
-            }
-
-            topMoreButton.setOnClickListener {
-                val sendPostKey = Bundle().apply {
-                    putString("postKey", postKey)
-                    putString("postPublisherUID", post.uid)
-                    putString("postType", post.post_type)
-                    post.post_text?.let { putString("postText", it) } ?: putString("postText", "")
-                    post.post_image?.let { if (it.isNotEmpty()) putString("postImg", it) }
-                }
-                PostMoreBottomSheetDialog().apply {
-                    arguments = sendPostKey
-                    show(fragment.childFragmentManager, tag)
+                    
+                    // Get like count (always show this regardless of login status)
+                    likeRepository.getLikeCount(post.id, "post")
+                        .onSuccess { count ->
+                            likeCount.text = count.toString()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Failed to load like status", e)
                 }
             }
         }
-    }
-
-    private fun _updatePostViewVisibility(body: LinearLayout, postPrivateStateIcon: ImageView, postUid: String, postVisibility: String) {
-        if ("private" == postVisibility) {
-            if (postUid == currentUser?.uid) {
-                postPrivateStateIcon.visibility = View.VISIBLE
-                body.visibility = View.VISIBLE
+        
+        private fun handleLikeClick(post: Post) {
+            lifecycleOwner.lifecycleScope.launch {
+                try {
+                    android.util.Log.d("PostAdapter", "=== LIKE BUTTON CLICKED ===")
+                    android.util.Log.d("PostAdapter", "Post ID: ${post.id}")
+                    
+                    // Check if user is logged in first using the synchronous method
+                    val isLoggedIn = authRepository.isUserLoggedIn()
+                    android.util.Log.d("PostAdapter", "User logged in: $isLoggedIn")
+                    
+                    if (!isLoggedIn) {
+                        android.util.Log.w("PostAdapter", "User not logged in, showing login prompt")
+                        android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
+                    // Get the user UID (this is a suspend function)
+                    android.util.Log.d("PostAdapter", "Fetching current user UID...")
+                    val currentUserUid = authRepository.getCurrentUserUid()
+                    android.util.Log.d("PostAdapter", "Current user UID: $currentUserUid")
+                    
+                    if (currentUserUid == null) {
+                        android.util.Log.e("PostAdapter", "Failed to get user UID - user may not exist in database")
+                        android.widget.Toast.makeText(context, "Failed to get user information. Please try logging in again.", android.widget.Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    
+                    // Toggle like
+                    android.util.Log.d("PostAdapter", "Toggling like for user: $currentUserUid, post: ${post.id}")
+                    likeRepository.toggleLike(currentUserUid, post.id, "post")
+                        .onSuccess { isLiked ->
+                            android.util.Log.d("PostAdapter", "Like toggled successfully. Is liked: $isLiked")
+                            updateLikeIcon(isLiked)
+                            
+                            // Update like count
+                            likeRepository.getLikeCount(post.id, "post")
+                                .onSuccess { count ->
+                                    android.util.Log.d("PostAdapter", "Like count updated: $count")
+                                    likeCount.text = count.toString()
+                                }
+                                .onFailure { error ->
+                                    android.util.Log.e("PostAdapter", "Failed to get like count: ${error.message}", error)
+                                }
+                        }
+                        .onFailure { error ->
+                            android.util.Log.e("PostAdapter", "Failed to toggle like: ${error.message}", error)
+                            android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("PostAdapter", "Error handling like click: ${e.message}", e)
+                    android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        private fun updateLikeIcon(isLiked: Boolean) {
+            if (isLiked) {
+                likeIcon.setImageResource(R.drawable.post_icons_1_2) // Filled heart
+                likeIcon.setColorFilter(context.getColor(android.R.color.holo_red_light))
             } else {
-                body.visibility = View.GONE
-            }
-        } else {
-            body.visibility = View.VISIBLE
-            postPrivateStateIcon.visibility = View.GONE
-        }
-    }
-
-    private fun _displayUserInfoFromCache(user: User, userInfoProfileImage: ImageView, userInfoUsername: TextView, userInfoGenderBadge: ImageView, userInfoUsernameVerifiedBadge: ImageView) {
-        if ("true" == user.banned) {
-            userInfoProfileImage.setImageResource(R.drawable.banned_avatar)
-        } else {
-            if ("null" == user.avatar) {
-                userInfoProfileImage.setImageResource(R.drawable.avatar)
-            } else {
-                Glide.with(context).load(Uri.parse(user.avatar)).into(userInfoProfileImage)
+                likeIcon.setImageResource(R.drawable.post_icons_1_1) // Outline heart
+                likeIcon.clearColorFilter()
             }
         }
-
-        userInfoUsername.text = if ("null" == user.nickname) "@" + user.username else user.nickname
-
-        when (user.gender) {
-            "hidden" -> userInfoGenderBadge.visibility = View.GONE
-            "male" -> {
-                userInfoGenderBadge.setImageResource(R.drawable.male_badge)
-                userInfoGenderBadge.visibility = View.VISIBLE
-            }
-            "female" -> {
-                userInfoGenderBadge.setImageResource(R.drawable.female_badge)
-                userInfoGenderBadge.visibility = View.VISIBLE
-            }
-        }
-
-        when (user.account_type) {
-            "admin" -> {
-                userInfoUsernameVerifiedBadge.setImageResource(R.drawable.admin_badge)
-                userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
-            }
-            "moderator" -> {
-                userInfoUsernameVerifiedBadge.setImageResource(R.drawable.moderator_badge)
-                userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
-            }
-            "support" -> {
-                userInfoUsernameVerifiedBadge.setImageResource(R.drawable.support_badge)
-                userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
-            }
-            "user" -> {
-                if ("true" == user.verify) {
-                    userInfoUsernameVerifiedBadge.visibility = View.VISIBLE
-                } else {
-                    userInfoUsernameVerifiedBadge.visibility = View.GONE
-                }
-            }
-        }
-    }
-
-    private fun _imageColor(imageView: ImageView, color: Int) {
-        imageView.setColorFilter(color, PorterDuff.Mode.SRC_ATOP)
-    }
-
-    private fun _viewGraphics(view: View, onFocus: Int, onRipple: Int, radius: Double, stroke: Double, strokeColor: Int) {
-        val gradientDrawable = android.graphics.drawable.GradientDrawable()
-        gradientDrawable.setColor(onFocus)
-        gradientDrawable.cornerRadius = radius.toFloat()
-        gradientDrawable.setStroke(stroke.toInt(), strokeColor)
-        val rippleDrawable = android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList(arrayOf(intArrayOf()), intArrayOf(onRipple)),
-            gradientDrawable,
-            null
-        )
-        view.background = rippleDrawable
-    }
-
-    private fun _setTime(currentTime: Double, txt: TextView) {
-        val c1 = Calendar.getInstance()
-        val c2 = Calendar.getInstance()
-        val timeDiff = c1.timeInMillis - currentTime
-        val seconds = timeDiff / 1000
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
-
-        when {
-            seconds < 60 -> txt.text = if (seconds < 2) "1 ${context.getString(R.string.seconds_ago)}" else "$seconds ${context.getString(R.string.seconds_ago)}"
-            minutes < 60 -> txt.text = if (minutes < 2) "1 ${context.getString(R.string.minutes_ago)}" else "$minutes ${context.getString(R.string.minutes_ago)}"
-            hours < 24 -> txt.text = if (hours < 2) "$hours ${context.getString(R.string.hours_ago)}" else "$hours ${context.getString(R.string.hours_ago)}"
-            days < 7 -> txt.text = if (days < 2) "$days ${context.getString(R.string.days_ago)}" else "$days ${context.getString(R.string.days_ago)}"
-            else -> {
-                c2.timeInMillis = currentTime.toLong()
-                txt.text = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(c2.time)
-            }
-        }
-    }
-
-    private fun _setCount(txt: TextView, number: Double) {
-        val decimalFormat = DecimalFormat("0.0")
-        val (formattedNumber, numberFormat) = when {
-            number < 1_000_000 -> Pair(number / 1_000, "K")
-            number < 1_000_000_000 -> Pair(number / 1_000_000, "M")
-            number < 1_000_000_000_000L -> Pair(number / 1_000_000_000, "B")
-            else -> Pair(number / 1_000_000_000_000L, "T")
-        }
-        txt.text = if (number < 10_000) number.toLong().toString() else "${decimalFormat.format(formattedNumber)}$numberFormat"
-    }
-
-    private fun _openWebView(url: String) {
-        CustomTabsIntent.Builder().apply {
-            setToolbarColor(context.resources.getColor(R.color.md_theme_surface, null))
-        }.build().launchUrl(context, Uri.parse(url))
     }
 }

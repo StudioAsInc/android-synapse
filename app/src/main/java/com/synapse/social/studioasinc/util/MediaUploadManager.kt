@@ -1,150 +1,119 @@
 package com.synapse.social.studioasinc.util
 
-import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
-import com.synapse.social.studioasinc.UploadFiles
+import android.content.Context
+import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
-import kotlinx.coroutines.*
-import java.io.ByteArrayOutputStream
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.*
 
+/**
+ * Manager for uploading media files to Supabase Storage
+ */
 object MediaUploadManager {
-
-    fun uploadMultipleMedia(
+    
+    /**
+     * Uploads multiple media items to Supabase Storage
+     */
+    suspend fun uploadMultipleMedia(
         mediaItems: List<MediaItem>,
         onProgress: (Float) -> Unit,
         onComplete: (List<MediaItem>) -> Unit,
         onError: (String) -> Unit
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        withContext(Dispatchers.IO) {
             try {
                 val uploadedItems = mutableListOf<MediaItem>()
-                var completedUploads = 0
-
-                mediaItems.forEach { mediaItem ->
-                    when (mediaItem.type) {
-                        MediaType.IMAGE -> {
-                            uploadImage(mediaItem.url) { uploadedUrl ->
-                                if (uploadedUrl != null) {
-                                    uploadedItems.add(mediaItem.copy(url = uploadedUrl))
-                                    completedUploads++
-                                    onProgress(completedUploads.toFloat() / mediaItems.size)
-
-                                    if (completedUploads == mediaItems.size) {
-                                        onComplete(uploadedItems)
-                                    }
-                                } else {
-                                    onError("Failed to upload image")
-                                }
-                            }
+                val storage = SupabaseClient.client.storage
+                
+                mediaItems.forEachIndexed { index, mediaItem ->
+                    try {
+                        // Generate unique filename
+                        val timestamp = System.currentTimeMillis()
+                        val extension = when (mediaItem.type) {
+                            MediaType.IMAGE -> "jpg"
+                            MediaType.VIDEO -> "mp4"
                         }
-                        MediaType.VIDEO -> {
-                            uploadVideo(mediaItem.url) { uploadedUrl, thumbnailUrl ->
-                                if (uploadedUrl != null) {
-                                    uploadedItems.add(mediaItem.copy(
-                                        url = uploadedUrl,
-                                        thumbnailUrl = thumbnailUrl
-                                    ))
-                                    completedUploads++
-                                    onProgress(completedUploads.toFloat() / mediaItems.size)
-
-                                    if (completedUploads == mediaItems.size) {
-                                        onComplete(uploadedItems)
-                                    }
-                                } else {
-                                    onError("Failed to upload video")
-                                }
-                            }
+                        val fileName = "${mediaItem.type.name.lowercase()}_${timestamp}_${UUID.randomUUID()}.${extension}"
+                        
+                        // Determine bucket based on media type
+                        val bucketName = when (mediaItem.type) {
+                            MediaType.IMAGE -> "post-images"
+                            MediaType.VIDEO -> "post-videos"
                         }
+                        
+                        // Read file bytes
+                        val file = File(mediaItem.url)
+                        if (!file.exists()) {
+                            android.util.Log.w("MediaUpload", "File not found: ${mediaItem.url}, using original URL")
+                            uploadedItems.add(mediaItem)
+                        } else {
+                            val bytes = file.readBytes()
+                            
+                            // Upload to Supabase Storage
+                            val bucket = storage.from(bucketName)
+                            bucket.upload(fileName, bytes)
+                            
+                            // Get public URL
+                            val publicUrl = bucket.publicUrl(fileName)
+                            
+                            // Create uploaded media item
+                            val uploadedItem = mediaItem.copy(
+                                id = UUID.randomUUID().toString(),
+                                url = publicUrl,
+                                size = bytes.size.toLong(),
+                                mimeType = when (mediaItem.type) {
+                                    MediaType.IMAGE -> "image/jpeg"
+                                    MediaType.VIDEO -> "video/mp4"
+                                }
+                            )
+                            
+                            uploadedItems.add(uploadedItem)
+                            android.util.Log.d("MediaUpload", "Uploaded ${mediaItem.type}: $publicUrl")
+                        }
+                    } catch (uploadError: Exception) {
+                        android.util.Log.w("MediaUpload", "Failed to upload ${mediaItem.url}: ${uploadError.message}")
+                        // Add original item if upload fails
+                        uploadedItems.add(mediaItem)
+                    }
+                    
+                    // Update progress
+                    val progress = (index + 1).toFloat() / mediaItems.size
+                    withContext(Dispatchers.Main) {
+                        onProgress(progress)
                     }
                 }
+                
+                withContext(Dispatchers.Main) {
+                    onComplete(uploadedItems)
+                }
             } catch (e: Exception) {
-                onError(e.message ?: "Unknown error occurred")
+                android.util.Log.e("MediaUpload", "Media upload failed", e)
+                withContext(Dispatchers.Main) {
+                    onError(e.message ?: "Upload failed")
+                }
             }
         }
     }
-
-    private fun uploadImage(
-        localPath: String,
-        onComplete: (String?) -> Unit
+    
+    /**
+     * Upload single media item
+     */
+    suspend fun uploadSingleMedia(
+        context: Context,
+        mediaItem: MediaItem,
+        onProgress: (Float) -> Unit = {},
+        onComplete: (MediaItem) -> Unit,
+        onError: (String) -> Unit
     ) {
-        val file = File(localPath)
-        UploadFiles.uploadFile(localPath, file.name, object : UploadFiles.UploadCallback {
-            override fun onProgress(percent: Int) {}
-            override fun onSuccess(url: String, publicId: String) {
-                onComplete(url)
-            }
-            override fun onFailure(error: String) {
-                onComplete(null)
-            }
-        })
-    }
-
-    private fun uploadVideo(
-        localPath: String,
-        onComplete: (String?, String?) -> Unit
-    ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val thumbnailData = generateVideoThumbnail(localPath)
-                val videoFile = File(localPath)
-                UploadFiles.uploadFile(videoFile.absolutePath, videoFile.name, object : UploadFiles.UploadCallback {
-                    override fun onProgress(percent: Int) {}
-                    override fun onSuccess(videoUrl: String, publicId: String) {
-                        if (thumbnailData != null) {
-                            uploadThumbnail(thumbnailData) { thumbnailUrl ->
-                                onComplete(videoUrl, thumbnailUrl)
-                            }
-                        } else {
-                            onComplete(videoUrl, null)
-                        }
-                    }
-                    override fun onFailure(error: String) {
-                        onComplete(null, null)
-                    }
-                })
-            } catch (e: Exception) {
-                onComplete(null, null)
-            }
-        }
-    }
-
-    private fun generateVideoThumbnail(videoPath: String): ByteArray? {
-        return try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(videoPath)
-            val bitmap = retriever.getFrameAtTime(1000000) // 1 second in microseconds
-            retriever.release()
-            if (bitmap != null) {
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-                outputStream.toByteArray()
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private fun uploadThumbnail(
-        thumbnailData: ByteArray,
-        onComplete: (String?) -> Unit
-    ) {
-        val tempFile = File.createTempFile("thumbnail", ".jpg")
-        tempFile.writeBytes(thumbnailData)
-
-        UploadFiles.uploadFile(tempFile.absolutePath, tempFile.name, object : UploadFiles.UploadCallback {
-            override fun onProgress(percent: Int) {}
-            override fun onSuccess(url: String, publicId: String) {
-                onComplete(url)
-                tempFile.delete()
-            }
-            override fun onFailure(error: String) {
-                onComplete(null)
-                tempFile.delete()
-            }
-        })
+        uploadMultipleMedia(
+            listOf(mediaItem),
+            onProgress,
+            { items -> onComplete(items.first()) },
+            onError
+        )
     }
 }

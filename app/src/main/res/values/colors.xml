@@ -181,6 +181,53 @@
     <color name="light_blue_ripple">#BBDEFB</color>
 
     <!-- Colors for User Profile Status -->
-    <color name="online_green">#2196F3</color>
+    <color name="online_green">#4CAF50</color>
     <color name="offline_gray">#757575</color>
+    
+    <!-- Follow feature colors -->
+    <color name="primary">@color/md_theme_primary</color>
+    <color name="primary_dark">@color/md_theme_primary_mediumContrast</color>
+    <color name="background">@color/md_theme_background</color>
+    <color name="surface">@color/md_theme_surface</color>
+    <color name="text_primary">@color/md_theme_onBackground</color>
+    <color name="text_secondary">@color/md_theme_onSurfaceVariant</color>
+    <color name="gray_light">@color/md_theme_surfaceVariant</color>
+    
+    <!-- Gradient overlay colors -->
+    <color name="gradient_transparent">#00000000</color>
+    <color name="gradient_semi_black">#80000000</color>
+    
+    <!-- Layout specific colors -->
+    <color name="card_background">@color/md_theme_surface</color>
+    <color name="username_text">@color/md_theme_onSurface</color>
+    <color name="secondary_text">@color/md_theme_onSurfaceVariant</color>
+    <color name="status_indicator_online">#2196F3</color>
+    <color name="status_indicator_active">#43A047</color>
+    <color name="overlay_dark">#212121</color>
+    <color name="overlay_text">#9E9E9E</color>
+    <color name="video_duration_bg">#616161</color>
+    <color name="border_color">#008DCD</color>
+    <color name="rocket_pay_accent">#E2136E</color>
+    
+    <!-- Auth Screen Enhancement Colors -->
+    <color name="auth_gradient_start">#F9FAEF</color>
+    <color name="auth_gradient_center">#E8F5E9</color>
+    <color name="auth_gradient_end">#C8E6C9</color>
+    <color name="glassmorphic_overlay">#F0FFFFFF</color>
+    <color name="password_weak">#F44336</color>
+    <color name="password_fair">#FF9800</color>
+    <color name="password_strong">#4CAF50</color>
+    
+    <!-- Delete Dialog Colors -->
+    <color name="warning_color">#FF9800</color>
+    <color name="error_color">#BA1A1A</color>
+    
+    <!-- Waveform Colors -->
+    <color name="waveform_color">#C5C8BA</color>
+    <color name="waveform_progress_color">@color/md_theme_primary</color>
+    <color name="waveform_background">#F3F4E9</color>
+    
+    <!-- Message Bubble Colors -->
+    <color name="sent_message_background">@color/md_theme_primaryContainer</color>
+    <color name="received_message_background">@color/md_theme_surfaceVariant</color>
 </resources>

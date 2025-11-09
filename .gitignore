@@ -1,11 +1,14 @@
 # Keystores & credentials
 *.keystore
 keystore.properties
+.env
+.kiro/settings/mcp.json
 
 # Build artifacts
 build/
 app/build/
 .gradle/
+.vscode/
 *.apk
 *.aab
 *.dex

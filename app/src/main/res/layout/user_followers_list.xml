@@ -10,7 +10,7 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:padding="8dp"
-		android:background="#FFFFFF"
+		android:background="@color/card_background"
 		android:gravity="center_vertical"
 		android:orientation="horizontal">
 		<RelativeLayout
@@ -51,7 +51,7 @@
 						android:layout_width="12dp"
 						android:layout_height="12dp"
 						android:padding="8dp"
-						android:background="#43A047"
+						android:background="@color/status_indicator_active"
 						android:orientation="vertical" />
 				</LinearLayout>
 			</LinearLayout>
@@ -76,7 +76,7 @@
 					android:layout_marginRight="4dp"
 					android:text="Username"
 					android:textStyle="bold"
-					android:textColor="#000000"
+					android:textColor="@color/username_text"
 					tools:replace="android:textSize"
 					android:textSize="14dp" />
 				<ImageView
@@ -102,7 +102,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:text="Name"
-				android:textColor="#616161"
+				android:textColor="@color/secondary_text"
 				android:singleLine="true"
 				tools:replace="android:textSize"
 				android:textSize="12dp" />

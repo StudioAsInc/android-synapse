@@ -1,45 +1,54 @@
 package com.synapse.social.studioasinc
 
-import com.google.firebase.database.FirebaseDatabase
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
- * Manages user online presence in Firebase, writing to the correct database path.
+ * Manages user online presence in Supabase, writing to the users table.
  * Handles online, offline (timestamp), and chat statuses.
  */
 object PresenceManager {
 
-    // Correct database reference to the 'users' node
-    private val usersRef = FirebaseDatabase.getInstance().getReference("skyline/users")
-
-    /**
-     * Returns the specific database reference for a user's status.
-     * Path: /skyline/users/{uid}/status
-     */
-    private fun getUserStatusRef(uid: String) = usersRef.child(uid).child("status")
+    private val dbService = SupabaseDatabaseService()
 
     /**
      * Sets user status to "online".
-     * Registers onDisconnect to set a timestamp for last seen.
-     * @param uid The Firebase UID of the current user.
+     * @param uid The Supabase user UID.
      */
     @JvmStatic
     fun goOnline(uid: String) {
-        val statusRef = getUserStatusRef(uid)
-        val activityRef = usersRef.child(uid).child("activity")
-        statusRef.setValue("online")
-        // On disconnect, set the last seen time as a timestamp string
-        statusRef.onDisconnect().setValue(System.currentTimeMillis().toString())
-        activityRef.onDisconnect().removeValue()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val updateData = mapOf(
+                    "status" to "online",
+                    "last_seen" to System.currentTimeMillis().toString()
+                )
+                dbService.update("users", updateData, "uid", uid)
+            } catch (e: Exception) {
+                // Handle error silently for now
+            }
+        }
     }
 
     /**
-     * Explicitly sets the user's status to a timestamp (last seen).
-     * @param uid The Firebase UID of the current user.
+     * Explicitly sets the user's status to offline with timestamp.
+     * @param uid The Supabase user UID.
      */
     @JvmStatic
     fun goOffline(uid: String) {
-        // Set the last seen time as a timestamp string
-        getUserStatusRef(uid).setValue(System.currentTimeMillis().toString())
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val updateData = mapOf(
+                    "status" to "offline",
+                    "last_seen" to System.currentTimeMillis().toString()
+                )
+                dbService.update("users", updateData, "uid", uid)
+            } catch (e: Exception) {
+                // Handle error silently for now
+            }
+        }
     }
 
     /**

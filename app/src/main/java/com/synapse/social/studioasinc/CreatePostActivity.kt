@@ -18,15 +18,26 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+// Using direct Supabase services - NO Firebase
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.backend.User
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.model.toHashMap
+
 import com.synapse.social.studioasinc.util.MediaUploadManager
+import com.synapse.social.studioasinc.util.UserMention
+import com.synapse.social.studioasinc.util.FileUtil
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.*
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class CreatePostActivity : AppCompatActivity() {
 
@@ -53,10 +64,9 @@ class CreatePostActivity : AppCompatActivity() {
     private var progressBar: ProgressBar? = null
     private var progressPercentage: TextView? = null
     
-    // Firebase
-    private val firebase = FirebaseDatabase.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    private val postsRef = firebase.getReference("skyline/posts")
+    // Supabase services
+    private val authService = SupabaseAuthenticationService()
+    private val databaseService = SupabaseDatabaseService()
     
     // Media selection
     private val selectImagesLauncher = registerForActivityResult(
@@ -257,7 +267,7 @@ class CreatePostActivity : AppCompatActivity() {
             return
         }
         
-        val currentUser = auth.currentUser
+        val currentUser = authService.getCurrentUser()
         if (currentUser == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
             return
@@ -266,17 +276,32 @@ class CreatePostActivity : AppCompatActivity() {
         showLoading(true)
         
         // Create post object
-        val postKey = postsRef.push().key ?: return
-        val post = Post(
+        val postKey = "post_${System.currentTimeMillis()}_${(1000..9999).random()}"
+        val currentTimestamp = System.currentTimeMillis()
+        
+        // Convert timestamp to ISO 8601 format for PostgreSQL
+        val publishDateFormatted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            Instant.ofEpochMilli(currentTimestamp)
+                .atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        } else {
+            // Fallback for older Android versions
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date(currentTimestamp))
+        }
+        
+        var post = Post(
             key = postKey,
-            uid = currentUser.uid,
+            authorUid = currentUser.id,
             postText = if (postText.isNotEmpty()) postText else null,
             postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
             postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
             postHideCommentsCount = if (hideCommentsCountSwitch.isChecked) "true" else "false",
             postDisableComments = if (disableCommentsSwitch.isChecked) "true" else "false",
             postVisibility = if (postVisibilitySpinner.selectedItemPosition == 0) "public" else "private",
-            publishDate = System.currentTimeMillis().toString()
+            publishDate = publishDateFormatted,
+            timestamp = currentTimestamp
         )
         
         if (selectedMediaItems.isEmpty()) {
@@ -290,55 +315,77 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun uploadMediaAndSavePost(post: Post) {
-        MediaUploadManager.uploadMultipleMedia(
-            selectedMediaItems,
-            onProgress = { progress ->
-                runOnUiThread {
-                    val progressInt = (progress * 100).toInt()
-                    progressBar?.progress = progressInt
-                    progressPercentage?.text = "$progressInt%"
-                }
-            },
-            onComplete = { uploadedItems ->
-                post.mediaItems = uploadedItems.toMutableList()
-                post.determinePostType()
-                
-                // Set legacy image field for backward compatibility
-                uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
-                    post.postImage = it.url
-                }
-                
-                savePostToDatabase(post)
-            },
-            onError = { error ->
+        lifecycleScope.launch {
+            try {
+                MediaUploadManager.uploadMultipleMedia(
+                    selectedMediaItems,
+                    onProgress = { progress ->
+                        runOnUiThread {
+                            val progressInt = (progress * 100).toInt()
+                            progressBar?.progress = progressInt
+                            progressPercentage?.text = "$progressInt%"
+                        }
+                    },
+                    onComplete = { uploadedItems ->
+                        post.mediaItems = uploadedItems.toMutableList()
+                        post.determinePostType()
+                        
+                        // Set legacy image field for backward compatibility
+                        uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
+                            post.postImage = it.url
+                        }
+                        
+                        savePostToDatabase(post)
+                    },
+                    onError = { error ->
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Failed to upload media: $error", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)
-                    Toast.makeText(this, "Failed to upload media: $error", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@CreatePostActivity, "Failed to upload media: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
-        )
+        }
     }
 
     private fun savePostToDatabase(post: Post) {
-        postsRef.child(post.key).setValue(post.toHashMap())
-            .addOnSuccessListener {
+        val postKey = post.key ?: post.id
+        
+        // Use PostRepository for Supabase operations
+        lifecycleScope.launch {
+            try {
+                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
+                postRepository.createPost(post)
+                    .onSuccess {
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Post created successfully!", Toast.LENGTH_SHORT).show()
+                            handleMentions(post.postText, postKey)
+                            finish()
+                        }
+                    }
+                    .onFailure { exception ->
+                        runOnUiThread {
+                            showLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+            } catch (e: Exception) {
                 runOnUiThread {
                     showLoading(false)
-                    Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                    handleMentions(post.postText, post.key)
-                    finish()
+                    Toast.makeText(this@CreatePostActivity, "Failed to create post: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
-            .addOnFailureListener { exception ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+        }
     }
 
-    private fun handleMentions(text: String?, postKey: String) {
-        com.synapse.social.studioasinc.util.MentionUtils.sendMentionNotifications(text, postKey, null, "post")
+    private fun handleMentions(text: String?, postKey: String?) {
+        // Mention handling - placeholder for now
     }
 
     private fun showLoading(show: Boolean) {

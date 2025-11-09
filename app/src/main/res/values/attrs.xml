@@ -3,6 +3,16 @@
     <attr name="myAppPrimaryContainerColor" format="color" />
     <attr name="myAppColorOnSurface" format="color" />
     <attr name="myAppColorOnSurfaceVariant" format="color" />
+    
+    <!-- Post Card Theme Attributes -->
+    <attr name="postCardBackgroundColor" format="color" />
+    <attr name="postCardContentColor" format="color" />
+    <attr name="postCardSecondaryContentColor" format="color" />
+    <attr name="postCardActionColor" format="color" />
+    <attr name="postCardLikeColor" format="color" />
+    <attr name="postCardLikedColor" format="color" />
+    <attr name="postCardShimmerColor" format="color" />
+    
     <declare-styleable name="CustomView">
         <attr name="bgColor" format="color" />
         <attr name="cornerRadius" format="dimension" />

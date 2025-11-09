@@ -96,7 +96,7 @@
 									android:text="@username"
 									android:textSize="18sp"
 									android:textStyle="bold"
-									android:textColor="#FFFFFF"
+									android:textColor="@color/pureWhite"
 									android:singleLine="true"
 									android:layout_weight="1"
 									android:focusable="false"

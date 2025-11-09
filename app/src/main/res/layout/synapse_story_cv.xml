@@ -10,7 +10,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:padding="8dp"
-		android:background="#F5F5F5"
+		android:background="@color/light_grey"
 		android:gravity="center_horizontal|center_vertical"
 		android:orientation="vertical">
 		<androidx.cardview.widget.CardView
@@ -56,14 +56,14 @@
 			android:layout_marginTop="8dp"
 			android:text="Add story"
 			android:textSize="14sp"
-			android:textColor="#000000" />
+			android:textColor="@color/username_text" />
 	</LinearLayout>
 	<LinearLayout
 		android:id="@+id/storiesSecondStory"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:padding="8dp"
-		android:background="#F5F5F5"
+		android:background="@color/light_grey"
 		android:gravity="center_horizontal|center_vertical"
 		android:orientation="vertical">
 		<androidx.cardview.widget.CardView
@@ -87,6 +87,6 @@
 			android:layout_marginTop="8dp"
 			android:text="username"
 			android:textSize="14sp"
-			android:textColor="#000000" />
+			android:textColor="@color/username_text" />
 	</LinearLayout>
 </LinearLayout>

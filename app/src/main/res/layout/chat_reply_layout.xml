@@ -1,75 +1,74 @@
-<LinearLayout
+<androidx.constraintlayout.widget.ConstraintLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:id="@+id/mMessageReplyLayout"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/layoutReplyPreview"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:orientation="vertical"
-	android:visibility="gone">
+	android:visibility="gone"
+	android:background="@color/md_theme_surfaceContainerHighest"
+	android:paddingVertical="@dimen/spacing_small"
+	android:paddingStart="@dimen/spacing_normal"
+	android:paddingEnd="@dimen/spacing_small">
+	<!-- Left border indicator -->
+	<View
+		android:id="@+id/viewReplyIndicator"
+		android:layout_width="4dp"
+		android:layout_height="0dp"
+		android:layout_marginEnd="@dimen/spacing_normal"
+		android:background="@drawable/bg_reply_indicator"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toStartOf="parent" />
 	<LinearLayout
-		android:id="@+id/mMessageReplyLayoutBody"
-		android:layout_width="match_parent"
+		android:id="@+id/layoutReplyContent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:paddingTop="10dp"
-		android:paddingBottom="10dp"
-		android:background="@color/md_theme_surfaceContainerLow"
-		android:orientation="horizontal">
-		<ImageView
-			android:id="@+id/mMessageReplyLayoutBodyIc"
-			android:layout_width="44dp"
-			android:layout_height="44dp"
-			android:layout_marginRight="@dimen/spacing_small"
-			android:padding="10dp"
-			android:src="@drawable/ic_reply"
-			android:scaleType="centerCrop" />
-		<LinearLayout
-			android:id="@+id/mMessageReplyLayoutBodyRight"
+		android:orientation="vertical"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toEndOf="@id/viewReplyIndicator"
+		app:layout_constraintEnd_toStartOf="@id/btnCancelReply">
+		<TextView
+			android:id="@+id/tvReplyUsername"
 			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:gravity="center_vertical"
-			android:orientation="vertical"
-			android:layout_weight="1">
-			<TextView
-				android:id="@+id/sender_name"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:text="Sender Name"
-				android:textSize="@dimen/text_size_small"
-				android:textColor="?attr/colorPrimary"
-				android:textStyle="bold"
-				android:visibility="gone" />
-			<TextView
-				android:id="@+id/mMessageReplyLayoutBodyRightUsername"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:text="@string/ph_username"
-				android:textSize="@dimen/text_size_normal"
-				android:textColor="@color/reply_text_color"
-				android:singleLine="true"
-				android:visibility="visible" />
-			<TextView
-				android:id="@+id/mMessageReplyLayoutBodyRightMessage"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:text="@string/ph_message"
-				android:textSize="@dimen/text_size_normal"
-				android:textStyle="bold"
-				android:textColor="@color/md_theme_onSurfaceVariant"
-				android:singleLine="true" />
-		</LinearLayout>
+			android:layout_height="wrap_content"
+			android:text="@string/ph_username"
+			android:textSize="@dimen/text_size_small"
+			android:textColor="?attr/colorPrimary"
+			android:textStyle="bold"
+			android:singleLine="true"
+			android:ellipsize="end" />
+		<TextView
+			android:id="@+id/tvReplyMessage"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="@dimen/spacing_tiny"
+			android:text="@string/ph_message"
+			android:textSize="@dimen/text_size_normal"
+			android:textColor="@color/md_theme_onSurfaceVariant"
+			android:maxLines="1"
+			android:ellipsize="end" />
 		<ImageView
-			android:id="@+id/mMessageReplyLayoutBodyCancel"
-			android:layout_width="44dp"
-			android:layout_height="44dp"
-			android:layout_marginLeft="@dimen/spacing_normal"
-			android:padding="10dp"
-			android:src="@drawable/ic_close_48px"
-			android:scaleType="centerCrop" />
+			android:id="@+id/ivReplyMediaPreview"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:layout_marginTop="@dimen/spacing_small"
+			android:scaleType="centerCrop"
+			android:visibility="gone"
+			android:background="@drawable/bg_profile_image_round"
+			android:contentDescription="@string/reply_media_preview" />
 	</LinearLayout>
-	<LinearLayout
-		android:id="@+id/mMessageReplyLayoutSpace"
-		android:layout_width="match_parent"
-		android:layout_height="1dp"
-		android:padding="@dimen/spacing_normal"
-		android:background="@color/md_theme_surfaceContainerLow"
-		android:orientation="horizontal" />
-</LinearLayout>
+	<ImageView
+		android:id="@+id/btnCancelReply"
+		android:layout_width="32dp"
+		android:layout_height="32dp"
+		android:padding="@dimen/spacing_small"
+		android:src="@drawable/ic_close_48px"
+		android:scaleType="centerInside"
+		android:background="?attr/selectableItemBackgroundBorderless"
+		android:contentDescription="@string/cancel_reply"
+		app:tint="@color/md_theme_onSurfaceVariant"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>

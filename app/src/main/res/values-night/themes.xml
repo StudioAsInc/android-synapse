@@ -50,5 +50,14 @@
         <item name="colorSurfaceContainer">@color/md_theme_surfaceContainer</item>
         <item name="colorSurfaceContainerHigh">@color/md_theme_surfaceContainerHigh</item>
         <item name="colorSurfaceContainerHighest">@color/md_theme_surfaceContainerHighest</item>
+        
+        <!-- Post Card Theme Attributes (Dark Theme) -->
+        <item name="postCardBackgroundColor">?attr/colorSurfaceContainerLow</item>
+        <item name="postCardContentColor">?attr/colorOnSurface</item>
+        <item name="postCardSecondaryContentColor">?attr/colorOnSurfaceVariant</item>
+        <item name="postCardActionColor">?attr/colorOnSurfaceVariant</item>
+        <item name="postCardLikeColor">?attr/colorOnSurfaceVariant</item>
+        <item name="postCardLikedColor">?attr/colorError</item>
+        <item name="postCardShimmerColor">?attr/colorSurfaceVariant</item>
     </style>
 </resources>

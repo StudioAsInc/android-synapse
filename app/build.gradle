@@ -2,8 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
-    id 'com.google.firebase.crashlytics'
-    //id 'com.google.firebase.firebase-perf'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 def keystoreProperties = new Properties()
@@ -79,11 +78,43 @@ android {
                 signingConfig = signingConfigs.debug
             }
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
+            buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ENDPOINT_URL", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ENDPOINT_URL') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ENDPOINT_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ENDPOINT_REGION", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ENDPOINT_REGION') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ENDPOINT_REGION') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ACCESS_KEY", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ACCESS_KEY') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ACCESS_KEY') ?: ''}\""
+            buildConfigField "String", "GEMINI_API_KEY", "\"${System.getenv('GEMINI_API_KEY') ?: project.findProperty('GEMINI_API_KEY') ?: ''}\""
+            
+            // Authentication configuration for production
+            buildConfigField "boolean", "AUTH_REQUIRE_EMAIL_VERIFICATION", "${project.findProperty('auth.require.email.verification') ?: 'true'}"
+            buildConfigField "boolean", "AUTH_ENABLE_DEBUG_LOGGING", "${project.findProperty('auth.enable.debug.logging') ?: 'false'}"
+            buildConfigField "boolean", "AUTH_DEVELOPMENT_MODE", "${project.findProperty('auth.development.mode') ?: 'false'}"
+            buildConfigField "int", "AUTH_RESEND_COOLDOWN_SECONDS", "${project.findProperty('auth.resend.cooldown.seconds') ?: '60'}"
+            buildConfigField "int", "AUTH_MAX_RESEND_ATTEMPTS", "${project.findProperty('auth.max.resend.attempts') ?: '5'}"
+            buildConfigField "int", "AUTH_AUTO_RETRY_ATTEMPTS", "${project.findProperty('auth.auto.retry.attempts') ?: '3'}"
+            buildConfigField "long", "AUTH_RETRY_DELAY_MS", "${project.findProperty('auth.retry.delay.ms') ?: '1000L'}"
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             buildConfigField "String", "DEVELOPER_EMAIL", "\"mashikahamed0@gmail.com\""
+            buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL') ?: project.findProperty('SUPABASE_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY') ?: project.findProperty('SUPABASE_ANON_KEY') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ENDPOINT_URL", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ENDPOINT_URL') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ENDPOINT_URL') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ENDPOINT_REGION", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ENDPOINT_REGION') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ENDPOINT_REGION') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID') ?: ''}\""
+            buildConfigField "String", "SUPABASE_SYNAPSE_S3_ACCESS_KEY", "\"${System.getenv('SUPABASE_SYNAPSE_S3_ACCESS_KEY') ?: project.findProperty('SUPABASE_SYNAPSE_S3_ACCESS_KEY') ?: ''}\""
+            buildConfigField "String", "GEMINI_API_KEY", "\"${System.getenv('GEMINI_API_KEY') ?: project.findProperty('GEMINI_API_KEY') ?: ''}\""
+            
+            // Authentication configuration for development
+            buildConfigField "boolean", "AUTH_REQUIRE_EMAIL_VERIFICATION", "${project.findProperty('auth.require.email.verification') ?: 'false'}"
+            buildConfigField "boolean", "AUTH_ENABLE_DEBUG_LOGGING", "${project.findProperty('auth.enable.debug.logging') ?: 'true'}"
+            buildConfigField "boolean", "AUTH_DEVELOPMENT_MODE", "${project.findProperty('auth.development.mode') ?: 'true'}"
+            buildConfigField "int", "AUTH_RESEND_COOLDOWN_SECONDS", "${project.findProperty('auth.resend.cooldown.seconds') ?: '30'}"
+            buildConfigField "int", "AUTH_MAX_RESEND_ATTEMPTS", "${project.findProperty('auth.max.resend.attempts') ?: '5'}"
+            buildConfigField "int", "AUTH_AUTO_RETRY_ATTEMPTS", "${project.findProperty('auth.auto.retry.attempts') ?: '3'}"
+            buildConfigField "long", "AUTH_RETRY_DELAY_MS", "${project.findProperty('auth.retry.delay.ms') ?: '1000L'}"
         }
     }
 
@@ -113,23 +144,28 @@ android {
 }
 
 dependencies {
-    // Import the Firebase BoM (downgraded to avoid gRPC conflict)
-    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    // Supabase BOM and dependencies
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.6.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.ktor:ktor-client-okhttp:2.3.12")
+    
+    // Serialization for Supabase
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+    
 
-    // When using the BoM, don't specify versions in Firebase dependencies
-    // Re-adding -ktx suffixes as they are included in this BoM version
-    implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-perf-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
 
     // AndroidX Core & UI Components
     implementation 'androidx.core:core-ktx:1.17.0-rc01'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.activity:activity-ktx:1.12.0-alpha05'
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
-    implementation 'com.google.android.material:material:1.14.0-alpha03'
+    implementation 'com.google.android.material:material:1.14.0-alpha06'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.multidex:multidex:2.0.1'
 
@@ -151,9 +187,12 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.10.3'
     implementation 'androidx.paging:paging-runtime-ktx:3.3.6'
     implementation 'androidx.preference:preference-ktx:1.2.1'
+    
+    // DataStore for preferences
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
 
-    // Google Play services
-    implementation 'com.google.android.gms:play-services-auth:21.4.0'
+    // Google Play services - Removed as not needed with Supabase
+    // implementation 'com.google.android.gms:play-services-auth:21.4.0'
 
     // Image Loading
     implementation 'com.github.bumptech.glide:glide:5.0.0-rc01'
@@ -167,6 +206,7 @@ dependencies {
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     implementation 'com.airbnb.android:lottie:6.6.0'
     implementation 'com.onesignal:OneSignal:[5.1.6, 5.1.99]'
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
 
     // Local AARs
     implementation files('libs/android-image-cropper-2.8.0.aar')
@@ -205,10 +245,21 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.3.1'
 
     // Testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.2.1'
+    testImplementation 'androidx.arch.core:core-testing:2.2.0'
+    testImplementation 'org.robolectric:robolectric:4.11.1'
+    testImplementation 'androidx.test:core:1.5.0'
+    
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-intents:3.5.1'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
 }
 
-// Apply Google Services plugin only if credentials file exists
-def googleServicesFile = file('google-services.json')
-if (googleServicesFile.exists()) {
-    apply plugin: 'com.google.gms.google-services'
-}
+// Supabase configuration is handled through BuildConfig
