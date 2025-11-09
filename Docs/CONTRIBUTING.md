@@ -22,6 +22,91 @@ To maintain code quality and consistency, please follow these guidelines:
   - Separate UI logic from business logic
   - Use lifecycle-aware components
 
+## Setting up your Development Environment
+
+### Prerequisites
+- **Android Studio** (latest stable version recommended)
+- **JDK 17** or higher
+- **Git**
+- **Supabase Account** (for backend configuration)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/StudioAsInc/android-synapse.git
+   cd android-synapse
+   ```
+
+2. **Configure Supabase**
+
+   Synapse requires Supabase credentials for backend connectivity. You can configure these in two ways:
+
+   **Option 1: gradle.properties (Recommended for local development)**
+
+   Create or edit `gradle.properties` in the project root:
+
+   ```properties
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SYNAPSE_S3_ENDPOINT_URL=your_s3_endpoint
+   SUPABASE_SYNAPSE_S3_ENDPOINT_REGION=your_s3_region
+   SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID=your_s3_access_key_id
+   SUPABASE_SYNAPSE_S3_ACCESS_KEY=your_s3_access_key
+   ```
+
+   **Option 2: Environment Variables (Recommended for CI/CD)**
+
+   Set the same variables as environment variables in your system.
+
+   > **Security Note**: Never commit credentials to version control. Both `gradle.properties` and `local.properties` are in `.gitignore`.
+
+   **Getting Supabase Credentials**:
+   1. Create a free account at [supabase.com](https://supabase.com)
+   2. Create a new project
+   3. Go to Project Settings → API
+   4. Copy your Project URL and anon/public key
+   5. For S3 storage, configure in Project Settings → Storage
+
+3. **Open in Android Studio**
+   - Open Android Studio
+   - Select "Open an Existing Project"
+   - Navigate to the cloned directory
+
+4. **Sync and Build**
+   - Let Gradle sync the project
+   - Build the project: `Build > Make Project`
+   - Run on emulator or device
+
+### Project Structure
+
+```plaintext
+app/src/main/
+├── java/com/synapse/social/studioasinc/
+│   ├── adapter/           # RecyclerView adapters
+│   ├── backend/           # Supabase service layer
+│   ├── chat/              # Chat feature components
+│   ├── data/              # Repositories & data sources
+│   ├── domain/            # Business logic
+│   ├── fragments/         # Fragment components
+│   ├── home/              # Home feed features
+│   ├── model/models/      # Data models
+│   ├── presentation/      # ViewModels
+│   ├── util/              # Utilities & extensions
+│   ├── widget/            # Custom views
+│   ├── *Activity.kt       # Activity classes
+│   └── SynapseApp.kt      # Application class
+└── res/                   # Resources (layouts, drawables, etc.)
+```
+
+### Running Tests
+
+```bash
+./gradlew test           # Unit tests
+./gradlew connectedAndroidTest  # Instrumented tests
+```
+
 ## Development Workflow
 
 1. **Fork the Project** from the main repository

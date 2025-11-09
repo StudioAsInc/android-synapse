@@ -21,12 +21,12 @@
 ## 📚 Table of Contents
 - [🚀 Introduction](#-introduction)
 - [✨ Features](#-features)
-- [🛠️ Tech Stack](#️-tech-stack)
+- [🛠️ Tech Stack](#-tech-stack)
 - [🏁 Getting Started](#-getting-started)
 
 - [📚 Documentation](#-documentation)
 - [🤝 Contributing](#-contributing)
-- [🗺️ Roadmap](#️-roadmap)
+- [🗺️ Roadmap](#-roadmap)
 - [📜 License](#-license)
 - [💬 Community & Support](#-community--support)
 - [🙏 Acknowledgments](#-acknowledgments)
@@ -88,48 +88,11 @@ graph TB
 > [!NOTE]
 > The project has successfully completed two major modernization efforts: a comprehensive Java to Kotlin migration (27 core files with improved null safety, coroutines, and Kotlin idioms) and a complete Firebase to Supabase backend migration with all security policies in place.
 
-### Project Status
+<div align="right">
 
-| Feature Area | Status | Notes |
-|-------------|--------|-------|
-| 🔐 Authentication | ✅ Stable | Email/OAuth login via Supabase GoTrue |
-| 💬 Chat System | ✅ Stable | Direct messaging with RLS security |
-| 📝 Posts & Feed | ✅ Stable | Create, view, like, and comment on posts |
-| 👤 User Profiles | ✅ Stable | View profiles, follow/unfollow users |
-| 📦 Media Storage | ✅ Stable | 35GB+ free storage via Supabase |
-| 🔄 Real-time Updates | 🚧 In Development | Message sync and live notifications |
-| 👥 Group Chats | 📋 Planned | Multi-user conversations |
-| 📞 Video Calls | 📋 Planned | Voice and video communication |
+[Back to index](#-table-of-contents)
 
----
-
-## ✨ Features
-
-### Available Now ✅
-- **Real-time Chat**: Direct messaging with secure RLS policies ([Quick Reference](Docs/CHAT_QUICK_REFERENCE.md))
-- **Social Feed**: Create, view, like, and comment on posts with full user attribution
-- **User Profiles**: View profiles, follow/unfollow users, and manage your social graph
-- **Authentication**: Secure email and OAuth login via Supabase GoTrue
-- **35GB+ Free Storage**: Ample space for your media, posts, and communities
-- **Lightweight & Optimized**: Runs smoothly on any device without compromising performance
-- **Zero Ads, Non-Profit Model**: We prioritize our users' experience over profits
-- **Secure Encryption**: End-to-end encryption for private chats, encryption at rest for storage
-- **Modular Architecture**: MVVM + Repository pattern with Kotlin coroutines
-
-### In Development 🚧
-- **Real-time Message Updates**: Live message sync using Supabase Realtime
-- **Enhanced Media Handling**: Image/video attachments in chats
-- **Typing Indicators**: See when others are composing messages
-- **Read Receipts**: Know when your messages are seen
-
-### Planned 📋
-- **Group Chats**: Multi-user conversations with admin controls
-- **Video Calls**: Voice and video communication
-- **Push Notifications**: Real-time alerts for messages and interactions
-- **Self-Hosting**: Deploy your own Synapse instance
-- **Federation**: Connect with other Synapse instances
-
----
+</div>
 
 ## 🛠️ Tech Stack
 
@@ -186,111 +149,25 @@ graph TB
 
 ---
 
-## 🏁 Getting Started
+<div align="right">
 
-### Prerequisites
-- **Android Studio** (latest stable version recommended)
-- **JDK 17** or higher
-- **Git**
-- **Supabase Account** (for backend configuration)
+[Back to index](#-table-of-contents)
 
-### Installation
-
-1. **Clone the repository**
-   
-   ```bash
-   git clone https://github.com/StudioAsInc/android-synapse.git
-   cd android-synapse
-   ```
-
-2. **Configure Supabase**
-   
-   Synapse requires Supabase credentials for backend connectivity. You can configure these in two ways:
-
-   **Option 1: gradle.properties (Recommended for local development)**
-   
-   Create or edit `gradle.properties` in the project root:
-   
-   ```properties
-   SUPABASE_URL=your_supabase_project_url
-   SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SYNAPSE_S3_ENDPOINT_URL=your_s3_endpoint
-   SUPABASE_SYNAPSE_S3_ENDPOINT_REGION=your_s3_region
-   SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID=your_s3_access_key_id
-   SUPABASE_SYNAPSE_S3_ACCESS_KEY=your_s3_access_key
-   ```
-
-   **Option 2: Environment Variables (Recommended for CI/CD)**
-   
-   Set the same variables as environment variables in your system.
-
-   > **Security Note**: Never commit credentials to version control. Both `gradle.properties` and `local.properties` are in `.gitignore`.
-
-   **Getting Supabase Credentials**:
-   1. Create a free account at [supabase.com](https://supabase.com)
-   2. Create a new project
-   3. Go to Project Settings → API
-   4. Copy your Project URL and anon/public key
-   5. For S3 storage, configure in Project Settings → Storage
-
-3. **Open in Android Studio**
-   - Open Android Studio
-   - Select "Open an Existing Project"
-   - Navigate to the cloned directory
-
-4. **Sync and Build**
-   - Let Gradle sync the project
-   - Build the project: `Build > Make Project`
-   - Run on emulator or device
-
-### Project Structure
-
-```plaintext
-app/src/main/
-├── java/com/synapse/social/studioasinc/
-│   ├── adapter/           # RecyclerView adapters
-│   ├── backend/           # Supabase service layer
-│   ├── chat/              # Chat feature components
-│   ├── data/              # Repositories & data sources
-│   ├── domain/            # Business logic
-│   ├── fragments/         # Fragment components
-│   ├── home/              # Home feed features
-│   ├── model/models/      # Data models
-│   ├── presentation/      # ViewModels
-│   ├── util/              # Utilities & extensions
-│   ├── widget/            # Custom views
-│   ├── *Activity.kt       # Activity classes
-│   └── SynapseApp.kt      # Application class
-└── res/                   # Resources (layouts, drawables, etc.)
-```
-
-### Running Tests
-
-```bash
-./gradlew test           # Unit tests
-./gradlew connectedAndroidTest  # Instrumented tests
-```
-
----
+</div>
 
 ## 📚 Documentation
 
-### For Developers
 - **[Agent Guidelines](Docs/Agent.md)** - Development guidelines and best practices for working with Synapse
-- **[Java to Kotlin Migration](Docs/JAVA_TO_KOTLIN_MIGRATION.md)** - Complete migration summary with improvements to null safety, coroutines, and Kotlin idioms
-
-### Feature Documentation
-- **[Chat Feature Overview](Docs/CHAT_FEATURE_READY.md)** - Complete chat implementation with direct messaging and security
-- **[Chat Quick Reference](Docs/CHAT_QUICK_REFERENCE.md)** - Quick start guide for understanding and using chat functionality
-- **[Chat Testing Guide](Docs/CHAT_TESTING_GUIDE.md)** - Comprehensive guide for testing chat features
-- **[Chat RLS Fix](Docs/CHAT_RLS_FIX.md)** - Row Level Security implementation details for chat privacy
-- **[Home Feed Fix](Docs/HOME_FEED_FIX.md)** - Feed implementation details and recent improvements
-
-### Technical Documentation
-- **[RLS Fixes Complete](Docs/ALL_RLS_FIXES_COMPLETE.md)** - Complete Row Level Security implementation across all features
-- **[Quick Fix Summary](Docs/QUICK_FIX_SUMMARY.md)** - Recent fixes and improvements to the codebase
+- **[Contributing Guide](Docs/CONTRIBUTING.md)** - Guidelines for contributing to the Synapse project.
+- **[Roadmap](Docs/ROADMAP.md)** - The future of the Synapse project.
 
 ---
+
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
 
 ## 🤝 Contributing
 
@@ -303,6 +180,12 @@ We welcome contributions from everyone! Please see our **[Contributing Guide](Do
 
 ---
 
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
+
 ## 🗺️ Roadmap
 
 See our **[Roadmap](Docs/ROADMAP.md)** for detailed information on:
@@ -313,10 +196,22 @@ See our **[Roadmap](Docs/ROADMAP.md)** for detailed information on:
 
 ---
 
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
+
 ## 📜 License  
 Synapse is distributed under the [GNU General Public License v3.0](LICENSE). See `LICENSE` for more information.
 
 ---
+
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
 
 ## 💬 Community & Support  
 | Channel | Purpose |
@@ -327,12 +222,24 @@ Synapse is distributed under the [GNU General Public License v3.0](LICENSE). See
 
 ---
 
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
+
 ## 🙏 Acknowledgments  
 - Our **core team** at StudioAs Inc.  
 - **Open-source contributors** worldwide  
 - **Early testers** shaping Synapse's future  
 
 ---
+
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
 
 ## ❓ FAQ
 
@@ -421,6 +328,12 @@ You can report bugs or request new features by creating an issue on our <a href=
 </details>
 
 ---
+
+<div align="right">
+
+[Back to index](#-table-of-contents)
+
+</div>
 
 <div align="center">
   
