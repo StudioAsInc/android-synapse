@@ -367,8 +367,8 @@ class AuthActivity : AppCompatActivity() {
                 false // Return false to allow click event to proceed
             }
             
-            // Apple button press animation
-            btnAppleAuth?.setOnTouchListener { view, event ->
+            // Twitter button press animation
+            btnTwitterAuth?.setOnTouchListener { view, event ->
                 if (!reduceMotion) {
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
@@ -461,7 +461,7 @@ class AuthActivity : AppCompatActivity() {
             // Social authentication buttons
             btnGoogleAuth?.contentDescription = "Sign in with Google. Double tap to authenticate using your Google account"
             btnFacebookAuth?.contentDescription = "Sign in with Facebook. Double tap to authenticate using your Facebook account"
-            btnAppleAuth?.contentDescription = "Sign in with Apple. Double tap to authenticate using your Apple ID"
+            btnTwitterAuth?.contentDescription = "Sign in with Twitter. Double tap to authenticate using your Twitter account"
             
             // Loading overlay
             loadingOverlay.contentDescription = "Loading. Please wait while we process your request"
@@ -643,8 +643,8 @@ class AuthActivity : AppCompatActivity() {
                 handleSocialAuthClick("Facebook")
             }
             
-            btnAppleAuth?.setOnClickListener {
-                handleSocialAuthClick("Apple")
+            btnTwitterAuth?.setOnClickListener {
+                handleSocialAuthClick("Twitter")
             }
             
             // Setup social button press animations
