@@ -230,4 +230,7 @@
     <!-- Message Bubble Colors -->
     <color name="sent_message_background">@color/md_theme_primaryContainer</color>
     <color name="received_message_background">@color/md_theme_surfaceVariant</color>
+
+    <!-- Auth Button Color -->
+    <color name="auth_button_color">#3C3CFF</color>
 </resources>
