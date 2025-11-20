@@ -19,8 +19,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.home.HeaderAdapter
 import com.synapse.social.studioasinc.home.HomeViewModel
-import com.synapse.social.studioasinc.home.PostAdapter
+import com.synapse.social.studioasinc.EnhancedPostsAdapter
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.ReactionType
+import com.synapse.social.studioasinc.ReactionPickerBottomSheet
+import com.synapse.social.studioasinc.ReactedUsersBottomSheet
+import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
 import com.synapse.social.studioasinc.SupabaseClient
 import android.content.Intent
@@ -29,7 +33,7 @@ import io.github.jan.supabase.gotrue.auth
 class HomeFragment : Fragment() {
 
     private lateinit var viewModel: HomeViewModel
-    private lateinit var postAdapter: PostAdapter
+    private lateinit var postAdapter: EnhancedPostsAdapter
     private lateinit var headerAdapter: HeaderAdapter
     private lateinit var concatAdapter: ConcatAdapter
 
@@ -94,12 +98,35 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        postAdapter = PostAdapter(
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+        val currentUserId = currentUser?.id ?: ""
+
+        postAdapter = EnhancedPostsAdapter(
             context = requireContext(),
-            lifecycleOwner = this,
-            onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
+            currentUserId = currentUserId,
+            onPostClicked = { post -> 
+                // TODO: Navigate to post details
+            },
+            onLikeClicked = { post ->
+                // Default like action (toggle LIKE reaction)
+                toggleReaction(post, ReactionType.LIKE)
+            },
             onCommentClicked = { post -> showCommentsDialog(post) },
-            onShareClicked = { post -> sharePost(post) }
+            onShareClicked = { post -> sharePost(post) },
+            onUserClicked = { userId ->
+                val intent = Intent(requireContext(), com.synapse.social.studioasinc.ProfileActivity::class.java)
+                intent.putExtra("uid", userId)
+                startActivity(intent)
+            },
+            onReactionSelected = { post, reactionType ->
+                toggleReaction(post, reactionType)
+            },
+            onReactionSummaryClicked = { post ->
+                showReactedUsers(post)
+            },
+            onReactionPickerRequested = { post, _ ->
+                showReactionPicker(post)
+            }
         )
         headerAdapter = HeaderAdapter(requireContext(), this)
 
@@ -131,6 +158,13 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun showReactionPicker(post: Post) {
+        val picker = ReactionPickerBottomSheet.newInstance { reactionType ->
+            toggleReaction(post, reactionType)
+        }
+        picker.show(parentFragmentManager, "ReactionPicker")
+    }
+
     private fun setupListeners() {
         // Set Material Design 3 color scheme for SwipeRefreshLayout
         swipeLayout.setColorSchemeResources(
@@ -150,7 +184,7 @@ class HomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.posts.collect { posts ->
                 hideShimmer()
-                postAdapter.updatePosts(posts)
+                postAdapter.submitList(posts)
             }
         }
         
@@ -412,6 +446,60 @@ class HomeFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    private fun toggleReaction(post: Post, reactionType: ReactionType) {
+        val currentUser = SupabaseClient.client.auth.currentUserOrNull() ?: return
+        
+        lifecycleScope.launch {
+            try {
+                val repository = PostRepository()
+                val result = repository.toggleReaction(post.id, currentUser.id, reactionType)
+                
+                if (result.isSuccess) {
+                    // Refresh posts to update UI
+                    // Ideally we should just update the single item in the adapter
+                    viewModel.loadPosts() 
+                } else {
+                    Toast.makeText(requireContext(), "Failed to react", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun showReactedUsers(post: Post) {
+        val bottomSheet = ReactedUsersBottomSheet.newInstance(
+            postId = post.id,
+            onUserClicked = { userId ->
+                val intent = Intent(requireContext(), com.synapse.social.studioasinc.ProfileActivity::class.java)
+                intent.putExtra("uid", userId)
+                startActivity(intent)
+            },
+            onLoadReactions = { postId, reactionType ->
+                loadReactionsForSheet(postId, reactionType)
+            }
+        )
+        bottomSheet.show(parentFragmentManager, "ReactedUsersBottomSheet")
+    }
+
+    private fun loadReactionsForSheet(postId: String, reactionType: ReactionType?) {
+        lifecycleScope.launch {
+            try {
+                val repository = PostRepository()
+                val result = repository.getUsersWhoReacted(postId, reactionType)
+                
+                val sheet = parentFragmentManager.findFragmentByTag("ReactedUsersBottomSheet") as? ReactedUsersBottomSheet
+                
+                if (result.isSuccess) {
+                    sheet?.setReactions(result.getOrDefault(emptyList()))
+                } else {
+                    Toast.makeText(requireContext(), "Failed to load reactions", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

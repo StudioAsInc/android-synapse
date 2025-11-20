@@ -37,8 +37,13 @@ data class Post(
     val commentsCount: Int = 0,
     @SerialName("views_count")
     val viewsCount: Int = 0,
+    @SerialName("media_items")
+    var mediaItems: MutableList<MediaItem>? = null,
+    // New reaction fields
     @kotlinx.serialization.Transient
-    var mediaItems: MutableList<MediaItem>? = null
+    var reactions: Map<ReactionType, Int>? = null,
+    @kotlinx.serialization.Transient
+    var userReaction: ReactionType? = null
 ) {
     /**
      * Determines post type based on media content
@@ -50,6 +55,56 @@ data class Post(
             !postText.isNullOrEmpty() -> "TEXT"
             else -> "TEXT"
         }
+    }
+
+    /**
+     * Get total number of reactions across all types
+     */
+    fun getTotalReactionsCount(): Int {
+        return reactions?.values?.sum() ?: likesCount
+    }
+
+    /**
+     * Get top 3 reaction types by count
+     */
+    fun getTopReactions(): List<Pair<ReactionType, Int>> {
+        return reactions?.entries
+            ?.sortedByDescending { it.value }
+            ?.take(3)
+            ?.map { it.key to it.value }
+            ?: emptyList()
+    }
+
+    /**
+     * Check if current user has reacted
+     */
+    fun hasUserReacted(): Boolean {
+        return userReaction != null
+    }
+
+    /**
+     * Get reaction summary text (e.g., "❤️ 😂 and 12 others")
+     */
+    fun getReactionSummary(): String {
+        val topReactions = getTopReactions()
+        if (topReactions.isEmpty()) return ""
+
+        val emojis = topReactions.take(2).joinToString(" ") { it.first.emoji }
+        val total = getTotalReactionsCount()
+
+        return when {
+            total == 0 -> ""
+            total == 1 -> "$emojis 1 person"
+            topReactions.size == 1 -> "$emojis $total"
+            else -> "$emojis $total"
+        }
+    }
+
+    /**
+     * Check if post has multiple media items
+     */
+    fun hasMultipleMedia(): Boolean {
+        return (mediaItems?.size ?: 0) > 1
     }
 }
 

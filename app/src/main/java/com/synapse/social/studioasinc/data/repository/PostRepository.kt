@@ -2,7 +2,10 @@ package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.ReactionType
+import com.synapse.social.studioasinc.model.UserReaction
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -158,10 +161,14 @@ class PostRepository {
                 .sortedByDescending { it.timestamp }
             
             // Store in cache
-            postsCache[cacheKey] = CacheEntry(posts)
+            // Populate reaction data
+            val postsWithReactions = populatePostReactions(posts)
+            
+            // Store in cache
+            postsCache[cacheKey] = CacheEntry(postsWithReactions)
             
             android.util.Log.d("PostRepository", "Successfully fetched ${posts.size} posts for page $page")
-            Result.success(posts)
+            Result.success(postsWithReactions)
         } catch (e: Exception) {
             android.util.Log.e("PostRepository", "Failed to fetch posts page: ${e.message}", e)
             
@@ -200,7 +207,8 @@ class PostRepository {
                 .decodeList<Post>()
                 .sortedByDescending { it.timestamp }
             
-            Result.success(posts)
+            val postsWithReactions = populatePostReactions(posts)
+            Result.success(postsWithReactions)
         } catch (e: Exception) {
             android.util.Log.e("PostRepository", "Failed to fetch user posts", e)
             Result.failure(e)
@@ -234,5 +242,251 @@ class PostRepository {
     
     fun observePosts(): Flow<List<Post>> = flow {
         emit(emptyList())
+    }
+
+    // ==================== REACTION METHODS ====================
+
+    /**
+     * Toggle a reaction on a post. If the user already reacted with that type, it removes it.
+     * If the user reacted with a different type, it updates to the new type.
+     */
+    suspend fun toggleReaction(
+        postId: String,
+        userId: String,
+        reactionType: ReactionType
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            android.util.Log.d("PostRepository", "Toggling reaction: ${reactionType.name} for post $postId by user $userId")
+
+            // First, check if user already reacted
+            val existingReaction = client.from("reactions")
+                .select() {
+                    filter {
+                        eq("post_id", postId)
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeSingleOrNull<HashMap<String, Any>>()
+
+            if (existingReaction != null) {
+                val existingType = existingReaction["reaction_type"] as? String
+
+                if (existingType == reactionType.name) {
+                    // Remove the reaction (toggle off)
+                    client.from("reactions")
+                        .delete {
+                            filter {
+                                eq("post_id", postId)
+                                eq("user_id", userId)
+                            }
+                        }
+                    android.util.Log.d("PostRepository", "Reaction removed")
+                } else {
+                    // Update to new reaction type
+                    client.from("reactions")
+                        .update({
+                            set("reaction_type", reactionType.name)
+                            set("updated_at", java.time.Instant.now().toString())
+                        }) {
+                            filter {
+                                eq("post_id", postId)
+                                eq("user_id", userId)
+                            }
+                        }
+                    android.util.Log.d("PostRepository", "Reaction updated to ${reactionType.name}")
+                }
+            } else {
+                // Create new reaction
+                val newReaction = mapOf(
+                    "user_id" to userId,
+                    "post_id" to postId,
+                    "reaction_type" to reactionType.name
+                )
+                client.from("reactions").insert(newReaction)
+                android.util.Log.d("PostRepository", "New reaction created")
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to toggle reaction", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get reaction summary for a post (count of each reaction type)
+     */
+    suspend fun getReactionSummary(postId: String): Result<Map<ReactionType, Int>> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            android.util.Log.d("PostRepository", "Fetching reaction summary for post $postId")
+
+            val reactions = client.from("reactions")
+                .select() {
+                    filter {
+                        eq("post_id", postId)
+                    }
+                }
+                .decodeList<HashMap<String, Any>>()
+
+            // Group by reaction type and count
+            val summary = reactions
+                .groupBy { 
+                    val typeStr = it["reaction_type"] as? String ?: "LIKE"
+                    ReactionType.fromString(typeStr)
+                }
+                .mapValues { it.value.size }
+
+            android.util.Log.d("PostRepository", "Reaction summary: $summary")
+            Result.success(summary)
+        } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to fetch reaction summary", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get users who reacted to a post, optionally filtered by reaction type
+     */
+    suspend fun getUsersWhoReacted(
+        postId: String,
+        reactionType: ReactionType? = null
+    ): Result<List<UserReaction>> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            android.util.Log.d("PostRepository", "Fetching users who reacted to post $postId")
+
+            // Fetch reactions
+            val reactions = client.from("reactions")
+                .select() {
+                    filter {
+                        eq("post_id", postId)
+                        if (reactionType != null) {
+                            eq("reaction_type", reactionType.name)
+                        }
+                    }
+                }
+                .decodeList<HashMap<String, Any>>()
+
+            if (reactions.isEmpty()) {
+                return@withContext Result.success(emptyList())
+            }
+
+            // Get user IDs
+            val userIds = reactions.mapNotNull { it["user_id"] as? String }
+            
+            if (userIds.isEmpty()) {
+                return@withContext Result.success(emptyList())
+            }
+
+            // Fetch user details
+            val users = client.from("users")
+                .select() {
+                    filter {
+                        isIn("uid", userIds)
+                    }
+                }
+                .decodeList<HashMap<String, Any>>()
+                .associateBy { it["uid"] as? String }
+
+            // Map to UserReaction
+            val userReactions = reactions.mapNotNull { reaction ->
+                val userId = reaction["user_id"] as? String ?: return@mapNotNull null
+                val user = users[userId]
+                
+                UserReaction(
+                    userId = userId,
+                    username = user?.get("username") as? String ?: "Unknown",
+                    profileImage = user?.get("profile_image_url") as? String,
+                    isVerified = user?.get("verify") as? Boolean ?: false,
+                    reactionType = reaction["reaction_type"] as? String ?: "LIKE",
+                    reactedAt = reaction["created_at"] as? String
+                )
+            }
+
+            Result.success(userReactions)
+        } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to fetch users who reacted", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get current user's reaction on a post
+     */
+    suspend fun getUserReaction(postId: String, userId: String): Result<ReactionType?> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val reaction = client.from("reactions")
+                .select() {
+                    filter {
+                        eq("post_id", postId)
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeSingleOrNull<HashMap<String, Any>>()
+
+            val reactionTypeStr = reaction?.get("reaction_type") as? String
+            val reactionType = if (reactionTypeStr != null) ReactionType.fromString(reactionTypeStr) else null
+            
+            Result.success(reactionType)
+        } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to fetch user reaction", e)
+            Result.failure(e)
+        }
+    }
+    /**
+     * Helper to populate reaction data for a list of posts
+     */
+    private suspend fun populatePostReactions(posts: List<Post>): List<Post> {
+        if (posts.isEmpty()) return posts
+        
+        return try {
+            val postIds = posts.map { it.id }
+            val currentUserId = client.auth.currentUserOrNull()?.id
+            
+            // 1. Fetch all reactions for these posts
+            val allReactions = client.from("reactions")
+                .select() {
+                    filter {
+                        isIn("post_id", postIds)
+                    }
+                }
+                .decodeList<HashMap<String, Any>>()
+            
+            // 2. Group by post_id
+            val reactionsByPost = allReactions.groupBy { it["post_id"] as? String }
+            
+            posts.map { post ->
+                val postReactions = reactionsByPost[post.id] ?: emptyList()
+                
+                // Calculate summary
+                val summary = postReactions
+                    .groupBy { 
+                        val typeStr = it["reaction_type"] as? String ?: "LIKE"
+                        ReactionType.fromString(typeStr)
+                    }
+                    .mapValues { it.value.size }
+                
+                // Find user reaction
+                var userReactionType: ReactionType? = null
+                if (currentUserId != null) {
+                    val userReaction = postReactions.find { 
+                        (it["user_id"] as? String) == currentUserId 
+                    }
+                    if (userReaction != null) {
+                        val typeStr = userReaction["reaction_type"] as? String
+                        if (typeStr != null) {
+                            userReactionType = ReactionType.fromString(typeStr)
+                        }
+                    }
+                }
+                
+                post.copy(
+                    reactions = summary,
+                    userReaction = userReactionType
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PostRepository", "Failed to populate reactions", e)
+            posts
+        }
     }
 }
