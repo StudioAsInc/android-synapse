@@ -297,8 +297,8 @@ object FileUtil {
         }
     }
 
-    fun getScaledBitmap(path: String, max: Int): Bitmap {
-        val src = BitmapFactory.decodeFile(path)
+    fun getScaledBitmap(path: String, max: Int): Bitmap? {
+        val src = BitmapFactory.decodeFile(path) ?: return null
         
         var width = src.width
         var height = src.height
@@ -347,7 +347,7 @@ object FileUtil {
 
     fun resizeBitmapFileRetainRatio(fromPath: String, destPath: String, max: Int) {
         if (!isExistFile(fromPath)) return
-        val bitmap = getScaledBitmap(fromPath, max)
+        val bitmap = getScaledBitmap(fromPath, max) ?: return
         saveBitmap(bitmap, destPath)
     }
 
