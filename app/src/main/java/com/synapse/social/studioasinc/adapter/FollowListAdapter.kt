@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.adapters
+package com.synapse.social.studioasinc.adapter
 
 import android.net.Uri
 import android.view.LayoutInflater
