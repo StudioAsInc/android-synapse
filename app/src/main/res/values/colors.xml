@@ -230,4 +230,12 @@
     <!-- Message Bubble Colors -->
     <color name="sent_message_background">@color/md_theme_primaryContainer</color>
     <color name="received_message_background">@color/md_theme_surfaceVariant</color>
+
+    <!-- New Auth Colors (PT Sans / Material Design Update) -->
+    <color name="auth_dark">#010F1C</color>
+    <color name="auth_green">#3BB77E</color>
+    <color name="auth_grey_dark">#646464</color>
+    <color name="auth_grey_light">#939393</color>
+    <color name="auth_background">#FFFFFF</color>
+    <color name="auth_input_bg">#F5F5F5</color>
 </resources>
