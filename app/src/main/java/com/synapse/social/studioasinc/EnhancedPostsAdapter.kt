@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc
 
 import android.content.Context
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,12 +11,14 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
-import com.bumptech.glide.Glide
 import com.google.android.material.card.MaterialCardView
 import com.synapse.social.studioasinc.animations.ReactionAnimations
+import com.synapse.social.studioasinc.components.MediaGridView
+import com.synapse.social.studioasinc.model.MediaItem
+import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.ReactionType
+import com.synapse.social.studioasinc.util.ImageLoader
 
 /**
  * Enhanced adapter for displaying posts with reactions and multi-media support
@@ -30,11 +33,85 @@ class EnhancedPostsAdapter(
     private val onUserClicked: ((String) -> Unit)? = null,
     private val onReactionSelected: ((Post, ReactionType) -> Unit)? = null,
     private val onReactionSummaryClicked: ((Post) -> Unit)? = null,
-    private val onReactionPickerRequested: ((Post, View) -> Unit)? = null
+    private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
+    private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null
 ) : ListAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
     fun setLoadingMore(isLoading: Boolean) {
         // TODO: Implement footer loading view
+    }
+
+    /**
+     * Update a post's reaction state optimistically
+     * This updates the UI immediately before the server responds
+     */
+    fun updatePostReactionOptimistically(postId: String, reactionType: ReactionType, isAdding: Boolean) {
+        val currentList = currentList.toMutableList()
+        val postIndex = currentList.indexOfFirst { it.id == postId }
+        
+        if (postIndex != -1) {
+            val post = currentList[postIndex]
+            val updatedReactions = post.reactions?.toMutableMap() ?: mutableMapOf()
+            
+            if (isAdding) {
+                // Add reaction
+                updatedReactions[reactionType] = (updatedReactions[reactionType] ?: 0) + 1
+            } else {
+                // Remove reaction
+                val currentCount = updatedReactions[reactionType] ?: 0
+                if (currentCount > 0) {
+                    updatedReactions[reactionType] = currentCount - 1
+                    if (updatedReactions[reactionType] == 0) {
+                        updatedReactions.remove(reactionType)
+                    }
+                }
+            }
+            
+            val updatedPost = post.copy(
+                reactions = updatedReactions.ifEmpty { null },
+                userReaction = if (isAdding) reactionType else null
+            )
+            
+            currentList[postIndex] = updatedPost
+            submitList(currentList)
+        }
+    }
+
+    /**
+     * Revert a post's reaction state if the server operation failed
+     */
+    fun revertPostReaction(postId: String, originalPost: Post) {
+        val currentList = currentList.toMutableList()
+        val postIndex = currentList.indexOfFirst { it.id == postId }
+        
+        if (postIndex != -1) {
+            currentList[postIndex] = originalPost
+            submitList(currentList)
+        }
+    }
+
+    /**
+     * Handle reaction selection from external sources (e.g., reaction picker)
+     * This method provides optimistic UI updates with reversion on failure
+     */
+    fun handleReactionSelection(post: Post, reactionType: ReactionType, onResult: (Boolean) -> Unit) {
+        // Store original post state
+        val originalPost = post.copy()
+        
+        // Determine if we're adding or removing the reaction
+        val isAdding = post.userReaction != reactionType
+        
+        // Perform optimistic UI update
+        updatePostReactionOptimistically(post.id, reactionType, isAdding)
+        
+        // Notify callback with result handler
+        onReactionToggled?.invoke(post, reactionType) { success ->
+            if (!success) {
+                // Revert on failure
+                revertPostReaction(post.id, originalPost)
+            }
+            onResult(success)
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PostViewHolder {
@@ -56,10 +133,7 @@ class EnhancedPostsAdapter(
         private val postContent: TextView = itemView.findViewById(R.id.postContent)
         private val readMoreButton: TextView = itemView.findViewById(R.id.readMoreButton)
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
-        private val mediaContainer: ViewGroup = itemView.findViewById(R.id.mediaContainer)
-        private val mediaViewPager: ViewPager2 = itemView.findViewById(R.id.mediaViewPager)
-        private val mediaCountBadge: TextView = itemView.findViewById(R.id.mediaCountBadge)
-        private val pageIndicatorContainer: LinearLayout = itemView.findViewById(R.id.pageIndicatorContainer)
+        private val mediaGridView: MediaGridView = itemView.findViewById(R.id.mediaGridView)
         private val reactionSummaryContainer: ViewGroup = itemView.findViewById(R.id.reactionSummaryContainer)
         private val reactionSummary: View = itemView.findViewById(R.id.reactionSummary)
         private val reactionEmojis: TextView = itemView.findViewById(R.id.reactionEmojis)
@@ -78,20 +152,22 @@ class EnhancedPostsAdapter(
         fun bind(post: Post) {
             currentPost = post
 
-            // Bind author info
-            authorName.text = post.authorUid // TODO: Load actual username
+            // Bind author info with username from joined profile data
+            authorName.text = post.username ?: "Unknown User"
             postTimestamp.text = formatTimestamp(post.timestamp)
 
-            // Load avatar (placeholder for now)
-            Glide.with(context)
-                .load(R.drawable.avatar)
-                .circleCrop()
-                .into(authorAvatar)
+            // Load avatar using ImageLoader with retry logic
+            ImageLoader.loadImage(
+                context = context,
+                url = post.avatarUrl,
+                imageView = authorAvatar,
+                placeholder = R.drawable.avatar
+            )
 
             // Bind post content
             bindContent(post)
 
-            // Bind media (single image or carousel)
+            // Bind media using MediaGridView
             bindMedia(post)
 
             // Bind reactions
@@ -123,73 +199,62 @@ class EnhancedPostsAdapter(
         private fun bindMedia(post: Post) {
             val mediaItems = post.mediaItems
 
-            if (mediaItems != null && mediaItems.size > 1) {
-                // Multiple media items - use carousel
+            if (mediaItems != null && mediaItems.isNotEmpty()) {
+                // Use MediaGridView for all media (single or multiple)
                 postImage.visibility = View.GONE
-                mediaContainer.visibility = View.VISIBLE
+                mediaGridView.visibility = View.VISIBLE
 
-                val adapter = MediaCarouselAdapter(context, mediaItems)
-                mediaViewPager.adapter = adapter
+                // Set media items to the grid view
+                mediaGridView.setMediaItems(mediaItems)
 
-                // Setup page indicators
-                setupPageIndicators(mediaItems.size)
-
-                // Show media count badge
-                mediaCountBadge.visibility = View.VISIBLE
-                mediaCountBadge.text = "1/${mediaItems.size}"
-
-                // Update count badge when page changes
-                mediaViewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        mediaCountBadge.text = "${position + 1}/${mediaItems.size}"
-                        updatePageIndicators(position)
+                // Set up click listener to open full-screen viewer
+                mediaGridView.onMediaClickListener = object : MediaGridView.OnMediaClickListener {
+                    override fun onMediaClick(mediaItems: List<MediaItem>, position: Int) {
+                        openFullScreenViewer(mediaItems, position)
                     }
-                })
-
+                }
             } else if (!post.postImage.isNullOrEmpty()) {
-                // Single image
-                mediaContainer.visibility = View.GONE
+                // Legacy single image support
+                mediaGridView.visibility = View.GONE
                 postImage.visibility = View.VISIBLE
 
-                Glide.with(context)
-                    .load(post.postImage)
-                    .placeholder(R.drawable.default_image)
-                    .into(postImage)
+                ImageLoader.loadImage(
+                    context = context,
+                    url = post.postImage,
+                    imageView = postImage,
+                    placeholder = R.drawable.default_image
+                )
             } else {
                 // No media
                 postImage.visibility = View.GONE
-                mediaContainer.visibility = View.GONE
+                mediaGridView.visibility = View.GONE
             }
         }
 
-        private fun setupPageIndicators(count: Int) {
-            if (count <= 1) {
-                pageIndicatorContainer.visibility = View.GONE
+        private fun openFullScreenViewer(mediaItems: List<MediaItem>, position: Int) {
+            // Extract image URLs from media items (filter for images only)
+            val imageUrls = mediaItems.filter { it.type == MediaType.IMAGE }.map { it.url }
+            val thumbnailUrls = mediaItems
+                .filter { it.type == MediaType.IMAGE }
+                .mapNotNull { it.thumbnailUrl }
+                .takeIf { it.isNotEmpty() }
+            
+            // Calculate the adjusted position for images only
+            val imagePosition = mediaItems.take(position).count { it.type == MediaType.IMAGE }
+            
+            if (imageUrls.isEmpty()) {
+                // No images to display
                 return
             }
-
-            pageIndicatorContainer.visibility = View.VISIBLE
-            pageIndicatorContainer.removeAllViews()
-
-            for (i in 0 until count) {
-                val dot = View(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(16, 16).apply {
-                        marginEnd = 8
-                    }
-                    setBackgroundResource(if (i == 0) R.drawable.page_indicator_dot_selected else R.drawable.page_indicator_dot)
-                    tag = i
-                }
-                pageIndicatorContainer.addView(dot)
-            }
-        }
-
-        private fun updatePageIndicators(position: Int) {
-            for (i in 0 until pageIndicatorContainer.childCount) {
-                val dot = pageIndicatorContainer.getChildAt(i)
-                dot.setBackgroundResource(
-                    if (i == position) R.drawable.page_indicator_dot_selected else R.drawable.page_indicator_dot
-                )
-            }
+            
+            // Launch ImageGalleryActivity with all media URLs and starting position
+            val intent = com.synapse.social.studioasinc.chat.ImageGalleryActivity.createIntent(
+                context = itemView.context,
+                imageUrls = imageUrls,
+                thumbnailUrls = thumbnailUrls,
+                initialPosition = imagePosition
+            )
+            itemView.context.startActivity(intent)
         }
 
         private fun bindReactions(post: Post) {
@@ -250,15 +315,22 @@ class EnhancedPostsAdapter(
             // Post click
             postCard.setOnClickListener { onPostClicked?.invoke(post) }
 
-            // Like button - single tap
+            // Like button - single tap with optimistic UI update
             likeButton.setOnClickListener {
-                onLikeClicked?.invoke(post)
+                handleReactionClick(post, ReactionType.LIKE)
             }
 
             // Like button - long press for reaction picker
             likeButton.setOnLongClickListener {
+                // Show reaction picker and handle selection with optimistic updates
                 onReactionPickerRequested?.invoke(post, likeButton)
                 true
+            }
+            
+            // Handle reaction selection from picker
+            onReactionSelected?.let { callback ->
+                // This will be called when user selects a reaction from the picker
+                // The picker should call handleReactionClick with the selected reaction
             }
 
             // Reaction summary click - show who reacted
@@ -279,6 +351,60 @@ class EnhancedPostsAdapter(
             // Options button
             postOptions.setOnClickListener {
                 // Show post options menu
+            }
+        }
+
+        private fun handleReactionClick(post: Post, reactionType: ReactionType) {
+            // Store original post state for potential reversion
+            val originalPost = post.copy()
+            
+            // Determine if we're adding or removing the reaction
+            val isAdding = post.userReaction != reactionType
+            
+            // Perform optimistic UI update immediately
+            val updatedReactions = post.reactions?.toMutableMap() ?: mutableMapOf()
+            
+            if (post.userReaction != null) {
+                // User already has a reaction - remove it first
+                val oldReactionType = post.userReaction!!
+                val oldCount = updatedReactions[oldReactionType] ?: 0
+                if (oldCount > 0) {
+                    updatedReactions[oldReactionType] = oldCount - 1
+                    if (updatedReactions[oldReactionType] == 0) {
+                        updatedReactions.remove(oldReactionType)
+                    }
+                }
+            }
+            
+            if (isAdding) {
+                // Add new reaction
+                updatedReactions[reactionType] = (updatedReactions[reactionType] ?: 0) + 1
+            }
+            
+            // Update the post object
+            val updatedPost = post.copy(
+                reactions = updatedReactions.ifEmpty { null },
+                userReaction = if (isAdding) reactionType else null
+            )
+            
+            // Update current post reference
+            currentPost = updatedPost
+            
+            // Rebind the UI immediately with optimistic data
+            bindReactions(updatedPost)
+            
+            // Notify the callback with success/failure handler
+            onReactionToggled?.invoke(post, reactionType) { success ->
+                if (!success) {
+                    // Revert UI on failure
+                    currentPost = originalPost
+                    bindReactions(originalPost)
+                }
+            }
+            
+            // Fallback to old callback if new one not provided
+            if (onReactionToggled == null) {
+                onLikeClicked?.invoke(post)
             }
         }
 

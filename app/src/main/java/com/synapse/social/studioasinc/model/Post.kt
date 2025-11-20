@@ -43,7 +43,14 @@ data class Post(
     @kotlinx.serialization.Transient
     var reactions: Map<ReactionType, Int>? = null,
     @kotlinx.serialization.Transient
-    var userReaction: ReactionType? = null
+    var userReaction: ReactionType? = null,
+    // Joined profile data
+    @kotlinx.serialization.Transient
+    var username: String? = null,
+    @kotlinx.serialization.Transient
+    var avatarUrl: String? = null,
+    @kotlinx.serialization.Transient
+    var isVerified: Boolean = false
 ) {
     /**
      * Determines post type based on media content
