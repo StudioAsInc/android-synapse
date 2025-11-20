@@ -22,53 +22,38 @@ object SupabaseClient {
      * Automatically configures all required modules and handles configuration errors gracefully.
      */
     val client by lazy {
+        // Check if credentials are properly configured
+        if (BuildConfig.SUPABASE_URL.isBlank() || 
+            BuildConfig.SUPABASE_URL == "https://your-project.supabase.co" ||
+            BuildConfig.SUPABASE_ANON_KEY.isBlank() || 
+            BuildConfig.SUPABASE_ANON_KEY == "your-anon-key-here") {
+            
+            Log.e(TAG, "CRITICAL: Supabase credentials not configured!")
+            Log.e(TAG, "Please update gradle.properties with your actual Supabase URL and key")
+            
+            // Fail fast - don't create dummy client that silently fails
+            throw IllegalStateException(
+                "Supabase not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in gradle.properties"
+            )
+        }
+        
         try {
-            // Check if credentials are properly configured
-            if (BuildConfig.SUPABASE_URL.isBlank() || 
-                BuildConfig.SUPABASE_URL == "https://your-project.supabase.co" ||
-                BuildConfig.SUPABASE_ANON_KEY.isBlank() || 
-                BuildConfig.SUPABASE_ANON_KEY == "your-anon-key-here") {
-                
-                Log.e(TAG, "Supabase credentials not configured properly!")
-                Log.e(TAG, "Please update gradle.properties with your actual Supabase URL and key")
-                
-                // Create a dummy client with placeholder values to prevent crashes
-                createSupabaseClient(
-                    supabaseUrl = "https://placeholder.supabase.co",
-                    supabaseKey = "placeholder-key"
-                ) {
-                    install(Auth)
-                    install(Postgrest)
-                    install(Realtime)
-                    install(Storage)
-                    httpEngine = OkHttp.create()
-                }
-            } else {
-                createSupabaseClient(
-                    supabaseUrl = BuildConfig.SUPABASE_URL,
-                    supabaseKey = BuildConfig.SUPABASE_ANON_KEY
-                ) {
-                    install(Auth)
-                    install(Postgrest)
-                    install(Realtime)
-                    install(Storage) {
-                        customUrl = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_URL
-                    }
-                    httpEngine = OkHttp.create()
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Supabase client: ${e.message}", e)
-            // Return a dummy client to prevent app crashes
             createSupabaseClient(
-                supabaseUrl = "https://placeholder.supabase.co",
-                supabaseKey = "placeholder-key"
+                supabaseUrl = BuildConfig.SUPABASE_URL,
+                supabaseKey = BuildConfig.SUPABASE_ANON_KEY
             ) {
                 install(Auth)
                 install(Postgrest)
                 install(Realtime)
+                install(Storage) {
+                    customUrl = BuildConfig.SUPABASE_SYNAPSE_S3_ENDPOINT_URL
+                }
                 httpEngine = OkHttp.create()
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize Supabase client: ${e.message}", e)
+            // Fail fast instead of creating dummy client
+            throw IllegalStateException("Failed to initialize Supabase client", e)
         }
     }
     

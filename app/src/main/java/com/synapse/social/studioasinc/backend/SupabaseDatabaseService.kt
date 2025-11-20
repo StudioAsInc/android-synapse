@@ -374,9 +374,12 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 android.util.Log.d(TAG, "Searching posts with query: $query")
                 
+                // Sanitize input to prevent SQL injection
+                val sanitizedQuery = sanitizeSearchQuery(query)
+                
                 val result = client.from("posts").select(columns = Columns.raw("*")) {
                     filter {
-                        ilike("post_text", "%$query%")  // Changed from 'content' to 'post_text'
+                        ilike("post_text", "%$sanitizedQuery%")
                     }
                     limit(limit.toLong())
                     order(column = "timestamp", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
@@ -408,11 +411,14 @@ class SupabaseDatabaseService : IDatabaseService {
             try {
                 android.util.Log.d(TAG, "Searching users with query: $query")
                 
+                // Sanitize input to prevent SQL injection
+                val sanitizedQuery = sanitizeSearchQuery(query)
+                
                 val result = client.from("users").select(columns = Columns.raw("*")) {
                     filter {
                         or {
-                            ilike("username", "%$query%")
-                            ilike("nickname", "%$query%")
+                            ilike("username", "%$sanitizedQuery%")
+                            ilike("nickname", "%$sanitizedQuery%")
                         }
                     }
                     limit(limit.toLong())
@@ -431,5 +437,24 @@ class SupabaseDatabaseService : IDatabaseService {
                 Result.failure(e)
             }
         }
+    }
+    
+    /**
+     * Sanitize search query to prevent SQL injection
+     * Escapes special characters that could be used in SQL injection attacks
+     */
+    private fun sanitizeSearchQuery(query: String): String {
+        return query
+            .replace("\\", "\\\\")  // Escape backslashes first
+            .replace("%", "\\%")     // Escape wildcards
+            .replace("_", "\\_")     // Escape single char wildcard
+            .replace("'", "''")      // Escape single quotes
+            .replace("\"", "\\\"")   // Escape double quotes
+            .replace(";", "")        // Remove semicolons
+            .replace("--", "")       // Remove SQL comments
+            .replace("/*", "")       // Remove block comment start
+            .replace("*/", "")       // Remove block comment end
+            .trim()
+            .take(100)               // Limit query length to prevent DoS
     }
 }

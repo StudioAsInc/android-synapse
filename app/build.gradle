@@ -55,7 +55,7 @@ android {
     defaultConfig {
         applicationId = "com.synapse.social.studioasinc"
         minSdk = 26
-        targetSdk = 32 // Keep 32
+        targetSdk = 34 // Updated to Android 14 for security and Play Store compliance
         versionCode = 15
         versionName = "1.0.0-alpha07"
         multiDexEnabled = true
