@@ -182,12 +182,12 @@ class PostRepository {
             // Calculate offset as page * pageSize
             val offset = page * pageSize
             
-            // Use single query with joins for profiles and post_media tables
+            // Use single query with joins for users (formerly profiles) and post_media tables
             val response = client.from("posts")
                 .select(
                     columns = Columns.raw("""
                         *,
-                        profiles!inner(username, avatar_url, verify),
+                        users!inner(username, profile_image_url, verify),
                         post_media!left(id, url, type, position, created_at)
                     """.trimIndent())
                 ) {
@@ -203,10 +203,10 @@ class PostRepository {
                     val post = parsePostFromHashMap(postData)
                     
                     // Extract profile data from join
-                    val profileData = postData["profiles"] as? Map<*, *>
+                    val profileData = postData["users"] as? Map<*, *>
                     if (profileData != null) {
                         post.username = profileData["username"] as? String
-                        post.avatarUrl = profileData["avatar_url"] as? String
+                        post.avatarUrl = profileData["profile_image_url"] as? String
                         post.isVerified = profileData["verify"] as? Boolean ?: false
                         
                         // Cache profile data
