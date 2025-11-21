@@ -6,18 +6,10 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 async def main():
-    # Load configuration from environment variables
-    supabase_url = os.environ.get("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_ACCESS_TOKEN")
-    project_id = os.environ.get("PROJECT_ID")
-
-    if not supabase_url or not supabase_key:
-        print("Error: SUPABASE_URL and SUPABASE_ACCESS_TOKEN environment variables must be set.")
-        sys.exit(1)
-
-    if not project_id:
-        print("Error: PROJECT_ID environment variable must be set.")
-        sys.exit(1)
+    # Configuration (Hardcoded as requested)
+    supabase_url = "https://apqvyyphlrtmuyjnzmuq.supabase.co"
+    supabase_key = "sbp_3151110037cef4d5d58d56e48bd7e565705ef243"
+    project_id = "apqvyyphlrtmuyjnzmuq"
 
     # Define server parameters
     server_params = StdioServerParameters(
@@ -37,10 +29,6 @@ async def main():
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-
-                # List tools to verify connection
-                # tools = await session.list_tools()
-                # print(f"Connected to server. Found {len(tools.tools)} tools.")
 
                 # Call list_tables tool
                 print("\nCalling list_tables tool...")
@@ -69,9 +57,6 @@ async def main():
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        # Print traceback if needed
-        # import traceback
-        # traceback.print_exc()
 
 if __name__ == "__main__":
     asyncio.run(main())
