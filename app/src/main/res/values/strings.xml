@@ -570,8 +570,6 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="hide_like_count_desc">Others won\'t see how many likes</string>
     <string name="hide_comment_count">Hide comment count</string>
     <string name="hide_comment_count_desc">Others won\'t see how many comments</string>
-    <string name="disable_comments">Turn off comments</string>
-    <string name="disable_comments_desc">No one can comment on this post</string>
     <string name="poll_question_hint">Ask a question…</string>
     <string name="poll_options">Options</string>
     <string name="add_option">Add option</string>
