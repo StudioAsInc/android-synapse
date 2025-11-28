@@ -207,10 +207,8 @@ class CreatePostActivity : AppCompatActivity() {
     private fun loadUserInfo() {
         lifecycleScope.launch {
             authService.getCurrentUser()?.let { user ->
-                binding.authorName.text = user.displayName ?: user.username ?: "You"
-                user.avatar?.let { url ->
-                    Glide.with(this@CreatePostActivity).load(url).circleCrop().into(binding.authorAvatar)
-                }
+                binding.authorName.text = user.email ?: "You"
+                // TODO: Load user profile image from users table
             }
         }
     }
@@ -483,7 +481,7 @@ class CreatePostActivity : AppCompatActivity() {
             else -> "TEXT"
         }
 
-        var post = Post(
+        val post = Post(
             id = editPostId ?: UUID.randomUUID().toString(),
             key = postKey,
             authorUid = currentUser.id,
