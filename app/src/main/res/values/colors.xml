@@ -1,4 +1,7 @@
 <resources>
+    <!-- YouTube -->
+    <color name="youtube_red">#FF0000</color>
+    
     <color name="md_theme_primary">#4C662B</color>
     <color name="md_theme_onPrimary">#FFFFFF</color>
     <color name="md_theme_primaryContainer">#CDEDA3</color>

@@ -341,16 +341,15 @@ class CreatePostActivity : AppCompatActivity() {
     // ==================== YOUTUBE ====================
 
     private fun showYoutubeDialog() {
-        val input = EditText(this).apply {
-            hint = "https://youtube.com/watch?v=..."
-            setPadding(48, 32, 48, 32)
-        }
+        val dialogView = layoutInflater.inflate(R.layout.dialog_youtube_input, null)
+        val inputLayout = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.youtubeInputLayout)
+        val input = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.youtubeInput)
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Add YouTube Video")
-            .setView(input)
-            .setPositiveButton("Add") { _, _ ->
-                val url = input.text.toString().trim()
+        MaterialAlertDialogBuilder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+            .setTitle(getString(R.string.add_youtube))
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.add_option).replace("option", "")) { _, _ ->
+                val url = input?.text.toString().trim()
                 if (isValidYoutubeUrl(url)) {
                     youtubeUrl = url
                     showYoutubePreview()
@@ -359,7 +358,7 @@ class CreatePostActivity : AppCompatActivity() {
                     Toast.makeText(this, "Invalid YouTube URL", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -385,22 +384,20 @@ class CreatePostActivity : AppCompatActivity() {
     // ==================== LOCATION ====================
 
     private fun showLocationPicker() {
-        val input = EditText(this).apply {
-            hint = "Enter location name"
-            setPadding(48, 32, 48, 32)
-        }
+        val dialogView = layoutInflater.inflate(R.layout.dialog_location_input, null)
+        val input = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.locationInput)
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Add Location")
-            .setView(input)
-            .setPositiveButton("Add") { _, _ ->
-                val name = input.text.toString().trim()
+        MaterialAlertDialogBuilder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+            .setTitle(getString(R.string.add_location))
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.add_option).replace("option", "").trim()) { _, _ ->
+                val name = input?.text.toString().trim()
                 if (name.isNotEmpty()) {
                     locationData = LocationData(name)
                     showLocationPreview()
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -436,7 +433,7 @@ class CreatePostActivity : AppCompatActivity() {
     // ==================== SETTINGS ====================
 
     private fun showSettingsSheet() {
-        val sheet = BottomSheetDialog(this)
+        val sheet = BottomSheetDialog(this, com.google.android.material.R.style.ThemeOverlay_Material3_BottomSheetDialog)
         val view = layoutInflater.inflate(R.layout.sheet_post_settings, null)
 
         view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.hideViewsSwitch)?.apply {
@@ -457,6 +454,10 @@ class CreatePostActivity : AppCompatActivity() {
         }
 
         sheet.setContentView(view)
+        sheet.behavior.apply {
+            state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+            skipCollapsed = true
+        }
         sheet.show()
     }
 
