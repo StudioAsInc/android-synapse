@@ -15,8 +15,8 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
-import com.synapse.social.studioasinc.data.repository.LikeRepository
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.ReactionType
 import kotlinx.coroutines.launch
 import android.widget.LinearLayout
 
@@ -26,7 +26,6 @@ class PostAdapter(
     private val authRepository: AuthRepository = AuthRepository(),
     private val postRepository: PostRepository = PostRepository(),
     private val userRepository: UserRepository = UserRepository(),
-    private val likeRepository: LikeRepository = LikeRepository(),
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
     private val onCommentClicked: ((Post) -> Unit)? = null,
     private val onShareClicked: ((Post) -> Unit)? = null
@@ -223,18 +222,18 @@ class PostAdapter(
                     if (authRepository.isUserLoggedIn()) {
                         val currentUserUid = authRepository.getCurrentUserUid()
                         if (currentUserUid != null) {
-                            // Check if user has liked this post
-                            likeRepository.isLiked(currentUserUid, post.id, "post")
-                                .onSuccess { isLiked ->
-                                    updateLikeIcon(isLiked)
+                            // Check if user has reacted to this post
+                            postRepository.getUserReaction(post.id, currentUserUid)
+                                .onSuccess { reaction ->
+                                    updateLikeIcon(reaction != null)
                                 }
                         }
                     }
                     
-                    // Get like count (always show this regardless of login status)
-                    likeRepository.getLikeCount(post.id, "post")
-                        .onSuccess { count ->
-                            likeCount.text = count.toString()
+                    // Get reaction count (always show this regardless of login status)
+                    postRepository.getReactionSummary(post.id)
+                        .onSuccess { summary ->
+                            likeCount.text = summary.values.sum().toString()
                         }
                 } catch (e: Exception) {
                     android.util.Log.e("PostAdapter", "Failed to load like status", e)
@@ -248,51 +247,37 @@ class PostAdapter(
                     android.util.Log.d("PostAdapter", "=== LIKE BUTTON CLICKED ===")
                     android.util.Log.d("PostAdapter", "Post ID: ${post.id}")
                     
-                    // Check if user is logged in first using the synchronous method
                     val isLoggedIn = authRepository.isUserLoggedIn()
-                    android.util.Log.d("PostAdapter", "User logged in: $isLoggedIn")
-                    
                     if (!isLoggedIn) {
-                        android.util.Log.w("PostAdapter", "User not logged in, showing login prompt")
                         android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
                     }
                     
-                    // Get the user UID (this is a suspend function)
-                    android.util.Log.d("PostAdapter", "Fetching current user UID...")
                     val currentUserUid = authRepository.getCurrentUserUid()
-                    android.util.Log.d("PostAdapter", "Current user UID: $currentUserUid")
-                    
                     if (currentUserUid == null) {
-                        android.util.Log.e("PostAdapter", "Failed to get user UID - user may not exist in database")
-                        android.widget.Toast.makeText(context, "Failed to get user information. Please try logging in again.", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, "Failed to get user information", android.widget.Toast.LENGTH_LONG).show()
                         return@launch
                     }
                     
-                    // Toggle like
-                    android.util.Log.d("PostAdapter", "Toggling like for user: $currentUserUid, post: ${post.id}")
-                    likeRepository.toggleLike(currentUserUid, post.id, "post")
-                        .onSuccess { isLiked ->
-                            android.util.Log.d("PostAdapter", "Like toggled successfully. Is liked: $isLiked")
-                            updateLikeIcon(isLiked)
+                    // Toggle reaction using PostRepository
+                    postRepository.toggleReaction(post.id, currentUserUid, ReactionType.LIKE)
+                        .onSuccess {
+                            android.util.Log.d("PostAdapter", "Reaction toggled successfully")
+                            // Refresh like status
+                            postRepository.getUserReaction(post.id, currentUserUid)
+                                .onSuccess { reaction -> updateLikeIcon(reaction != null) }
                             
-                            // Update like count
-                            likeRepository.getLikeCount(post.id, "post")
-                                .onSuccess { count ->
-                                    android.util.Log.d("PostAdapter", "Like count updated: $count")
-                                    likeCount.text = count.toString()
-                                }
-                                .onFailure { error ->
-                                    android.util.Log.e("PostAdapter", "Failed to get like count: ${error.message}", error)
-                                }
+                            // Update reaction count
+                            postRepository.getReactionSummary(post.id)
+                                .onSuccess { summary -> likeCount.text = summary.values.sum().toString() }
                         }
                         .onFailure { error ->
-                            android.util.Log.e("PostAdapter", "Failed to toggle like: ${error.message}", error)
+                            android.util.Log.e("PostAdapter", "Failed to toggle reaction: ${error.message}", error)
                             android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
                         }
                 } catch (e: Exception) {
                     android.util.Log.e("PostAdapter", "Error handling like click: ${e.message}", e)
-                    android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, "An error occurred", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }

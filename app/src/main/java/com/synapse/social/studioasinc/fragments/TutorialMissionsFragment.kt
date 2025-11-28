@@ -8,7 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.synapse.social.studioasinc.adapters.TutorialMissionsAdapter
+import com.synapse.social.studioasinc.adapter.TutorialMissionsAdapter
 import com.synapse.social.studioasinc.domain.TutorialManager
 import com.synapse.social.studioasinc.model.MissionCategory
 import com.synapse.social.studioasinc.model.TutorialMission

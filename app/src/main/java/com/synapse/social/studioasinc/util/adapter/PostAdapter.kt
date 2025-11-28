@@ -14,8 +14,8 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
-import com.synapse.social.studioasinc.data.repository.LikeRepository
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.ReactionType
 import kotlinx.coroutines.launch
 import android.widget.LinearLayout
 
@@ -25,7 +25,6 @@ class PostAdapter(
     private val authRepository: AuthRepository = AuthRepository(),
     private val postRepository: PostRepository = PostRepository(),
     private val userRepository: UserRepository = UserRepository(),
-    private val likeRepository: LikeRepository = LikeRepository(),
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
     private val onCommentClicked: ((Post) -> Unit)? = null,
     private val onShareClicked: ((Post) -> Unit)? = null
@@ -64,74 +63,43 @@ class PostAdapter(
         private val moreButton: ImageView = itemView.findViewById(R.id.postOptions)
 
         fun bind(post: Post) {
-            // Set post content
             postContent.text = post.postText ?: ""
             
-            // Load post image if available
             post.postImage?.let { imageUrl ->
                 postImage.visibility = View.VISIBLE
-                Glide.with(context)
-                    .load(imageUrl)
-                    .into(postImage)
+                Glide.with(context).load(imageUrl).into(postImage)
             } ?: run {
                 postImage.visibility = View.GONE
             }
 
-            // Load author information
             lifecycleOwner.lifecycleScope.launch {
                 userRepository.getUserById(post.authorUid)
-                    .onSuccess { user ->
-                        authorName.text = user?.username ?: "Unknown User"
-                    }
-                    .onFailure {
-                        authorName.text = "Unknown User"
-                    }
+                    .onSuccess { user -> authorName.text = user?.username ?: "Unknown User" }
+                    .onFailure { authorName.text = "Unknown User" }
             }
             
-            // Load like status and count
             loadLikeStatus(post)
             
-            // Set up click listeners
-            likeButton.setOnClickListener {
-                handleLikeClick(post)
-            }
-            
-            commentButton.setOnClickListener {
-                onCommentClicked?.invoke(post)
-            }
-            
-            shareButton.setOnClickListener {
-                onShareClicked?.invoke(post)
-            }
-            
-            moreButton.setOnClickListener {
-                onMoreOptionsClicked?.invoke(post)
-            }
-            
-            // Set comment count
+            likeButton.setOnClickListener { handleLikeClick(post) }
+            commentButton.setOnClickListener { onCommentClicked?.invoke(post) }
+            shareButton.setOnClickListener { onShareClicked?.invoke(post) }
+            moreButton.setOnClickListener { onMoreOptionsClicked?.invoke(post) }
             commentCount.text = post.commentsCount.toString()
         }
         
         private fun loadLikeStatus(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
-                    // Check if user is logged in first
                     if (authRepository.isUserLoggedIn()) {
                         val currentUserId = authRepository.getCurrentUserId()
                         if (currentUserId != null) {
-                            // Check if user has liked this post
-                            likeRepository.isLiked(currentUserId, post.id, "post")
-                                .onSuccess { isLiked ->
-                                    updateLikeIcon(isLiked)
-                                }
+                            postRepository.getUserReaction(post.id, currentUserId)
+                                .onSuccess { reaction -> updateLikeIcon(reaction != null) }
                         }
                     }
                     
-                    // Get like count (always show this regardless of login status)
-                    likeRepository.getLikeCount(post.id, "post")
-                        .onSuccess { count ->
-                            likeCount.text = count.toString()
-                        }
+                    postRepository.getReactionSummary(post.id)
+                        .onSuccess { summary -> likeCount.text = summary.values.sum().toString() }
                 } catch (e: Exception) {
                     android.util.Log.e("PostAdapter", "Failed to load like status", e)
                 }
@@ -141,7 +109,6 @@ class PostAdapter(
         private fun handleLikeClick(post: Post) {
             lifecycleOwner.lifecycleScope.launch {
                 try {
-                    // Check if user is logged in first using the synchronous method
                     if (!authRepository.isUserLoggedIn()) {
                         android.widget.Toast.makeText(context, "Please login to like posts", android.widget.Toast.LENGTH_SHORT).show()
                         return@launch
@@ -153,34 +120,30 @@ class PostAdapter(
                         return@launch
                     }
                     
-                    // Toggle like
-                    likeRepository.toggleLike(currentUserId, post.id, "post")
-                        .onSuccess { isLiked ->
-                            updateLikeIcon(isLiked)
-                            
-                            // Update like count
-                            likeRepository.getLikeCount(post.id, "post")
-                                .onSuccess { count ->
-                                    likeCount.text = count.toString()
-                                }
+                    postRepository.toggleReaction(post.id, currentUserId, ReactionType.LIKE)
+                        .onSuccess {
+                            postRepository.getUserReaction(post.id, currentUserId)
+                                .onSuccess { reaction -> updateLikeIcon(reaction != null) }
+                            postRepository.getReactionSummary(post.id)
+                                .onSuccess { summary -> likeCount.text = summary.values.sum().toString() }
                         }
                         .onFailure { error ->
-                            android.util.Log.e("PostAdapter", "Failed to toggle like", error)
+                            android.util.Log.e("PostAdapter", "Failed to toggle reaction", error)
                             android.widget.Toast.makeText(context, "Failed to like post: ${error.message}", android.widget.Toast.LENGTH_SHORT).show()
                         }
                 } catch (e: Exception) {
                     android.util.Log.e("PostAdapter", "Error handling like click", e)
-                    android.widget.Toast.makeText(context, "An error occurred while liking the post", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, "An error occurred", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }
         
         private fun updateLikeIcon(isLiked: Boolean) {
             if (isLiked) {
-                likeIcon.setImageResource(R.drawable.post_icons_1_2) // Filled heart
+                likeIcon.setImageResource(R.drawable.post_icons_1_2)
                 likeIcon.setColorFilter(context.getColor(android.R.color.holo_red_light))
             } else {
-                likeIcon.setImageResource(R.drawable.post_icons_1_1) // Outline heart
+                likeIcon.setImageResource(R.drawable.post_icons_1_1)
                 likeIcon.clearColorFilter()
             }
         }

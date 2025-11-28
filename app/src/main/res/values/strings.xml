@@ -555,4 +555,26 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="replying_to">Replying to %s</string>
     <string name="reply_media_preview">Reply media preview</string>
 
+    <!-- Create Post -->
+    <string name="post">Post</string>
+    <string name="public_visibility">Public</string>
+    <string name="add_media">Add photo or video</string>
+    <string name="add_poll">Add poll</string>
+    <string name="add_youtube">Add YouTube video</string>
+    <string name="add_location">Add location</string>
+    <string name="remove_all">Remove all</string>
+    <string name="poll">Poll</string>
+    <string name="post_settings_description">Control how others interact with your post</string>
+    <string name="hide_view_count">Hide view count</string>
+    <string name="hide_view_count_desc">Others won\'t see how many views</string>
+    <string name="hide_like_count_desc">Others won\'t see how many likes</string>
+    <string name="hide_comment_count">Hide comment count</string>
+    <string name="hide_comment_count_desc">Others won\'t see how many comments</string>
+    <string name="poll_question_hint">Ask a question…</string>
+    <string name="poll_options">Options</string>
+    <string name="add_option">Add option</string>
+    <string name="create_poll">Create Poll</string>
+    <string name="youtube_url_hint">https://youtube.com/watch?v=…</string>
+    <string name="location_name_hint">Enter location name</string>
+
 </resources>
