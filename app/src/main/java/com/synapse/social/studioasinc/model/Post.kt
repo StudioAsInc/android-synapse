@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * Post model aligned with Supabase schema
@@ -51,6 +52,7 @@ data class Post(
     @SerialName("is_encrypted")
     val isEncrypted: Boolean? = null,
     @SerialName("encrypted_content")
+    @Transient
     val encryptedContent: Map<String, String>? = null,
     val nonce: String? = null,
     @SerialName("encryption_key_id")
@@ -92,15 +94,15 @@ data class Post(
     @SerialName("youtube_url")
     val youtubeUrl: String? = null,
     // Transient fields (populated from joins/reactions)
-    @kotlinx.serialization.Transient
+    @Transient
     var reactions: Map<ReactionType, Int>? = null,
-    @kotlinx.serialization.Transient
+    @Transient
     var userReaction: ReactionType? = null,
-    @kotlinx.serialization.Transient
+    @Transient
     var username: String? = null,
-    @kotlinx.serialization.Transient
+    @Transient
     var avatarUrl: String? = null,
-    @kotlinx.serialization.Transient
+    @Transient
     var isVerified: Boolean = false
 ) {
     fun determinePostType() {
