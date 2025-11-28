@@ -1,426 +1,654 @@
 package com.synapse.social.studioasinc
 
 import android.Manifest
-import android.app.Activity
-import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.LayoutInflater
 import android.view.View
-import android.widget.*
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.materialswitch.MaterialSwitch
-// Using direct Supabase services - NO Firebase
-import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
-import com.synapse.social.studioasinc.backend.User
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
+import androidx.recyclerview.widget.GridLayoutManager
+import com.bumptech.glide.Glide
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
 import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
+import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.databinding.ActivityCreatePostBinding
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
-
-import com.synapse.social.studioasinc.util.MediaUploadManager
-import com.synapse.social.studioasinc.util.UserMention
 import com.synapse.social.studioasinc.util.FileUtil
-import androidx.lifecycle.lifecycleScope
+import com.synapse.social.studioasinc.util.MediaUploadManager
 import kotlinx.coroutines.launch
-import java.util.*
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.*
 
 class CreatePostActivity : AppCompatActivity() {
 
-    // UI Components
-    private lateinit var toolbar: Toolbar
-    private lateinit var backButton: ImageView
-    private lateinit var publishButton: Button
-    private lateinit var postDescriptionEditText: EditText
-    private lateinit var selectedMediaRecyclerView: RecyclerView
-    private lateinit var addMediaButton: LinearLayout
-    private lateinit var addPhotoIcon: ImageView
-    private lateinit var addVideoIcon: ImageView
-    private lateinit var postSettingsLayout: LinearLayout
-    private lateinit var hideViewsCountSwitch: MaterialSwitch
-    private lateinit var hideLikeCountSwitch: MaterialSwitch
-    private lateinit var hideCommentsCountSwitch: MaterialSwitch
-    private lateinit var disableCommentsSwitch: MaterialSwitch
-    private lateinit var postVisibilitySpinner: Spinner
-
-    // Data
-    private val selectedMediaItems = mutableListOf<MediaItem>()
-    private lateinit var selectedMediaAdapter: SelectedMediaAdapter
-    private var progressDialog: androidx.appcompat.app.AlertDialog? = null
-    private var progressBar: ProgressBar? = null
-    private var progressPercentage: TextView? = null
-    
-    // Supabase services
+    private lateinit var binding: ActivityCreatePostBinding
     private val authService = SupabaseAuthenticationService()
-    private val databaseService = SupabaseDatabaseService()
-    
-    // Media selection
-    private val selectImagesLauncher = registerForActivityResult(
-        ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        handleSelectedImages(uris)
-    }
-    
-    private val selectVideoLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { handleSelectedVideo(it) }
-    }
-    
+    private val postRepository = PostRepository()
+    private lateinit var prefs: SharedPreferences
+
+    // Media
+    private val selectedMedia = mutableListOf<MediaItem>()
+    private lateinit var mediaAdapter: SelectedMediaAdapter
+
+    // Post data
+    private var postVisibility = "public"
+    private var pollData: PollData? = null
+    private var locationData: LocationData? = null
+    private var youtubeUrl: String? = null
+    private val mentions = mutableListOf<String>()
+    private val hashtags = mutableListOf<String>()
+
+    // Settings
+    private var hideViewsCount = false
+    private var hideLikeCount = false
+    private var hideCommentsCount = false
+    private var disableComments = false
+
+    // Edit mode
+    private var editPostId: String? = null
+
+    data class PollData(
+        val question: String,
+        val options: List<String>,
+        val durationHours: Int
+    )
+
+    data class LocationData(
+        val name: String,
+        val address: String? = null,
+        val latitude: Double? = null,
+        val longitude: Double? = null
+    )
+
     companion object {
-        private const val MAX_IMAGES = 10
-        private const val MAX_VIDEOS = 1
-        private const val PERMISSION_REQUEST_CODE = 1000
+        private const val MAX_CHARS = 500
+        private const val MAX_MEDIA = 10
+        private const val MAX_POLL_OPTIONS = 4
+        private const val DRAFT_KEY = "post_draft"
+    }
+
+    private val mediaLauncher = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        handleMediaSelection(uris)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_create_post_multi)
-        
-        initialize()
-        initializeLogic()
+        binding = ActivityCreatePostBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        prefs = getSharedPreferences("synapse_prefs", MODE_PRIVATE)
+
+        setupToolbar()
+        setupMediaRecycler()
+        setupTextInput()
+        setupActionButtons()
+        loadUserInfo()
+        restoreDraft()
+
+        // Check for edit mode
+        intent.getStringExtra("edit_post_id")?.let { loadPostForEdit(it) }
     }
 
-    private fun initialize() {
-        // Find views
-        toolbar = findViewById(R.id.toolbar)
-        backButton = findViewById(R.id.backButton)
-        publishButton = findViewById(R.id.publishButton)
-        postDescriptionEditText = findViewById(R.id.postDescriptionEditText)
-        selectedMediaRecyclerView = findViewById(R.id.selectedMediaRecyclerView)
-        addMediaButton = findViewById(R.id.addMediaButton)
-        addPhotoIcon = findViewById(R.id.addPhotoIcon)
-        addVideoIcon = findViewById(R.id.addVideoIcon)
-        postSettingsLayout = findViewById(R.id.postSettingsLayout)
-        hideViewsCountSwitch = findViewById(R.id.hideViewsCountSwitch)
-        hideLikeCountSwitch = findViewById(R.id.hideLikeCountSwitch)
-        hideCommentsCountSwitch = findViewById(R.id.hideCommentsCountSwitch)
-        disableCommentsSwitch = findViewById(R.id.disableCommentsSwitch)
-        postVisibilitySpinner = findViewById(R.id.postVisibilitySpinner)
-        
-        // Setup toolbar
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
-        
-        // Setup RecyclerView
-        selectedMediaAdapter = SelectedMediaAdapter(selectedMediaItems) { position ->
-            removeMedia(position)
+    private fun setupToolbar() {
+        binding.toolbar.setNavigationOnClickListener { confirmExit() }
+        binding.postButton.setOnClickListener { submitPost() }
+    }
+
+    private fun setupMediaRecycler() {
+        mediaAdapter = SelectedMediaAdapter(selectedMedia) { position ->
+            selectedMedia.removeAt(position)
+            mediaAdapter.notifyItemRemoved(position)
+            updateMediaPreview()
+            updatePostButtonState()
         }
-        selectedMediaRecyclerView.apply {
+        binding.mediaRecyclerView.apply {
             layoutManager = GridLayoutManager(this@CreatePostActivity, 3)
-            adapter = selectedMediaAdapter
+            adapter = mediaAdapter
         }
-        
-        // Setup visibility spinner
-        val visibilityOptions = arrayOf("Public", "Private")
-        postVisibilitySpinner.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            visibilityOptions
-        )
-        
-        // Setup click listeners
-        backButton.setOnClickListener { finish() }
-        publishButton.setOnClickListener { createPost() }
-        addPhotoIcon.setOnClickListener { selectImages() }
-        addVideoIcon.setOnClickListener { selectVideo() }
-
-        val userMention = UserMention(postDescriptionEditText)
-        postDescriptionEditText.addTextChangedListener(userMention)
-        
-        // Initially hide media recycler if empty
-        updateMediaVisibility()
     }
 
-    private fun initializeLogic() {
-        // Check if we have media from intent
-        intent.getStringExtra("path")?.let { path ->
-            val type = intent.getStringExtra("type")
-            if (type == "image") {
-                selectedMediaItems.add(MediaItem(url = path, type = MediaType.IMAGE))
-                updateMediaVisibility()
+    private fun setupTextInput() {
+        binding.postContentInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val text = s?.toString() ?: ""
+                val remaining = MAX_CHARS - text.length
+
+                // Show warning when near limit
+                binding.charCountWarning.apply {
+                    isVisible = remaining <= 50
+                    text = if (remaining < 0) "${-remaining} characters over limit" else "$remaining characters remaining"
+                    setTextColor(if (remaining < 0) getColor(android.R.color.holo_red_dark) else getColor(android.R.color.darker_gray))
+                }
+
+                // Extract mentions and hashtags
+                extractMentionsAndHashtags(text)
+                updatePostButtonState()
+            }
+        })
+    }
+
+    private fun extractMentionsAndHashtags(text: String) {
+        mentions.clear()
+        hashtags.clear()
+
+        Regex("@(\\w+)").findAll(text).forEach { mentions.add(it.groupValues[1]) }
+        Regex("#(\\w+)").findAll(text).forEach { hashtags.add(it.groupValues[1].lowercase()) }
+    }
+
+    private fun setupActionButtons() {
+        binding.addMediaButton.setOnClickListener {
+            if (pollData != null) {
+                Toast.makeText(this, "Remove poll to add media", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (checkMediaPermission()) selectMedia()
+        }
+
+        binding.addPollButton.setOnClickListener {
+            if (selectedMedia.isNotEmpty()) {
+                Toast.makeText(this, "Remove media to add poll", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            showPollCreator()
+        }
+
+        binding.addYoutubeButton.setOnClickListener { showYoutubeDialog() }
+        binding.addLocationButton.setOnClickListener { showLocationPicker() }
+        binding.settingsButton.setOnClickListener { showSettingsSheet() }
+        binding.privacyChip.setOnClickListener { showPrivacyPicker() }
+
+        binding.removeAllMediaButton.setOnClickListener {
+            selectedMedia.clear()
+            mediaAdapter.notifyDataSetChanged()
+            updateMediaPreview()
+            updatePostButtonState()
+        }
+
+        binding.removePollButton.setOnClickListener {
+            pollData = null
+            binding.pollPreviewCard.isVisible = false
+            updatePostButtonState()
+        }
+
+        binding.removeYoutubeButton.setOnClickListener {
+            youtubeUrl = null
+            binding.youtubePreviewCard.isVisible = false
+            updatePostButtonState()
+        }
+
+        binding.removeLocationButton.setOnClickListener {
+            locationData = null
+            binding.locationPreviewCard.isVisible = false
+        }
+    }
+
+    private fun loadUserInfo() {
+        lifecycleScope.launch {
+            authService.getCurrentUser()?.let { user ->
+                binding.authorName.text = user.displayName ?: user.username ?: "You"
+                user.avatar?.let { url ->
+                    Glide.with(this@CreatePostActivity).load(url).circleCrop().into(binding.authorAvatar)
+                }
             }
         }
     }
 
-    private fun selectImages() {
-        if (checkMediaPermission()) {
-            val remainingSlots = MAX_IMAGES - selectedMediaItems.count { it.type == MediaType.IMAGE }
-            if (remainingSlots > 0) {
-                selectImagesLauncher.launch("image/*")
-            } else {
-                Toast.makeText(this, "Maximum $MAX_IMAGES images allowed", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private fun updatePostButtonState() {
+        val hasContent = binding.postContentInput.text?.isNotBlank() == true
+        val hasMedia = selectedMedia.isNotEmpty()
+        val hasPoll = pollData != null
+        val hasYoutube = youtubeUrl != null
+        val withinLimit = (binding.postContentInput.text?.length ?: 0) <= MAX_CHARS
+
+        binding.postButton.isEnabled = (hasContent || hasMedia || hasPoll || hasYoutube) && withinLimit
     }
 
-    private fun selectVideo() {
-        if (checkMediaPermission()) {
-            val videoCount = selectedMediaItems.count { it.type == MediaType.VIDEO }
-            if (videoCount < MAX_VIDEOS) {
-                selectVideoLauncher.launch("video/*")
-            } else {
-                Toast.makeText(this, "Maximum $MAX_VIDEOS video allowed", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private fun updateMediaPreview() {
+        binding.mediaPreviewCard.isVisible = selectedMedia.isNotEmpty()
+        binding.mediaCountLabel.text = "Media (${selectedMedia.size}/$MAX_MEDIA)"
     }
+
+    // ==================== MEDIA ====================
 
     private fun checkMediaPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ uses READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
-            val imagePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-            val videoPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
-            
-            if (imagePermission != PackageManager.PERMISSION_GRANTED || 
-                videoPermission != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO),
-                    PERMISSION_REQUEST_CODE
-                )
-                false
-            } else {
-                true
-            }
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
         } else {
-            // Android 12 and below
-            val permission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (permission != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                    PERMISSION_REQUEST_CODE
-                )
-                false
-            } else {
-                true
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        val needed = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        return if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), 1000)
+            false
+        } else true
+    }
+
+    private fun selectMedia() {
+        if (selectedMedia.size >= MAX_MEDIA) {
+            Toast.makeText(this, "Maximum $MAX_MEDIA files allowed", Toast.LENGTH_SHORT).show()
+            return
+        }
+        mediaLauncher.launch("*/*")
+    }
+
+    private fun handleMediaSelection(uris: List<Uri>) {
+        val remaining = MAX_MEDIA - selectedMedia.size
+        uris.take(remaining).forEach { uri ->
+            val mimeType = contentResolver.getType(uri) ?: return@forEach
+            val type = if (mimeType.startsWith("video")) MediaType.VIDEO else MediaType.IMAGE
+            FileUtil.convertUriToFilePath(this, uri)?.let { path ->
+                selectedMedia.add(MediaItem(url = path, type = type))
+            }
+        }
+        mediaAdapter.notifyDataSetChanged()
+        updateMediaPreview()
+        updatePostButtonState()
+    }
+
+    // ==================== POLL ====================
+
+    private fun showPollCreator() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_poll_creator, null)
+        val questionInput = dialogView.findViewById<TextInputEditText>(R.id.pollQuestionInput)
+        val optionsContainer = dialogView.findViewById<LinearLayout>(R.id.pollOptionsContainer)
+        val addOptionButton = dialogView.findViewById<View>(R.id.addOptionButton)
+
+        // Add initial 2 options
+        repeat(2) { addPollOptionView(optionsContainer, it) }
+
+        addOptionButton.setOnClickListener {
+            if (optionsContainer.childCount < MAX_POLL_OPTIONS) {
+                addPollOptionView(optionsContainer, optionsContainer.childCount)
+            }
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Create Poll")
+            .setView(dialogView)
+            .setPositiveButton("Create") { _, _ ->
+                val question = questionInput.text?.toString()?.trim() ?: ""
+                val options = (0 until optionsContainer.childCount).mapNotNull {
+                    optionsContainer.getChildAt(it).findViewById<EditText>(R.id.optionInput)?.text?.toString()?.trim()
+                }.filter { it.isNotEmpty() }
+
+                if (question.isEmpty()) {
+                    Toast.makeText(this, "Enter a question", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                if (options.size < 2) {
+                    Toast.makeText(this, "Add at least 2 options", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                pollData = PollData(question, options, 24)
+                showPollPreview()
+                updatePostButtonState()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun addPollOptionView(container: LinearLayout, index: Int) {
+        val view = layoutInflater.inflate(R.layout.item_poll_option_input, container, false)
+        view.findViewById<TextInputEditText>(R.id.optionInput).hint = "Option ${index + 1}"
+        container.addView(view)
+    }
+
+    private fun showPollPreview() {
+        pollData?.let { poll ->
+            binding.pollPreviewCard.isVisible = true
+            binding.pollQuestionPreview.text = poll.question
+            binding.pollDurationLabel.text = "Duration: ${poll.durationHours} hours"
+
+            binding.pollOptionsContainer.removeAllViews()
+            poll.options.forEach { option ->
+                val chip = Chip(this).apply {
+                    text = option
+                    isClickable = false
+                    setChipBackgroundColorResource(R.color.surface_container)
+                }
+                binding.pollOptionsContainer.addView(chip)
             }
         }
     }
 
-    private fun handleSelectedImages(uris: List<Uri>) {
-        val remainingSlots = MAX_IMAGES - selectedMediaItems.count { it.type == MediaType.IMAGE }
-        val itemsToAdd = minOf(uris.size, remainingSlots)
-        
-        for (i in 0 until itemsToAdd) {
-            val path = FileUtil.convertUriToFilePath(this, uris[i])
-            if (path != null) {
-                selectedMediaItems.add(MediaItem(url = path, type = MediaType.IMAGE))
+    // ==================== YOUTUBE ====================
+
+    private fun showYoutubeDialog() {
+        val input = EditText(this).apply {
+            hint = "https://youtube.com/watch?v=..."
+            setPadding(48, 32, 48, 32)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Add YouTube Video")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val url = input.text.toString().trim()
+                if (isValidYoutubeUrl(url)) {
+                    youtubeUrl = url
+                    showYoutubePreview()
+                    updatePostButtonState()
+                } else {
+                    Toast.makeText(this, "Invalid YouTube URL", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun isValidYoutubeUrl(url: String): Boolean {
+        return url.matches(Regex("^(https?://)?(www\\.)?(youtube\\.com/watch\\?v=|youtu\\.be/)[a-zA-Z0-9_-]{11}.*"))
+    }
+
+    private fun extractYoutubeId(url: String): String? {
+        val match = Regex("(?:youtube\\.com/watch\\?v=|youtu\\.be/)([a-zA-Z0-9_-]{11})").find(url)
+        return match?.groupValues?.get(1)
+    }
+
+    private fun showYoutubePreview() {
+        youtubeUrl?.let { url ->
+            extractYoutubeId(url)?.let { videoId ->
+                binding.youtubePreviewCard.isVisible = true
+                binding.youtubeWebView.settings.javaScriptEnabled = true
+                binding.youtubeWebView.loadUrl("https://www.youtube.com/embed/$videoId")
             }
         }
-        
-        updateMediaVisibility()
-        
-        if (uris.size > itemsToAdd) {
-            Toast.makeText(
-                this, 
-                "Only $itemsToAdd images added. Maximum $MAX_IMAGES images allowed", 
-                Toast.LENGTH_SHORT
-            ).show()
+    }
+
+    // ==================== LOCATION ====================
+
+    private fun showLocationPicker() {
+        val input = EditText(this).apply {
+            hint = "Enter location name"
+            setPadding(48, 32, 48, 32)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Add Location")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    locationData = LocationData(name)
+                    showLocationPreview()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showLocationPreview() {
+        locationData?.let { loc ->
+            binding.locationPreviewCard.isVisible = true
+            binding.locationName.text = loc.name
+            binding.locationAddress.text = loc.address ?: ""
+            binding.locationAddress.isVisible = !loc.address.isNullOrEmpty()
         }
     }
 
-    private fun handleSelectedVideo(uri: Uri) {
-        val path = FileUtil.convertUriToFilePath(this, uri)
-        if (path != null) {
-            selectedMediaItems.add(MediaItem(url = path, type = MediaType.VIDEO))
-            updateMediaVisibility()
+    // ==================== PRIVACY ====================
+
+    private fun showPrivacyPicker() {
+        val options = arrayOf("Public", "Followers Only", "Private")
+        val icons = arrayOf(R.drawable.ic_public, R.drawable.ic_people, R.drawable.ic_lock)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Post Visibility")
+            .setItems(options) { _, which ->
+                postVisibility = when (which) {
+                    0 -> "public"
+                    1 -> "followers"
+                    else -> "private"
+                }
+                binding.privacyChip.text = options[which]
+                binding.privacyChip.setChipIconResource(icons[which])
+            }
+            .show()
+    }
+
+    // ==================== SETTINGS ====================
+
+    private fun showSettingsSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_post_settings, null)
+
+        view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.hideViewsSwitch)?.apply {
+            isChecked = hideViewsCount
+            setOnCheckedChangeListener { _, checked -> hideViewsCount = checked }
         }
+        view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.hideLikesSwitch)?.apply {
+            isChecked = hideLikeCount
+            setOnCheckedChangeListener { _, checked -> hideLikeCount = checked }
+        }
+        view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.hideCommentsSwitch)?.apply {
+            isChecked = hideCommentsCount
+            setOnCheckedChangeListener { _, checked -> hideCommentsCount = checked }
+        }
+        view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.disableCommentsSwitch)?.apply {
+            isChecked = disableComments
+            setOnCheckedChangeListener { _, checked -> disableComments = checked }
+        }
+
+        sheet.setContentView(view)
+        sheet.show()
     }
 
-    private fun removeMedia(position: Int) {
-        selectedMediaItems.removeAt(position)
-        selectedMediaAdapter.notifyItemRemoved(position)
-        updateMediaVisibility()
-    }
+    // ==================== SUBMIT ====================
 
-    private fun updateMediaVisibility() {
-        selectedMediaRecyclerView.visibility = if (selectedMediaItems.isEmpty()) View.GONE else View.VISIBLE
-        
-        // Update add buttons based on limits
-        val imageCount = selectedMediaItems.count { it.type == MediaType.IMAGE }
-        val videoCount = selectedMediaItems.count { it.type == MediaType.VIDEO }
-        
-        addPhotoIcon.alpha = if (imageCount >= MAX_IMAGES) 0.5f else 1f
-        addVideoIcon.alpha = if (videoCount >= MAX_VIDEOS) 0.5f else 1f
-    }
-
-    private fun createPost() {
-        val postText = postDescriptionEditText.text.toString().trim()
-        
-        if (postText.isEmpty() && selectedMediaItems.isEmpty()) {
-            Toast.makeText(this, "Please add some text or media to your post", Toast.LENGTH_SHORT).show()
+    private fun submitPost() {
+        val text = binding.postContentInput.text?.toString()?.trim() ?: ""
+        val currentUser = authService.getCurrentUser() ?: run {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             return
         }
-        
-        val currentUser = authService.getCurrentUser()
-        if (currentUser == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        showLoading(true)
-        
-        // Create post object
+
+        setLoading(true)
+
         val postKey = "post_${System.currentTimeMillis()}_${(1000..9999).random()}"
-        val currentTimestamp = System.currentTimeMillis()
-        
-        // Convert timestamp to ISO 8601 format for PostgreSQL
-        val publishDateFormatted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            Instant.ofEpochMilli(currentTimestamp)
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        } else {
-            // Fallback for older Android versions
-            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }.format(Date(currentTimestamp))
+        val timestamp = System.currentTimeMillis()
+        val publishDate = Instant.ofEpochMilli(timestamp).atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+
+        // Determine post type
+        val postType = when {
+            selectedMedia.any { it.type == MediaType.VIDEO } -> "VIDEO"
+            selectedMedia.isNotEmpty() -> "IMAGE"
+            pollData != null -> "POLL"
+            else -> "TEXT"
         }
-        
+
         var post = Post(
+            id = editPostId ?: UUID.randomUUID().toString(),
             key = postKey,
             authorUid = currentUser.id,
-            postText = if (postText.isNotEmpty()) postText else null,
-            postHideViewsCount = if (hideViewsCountSwitch.isChecked) "true" else "false",
-            postHideLikeCount = if (hideLikeCountSwitch.isChecked) "true" else "false",
-            postHideCommentsCount = if (hideCommentsCountSwitch.isChecked) "true" else "false",
-            postDisableComments = if (disableCommentsSwitch.isChecked) "true" else "false",
-            postVisibility = if (postVisibilitySpinner.selectedItemPosition == 0) "public" else "private",
-            publishDate = publishDateFormatted,
-            timestamp = currentTimestamp
+            postText = text.ifEmpty { null },
+            postType = postType,
+            postVisibility = postVisibility,
+            postHideViewsCount = if (hideViewsCount) "true" else "false",
+            postHideLikeCount = if (hideLikeCount) "true" else "false",
+            postHideCommentsCount = if (hideCommentsCount) "true" else "false",
+            postDisableComments = if (disableComments) "true" else "false",
+            publishDate = publishDate,
+            timestamp = timestamp,
+            youtubeUrl = youtubeUrl,
+            hasPoll = pollData != null,
+            pollQuestion = pollData?.question,
+            pollOptions = pollData?.options?.map { mapOf("text" to it, "votes" to 0) },
+            hasLocation = locationData != null,
+            locationName = locationData?.name,
+            locationAddress = locationData?.address,
+            locationLatitude = locationData?.latitude,
+            locationLongitude = locationData?.longitude
         )
-        
-        if (selectedMediaItems.isEmpty()) {
-            // Text-only post
-            post.postType = "TEXT"
-            savePostToDatabase(post)
+
+        if (selectedMedia.isEmpty()) {
+            savePost(post)
         } else {
-            // Upload media first
-            uploadMediaAndSavePost(post)
+            uploadMediaAndSave(post)
         }
     }
 
-    private fun uploadMediaAndSavePost(post: Post) {
+    private fun uploadMediaAndSave(post: Post) {
         lifecycleScope.launch {
             try {
                 MediaUploadManager.uploadMultipleMedia(
-                    selectedMediaItems,
+                    selectedMedia,
                     onProgress = { progress ->
                         runOnUiThread {
-                            val progressInt = (progress * 100).toInt()
-                            progressBar?.progress = progressInt
-                            progressPercentage?.text = "$progressInt%"
+                            binding.uploadProgress.isVisible = true
+                            binding.uploadProgress.progress = (progress * 100).toInt()
                         }
                     },
-                    onComplete = { uploadedItems ->
-                        post.mediaItems = uploadedItems.toMutableList()
-                        post.determinePostType()
-                        
-                        // Set legacy image field for backward compatibility
-                        uploadedItems.firstOrNull { it.type == MediaType.IMAGE }?.let {
-                            post.postImage = it.url
+                    onComplete = { uploaded ->
+                        val updatedPost = post.copy().apply {
+                            mediaItems = uploaded.toMutableList()
+                            postImage = uploaded.firstOrNull { it.type == MediaType.IMAGE }?.url
                         }
-                        
-                        savePostToDatabase(post)
+                        savePost(updatedPost)
                     },
                     onError = { error ->
                         runOnUiThread {
-                            showLoading(false)
-                            Toast.makeText(this@CreatePostActivity, "Failed to upload media: $error", Toast.LENGTH_LONG).show()
+                            setLoading(false)
+                            Toast.makeText(this@CreatePostActivity, "Upload failed: $error", Toast.LENGTH_LONG).show()
                         }
                     }
                 )
             } catch (e: Exception) {
                 runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this@CreatePostActivity, "Failed to upload media: ${e.message}", Toast.LENGTH_LONG).show()
+                    setLoading(false)
+                    Toast.makeText(this@CreatePostActivity, "Upload failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
-    private fun savePostToDatabase(post: Post) {
-        val postKey = post.key ?: post.id
-        
-        // Use PostRepository for Supabase operations
+    private fun savePost(post: Post) {
         lifecycleScope.launch {
-            try {
-                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
-                postRepository.createPost(post)
-                    .onSuccess {
-                        runOnUiThread {
-                            showLoading(false)
-                            Toast.makeText(this@CreatePostActivity, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                            handleMentions(post.postText, postKey)
-                            finish()
-                        }
+            postRepository.createPost(post)
+                .onSuccess {
+                    clearDraft()
+                    runOnUiThread {
+                        setLoading(false)
+                        Toast.makeText(this@CreatePostActivity, "Post created!", Toast.LENGTH_SHORT).show()
+                        finish()
                     }
-                    .onFailure { exception ->
-                        runOnUiThread {
-                            showLoading(false)
-                            Toast.makeText(this@CreatePostActivity, "Failed to create post: ${exception.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this@CreatePostActivity, "Failed to create post: ${e.message}", Toast.LENGTH_LONG).show()
                 }
+                .onFailure { e ->
+                    runOnUiThread {
+                        setLoading(false)
+                        Toast.makeText(this@CreatePostActivity, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+        }
+    }
+
+    private fun setLoading(loading: Boolean) {
+        binding.postButton.isEnabled = !loading
+        binding.postButton.text = if (loading) "Posting..." else "Post"
+        binding.uploadProgress.isVisible = loading
+    }
+
+    // ==================== DRAFT ====================
+
+    override fun onPause() {
+        super.onPause()
+        saveDraft()
+    }
+
+    private fun saveDraft() {
+        val text = binding.postContentInput.text?.toString() ?: ""
+        if (text.isNotEmpty()) {
+            prefs.edit().putString(DRAFT_KEY, text).apply()
+        }
+    }
+
+    private fun restoreDraft() {
+        prefs.getString(DRAFT_KEY, null)?.let { draft ->
+            if (draft.isNotEmpty()) {
+                binding.postContentInput.setText(draft)
+                Toast.makeText(this, "Draft restored", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun handleMentions(text: String?, postKey: String?) {
-        // Mention handling - placeholder for now
+    private fun clearDraft() {
+        prefs.edit().remove(DRAFT_KEY).apply()
     }
 
-    private fun showLoading(show: Boolean) {
-        if (show) {
-            val dialogView = layoutInflater.inflate(R.layout.dialog_progress, null)
-            progressBar = dialogView.findViewById(R.id.progressBar)
-            progressPercentage = dialogView.findViewById(R.id.progressPercentage)
-
-            progressDialog = MaterialAlertDialogBuilder(this)
-                .setView(dialogView)
-                .setCancelable(false)
-                .create()
-                .apply {
-                    show()
-                }
+    private fun confirmExit() {
+        val hasContent = binding.postContentInput.text?.isNotBlank() == true || selectedMedia.isNotEmpty()
+        if (hasContent) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Discard post?")
+                .setMessage("Your draft will be saved")
+                .setPositiveButton("Discard") { _, _ -> finish() }
+                .setNegativeButton("Keep editing", null)
+                .show()
         } else {
-            progressDialog?.dismiss()
-            progressDialog = null
-            progressBar = null
-            progressPercentage = null
+            finish()
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Permission granted, user can now select media
-                Toast.makeText(this, "Permission granted. You can now select media.", Toast.LENGTH_SHORT).show()
+    // ==================== EDIT MODE ====================
+
+    private fun loadPostForEdit(postId: String) {
+        editPostId = postId
+        binding.toolbar.title = "Edit Post"
+        binding.postButton.text = "Update"
+
+        lifecycleScope.launch {
+            postRepository.getPost(postId).onSuccess { post ->
+                post?.let {
+                    runOnUiThread {
+                        binding.postContentInput.setText(it.postText)
+                        postVisibility = it.postVisibility ?: "public"
+                        updatePrivacyChip()
+                    }
+                }
             }
+        }
+    }
+
+    private fun updatePrivacyChip() {
+        val (text, icon) = when (postVisibility) {
+            "followers" -> "Followers" to R.drawable.ic_people
+            "private" -> "Private" to R.drawable.ic_lock
+            else -> "Public" to R.drawable.ic_public
+        }
+        binding.privacyChip.text = text
+        binding.privacyChip.setChipIconResource(icon)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1000 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            selectMedia()
         }
     }
 }
-

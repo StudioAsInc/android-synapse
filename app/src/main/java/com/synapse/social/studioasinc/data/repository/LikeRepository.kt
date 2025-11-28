@@ -1,133 +1,72 @@
 package com.synapse.social.studioasinc.data.repository
 
-import com.synapse.social.studioasinc.SupabaseClient
-import com.synapse.social.studioasinc.model.Like
-import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.synapse.social.studioasinc.model.ReactionType
 
+/**
+ * @deprecated Use [PostRepository.toggleReaction] instead.
+ * 
+ * The `likes` table uses a different schema (target_id, target_type) than the 
+ * `reactions` table (post_id, user_id, reaction_type). The reactions table is 
+ * now the single source of truth for all post reactions.
+ * 
+ * Migration guide:
+ * - Replace `likeRepository.toggleLike(userId, postId)` with 
+ *   `postRepository.toggleReaction(postId, userId, ReactionType.LIKE)`
+ * - Replace `likeRepository.isLiked(userId, postId)` with
+ *   `postRepository.getUserReaction(postId, userId)`
+ * - Replace `likeRepository.getLikeCount(postId)` with
+ *   `postRepository.getReactionSummary(postId)`
+ */
+@Deprecated(
+    message = "Use PostRepository.toggleReaction() instead. The reactions table is now the single source of truth.",
+    replaceWith = ReplaceWith("PostRepository().toggleReaction(postId, userId, ReactionType.LIKE)")
+)
 class LikeRepository {
     
-    private val client = SupabaseClient.client
+    private val postRepository = PostRepository()
     
     /**
-     * Toggle like on a post (like if not liked, unlike if already liked)
+     * @deprecated Use [PostRepository.toggleReaction] with [ReactionType.LIKE]
      */
+    @Deprecated("Use PostRepository.toggleReaction()", ReplaceWith("postRepository.toggleReaction(targetId, userId, ReactionType.LIKE)"))
     suspend fun toggleLike(userId: String, targetId: String, targetType: String = "post"): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
-            try {
-                android.util.Log.d("LikeRepository", "Toggling like for user=$userId, target=$targetId, type=$targetType")
-                
-                // Check if already liked
-                val existingLike = client.from("likes")
-                    .select {
-                        filter {
-                            eq("user_id", userId)
-                            eq("target_id", targetId)
-                            eq("target_type", targetType)
-                        }
-                    }
-                    .decodeSingleOrNull<Like>()
-                
-                if (existingLike != null) {
-                    // Unlike - delete the like
-                    client.from("likes").delete {
-                        filter {
-                            eq("user_id", userId)
-                            eq("target_id", targetId)
-                            eq("target_type", targetType)
-                        }
-                    }
-                    android.util.Log.d("LikeRepository", "Unliked successfully")
-                    Result.success(false) // false = unliked
-                } else {
-                    // Like - insert new like using JsonObject to avoid serialization issues
-                    android.util.Log.d("LikeRepository", "Creating like with userId=$userId, targetId=$targetId, targetType=$targetType")
-                    
-                    val likeData = kotlinx.serialization.json.buildJsonObject {
-                        put("user_id", kotlinx.serialization.json.JsonPrimitive(userId))
-                        put("target_id", kotlinx.serialization.json.JsonPrimitive(targetId))
-                        put("target_type", kotlinx.serialization.json.JsonPrimitive(targetType))
-                    }
-                    android.util.Log.d("LikeRepository", "Like data: $likeData")
-                    
-                    client.from("likes").insert(likeData)
-                    android.util.Log.d("LikeRepository", "Liked successfully")
-                    Result.success(true) // true = liked
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("LikeRepository", "Failed to toggle like", e)
-                Result.failure(e)
-            }
+        if (targetType != "post") {
+            android.util.Log.w("LikeRepository", "Non-post likes not supported in reactions table")
+            return Result.failure(Exception("Only post reactions are supported"))
         }
+        
+        val result = postRepository.toggleReaction(targetId, userId, ReactionType.LIKE)
+        return result.map { true }
     }
     
     /**
-     * Check if user has liked a target
+     * @deprecated Use [PostRepository.getUserReaction]
      */
+    @Deprecated("Use PostRepository.getUserReaction()", ReplaceWith("postRepository.getUserReaction(targetId, userId)"))
     suspend fun isLiked(userId: String, targetId: String, targetType: String = "post"): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val like = client.from("likes")
-                    .select {
-                        filter {
-                            eq("user_id", userId)
-                            eq("target_id", targetId)
-                            eq("target_type", targetType)
-                        }
-                    }
-                    .decodeSingleOrNull<Like>()
-                
-                Result.success(like != null)
-            } catch (e: Exception) {
-                android.util.Log.e("LikeRepository", "Failed to check like status", e)
-                Result.failure(e)
-            }
-        }
+        if (targetType != "post") return Result.success(false)
+        
+        val result = postRepository.getUserReaction(targetId, userId)
+        return result.map { it != null }
     }
     
     /**
-     * Get like count for a target
+     * @deprecated Use [PostRepository.getReactionSummary]
      */
+    @Deprecated("Use PostRepository.getReactionSummary()", ReplaceWith("postRepository.getReactionSummary(targetId)"))
     suspend fun getLikeCount(targetId: String, targetType: String = "post"): Result<Int> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val likes = client.from("likes")
-                    .select {
-                        filter {
-                            eq("target_id", targetId)
-                            eq("target_type", targetType)
-                        }
-                    }
-                    .decodeList<Like>()
-                
-                Result.success(likes.size)
-            } catch (e: Exception) {
-                android.util.Log.e("LikeRepository", "Failed to get like count", e)
-                Result.failure(e)
-            }
-        }
+        if (targetType != "post") return Result.success(0)
+        
+        val result = postRepository.getReactionSummary(targetId)
+        return result.map { summary -> summary.values.sum() }
     }
     
     /**
-     * Get all likes for a user's posts
+     * @deprecated Not supported - reactions table doesn't track by user
      */
-    suspend fun getUserLikes(userId: String): Result<List<Like>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val likes = client.from("likes")
-                    .select {
-                        filter {
-                            eq("user_id", userId)
-                        }
-                    }
-                    .decodeList<Like>()
-                
-                Result.success(likes)
-            } catch (e: Exception) {
-                android.util.Log.e("LikeRepository", "Failed to get user likes", e)
-                Result.failure(e)
-            }
-        }
+    @Deprecated("Not supported in new schema")
+    suspend fun getUserLikes(userId: String): Result<List<Nothing>> {
+        android.util.Log.w("LikeRepository", "getUserLikes() not supported - use reactions table queries")
+        return Result.success(emptyList())
     }
 }

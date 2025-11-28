@@ -183,6 +183,10 @@ class HomeFragment : Fragment() {
     private fun observePosts() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.posts.collect { posts ->
+                android.util.Log.d("HomeFragment", "Posts received: ${posts.size}")
+                posts.forEachIndexed { i, post -> 
+                    android.util.Log.d("HomeFragment", "Post $i: id=${post.id}, text=${post.postText?.take(50)}")
+                }
                 hideShimmer()
                 postAdapter.submitList(posts)
             }

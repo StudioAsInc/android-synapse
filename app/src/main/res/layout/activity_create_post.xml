@@ -1,129 +1,448 @@
-<LinearLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:id="@+id/mainLayout"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	android:orientation="vertical">
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
 
-	<com.google.android.material.appbar.AppBarLayout
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:fitsSystemWindows="true">
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
+        app:elevation="0dp">
 
-		<com.google.android.material.appbar.CollapsingToolbarLayout
-			style="?attr/collapsingToolbarLayoutMediumStyle"
-			android:layout_width="match_parent"
-			android:layout_height="?attr/collapsingToolbarLayoutMediumSize"
-			app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
-			app:title="Create Post">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_close"
+            app:title="Create Post"
+            app:titleCentered="false">
 
-			<com.google.android.material.appbar.MaterialToolbar
-				android:id="@+id/toolbar"
-				android:layout_width="match_parent"
-				android:layout_height="?attr/actionBarSize"
-				app:layout_collapseMode="pin"
-				app:navigationIcon="?attr/homeAsUpIndicator"
-				android:elevation="0dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/postButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginEnd="8dp"
+                android:text="Post"
+                android:enabled="false"
+                app:cornerRadius="20dp" />
 
-			<LinearLayout
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="bottom|end"
-				android:layout_margin="16dp"
-				android:orientation="horizontal">
+        </com.google.android.material.appbar.MaterialToolbar>
 
-				<com.google.android.material.button.MaterialButton
-					android:id="@+id/settingsButton"
-					style="@style/Widget.Material3.Button.TonalButton.Icon"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					app:icon="@drawable/ic_settings_black" />
+        <!-- Upload Progress -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/uploadProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="false"
+            android:visibility="gone"
+            app:trackThickness="4dp" />
 
-				<com.google.android.material.button.MaterialButton
-					android:id="@+id/postButton"
-					style="@style/Widget.Material3.Button.ElevatedButton"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="Post" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-			</LinearLayout>
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-		</com.google.android.material.appbar.CollapsingToolbarLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-	</com.google.android.material.appbar.AppBarLayout>
+            <!-- Author Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
 
-	<ScrollView
-		android:id="@+id/scrollView"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent">
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/authorAvatar"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
-		<LinearLayout
-			android:id="@+id/scrollBodyLayout"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
 
-			<com.synapse.social.studioasinc.FadeEditText
-				android:id="@+id/postDescriptionEditText"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_marginLeft="16dp"
-				android:layout_marginRight="16dp"
-				android:layout_marginTop="16dp"
-				android:layout_marginBottom="16dp"
-				android:padding="16dp"
-				android:background="@drawable/edittext_background"
-				android:hint="What's on your mind?"
-				android:textColorHint="?attr/colorOnSurfaceVariant"
-				android:textSize="18sp"
-				android:textColor="?attr/colorOnSurface"
-				android:maxLength="2500" />
+                    <TextView
+                        android:id="@+id/authorName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleMedium" />
 
-			<androidx.cardview.widget.CardView
-				android:id="@+id/imageCardView"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_margin="16dp"
-				android:gravity="center_horizontal|center_vertical"
-				app:cardElevation="2dp"
-				app:cardCornerRadius="28dp">
+                    <!-- Privacy Chip -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/privacyChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Public"
+                        app:chipIcon="@drawable/ic_public"
+                        app:chipIconSize="18dp"
+                        app:chipMinHeight="28dp"
+                        app:textStartPadding="4dp"
+                        style="@style/Widget.Material3.Chip.Assist" />
 
-				<LinearLayout
-					android:id="@+id/imagePlaceholderLayout"
-					android:layout_width="match_parent"
-					android:layout_height="200dp"
-					android:gravity="center"
-					android:orientation="vertical"
-					android:background="?attr/colorSurfaceContainer">
+                </LinearLayout>
 
-					<ImageView
-						android:layout_width="48dp"
-						android:layout_height="48dp"
-						android:layout_marginBottom="8dp"
-						android:src="@drawable/ic_add_photo_black"
-						android:scaleType="fitCenter"
-						app:tint="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
 
-					<TextView
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:text="Add Photo"
-						android:textSize="16sp"
-						android:textColor="?attr/colorOnSurfaceVariant" />
-				</LinearLayout>
+            <!-- Post Content Input -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/postContentLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="What's on your mind?"
+                app:counterEnabled="true"
+                app:counterMaxLength="500"
+                app:boxBackgroundMode="none"
+                app:hintEnabled="false">
 
-				<ImageView
-					android:id="@+id/postImageView"
-					android:layout_width="match_parent"
-					android:layout_height="wrap_content"
-					android:src="@drawable/default_image"
-					android:scaleType="fitCenter"
-					android:visibility="gone" />
-			</androidx.cardview.widget.CardView>
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/postContentInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="120dp"
+                    android:gravity="top"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:background="@null"
+                    android:hint="What's on your mind?"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
 
-		</LinearLayout>
-	</ScrollView>
+            </com.google.android.material.textfield.TextInputLayout>
 
-</LinearLayout>
+            <!-- Character Count Warning -->
+            <TextView
+                android:id="@+id/charCountWarning"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:textColor="?attr/colorError"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:visibility="gone" />
+
+            <!-- Media Preview -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/mediaPreviewCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:id="@+id/mediaCountLabel"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/removeAllMediaButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Remove all"
+                            android:textColor="?attr/colorError"
+                            style="@style/Widget.Material3.Button.TextButton" />
+
+                    </LinearLayout>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/mediaRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="8dp"
+                        android:clipToPadding="false" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Poll Preview -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/pollPreviewCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_poll"
+                            app:tint="?attr/colorPrimary" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:text="Poll"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                        <ImageButton
+                            android:id="@+id/removePollButton"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_close"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pollQuestionPreview"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/pollOptionsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:id="@+id/pollDurationLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- YouTube Preview -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/youtubePreviewCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp">
+
+                        <WebView
+                            android:id="@+id/youtubeWebView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <ImageButton
+                            android:id="@+id/removeYoutubeButton"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="8dp"
+                            android:src="@drawable/ic_close"
+                            android:background="@drawable/bg_circle_dark"
+                            app:tint="@android:color/white" />
+
+                    </FrameLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Location Preview -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/locationPreviewCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_location"
+                        app:tint="?attr/colorPrimary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/locationName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/locationAddress"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceLabelSmall"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/removeLocationButton"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_close"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Spacer for bottom actions -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="80dp" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Action Bar -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="8dp">
+
+                    <!-- Photo/Video -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addMediaButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Photo/Video"
+                        app:icon="@drawable/ic_image"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                    <!-- YouTube -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addYoutubeButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="YouTube"
+                        app:icon="@drawable/ic_youtube"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                    <!-- Poll -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addPollButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Poll"
+                        app:icon="@drawable/ic_poll"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                    <!-- Location -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addLocationButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Location"
+                        app:icon="@drawable/ic_location"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                    <!-- Settings -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/settingsButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        app:icon="@drawable/ic_settings_black"
+                        style="@style/Widget.Material3.Button.OutlinedButton.Icon" />
+
+                </LinearLayout>
+
+            </HorizontalScrollView>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -18,270 +18,216 @@ class PostRepository {
     
     private val client = SupabaseClient.client
     
-    // In-memory cache for recently fetched pages
     private data class CacheEntry<T>(
         val data: T,
         val timestamp: Long = System.currentTimeMillis()
     ) {
-        fun isExpired(expirationMs: Long = CACHE_EXPIRATION_MS): Boolean {
-            return System.currentTimeMillis() - timestamp > expirationMs
-        }
+        fun isExpired(expirationMs: Long = CACHE_EXPIRATION_MS): Boolean =
+            System.currentTimeMillis() - timestamp > expirationMs
     }
     
     private val postsCache = mutableMapOf<String, CacheEntry<List<Post>>>()
     private val profileCache = mutableMapOf<String, CacheEntry<ProfileData>>()
     
     companion object {
-        private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L // 5 minutes
+        private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L
         private const val TAG = "PostRepository"
     }
     
-    /**
-     * Profile data for caching
-     */
     private data class ProfileData(
         val username: String?,
         val avatarUrl: String?,
         val isVerified: Boolean
     )
     
-    /**
-     * Invalidate cache on refresh operations
-     */
     fun invalidateCache() {
         postsCache.clear()
         profileCache.clear()
         android.util.Log.d(TAG, "Cache invalidated")
     }
     
-    /**
-     * Construct full media URL from storage path
-     */
     fun constructMediaUrl(storagePath: String): String {
         if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
             return storagePath
         }
-        
         val supabaseUrl = SupabaseClient.getUrl()
-        val bucketName = "post-media"
-        return "$supabaseUrl/storage/v1/object/public/$bucketName/$storagePath"
+        return "$supabaseUrl/storage/v1/object/public/post-media/$storagePath"
     }
     
     /**
-     * Map Supabase errors to user-friendly messages
+     * Enhanced error mapping with Supabase error codes logged
      */
     private fun mapSupabaseError(exception: Exception): String {
-        android.util.Log.e(TAG, "Supabase error: ${exception.message}", exception)
+        val message = exception.message ?: "Unknown error"
+        
+        // Extract and log PGRST error codes
+        val pgrstMatch = Regex("PGRST\\d+").find(message)
+        if (pgrstMatch != null) {
+            android.util.Log.e(TAG, "Supabase PostgREST error code: ${pgrstMatch.value}")
+        }
+        
+        android.util.Log.e(TAG, "Supabase error: $message", exception)
         
         return when {
-            exception.message?.contains("relation", ignoreCase = true) == true -> 
-                "Database table does not exist"
-            exception.message?.contains("connection", ignoreCase = true) == true -> 
-                "Connection failed. Please check your internet connection."
-            exception.message?.contains("timeout", ignoreCase = true) == true -> 
-                "Request timed out. Please try again."
-            exception.message?.contains("unauthorized", ignoreCase = true) == true -> 
-                "Permission denied. Please check your account status."
-            exception.message?.contains("policy", ignoreCase = true) == true ||
-            exception.message?.contains("rls", ignoreCase = true) == true -> 
+            message.contains("PGRST200") -> "Relation/table not found in schema"
+            message.contains("PGRST100") -> "Column does not exist"
+            message.contains("PGRST116") -> "No rows returned (expected single)"
+            message.contains("relation", ignoreCase = true) -> "Database table does not exist"
+            message.contains("column", ignoreCase = true) -> "Database column mismatch"
+            message.contains("policy", ignoreCase = true) || message.contains("rls", ignoreCase = true) -> 
                 "Permission denied. Row-level security policy blocked this operation."
-            exception.message?.contains("network", ignoreCase = true) == true -> 
-                "Network error. Please check your connection."
-            exception.message?.contains("serialization", ignoreCase = true) == true -> 
-                "Data format error. Please contact support."
-            else -> "Database error: ${exception.message ?: "Unknown error"}"
+            message.contains("connection", ignoreCase = true) || message.contains("network", ignoreCase = true) -> 
+                "Connection failed. Please check your internet connection."
+            message.contains("timeout", ignoreCase = true) -> "Request timed out. Please try again."
+            message.contains("unauthorized", ignoreCase = true) -> "Permission denied."
+            message.contains("serialization", ignoreCase = true) -> "Data format error."
+            else -> "Database error: $message"
         }
     }
     
-    /**
-     * Get cache key for a specific page
-     */
-    private fun getCacheKey(page: Int, pageSize: Int): String {
-        return "posts_page_${page}_size_${pageSize}"
-    }
+    private fun getCacheKey(page: Int, pageSize: Int) = "posts_page_${page}_size_${pageSize}"
     
     suspend fun createPost(post: Post): Result<Post> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Creating post: $post")
-            
-            // Check if Supabase is configured
+        try {
             if (!SupabaseClient.isConfigured()) {
-                android.util.Log.e(TAG, "Supabase is not configured properly")
-                return@withContext Result.failure(Exception("Supabase not configured. Please update gradle.properties with your Supabase credentials."))
+                return@withContext Result.failure(Exception("Supabase not configured."))
             }
             
-            client.from("posts").insert(post)
-            android.util.Log.d(TAG, "Post created successfully")
+            // Build insert data matching Supabase schema
+            val insertData = buildMap<String, Any?> {
+                put("id", post.id)
+                post.key?.let { put("key", it) }
+                put("author_uid", post.authorUid)
+                post.postText?.let { put("post_text", it) }
+                post.postImage?.let { put("post_image", it) }
+                post.postType?.let { put("post_type", it) }
+                post.postVisibility?.let { put("post_visibility", it) }
+                post.postHideViewsCount?.let { put("post_hide_views_count", it) }
+                post.postHideLikeCount?.let { put("post_hide_like_count", it) }
+                post.postHideCommentsCount?.let { put("post_hide_comments_count", it) }
+                post.postDisableComments?.let { put("post_disable_comments", it) }
+                post.publishDate?.let { put("publish_date", it) }
+                put("timestamp", post.timestamp)
+                put("likes_count", 0)
+                put("comments_count", 0)
+                put("views_count", 0)
+                // Media items as JSONB
+                post.mediaItems?.let { items ->
+                    put("media_items", items.map { media ->
+                        mapOf(
+                            "id" to media.id,
+                            "url" to media.url,
+                            "type" to media.type.name,
+                            "thumbnailUrl" to media.thumbnailUrl,
+                            "duration" to media.duration,
+                            "size" to media.size,
+                            "mimeType" to media.mimeType
+                        )
+                    })
+                }
+                // Poll fields
+                post.hasPoll?.let { put("has_poll", it) }
+                post.pollQuestion?.let { put("poll_question", it) }
+                post.pollOptions?.let { put("poll_options", it) }
+                post.pollEndTime?.let { put("poll_end_time", it) }
+                // Location fields
+                post.hasLocation?.let { put("has_location", it) }
+                post.locationName?.let { put("location_name", it) }
+                post.locationAddress?.let { put("location_address", it) }
+                post.locationLatitude?.let { put("location_latitude", it) }
+                post.locationLongitude?.let { put("location_longitude", it) }
+                // YouTube
+                post.youtubeUrl?.let { put("youtube_url", it) }
+            }
+            
+            android.util.Log.d(TAG, "Creating post with data: $insertData")
+            client.from("posts").insert(insertData)
+            invalidateCache()
             Result.success(post)
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Failed to create post", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
     
     suspend fun getPost(postId: String): Result<Post?> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching post: $postId")
+        try {
             val post = client.from("posts")
-                .select() {
-                    filter {
-                        eq("id", postId)
-                    }
-                }
+                .select { filter { eq("id", postId) } }
                 .decodeSingleOrNull<Post>()
-            
-            android.util.Log.d(TAG, "Post fetched successfully")
             Result.success(post)
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch post", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
     
     suspend fun getPosts(limit: Int = 20, offset: Int = 0): Result<List<Post>> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching posts from Supabase...")
-            
+        try {
             val posts = client.from("posts")
-                .select() {
-                    limit(limit.toLong())
-                }
+                .select { limit(limit.toLong()) }
                 .decodeList<Post>()
                 .sortedByDescending { it.timestamp }
-            
-            android.util.Log.d(TAG, "Successfully fetched ${posts.size} posts")
             Result.success(posts)
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch posts: ${e.message}", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
     
     /**
-     * Fetch posts with pagination support
-     * @param page Page number (0-indexed)
-     * @param pageSize Number of items per page
-     * @return Result containing list of posts
+     * Fetch posts with pagination - FIXED for current schema:
+     * - Uses `users` table instead of `profiles`
+     * - Media is embedded in `media_items` JSONB column (no post_media table)
      */
     suspend fun getPostsPage(page: Int, pageSize: Int): Result<List<Post>> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            // Check cache before making network request
+        try {
             val cacheKey = getCacheKey(page, pageSize)
             val cachedEntry = postsCache[cacheKey]
-            
             if (cachedEntry != null && !cachedEntry.isExpired()) {
-                android.util.Log.d(TAG, "Returning cached posts for page $page")
                 return@withContext Result.success(cachedEntry.data)
             }
             
-            android.util.Log.d(TAG, "Fetching posts page $page with size $pageSize from Supabase...")
-            
-            // Calculate offset as page * pageSize
+            android.util.Log.d(TAG, "Fetching posts page $page with size $pageSize")
             val offset = page * pageSize
             
-            // Use single query with joins for profiles and post_media tables
+            // Query posts with user join - media_items is already in posts table as JSONB
             val response = client.from("posts")
                 .select(
                     columns = Columns.raw("""
                         *,
-                        profiles!inner(username, avatar_url, verify),
-                        post_media!left(id, url, type, position, created_at)
+                        users!posts_author_uid_fkey(uid, username, profile_image_url, verify)
                     """.trimIndent())
                 ) {
                     range(offset.toLong(), (offset + pageSize - 1).toLong())
                 }
                 .decodeList<HashMap<String, Any>>()
             
-            android.util.Log.d(TAG, "Raw response: $response")
+            android.util.Log.d(TAG, "Raw response count: ${response.size}")
             
-            // Parse response and construct Post objects with joined data
             val posts = response.mapNotNull { postData ->
                 try {
-                    val post = parsePostFromHashMap(postData)
-                    
-                    // Extract profile data from join
-                    val profileData = postData["profiles"] as? Map<*, *>
-                    if (profileData != null) {
-                        post.username = profileData["username"] as? String
-                        post.avatarUrl = profileData["avatar_url"] as? String
-                        post.isVerified = profileData["verify"] as? Boolean ?: false
-                        
-                        // Cache profile data
-                        val authorUid = post.authorUid
-                        if (authorUid.isNotEmpty()) {
-                            profileCache[authorUid] = CacheEntry(
-                                ProfileData(
-                                    username = post.username,
-                                    avatarUrl = post.avatarUrl,
-                                    isVerified = post.isVerified
-                                )
-                            )
-                        }
-                    }
-                    
-                    // Extract media items from join
-                    val mediaData = postData["post_media"] as? List<*>
-                    if (mediaData != null && mediaData.isNotEmpty()) {
-                        val mediaItems = mediaData.mapNotNull { mediaItem ->
-                            val mediaMap = mediaItem as? Map<*, *> ?: return@mapNotNull null
-                            try {
-                                val url = mediaMap["url"] as? String ?: return@mapNotNull null
-                                val typeStr = mediaMap["type"] as? String ?: "IMAGE"
-                                val position = (mediaMap["position"] as? Number)?.toInt() ?: 0
-                                val createdAt = mediaMap["created_at"] as? String ?: ""
-                                
-                                Pair(
-                                    position to createdAt,
-                                    MediaItem(
-                                        id = mediaMap["id"] as? String ?: "",
-                                        url = constructMediaUrl(url),
-                                        type = if (typeStr.equals("VIDEO", ignoreCase = true)) MediaType.VIDEO else MediaType.IMAGE,
-                                        thumbnailUrl = null,
-                                        duration = null,
-                                        size = null,
-                                        mimeType = null
-                                    )
-                                )
-                            } catch (e: Exception) {
-                                android.util.Log.e(TAG, "Failed to parse media item: ${e.message}")
-                                null
-                            }
-                        }.sortedWith(compareBy({ it.first.first }, { it.first.second }))
-                         .map { it.second }
-                        
-                        post.mediaItems = mediaItems.toMutableList()
-                    }
-                    
-                    post
+                    parsePostWithUserData(postData)
                 } catch (e: Exception) {
                     android.util.Log.e(TAG, "Failed to parse post: ${e.message}", e)
                     null
                 }
             }.sortedByDescending { it.timestamp }
             
-            // Populate reaction data
             val postsWithReactions = populatePostReactions(posts)
-            
-            // Store in cache
             postsCache[cacheKey] = CacheEntry(postsWithReactions)
             
             android.util.Log.d(TAG, "Successfully fetched ${posts.size} posts for page $page")
             Result.success(postsWithReactions)
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Failed to fetch posts page: ${e.message}", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
     
     /**
-     * Parse Post object from HashMap response
+     * Parse Post from HashMap with embedded user data and media_items JSONB
      */
-    private fun parsePostFromHashMap(data: HashMap<String, Any>): Post {
-        return Post(
+    private fun parsePostWithUserData(data: HashMap<String, Any>): Post {
+        val post = Post(
             id = data["id"] as? String ?: "",
             key = data["key"] as? String,
             authorUid = data["author_uid"] as? String ?: "",
@@ -299,381 +245,226 @@ class PostRepository {
             commentsCount = (data["comments_count"] as? Number)?.toInt() ?: 0,
             viewsCount = (data["views_count"] as? Number)?.toInt() ?: 0
         )
+        
+        // Extract user data from join (users table, not profiles)
+        val userData = data["users"] as? Map<*, *>
+        if (userData != null) {
+            post.username = userData["username"] as? String
+            post.avatarUrl = userData["profile_image_url"] as? String
+            post.isVerified = userData["verify"] as? Boolean ?: false
+            
+            val authorUid = post.authorUid
+            if (authorUid.isNotEmpty()) {
+                profileCache[authorUid] = CacheEntry(
+                    ProfileData(post.username, post.avatarUrl, post.isVerified)
+                )
+            }
+        }
+        
+        // Parse media_items from JSONB column (already in posts table)
+        val mediaData = data["media_items"] as? List<*>
+        if (mediaData != null && mediaData.isNotEmpty()) {
+            post.mediaItems = mediaData.mapNotNull { item ->
+                val mediaMap = item as? Map<*, *> ?: return@mapNotNull null
+                val url = mediaMap["url"] as? String ?: return@mapNotNull null
+                val typeStr = mediaMap["type"] as? String ?: "IMAGE"
+                MediaItem(
+                    id = mediaMap["id"] as? String ?: "",
+                    url = url, // Already full URL in JSONB
+                    type = if (typeStr.equals("VIDEO", ignoreCase = true)) MediaType.VIDEO else MediaType.IMAGE,
+                    thumbnailUrl = mediaMap["thumbnailUrl"] as? String,
+                    duration = (mediaMap["duration"] as? Number)?.toLong(),
+                    size = (mediaMap["size"] as? Number)?.toLong(),
+                    mimeType = mediaMap["mimeType"] as? String
+                )
+            }.toMutableList()
+        }
+        
+        return post
     }
     
     suspend fun getUserPosts(userId: String, limit: Int = 20): Result<List<Post>> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching posts for user: $userId")
+        try {
             val posts = client.from("posts")
-                .select() {
-                    filter {
-                        eq("author_uid", userId)
-                    }
-                    limit(limit.toLong())
-                }
+                .select { filter { eq("author_uid", userId) }; limit(limit.toLong()) }
                 .decodeList<Post>()
                 .sortedByDescending { it.timestamp }
-            
-            val postsWithReactions = populatePostReactions(posts)
-            android.util.Log.d(TAG, "Successfully fetched ${posts.size} user posts")
-            Result.success(postsWithReactions)
+            Result.success(populatePostReactions(posts))
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch user posts", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
     
     suspend fun updatePost(postId: String, updates: Map<String, Any?>): Result<Post> {
-        return try {
-            val post = Post(id = postId, authorUid = "")
-            Result.success(post)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return Result.success(Post(id = postId, authorUid = ""))
     }
     
-    suspend fun deletePost(postId: String): Result<Unit> {
-        return try {
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    suspend fun deletePost(postId: String): Result<Unit> = Result.success(Unit)
     
-    suspend fun searchPosts(query: String): Result<List<Post>> {
-        return try {
-            Result.success(emptyList())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    suspend fun searchPosts(query: String): Result<List<Post>> = Result.success(emptyList())
     
-    fun observePosts(): Flow<List<Post>> = flow {
-        emit(emptyList())
-    }
+    fun observePosts(): Flow<List<Post>> = flow { emit(emptyList()) }
 
-    // ==================== REACTION METHODS ====================
+    // ==================== REACTION METHODS (using reactions table) ====================
 
     /**
-     * Toggle a reaction on a post. If the user already reacted with that type, it removes it.
-     * If the user reacted with a different type, it updates to the new type.
-     * 
-     * Enhanced with:
-     * - Authentication verification before proceeding
-     * - Retry logic for network failures (up to 2 retries)
-     * - Specific error messages for RLS policy failures
-     * - Comprehensive logging for all operations
+     * Toggle reaction - uses `reactions` table (not `likes`)
      */
     suspend fun toggleReaction(
         postId: String,
         userId: String,
         reactionType: ReactionType
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Toggling reaction: ${reactionType.name} for post $postId by user $userId")
+        try {
+            android.util.Log.d(TAG, "Toggling reaction: ${reactionType.name} for post $postId")
             
-            // Verify authentication before proceeding (Requirement 5.1)
-            if (userId.isEmpty() || userId.length < 8) {
-                android.util.Log.e(TAG, "Authentication verification failed: Invalid user ID")
-                return@withContext Result.failure(Exception("User must be authenticated to react to posts"))
-            }
-            
-            // Verify user is actually authenticated with Supabase
+            // Verify authentication
             val currentUser = client.auth.currentUserOrNull()
-            if (currentUser == null) {
-                android.util.Log.e(TAG, "Authentication verification failed: No authenticated user")
-                return@withContext Result.failure(Exception("User must be authenticated to react to posts"))
+            if (currentUser == null || userId.isEmpty()) {
+                return@withContext Result.failure(Exception("User must be authenticated to react"))
             }
             
-            android.util.Log.d(TAG, "Authentication verified for user $userId")
-            
-            // Attempt the reaction operation with retry logic (Requirement 5.4)
             var lastException: Exception? = null
-            val maxRetries = 2
-            var shouldRetry = true
-            var attempt = 0
-            
-            while (attempt <= maxRetries && shouldRetry) {
+            repeat(3) { attempt ->
                 try {
-                    android.util.Log.d(TAG, "Reaction attempt ${attempt + 1} of ${maxRetries + 1}")
-                    
-                    // First, check if user already reacted
                     val existingReaction = client.from("reactions")
-                        .select() {
-                            filter {
-                                eq("post_id", postId)
-                                eq("user_id", userId)
-                            }
-                        }
+                        .select { filter { eq("post_id", postId); eq("user_id", userId) } }
                         .decodeSingleOrNull<HashMap<String, Any>>()
 
                     if (existingReaction != null) {
                         val existingType = existingReaction["reaction_type"] as? String
-
                         if (existingType == reactionType.name) {
-                            // Remove the reaction (toggle off)
+                            // Remove reaction
                             client.from("reactions")
-                                .delete {
-                                    filter {
-                                        eq("post_id", postId)
-                                        eq("user_id", userId)
-                                    }
-                                }
-                            android.util.Log.d(TAG, "Reaction removed successfully")
+                                .delete { filter { eq("post_id", postId); eq("user_id", userId) } }
+                            android.util.Log.d(TAG, "Reaction removed")
                         } else {
-                            // Update to new reaction type
+                            // Update reaction type
                             client.from("reactions")
                                 .update({
                                     set("reaction_type", reactionType.name)
                                     set("updated_at", java.time.Instant.now().toString())
-                                }) {
-                                    filter {
-                                        eq("post_id", postId)
-                                        eq("user_id", userId)
-                                    }
-                                }
-                            android.util.Log.d(TAG, "Reaction updated to ${reactionType.name} successfully")
+                                }) { filter { eq("post_id", postId); eq("user_id", userId) } }
+                            android.util.Log.d(TAG, "Reaction updated to ${reactionType.name}")
                         }
                     } else {
-                        // Create new reaction (Requirement 5.2)
-                        val newReaction = mapOf(
+                        // Insert new reaction
+                        client.from("reactions").insert(mapOf(
                             "user_id" to userId,
                             "post_id" to postId,
                             "reaction_type" to reactionType.name
-                        )
-                        client.from("reactions").insert(newReaction)
-                        android.util.Log.d(TAG, "New reaction created successfully")
+                        ))
+                        android.util.Log.d(TAG, "New reaction created")
                     }
-
-                    // Success - return immediately
                     return@withContext Result.success(Unit)
-                    
                 } catch (e: Exception) {
                     lastException = e
-                    android.util.Log.e(TAG, "Reaction attempt ${attempt + 1} failed: ${e.message}", e)
-                    
-                    // Check if this is an RLS error (don't retry RLS errors)
-                    val isRLSError = e.message?.contains("policy", ignoreCase = true) == true ||
-                                    e.message?.contains("rls", ignoreCase = true) == true ||
-                                    e.message?.contains("row-level security", ignoreCase = true) == true
-                    
-                    if (isRLSError) {
-                        android.util.Log.e(TAG, "RLS policy error detected - not retrying")
-                        shouldRetry = false
-                    } else {
-                        // Check if this is a network error (retry these)
-                        val isNetworkError = e.message?.contains("network", ignoreCase = true) == true ||
-                                            e.message?.contains("connection", ignoreCase = true) == true ||
-                                            e.message?.contains("timeout", ignoreCase = true) == true
-                        
-                        if (!isNetworkError) {
-                            android.util.Log.e(TAG, "Non-network error detected - not retrying")
-                            shouldRetry = false
-                        } else if (attempt < maxRetries) {
-                            // If we have more retries, wait with exponential backoff
-                            val backoffMs = 100L * (attempt + 1) // 100ms, 200ms
-                            android.util.Log.d(TAG, "Waiting ${backoffMs}ms before retry")
-                            kotlinx.coroutines.delay(backoffMs)
-                        }
-                    }
+                    val isRLSError = e.message?.contains("policy", true) == true
+                    if (isRLSError || attempt == 2) throw e
+                    kotlinx.coroutines.delay(100L * (attempt + 1))
                 }
-                
-                attempt++
             }
-            
-            // All retries exhausted - return failure with mapped error
-            android.util.Log.e(TAG, "All reaction attempts failed", lastException)
-            val errorMessage = mapSupabaseError(lastException ?: Exception("Unknown error"))
-            Result.failure(Exception(errorMessage))
-            
+            Result.failure(Exception(mapSupabaseError(lastException ?: Exception("Unknown"))))
         } catch (e: Exception) {
-            // Catch any unexpected errors
-            android.util.Log.e(TAG, "Unexpected error in toggleReaction", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
 
-    /**
-     * Get reaction summary for a post (count of each reaction type)
-     */
     suspend fun getReactionSummary(postId: String): Result<Map<ReactionType, Int>> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching reaction summary for post $postId")
-
+        try {
             val reactions = client.from("reactions")
-                .select() {
-                    filter {
-                        eq("post_id", postId)
-                    }
-                }
+                .select { filter { eq("post_id", postId) } }
                 .decodeList<HashMap<String, Any>>()
-
-            // Group by reaction type and count
+            
             val summary = reactions
-                .groupBy { 
-                    val typeStr = it["reaction_type"] as? String ?: "LIKE"
-                    ReactionType.fromString(typeStr)
-                }
+                .groupBy { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
                 .mapValues { it.value.size }
-
-            android.util.Log.d(TAG, "Reaction summary: $summary")
             Result.success(summary)
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch reaction summary", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
 
-    /**
-     * Get users who reacted to a post, optionally filtered by reaction type
-     */
     suspend fun getUsersWhoReacted(
         postId: String,
         reactionType: ReactionType? = null
     ): Result<List<UserReaction>> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching users who reacted to post $postId")
-
-            // Fetch reactions
+        try {
             val reactions = client.from("reactions")
-                .select() {
+                .select {
                     filter {
                         eq("post_id", postId)
-                        if (reactionType != null) {
-                            eq("reaction_type", reactionType.name)
-                        }
+                        if (reactionType != null) eq("reaction_type", reactionType.name)
                     }
                 }
                 .decodeList<HashMap<String, Any>>()
 
-            if (reactions.isEmpty()) {
-                return@withContext Result.success(emptyList())
-            }
+            if (reactions.isEmpty()) return@withContext Result.success(emptyList())
 
-            // Get user IDs
             val userIds = reactions.mapNotNull { it["user_id"] as? String }
-            
-            if (userIds.isEmpty()) {
-                return@withContext Result.success(emptyList())
-            }
+            if (userIds.isEmpty()) return@withContext Result.success(emptyList())
 
-            // Fetch user details
             val users = client.from("users")
-                .select() {
-                    filter {
-                        isIn("uid", userIds)
-                    }
-                }
+                .select { filter { isIn("uid", userIds) } }
                 .decodeList<HashMap<String, Any>>()
                 .associateBy { it["uid"] as? String }
 
-            // Map to UserReaction
             val userReactions = reactions.mapNotNull { reaction ->
                 val userId = reaction["user_id"] as? String ?: return@mapNotNull null
                 val user = users[userId]
-                
                 UserReaction(
                     userId = userId,
-                    username = user?.get("username") as? String ?: "Unknown User",
+                    username = user?.get("username") as? String ?: "Unknown",
                     profileImage = user?.get("profile_image_url") as? String,
                     isVerified = user?.get("verify") as? Boolean ?: false,
                     reactionType = reaction["reaction_type"] as? String ?: "LIKE",
                     reactedAt = reaction["created_at"] as? String
                 )
             }
-
-            android.util.Log.d(TAG, "Found ${userReactions.size} users who reacted")
             Result.success(userReactions)
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch users who reacted", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
 
-    /**
-     * Get current user's reaction on a post
-     */
     suspend fun getUserReaction(postId: String, userId: String): Result<ReactionType?> = withContext(Dispatchers.IO) {
-        return@withContext try {
-            android.util.Log.d(TAG, "Fetching user reaction for post $postId")
+        try {
             val reaction = client.from("reactions")
-                .select() {
-                    filter {
-                        eq("post_id", postId)
-                        eq("user_id", userId)
-                    }
-                }
+                .select { filter { eq("post_id", postId); eq("user_id", userId) } }
                 .decodeSingleOrNull<HashMap<String, Any>>()
-
-            val reactionTypeStr = reaction?.get("reaction_type") as? String
-            val reactionType = if (reactionTypeStr != null) ReactionType.fromString(reactionTypeStr) else null
             
-            android.util.Log.d(TAG, "User reaction: $reactionType")
-            Result.success(reactionType)
+            val typeStr = reaction?.get("reaction_type") as? String
+            Result.success(typeStr?.let { ReactionType.fromString(it) })
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to fetch user reaction", e)
-            val errorMessage = mapSupabaseError(e)
-            Result.failure(Exception(errorMessage))
+            Result.failure(Exception(mapSupabaseError(e)))
         }
     }
-    /**
-     * Helper to populate reaction data for a list of posts
-     */
+
     private suspend fun populatePostReactions(posts: List<Post>): List<Post> {
         if (posts.isEmpty()) return posts
         
         return try {
-            android.util.Log.d(TAG, "Populating reactions for ${posts.size} posts")
             val postIds = posts.map { it.id }
             val currentUserId = client.auth.currentUserOrNull()?.id
             
-            // 1. Fetch all reactions for these posts
             val allReactions = client.from("reactions")
-                .select() {
-                    filter {
-                        isIn("post_id", postIds)
-                    }
-                }
+                .select { filter { isIn("post_id", postIds) } }
                 .decodeList<HashMap<String, Any>>()
             
-            android.util.Log.d(TAG, "Fetched ${allReactions.size} reactions")
-            
-            // 2. Group by post_id
             val reactionsByPost = allReactions.groupBy { it["post_id"] as? String }
             
             posts.map { post ->
                 val postReactions = reactionsByPost[post.id] ?: emptyList()
-                
-                // Calculate summary
                 val summary = postReactions
-                    .groupBy { 
-                        val typeStr = it["reaction_type"] as? String ?: "LIKE"
-                        ReactionType.fromString(typeStr)
-                    }
+                    .groupBy { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
                     .mapValues { it.value.size }
                 
-                // Find user reaction
-                var userReactionType: ReactionType? = null
-                if (currentUserId != null) {
-                    val userReaction = postReactions.find { 
-                        (it["user_id"] as? String) == currentUserId 
-                    }
-                    if (userReaction != null) {
-                        val typeStr = userReaction["reaction_type"] as? String
-                        if (typeStr != null) {
-                            userReactionType = ReactionType.fromString(typeStr)
-                        }
-                    }
-                }
+                val userReactionType = if (currentUserId != null) {
+                    postReactions.find { it["user_id"] as? String == currentUserId }
+                        ?.let { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
+                } else null
                 
-                post.copy(
-                    reactions = summary,
-                    userReaction = userReactionType
-                )
+                post.copy(reactions = summary, userReaction = userReactionType)
             }
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Failed to populate reactions", e)

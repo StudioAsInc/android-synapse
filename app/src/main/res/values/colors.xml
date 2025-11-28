@@ -230,4 +230,7 @@
     <!-- Message Bubble Colors -->
     <color name="sent_message_background">@color/md_theme_primaryContainer</color>
     <color name="received_message_background">@color/md_theme_surfaceVariant</color>
+    
+    <!-- Surface Container alias -->
+    <color name="surface_container">@color/md_theme_surfaceContainer</color>
 </resources>

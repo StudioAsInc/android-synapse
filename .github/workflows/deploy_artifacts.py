@@ -70,11 +70,11 @@ async def send_file(file_path):
         print(f"Failed to send file: {e}")
 
 async def main():
-    # Create the client with bot token directly
-    async with TelegramClient('bot_session', api_id, api_hash) as client:
-        await client.start(bot_token=bot_token)
-        client.parse_mode = 'markdown'
-        await send_file(apk_path)
+    client = TelegramClient('bot_session', api_id, api_hash)
+    await client.start(bot_token=bot_token)
+    client.parse_mode = 'markdown'
+    await send_file(apk_path)
+    await client.disconnect()
 
 if __name__ == '__main__':
     asyncio.run(main())

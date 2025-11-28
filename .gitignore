@@ -44,6 +44,7 @@ Thumbs.db
 *.temp
 *.log
 *.cache
+package-lock.json
 
 # Android SDK (should never be committed)
 android-sdk/
