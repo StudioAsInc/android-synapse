@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
 
 class PostRepository {
     
@@ -93,8 +94,8 @@ class PostRepository {
                 return@withContext Result.failure(Exception("Supabase not configured."))
             }
             
-            // Build insert data matching Supabase schema
-            val insertData = buildMap<String, Any?> {
+            // Build insert data as JsonObject
+            val insertData = buildJsonObject {
                 put("id", post.id)
                 post.key?.let { put("key", it) }
                 put("author_uid", post.authorUid)
@@ -113,22 +114,24 @@ class PostRepository {
                 put("views_count", 0)
                 // Media items as JSONB
                 post.mediaItems?.let { items ->
-                    put("media_items", items.map { media ->
-                        mapOf(
-                            "id" to media.id,
-                            "url" to media.url,
-                            "type" to media.type.name,
-                            "thumbnailUrl" to media.thumbnailUrl,
-                            "duration" to media.duration,
-                            "size" to media.size,
-                            "mimeType" to media.mimeType
-                        )
+                    put("media_items", buildJsonArray {
+                        items.forEach { media ->
+                            add(buildJsonObject {
+                                put("id", media.id)
+                                put("url", media.url)
+                                put("type", media.type.name)
+                                media.thumbnailUrl?.let { put("thumbnailUrl", it) }
+                                media.duration?.let { put("duration", it) }
+                                media.size?.let { put("size", it) }
+                                media.mimeType?.let { put("mimeType", it) }
+                            })
+                        }
                     })
                 }
                 // Poll fields
                 post.hasPoll?.let { put("has_poll", it) }
                 post.pollQuestion?.let { put("poll_question", it) }
-                post.pollOptions?.let { put("poll_options", it) }
+                post.pollOptions?.let { put("poll_options", buildJsonArray { it.forEach { opt -> add(opt) } }) }
                 post.pollEndTime?.let { put("poll_end_time", it) }
                 // Location fields
                 post.hasLocation?.let { put("has_location", it) }
@@ -199,7 +202,7 @@ class PostRepository {
                 ) {
                     range(offset.toLong(), (offset + pageSize - 1).toLong())
                 }
-                .decodeList<HashMap<String, Any>>()
+                .decodeList<JsonObject>()
             
             android.util.Log.d(TAG, "Raw response count: ${response.size}")
             
@@ -224,34 +227,34 @@ class PostRepository {
     }
     
     /**
-     * Parse Post from HashMap with embedded user data and media_items JSONB
+     * Parse Post from JsonObject with embedded user data and media_items JSONB
      */
-    private fun parsePostWithUserData(data: HashMap<String, Any>): Post {
+    private fun parsePostWithUserData(data: JsonObject): Post {
         val post = Post(
-            id = data["id"] as? String ?: "",
-            key = data["key"] as? String,
-            authorUid = data["author_uid"] as? String ?: "",
-            postText = data["post_text"] as? String,
-            postImage = data["post_image"] as? String,
-            postType = data["post_type"] as? String,
-            postHideViewsCount = data["post_hide_views_count"] as? String,
-            postHideLikeCount = data["post_hide_like_count"] as? String,
-            postHideCommentsCount = data["post_hide_comments_count"] as? String,
-            postDisableComments = data["post_disable_comments"] as? String,
-            postVisibility = data["post_visibility"] as? String,
-            publishDate = data["publish_date"] as? String,
-            timestamp = (data["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
-            likesCount = (data["likes_count"] as? Number)?.toInt() ?: 0,
-            commentsCount = (data["comments_count"] as? Number)?.toInt() ?: 0,
-            viewsCount = (data["views_count"] as? Number)?.toInt() ?: 0
+            id = data["id"]?.jsonPrimitive?.contentOrNull ?: "",
+            key = data["key"]?.jsonPrimitive?.contentOrNull,
+            authorUid = data["author_uid"]?.jsonPrimitive?.contentOrNull ?: "",
+            postText = data["post_text"]?.jsonPrimitive?.contentOrNull,
+            postImage = data["post_image"]?.jsonPrimitive?.contentOrNull,
+            postType = data["post_type"]?.jsonPrimitive?.contentOrNull,
+            postHideViewsCount = data["post_hide_views_count"]?.jsonPrimitive?.contentOrNull,
+            postHideLikeCount = data["post_hide_like_count"]?.jsonPrimitive?.contentOrNull,
+            postHideCommentsCount = data["post_hide_comments_count"]?.jsonPrimitive?.contentOrNull,
+            postDisableComments = data["post_disable_comments"]?.jsonPrimitive?.contentOrNull,
+            postVisibility = data["post_visibility"]?.jsonPrimitive?.contentOrNull,
+            publishDate = data["publish_date"]?.jsonPrimitive?.contentOrNull,
+            timestamp = data["timestamp"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
+            likesCount = data["likes_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            commentsCount = data["comments_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            viewsCount = data["views_count"]?.jsonPrimitive?.intOrNull ?: 0
         )
         
         // Extract user data from join (users table, not profiles)
-        val userData = data["users"] as? Map<*, *>
+        val userData = data["users"]?.jsonObject
         if (userData != null) {
-            post.username = userData["username"] as? String
-            post.avatarUrl = userData["profile_image_url"] as? String
-            post.isVerified = userData["verify"] as? Boolean ?: false
+            post.username = userData["username"]?.jsonPrimitive?.contentOrNull
+            post.avatarUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull
+            post.isVerified = userData["verify"]?.jsonPrimitive?.booleanOrNull ?: false
             
             val authorUid = post.authorUid
             if (authorUid.isNotEmpty()) {
@@ -262,20 +265,20 @@ class PostRepository {
         }
         
         // Parse media_items from JSONB column (already in posts table)
-        val mediaData = data["media_items"] as? List<*>
+        val mediaData = data["media_items"]?.jsonArray
         if (mediaData != null && mediaData.isNotEmpty()) {
             post.mediaItems = mediaData.mapNotNull { item ->
-                val mediaMap = item as? Map<*, *> ?: return@mapNotNull null
-                val url = mediaMap["url"] as? String ?: return@mapNotNull null
-                val typeStr = mediaMap["type"] as? String ?: "IMAGE"
+                val mediaMap = item.jsonObject
+                val url = mediaMap["url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val typeStr = mediaMap["type"]?.jsonPrimitive?.contentOrNull ?: "IMAGE"
                 MediaItem(
-                    id = mediaMap["id"] as? String ?: "",
-                    url = url, // Already full URL in JSONB
+                    id = mediaMap["id"]?.jsonPrimitive?.contentOrNull ?: "",
+                    url = url,
                     type = if (typeStr.equals("VIDEO", ignoreCase = true)) MediaType.VIDEO else MediaType.IMAGE,
-                    thumbnailUrl = mediaMap["thumbnailUrl"] as? String,
-                    duration = (mediaMap["duration"] as? Number)?.toLong(),
-                    size = (mediaMap["size"] as? Number)?.toLong(),
-                    mimeType = mediaMap["mimeType"] as? String
+                    thumbnailUrl = mediaMap["thumbnailUrl"]?.jsonPrimitive?.contentOrNull,
+                    duration = mediaMap["duration"]?.jsonPrimitive?.longOrNull,
+                    size = mediaMap["size"]?.jsonPrimitive?.longOrNull,
+                    mimeType = mediaMap["mimeType"]?.jsonPrimitive?.contentOrNull
                 )
             }.toMutableList()
         }
@@ -329,10 +332,10 @@ class PostRepository {
                 try {
                     val existingReaction = client.from("reactions")
                         .select { filter { eq("post_id", postId); eq("user_id", userId) } }
-                        .decodeSingleOrNull<HashMap<String, Any>>()
+                        .decodeSingleOrNull<JsonObject>()
 
                     if (existingReaction != null) {
-                        val existingType = existingReaction["reaction_type"] as? String
+                        val existingType = existingReaction["reaction_type"]?.jsonPrimitive?.contentOrNull
                         if (existingType == reactionType.name) {
                             // Remove reaction
                             client.from("reactions")
@@ -349,11 +352,11 @@ class PostRepository {
                         }
                     } else {
                         // Insert new reaction
-                        client.from("reactions").insert(mapOf(
-                            "user_id" to userId,
-                            "post_id" to postId,
-                            "reaction_type" to reactionType.name
-                        ))
+                        client.from("reactions").insert(buildJsonObject {
+                            put("user_id", userId)
+                            put("post_id", postId)
+                            put("reaction_type", reactionType.name)
+                        })
                         android.util.Log.d(TAG, "New reaction created")
                     }
                     return@withContext Result.success(Unit)
@@ -374,10 +377,10 @@ class PostRepository {
         try {
             val reactions = client.from("reactions")
                 .select { filter { eq("post_id", postId) } }
-                .decodeList<HashMap<String, Any>>()
+                .decodeList<JsonObject>()
             
             val summary = reactions
-                .groupBy { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
+                .groupBy { ReactionType.fromString(it["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE") }
                 .mapValues { it.value.size }
             Result.success(summary)
         } catch (e: Exception) {
@@ -397,28 +400,28 @@ class PostRepository {
                         if (reactionType != null) eq("reaction_type", reactionType.name)
                     }
                 }
-                .decodeList<HashMap<String, Any>>()
+                .decodeList<JsonObject>()
 
             if (reactions.isEmpty()) return@withContext Result.success(emptyList())
 
-            val userIds = reactions.mapNotNull { it["user_id"] as? String }
+            val userIds = reactions.mapNotNull { it["user_id"]?.jsonPrimitive?.contentOrNull }
             if (userIds.isEmpty()) return@withContext Result.success(emptyList())
 
             val users = client.from("users")
                 .select { filter { isIn("uid", userIds) } }
-                .decodeList<HashMap<String, Any>>()
-                .associateBy { it["uid"] as? String }
+                .decodeList<JsonObject>()
+                .associateBy { it["uid"]?.jsonPrimitive?.contentOrNull }
 
             val userReactions = reactions.mapNotNull { reaction ->
-                val userId = reaction["user_id"] as? String ?: return@mapNotNull null
+                val userId = reaction["user_id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
                 val user = users[userId]
                 UserReaction(
                     userId = userId,
-                    username = user?.get("username") as? String ?: "Unknown",
-                    profileImage = user?.get("profile_image_url") as? String,
-                    isVerified = user?.get("verify") as? Boolean ?: false,
-                    reactionType = reaction["reaction_type"] as? String ?: "LIKE",
-                    reactedAt = reaction["created_at"] as? String
+                    username = user?.get("username")?.jsonPrimitive?.contentOrNull ?: "Unknown",
+                    profileImage = user?.get("profile_image_url")?.jsonPrimitive?.contentOrNull,
+                    isVerified = user?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false,
+                    reactionType = reaction["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE",
+                    reactedAt = reaction["created_at"]?.jsonPrimitive?.contentOrNull
                 )
             }
             Result.success(userReactions)
@@ -431,9 +434,9 @@ class PostRepository {
         try {
             val reaction = client.from("reactions")
                 .select { filter { eq("post_id", postId); eq("user_id", userId) } }
-                .decodeSingleOrNull<HashMap<String, Any>>()
+                .decodeSingleOrNull<JsonObject>()
             
-            val typeStr = reaction?.get("reaction_type") as? String
+            val typeStr = reaction?.get("reaction_type")?.jsonPrimitive?.contentOrNull
             Result.success(typeStr?.let { ReactionType.fromString(it) })
         } catch (e: Exception) {
             Result.failure(Exception(mapSupabaseError(e)))
@@ -449,19 +452,19 @@ class PostRepository {
             
             val allReactions = client.from("reactions")
                 .select { filter { isIn("post_id", postIds) } }
-                .decodeList<HashMap<String, Any>>()
+                .decodeList<JsonObject>()
             
-            val reactionsByPost = allReactions.groupBy { it["post_id"] as? String }
+            val reactionsByPost = allReactions.groupBy { it["post_id"]?.jsonPrimitive?.contentOrNull }
             
             posts.map { post ->
                 val postReactions = reactionsByPost[post.id] ?: emptyList()
                 val summary = postReactions
-                    .groupBy { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
+                    .groupBy { ReactionType.fromString(it["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE") }
                     .mapValues { it.value.size }
                 
                 val userReactionType = if (currentUserId != null) {
-                    postReactions.find { it["user_id"] as? String == currentUserId }
-                        ?.let { ReactionType.fromString(it["reaction_type"] as? String ?: "LIKE") }
+                    postReactions.find { it["user_id"]?.jsonPrimitive?.contentOrNull == currentUserId }
+                        ?.let { ReactionType.fromString(it["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE") }
                 } else null
                 
                 post.copy(reactions = summary, userReaction = userReactionType)
