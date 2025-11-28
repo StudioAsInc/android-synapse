@@ -35,6 +35,8 @@ import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.FileUtil
 import com.synapse.social.studioasinc.util.MediaUploadManager
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -132,18 +134,18 @@ class CreatePostActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                val text = s?.toString() ?: ""
-                val remaining = MAX_CHARS - text.length
+                val inputText = s?.toString() ?: ""
+                val remaining = MAX_CHARS - inputText.length
 
                 // Show warning when near limit
                 binding.charCountWarning.apply {
                     isVisible = remaining <= 50
-                    text = if (remaining < 0) "${-remaining} characters over limit" else "$remaining characters remaining"
+                    setText(if (remaining < 0) "${-remaining} characters over limit" else "$remaining characters remaining")
                     setTextColor(if (remaining < 0) getColor(android.R.color.holo_red_dark) else getColor(android.R.color.darker_gray))
                 }
 
                 // Extract mentions and hashtags
-                extractMentionsAndHashtags(text)
+                extractMentionsAndHashtags(inputText)
                 updatePostButtonState()
             }
         })
@@ -497,7 +499,7 @@ class CreatePostActivity : AppCompatActivity() {
             youtubeUrl = youtubeUrl,
             hasPoll = pollData != null,
             pollQuestion = pollData?.question,
-            pollOptions = pollData?.options?.map { mapOf("text" to it, "votes" to 0) },
+            pollOptions = pollData?.options?.let { Json.encodeToString(it.map { opt -> mapOf("text" to opt, "votes" to 0) }) },
             hasLocation = locationData != null,
             locationName = locationData?.name,
             locationAddress = locationData?.address,

@@ -70,7 +70,7 @@ data class Post(
     @SerialName("poll_question")
     val pollQuestion: String? = null,
     @SerialName("poll_options")
-    val pollOptions: List<Map<String, @Contextual Any>>? = null,
+    val pollOptions: String? = null,
     @SerialName("poll_end_time")
     val pollEndTime: String? = null,
     @SerialName("poll_allow_multiple")
