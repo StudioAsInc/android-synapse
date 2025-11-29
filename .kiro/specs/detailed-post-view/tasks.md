@@ -1,11 +1,17 @@
 # Implementation Plan
 
-- [ ] 1. Set up data models and repository interfaces
-  - [ ] 1.1 Create PostDetail and related data models
+- [-] 1. Set up data models and repository interfaces
+
+
+  - [x] 1.1 Create PostDetail and related data models
+
+
     - Create `PostDetail`, `CommentWithUser`, `CommentReaction`, `PollOptionResult` data classes in `model/`
     - Add serialization annotations for Supabase compatibility
     - _Requirements: 1.1, 1.2, 1.4, 2.1, 4.2, 7.1_
+
   - [ ] 1.2 Write property test for data model serialization round-trip
+
     - **Property 3: Encryption round-trip** - Test that serializing then deserializing PostDetail produces equivalent object
     - **Validates: Requirements 1.5**
   - [ ] 1.3 Create state classes for UI
