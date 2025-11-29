@@ -148,7 +148,7 @@
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
 			android:supportsPictureInPicture="true"
-			android:theme="@style/Theme.AppCompat.NoActionBar"
+			android:theme="@style/AppTheme.FullScreen"
 			android:screenOrientation="portrait" />
 		<activity
 			android:name=".CreatePostActivity"

@@ -89,17 +89,14 @@ class MediaGridView @JvmOverloads constructor(
     private fun createTwoItemLayout(items: List<MediaItem>) {
         visibility = View.VISIBLE
         
-        val container = FrameLayout(context)
-        container.layoutParams = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT
-        )
-        
         // Calculate dimensions
         val totalWidth = resources.displayMetrics.widthPixels - 
             (resources.getDimensionPixelSize(R.dimen.spacing_medium) * 2)
         val itemWidth = (totalWidth - gridSpacing) / 2
         val itemHeight = itemWidth // Square aspect ratio
+        
+        val container = FrameLayout(context)
+        container.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, itemHeight)
         
         // Left image
         val leftMedia = createMediaImageView(items[0], 0)
@@ -125,12 +122,6 @@ class MediaGridView @JvmOverloads constructor(
     private fun createThreeItemLayout(items: List<MediaItem>) {
         visibility = View.VISIBLE
         
-        val container = FrameLayout(context)
-        container.layoutParams = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT
-        )
-        
         // Calculate dimensions
         val totalWidth = resources.displayMetrics.widthPixels - 
             (resources.getDimensionPixelSize(R.dimen.spacing_medium) * 2)
@@ -138,6 +129,9 @@ class MediaGridView @JvmOverloads constructor(
         val rightWidth = (totalWidth / 3) - (gridSpacing / 2)
         val totalHeight = leftWidth // Make it square
         val rightItemHeight = (totalHeight - gridSpacing) / 2
+        
+        val container = FrameLayout(context)
+        container.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, totalHeight)
         
         // Left large image
         val leftMedia = createMediaImageView(items[0], 0)
@@ -169,17 +163,15 @@ class MediaGridView @JvmOverloads constructor(
     private fun createFourItemLayout(items: List<MediaItem>) {
         visibility = View.VISIBLE
         
-        val container = FrameLayout(context)
-        container.layoutParams = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT
-        )
-        
         // Calculate dimensions
         val totalWidth = resources.displayMetrics.widthPixels - 
             (resources.getDimensionPixelSize(R.dimen.spacing_medium) * 2)
         val itemWidth = (totalWidth - gridSpacing) / 2
         val itemHeight = itemWidth // Square aspect ratio
+        val totalHeight = itemHeight * 2 + gridSpacing
+        
+        val container = FrameLayout(context)
+        container.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, totalHeight)
         
         // Top left
         val topLeftMedia = createMediaImageView(items[0], 0)
@@ -218,17 +210,15 @@ class MediaGridView @JvmOverloads constructor(
     private fun createFivePlusItemLayout(items: List<MediaItem>) {
         visibility = View.VISIBLE
         
-        val container = FrameLayout(context)
-        container.layoutParams = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT
-        )
-        
         // Calculate dimensions
         val totalWidth = resources.displayMetrics.widthPixels - 
             (resources.getDimensionPixelSize(R.dimen.spacing_medium) * 2)
         val itemWidth = (totalWidth - gridSpacing) / 2
         val itemHeight = itemWidth // Square aspect ratio
+        val totalHeight = itemHeight * 2 + gridSpacing
+        
+        val container = FrameLayout(context)
+        container.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, totalHeight)
         
         // Top left
         val topLeftMedia = createMediaImageView(items[0], 0)

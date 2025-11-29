@@ -5,6 +5,6 @@ data class Reply(
     val comment: String = "",
     val push_time: String = "",
     val key: String = "",
-    val like: Long = 0,
+    val like: Long? = null,
     val replyCommentkey: String = ""
 )

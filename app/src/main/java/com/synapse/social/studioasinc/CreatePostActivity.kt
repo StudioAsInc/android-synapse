@@ -534,10 +534,10 @@ class CreatePostActivity : AppCompatActivity() {
                         }
                     },
                     onComplete = { uploaded ->
-                        val updatedPost = post.copy().apply {
-                            mediaItems = uploaded.toMutableList()
+                        val updatedPost = post.copy(
+                            mediaItems = uploaded.toMutableList(),
                             postImage = uploaded.firstOrNull { it.type == MediaType.IMAGE }?.url
-                        }
+                        )
                         savePost(updatedPost)
                     },
                     onError = { error ->
@@ -557,6 +557,11 @@ class CreatePostActivity : AppCompatActivity() {
     }
 
     private fun savePost(post: Post) {
+        android.util.Log.d("CreatePost", "Saving post with ${post.mediaItems?.size ?: 0} media items")
+        post.mediaItems?.forEach { media ->
+            android.util.Log.d("CreatePost", "Media: ${media.type} - ${media.url}")
+        }
+        
         lifecycleScope.launch {
             postRepository.createPost(post)
                 .onSuccess {
@@ -568,6 +573,7 @@ class CreatePostActivity : AppCompatActivity() {
                     }
                 }
                 .onFailure { e ->
+                    android.util.Log.e("CreatePost", "Failed to create post", e)
                     runOnUiThread {
                         setLoading(false)
                         Toast.makeText(this@CreatePostActivity, "Failed: ${e.message}", Toast.LENGTH_LONG).show()

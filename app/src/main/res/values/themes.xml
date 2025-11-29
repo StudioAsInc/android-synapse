@@ -84,7 +84,7 @@
     </style>
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.Material3.Light">
     </style>
-    <style name="PostCommentsBottomSheetDialogStyle" parent="Theme.AppCompat.Light.Dialog">
+    <style name="PostCommentsBottomSheetDialogStyle" parent="Theme.Material3.Light.Dialog">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>

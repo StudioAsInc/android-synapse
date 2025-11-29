@@ -10,7 +10,7 @@ data class Comment(
     @SerialName("push_time")
     val push_time: String = "",  // Timestamp
     val key: String = "",  // Comment ID
-    val like: Long = 0,  // Like count
+    val like: Long? = null,  // Like count (optional - may not exist in schema)
     @SerialName("post_key")
     val postKey: String = "",  // Post this comment belongs to
     @SerialName("reply_comment_key")

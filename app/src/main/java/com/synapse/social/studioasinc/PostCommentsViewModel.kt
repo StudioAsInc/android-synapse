@@ -61,14 +61,14 @@ class PostCommentsViewModel : ViewModel() {
                         comment = commentData["text"] as? String ?: commentData["comment"] as? String ?: "",
                         push_time = commentData["timestamp"] as? String ?: commentData["push_time"] as? String ?: "",
                         key = commentData["id"] as? String ?: commentData["key"] as? String ?: "",
-                        like = (commentData["like"] as? Number)?.toLong() ?: 0L,
+                        like = (commentData["like"] as? Number)?.toLong(),
                         postKey = commentData["post_key"] as? String ?: ""
                     )
                     commentsList.add(comment)
                     comment.uid.let { uids.add(it) }
                 }
                 
-                _comments.postValue(commentsList.sortedByDescending { it.like })
+                _comments.postValue(commentsList.sortedByDescending { it.like ?: 0L })
                 fetchUsersData(uids)
             } catch (e: Exception) {
                 _error.postValue("Failed to load comments: ${e.message}")
@@ -99,14 +99,14 @@ class PostCommentsViewModel : ViewModel() {
                         comment = replyData["text"] as? String ?: replyData["comment"] as? String ?: "",
                         push_time = replyData["timestamp"] as? String ?: replyData["push_time"] as? String ?: "",
                         key = replyData["id"] as? String ?: replyData["key"] as? String ?: "",
-                        like = (replyData["like"] as? Number)?.toLong() ?: 0L,
+                        like = (replyData["like"] as? Number)?.toLong(),
                         replyCommentkey = replyData["comment_key"] as? String ?: replyData["reply_comment_key"] as? String ?: ""
                     )
                     repliesList.add(reply)
                     reply.uid.let { uids.add(it) }
                 }
                 
-                _replies.postValue(repliesList.sortedByDescending { it.like })
+                _replies.postValue(repliesList.sortedByDescending { it.like ?: 0L })
                 fetchUsersData(uids)
             } catch (e: Exception) {
                 _error.postValue("Failed to load replies: ${e.message}")
@@ -193,8 +193,7 @@ class PostCommentsViewModel : ViewModel() {
                         "text" to commentText,
                         "timestamp" to System.currentTimeMillis().toString(),
                         "comment_key" to replyToCommentKey,
-                        "post_key" to postKey,
-                        "like" to 0L
+                        "post_key" to postKey
                     )
                     dbService.insert("replies", replyData)
                 } else {
@@ -202,8 +201,7 @@ class PostCommentsViewModel : ViewModel() {
                         "uid" to currentUid,
                         "text" to commentText,
                         "timestamp" to System.currentTimeMillis().toString(),
-                        "post_key" to postKey,
-                        "like" to 0L
+                        "post_key" to postKey
                     )
                     dbService.insert("comments", commentData)
                 }
