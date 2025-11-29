@@ -200,133 +200,94 @@
             android:paddingVertical="8dp">
 
             <!-- Like Button -->
-            <com.google.android.material.button.MaterialButton
+            <LinearLayout
                 android:id="@+id/likeButton"
-                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_weight="1"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                app:cornerRadius="22dp"
-                app:icon="@drawable/ic_reaction_like"
-                app:iconGravity="textStart"
-                app:iconPadding="6dp"
-                app:iconSize="22dp"
-                app:iconTint="?attr/colorOnSurfaceVariant"
-                app:rippleColor="?attr/colorPrimaryContainer">
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:orientation="horizontal">
 
-                <LinearLayout
+                <ImageView
+                    android:id="@+id/likeIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Like"
+                    android:src="@drawable/ic_reaction_like" />
+
+                <TextView
+                    android:id="@+id/likeText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="horizontal">
+                    android:text="Like"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
-                    <ImageView
-                        android:id="@+id/likeIcon"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="6dp"
-                        android:contentDescription="Like"
-                        android:src="@drawable/ic_reaction_like" />
-
-                    <TextView
-                        android:id="@+id/likeText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Like"
-                        android:textAppearance="?attr/textAppearanceLabelLarge"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </com.google.android.material.button.MaterialButton>
+            </LinearLayout>
 
             <!-- Comment Button -->
-            <com.google.android.material.button.MaterialButton
+            <LinearLayout
                 android:id="@+id/commentButton"
-                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_weight="1"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                app:cornerRadius="22dp"
-                app:icon="@drawable/post_icons_1_3"
-                app:iconGravity="textStart"
-                app:iconPadding="6dp"
-                app:iconSize="22dp"
-                app:iconTint="?attr/colorOnSurfaceVariant"
-                app:rippleColor="?attr/colorSecondaryContainer">
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:orientation="horizontal">
 
-                <LinearLayout
+                <ImageView
+                    android:id="@+id/commentIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Comment"
+                    android:src="@drawable/post_icons_1_3" />
+
+                <TextView
+                    android:id="@+id/commentText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="horizontal">
+                    android:text="Comment"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
-                    <ImageView
-                        android:id="@+id/commentIcon"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="6dp"
-                        android:contentDescription="Comment"
-                        android:src="@drawable/post_icons_1_3" />
-
-                    <TextView
-                        android:id="@+id/commentText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Comment"
-                        android:textAppearance="?attr/textAppearanceLabelLarge"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </com.google.android.material.button.MaterialButton>
+            </LinearLayout>
 
             <!-- Share Button -->
-            <com.google.android.material.button.MaterialButton
+            <LinearLayout
                 android:id="@+id/shareButton"
-                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_weight="1"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                app:cornerRadius="22dp"
-                app:icon="@drawable/share_ic"
-                app:iconGravity="textStart"
-                app:iconPadding="6dp"
-                app:iconSize="22dp"
-                app:iconTint="?attr/colorOnSurfaceVariant"
-                app:rippleColor="?attr/colorTertiaryContainer">
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:orientation="horizontal">
 
-                <LinearLayout
+                <ImageView
+                    android:id="@+id/shareIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Share"
+                    android:src="@drawable/share_ic" />
+
+                <TextView
+                    android:id="@+id/shareText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="horizontal">
+                    android:text="Share"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
-                    <ImageView
-                        android:id="@+id/shareIcon"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="6dp"
-                        android:contentDescription="Share"
-                        android:src="@drawable/share_ic" />
-
-                    <TextView
-                        android:id="@+id/shareText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Share"
-                        android:textAppearance="?attr/textAppearanceLabelLarge"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </com.google.android.material.button.MaterialButton>
+            </LinearLayout>
 
         </LinearLayout>
 

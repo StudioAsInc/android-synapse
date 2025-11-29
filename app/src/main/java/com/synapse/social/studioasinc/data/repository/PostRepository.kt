@@ -246,7 +246,21 @@ class PostRepository {
             timestamp = data["timestamp"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
             likesCount = data["likes_count"]?.jsonPrimitive?.intOrNull ?: 0,
             commentsCount = data["comments_count"]?.jsonPrimitive?.intOrNull ?: 0,
-            viewsCount = data["views_count"]?.jsonPrimitive?.intOrNull ?: 0
+            viewsCount = data["views_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            resharesCount = data["reshares_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            // Poll fields
+            hasPoll = data["has_poll"]?.jsonPrimitive?.booleanOrNull,
+            pollQuestion = data["poll_question"]?.jsonPrimitive?.contentOrNull,
+            pollOptions = data["poll_options"]?.jsonPrimitive?.contentOrNull,
+            pollEndTime = data["poll_end_time"]?.jsonPrimitive?.contentOrNull,
+            // Location fields
+            hasLocation = data["has_location"]?.jsonPrimitive?.booleanOrNull,
+            locationName = data["location_name"]?.jsonPrimitive?.contentOrNull,
+            locationAddress = data["location_address"]?.jsonPrimitive?.contentOrNull,
+            locationLatitude = data["location_latitude"]?.jsonPrimitive?.doubleOrNull,
+            locationLongitude = data["location_longitude"]?.jsonPrimitive?.doubleOrNull,
+            // YouTube
+            youtubeUrl = data["youtube_url"]?.jsonPrimitive?.contentOrNull
         )
         
         // Extract user data from join (users table, not profiles)
@@ -265,7 +279,7 @@ class PostRepository {
         }
         
         // Parse media_items from JSONB column (already in posts table)
-        val mediaData = data["media_items"]?.jsonArray
+        val mediaData = data["media_items"]?.takeIf { it !is JsonNull }?.jsonArray
         if (mediaData != null && mediaData.isNotEmpty()) {
             post.mediaItems = mediaData.mapNotNull { item ->
                 val mediaMap = item.jsonObject

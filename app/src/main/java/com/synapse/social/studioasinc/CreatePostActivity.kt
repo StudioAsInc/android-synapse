@@ -484,6 +484,12 @@ class CreatePostActivity : AppCompatActivity() {
             else -> "TEXT"
         }
 
+        val pollEndTime = pollData?.let {
+            Instant.ofEpochMilli(timestamp + it.durationHours * 3600 * 1000L)
+                .atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+        }
+
         val post = Post(
             id = editPostId ?: UUID.randomUUID().toString(),
             key = postKey,
@@ -501,6 +507,7 @@ class CreatePostActivity : AppCompatActivity() {
             hasPoll = pollData != null,
             pollQuestion = pollData?.question,
             pollOptions = pollData?.options?.let { Json.encodeToString(it.map { opt -> mapOf("text" to opt, "votes" to 0) }) },
+            pollEndTime = pollEndTime,
             hasLocation = locationData != null,
             locationName = locationData?.name,
             locationAddress = locationData?.address,
