@@ -251,7 +251,7 @@ class PostRepository {
             // Poll fields
             hasPoll = data["has_poll"]?.jsonPrimitive?.booleanOrNull,
             pollQuestion = data["poll_question"]?.jsonPrimitive?.contentOrNull,
-            pollOptions = data["poll_options"]?.jsonPrimitive?.contentOrNull,
+            pollOptions = data["poll_options"]?.toString(),
             pollEndTime = data["poll_end_time"]?.jsonPrimitive?.contentOrNull,
             // Location fields
             hasLocation = data["has_location"]?.jsonPrimitive?.booleanOrNull,
