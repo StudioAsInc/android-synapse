@@ -577,4 +577,13 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="youtube_url_hint">https://youtube.com/watch?v=…</string>
     <string name="location_name_hint">Enter location name</string>
 
+    <!-- Settings -->
+    <string name="settings_account">Account</string>
+    <string name="settings_account_subtitle">Edit your profile</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_privacy_subtitle">Chat privacy settings</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_subtitle">Manage notification preferences</string>
+    <string name="settings_logout">Log out</string>
+
 </resources>
