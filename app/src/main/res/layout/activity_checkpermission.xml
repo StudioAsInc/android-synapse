@@ -30,7 +30,7 @@
 			android:text="Synapse"
 			android:textSize="28sp"
 			android:textStyle="bold"
-			?attr/colorOnSurface
+			android:textColor="?attr/colorOnSurface"
 			android:layout_marginBottom="8dp"/>
 
 		<TextView
@@ -38,7 +38,7 @@
 			android:layout_height="wrap_content"
 			android:text="Setting up permissions..."
 			android:textSize="14sp"
-			?attr/colorOnSurface
+			android:textColor="?attr/colorOnSurface"
 			android:alpha="0.7"/>
 
 		<ProgressBar
