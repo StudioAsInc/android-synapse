@@ -125,5 +125,6 @@
 		android:layout_height="wrap_content"
 		android:layout_margin="24dp"
 		android:layout_gravity="right|bottom"
-		app:srcCompat="@drawable/ic_add_white" />
+		app:srcCompat="@drawable/ic_add"
+		app:tint="@android:color/white" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

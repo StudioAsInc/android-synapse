@@ -3,7 +3,7 @@
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_add_account"
-            android:icon="@drawable/ic_add_white"
+            android:icon="@drawable/ic_add"
             android:title="Add account" />
         <item
             android:id="@+id/nav_my_profile"
@@ -47,7 +47,7 @@
             android:title="Settings" />
         <item
             android:id="@+id/nav_invite_friends"
-            android:icon="@drawable/ic_add_white"
+            android:icon="@drawable/ic_add"
             android:title="Invite friends" />
         <item
             android:id="@+id/nav_albums"

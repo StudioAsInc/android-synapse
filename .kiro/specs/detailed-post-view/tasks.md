@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [-] 1. Set up data models and repository interfaces
+- [x] 1. Set up data models and repository interfaces
 
 
   - [x] 1.1 Create PostDetail and related data models
@@ -10,46 +10,84 @@
     - Add serialization annotations for Supabase compatibility
     - _Requirements: 1.1, 1.2, 1.4, 2.1, 4.2, 7.1_
 
-  - [ ] 1.2 Write property test for data model serialization round-trip
+  - [x] 1.2 Write property test for data model serialization round-trip
+
+
 
     - **Property 3: Encryption round-trip** - Test that serializing then deserializing PostDetail produces equivalent object
     - **Validates: Requirements 1.5**
-  - [ ] 1.3 Create state classes for UI
+
+  - [x] 1.3 Create state classes for UI
+
+
     - Create `PostDetailState`, `CommentsState`, `CommentEvent` sealed classes
     - _Requirements: 1.1, 4.1_
 
-- [ ] 2. Implement PostDetailRepository
-  - [ ] 2.1 Create PostDetailRepository with post fetching
+- [x] 2. Implement PostDetailRepository
+
+
+
+  - [x] 2.1 Create PostDetailRepository with post fetching
+
+
     - Implement `getPostWithDetails(postId)` with user join query
     - Implement `incrementViewCount(postId)`
     - Handle media_items JSONB parsing
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3_
-  - [ ] 2.2 Write property test for post loading completeness
+
+  - [x] 2.2 Write property test for post loading completeness
+
     - **Property 1: Post loading returns complete data**
     - **Validates: Requirements 1.1, 1.2, 1.4, 2.1**
-  - [ ] 2.3 Write property test for YouTube URL detection
+  - [x] 2.3 Write property test for YouTube URL detection
+
     - **Property 2: YouTube URL detection**
     - **Validates: Requirements 1.3**
-  - [ ] 2.4 Write property test for edited post detection
+
+  - [x] 2.4 Write property test for edited post detection
     - **Property 4: Edited post detection**
+
     - **Validates: Requirements 1.6**
-  - [ ] 2.5 Write property test for author badge logic
+  - [x] 2.5 Write property test for author badge logic
+
     - **Property 5: Author badge display logic**
     - **Validates: Requirements 2.2, 2.3**
 
-- [ ] 3. Implement ReactionRepository
-  - [ ] 3.1 Create ReactionRepository for post reactions
+- [x] 3. Implement ReactionRepository
+
+
+
+
+
+  - [x] 3.1 Create ReactionRepository for post reactions
+
+
+
+
     - Implement `togglePostReaction(postId, reactionType)` using reactions table
     - Implement `getPostReactionSummary(postId)` for aggregated counts
     - Implement `getUserPostReaction(postId)` for current user's reaction
     - _Requirements: 3.2, 3.3, 3.4, 3.5_
-  - [ ] 3.2 Write property test for reaction toggle consistency
+
+
+  - [x] 3.2 Write property test for reaction toggle consistency
+
     - **Property 6: Reaction toggle consistency**
     - **Validates: Requirements 3.2, 3.3, 3.4**
+
+
   - [ ] 3.3 Write property test for reaction aggregation
+
+
+
     - **Property 7: Reaction aggregation accuracy**
+
     - **Validates: Requirements 3.5**
   - [ ] 3.4 Implement comment reactions
+
+
+
+
     - Implement `toggleCommentReaction(commentId, reactionType)` using comment_reactions table
     - Implement `getCommentReactionSummary(commentId)`
     - _Requirements: 6.2, 6.3, 6.4_

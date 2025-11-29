@@ -4,6 +4,9 @@
     <attr name="myAppColorOnSurface" format="color" />
     <attr name="myAppColorOnSurfaceVariant" format="color" />
     
+    <!-- Material 3 Surface Container attributes -->
+    <attr name="colorOnSurfaceContainer" format="color" />
+    
     <!-- Post Card Theme Attributes -->
     <attr name="postCardBackgroundColor" format="color" />
     <attr name="postCardContentColor" format="color" />

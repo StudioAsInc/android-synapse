@@ -85,8 +85,10 @@ graph TB
     style J fill:#f3e5f5
 ```
 
-> [!NOTE]
-> The project has successfully completed two major modernization efforts: a comprehensive Java to Kotlin migration (27 core files with improved null safety, coroutines, and Kotlin idioms) and a complete Firebase to Supabase backend migration with all security policies in place.
+> [!SUCCESS]
+> ✅ **Migrations Complete**: The project has successfully completed two major modernization efforts:
+> - **Java to Kotlin Migration**: 27 core files converted with improved null safety, coroutines, and Kotlin idioms
+> - **Firebase to Supabase Migration**: Complete backend migration with all security policies and RLS in place
 
 <div align="right">
 
@@ -269,7 +271,7 @@ We use end-to-end encryption for all private chats, meaning only you and the rec
 <details>
 <summary><strong>Is the project stable?</strong></summary>
 <br>
-Yes! The project has successfully completed two major modernization efforts: the Firebase to Supabase backend migration and the Java to Kotlin migration. Core features like authentication, chat, posts, and profiles are stable and production-ready. Real-time features and group chats are currently in development. See the <a href="#project-status">Project Status</a> section for detailed feature stability.
+Yes! The project has successfully completed major modernization efforts including the Firebase to Supabase backend migration and Java to Kotlin migration. Core features like authentication, chat, posts, and profiles are stable and production-ready. Real-time features and group chats are currently in development.
 </details>
 
 <details>
