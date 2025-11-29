@@ -131,7 +131,7 @@ class PostRepository {
                 // Poll fields
                 post.hasPoll?.let { put("has_poll", it) }
                 post.pollQuestion?.let { put("poll_question", it) }
-                post.pollOptions?.let { put("poll_options", buildJsonArray { it.forEach { opt -> add(opt) } }) }
+                post.pollOptions?.let { put("poll_options", it) }
                 post.pollEndTime?.let { put("poll_end_time", it) }
                 // Location fields
                 post.hasLocation?.let { put("has_location", it) }
