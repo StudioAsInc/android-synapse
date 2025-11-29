@@ -62,7 +62,7 @@
 								android:layout_width="12dp"
 								android:layout_height="12dp"
 								android:padding="8dp"
-								?attr/colorOnSurface
+								android:background="?attr/colorOnSurface"
 								android:orientation="vertical" />
 						</LinearLayout>
 					</LinearLayout>
