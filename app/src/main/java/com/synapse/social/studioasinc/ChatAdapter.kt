@@ -46,6 +46,19 @@ class ChatAdapter(
         private const val VIEW_TYPE_VOICE_MESSAGE = 6
         private const val VIEW_TYPE_ERROR = 7
         private const val VIEW_TYPE_LOADING_MORE = 99
+        
+        /** Maximum bubble width as a percentage of screen width (75%) */
+        private const val MAX_BUBBLE_WIDTH_PERCENT = 0.75
+    }
+    
+    /**
+     * Calculate the maximum bubble width based on device screen width.
+     * Returns 75% of the screen width to prevent bubbles from stretching
+     * too wide on tablets and foldables.
+     */
+    private fun getMaxBubbleWidth(context: Context): Int {
+        val displayMetrics = context.resources.displayMetrics
+        return (displayMetrics.widthPixels * MAX_BUBBLE_WIDTH_PERCENT).toInt()
     }
 
     /**
@@ -619,6 +632,26 @@ class ChatAdapter(
                 layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
                 layoutParams.gravity = if (isMyMessage) Gravity.END else Gravity.START
                 layout.layoutParams = layoutParams
+            }
+        }
+        
+        // Apply responsive bubble width constraint (75% of screen width)
+        // Prevents bubbles from stretching too wide on tablets/foldables
+        context?.let { ctx ->
+            val maxWidth = getMaxBubbleWidth(ctx)
+            holder.messageBubble?.let { bubble ->
+                val currentParams = bubble.layoutParams
+                if (currentParams is LinearLayout.LayoutParams) {
+                    currentParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                // Set max width constraint via post to ensure layout is ready
+                bubble.post {
+                    if (bubble.width > maxWidth) {
+                        val newParams = bubble.layoutParams
+                        newParams?.width = maxWidth
+                        bubble.layoutParams = newParams
+                    }
+                }
             }
         }
         
