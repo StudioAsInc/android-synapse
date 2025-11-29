@@ -60,7 +60,7 @@
 					android:id="@+id/selection_overlay"
 					android:layout_width="match_parent"
 					android:layout_height="match_parent"
-					android:background="?attr/colorPrimaryContainer"
+					android:background="?attr/colorOnSurfaceContainer"
 					android:alpha="0.1"
 					android:visibility="gone" />
 				<LinearLayout
@@ -81,7 +81,7 @@
 					android:layout_height="wrap_content"
 					android:layout_marginBottom="4dp"
 					android:textSize="12sp"
-					android:textColor="?attr/colorPrimary"
+					android:textColor="?attr/colorOnSurface"
 					android:textStyle="bold"
 					android:visibility="gone"
 					android:singleLine="true"
@@ -153,7 +153,7 @@
 						android:layout_width="3dp"
 						android:layout_height="match_parent"
 						android:layout_marginEnd="8dp"
-						android:background="?attr/colorPrimary" />
+						android:background="?attr/colorOnSurface" />
 					<LinearLayout
 						android:id="@+id/mRepliedMessageLayoutRightBody"
 						android:layout_width="wrap_content"
@@ -166,7 +166,7 @@
 							android:layout_height="wrap_content"
 							android:text="@string/ph_username"
 							android:textSize="13sp"
-							android:textColor="?attr/colorPrimary"
+							android:textColor="?attr/colorOnSurface"
 							android:textStyle="bold"
 							android:singleLine="true" />
 						<!-- Image preview for replied messages -->
@@ -205,7 +205,7 @@
 						android:text="@string/ph_message"
 						android:textSize="16sp"
 						android:autoLink="all"
-						android:textColorLink="?attr/colorPrimary" />
+						android:textColorLink="?attr/colorOnSurface" />
 				</com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
 				</LinearLayout>
 				<!-- End of messageContentContainer -->

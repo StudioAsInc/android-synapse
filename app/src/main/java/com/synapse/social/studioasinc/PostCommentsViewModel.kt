@@ -216,7 +216,7 @@ class PostCommentsViewModel : ViewModel() {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
-                // Check if already liked
+                // Check if already liked by THIS user (must filter by both comment_key AND user_id)
                 val likesResult = dbService.selectWithFilter(
                     table = "comment_likes",
                     columns = "*",
@@ -224,9 +224,18 @@ class PostCommentsViewModel : ViewModel() {
                     value = commentKey
                 )
                 
-                if (likesResult.getOrNull()?.isNotEmpty() == true) {
-                    // Unlike - remove the like
-                    dbService.delete("comment_likes", "comment_key", commentKey)
+                // Filter results to check if current user has liked
+                val userLike = likesResult.getOrNull()?.find { 
+                    it["user_id"] == currentUid 
+                }
+                
+                if (userLike != null) {
+                    // Unlike - remove only the current user's like
+                    // Note: Ideally use compound filter, but delete by user_id for safety
+                    val likeId = userLike["id"] as? String
+                    if (likeId != null) {
+                        dbService.delete("comment_likes", "id", likeId)
+                    }
                 } else {
                     // Like - add the like
                     val likeData = mapOf(
@@ -273,7 +282,7 @@ class PostCommentsViewModel : ViewModel() {
             try {
                 val currentUid = authService.getCurrentUserId() ?: return@launch
                 
-                // Check if already liked
+                // Check if already liked by THIS user (must filter by both reply_key AND user_id)
                 val likesResult = dbService.selectWithFilter(
                     table = "reply_likes",
                     columns = "*",
@@ -281,9 +290,17 @@ class PostCommentsViewModel : ViewModel() {
                     value = replyKey
                 )
                 
-                if (likesResult.getOrNull()?.isNotEmpty() == true) {
-                    // Unlike
-                    dbService.delete("reply_likes", "reply_key", replyKey)
+                // Filter results to check if current user has liked
+                val userLike = likesResult.getOrNull()?.find { 
+                    it["user_id"] == currentUid 
+                }
+                
+                if (userLike != null) {
+                    // Unlike - remove only the current user's like
+                    val likeId = userLike["id"] as? String
+                    if (likeId != null) {
+                        dbService.delete("reply_likes", "id", likeId)
+                    }
                 } else {
                     // Like
                     val likeData = mapOf(

@@ -54,7 +54,7 @@
 					android:layout_marginTop="4dp"
 					android:text="Version 1.1"
 					android:textSize="12sp"
-					android:textColor="?attr/colorPrimary"
+					android:textColor="?attr/colorOnSurface"
 					android:textAppearance="?attr/textAppearanceLabelLarge" />
 				<TextView
 					android:id="@+id/textview6"
@@ -95,7 +95,7 @@
 						android:layout_height="wrap_content"
 						android:text="Later"
 						android:textSize="12sp"
-						android:textColor="?attr/colorPrimary"
+						android:textColor="?attr/colorOnSurface"
 						style="@style/Widget.Material3.Button.TextButton" />
 					<com.google.android.material.button.MaterialButton
 						android:id="@+id/button_update"

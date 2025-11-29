@@ -93,7 +93,7 @@
                         android:scaleType="centerCrop"
                         android:src="@drawable/ic_person"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-                        app:strokeColor="?attr/colorPrimary"
+                        app:strokeColor="?attr/colorOnSurface"
                         app:strokeWidth="2dp" />
 
                     <LinearLayout
@@ -123,7 +123,7 @@
                             app:chipCornerRadius="18dp"
                             app:chipIcon="@drawable/ic_public"
                             app:chipIconSize="18dp"
-                            app:chipIconTint="?attr/colorPrimary"
+                            app:chipIconTint="?attr/colorOnSurface"
                             app:chipMinHeight="36dp"
                             app:chipStrokeWidth="0dp"
                             app:ensureMinTouchTargetSize="true" />
@@ -199,7 +199,7 @@
                             android:layout_width="22dp"
                             android:layout_height="22dp"
                             android:src="@drawable/ic_image"
-                            app:tint="?attr/colorPrimary" />
+                            app:tint="?attr/colorOnSurface" />
 
                         <TextView
                             android:id="@+id/mediaCountLabel"
@@ -459,7 +459,7 @@
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:contentDescription="@string/add_media"
-                app:backgroundTint="?attr/colorPrimaryContainer"
+                app:backgroundTint="?attr/colorOnSurfaceContainer"
                 app:icon="@drawable/ic_image"
                 app:iconSize="24dp"
                 app:iconTint="?attr/colorOnPrimaryContainer"

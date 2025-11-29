@@ -28,7 +28,7 @@
                 app:cardCornerRadius="28dp"
                 app:cardElevation="6dp"
                 app:strokeWidth="0dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardBackgroundColor="?attr/colorOnSurfaceContainer"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
@@ -103,14 +103,14 @@
                         android:layout_marginBottom="20dp"
                         android:hint="Email"
                         app:startIconDrawable="@android:drawable/ic_dialog_email"
-                        app:startIconTint="?attr/colorPrimary"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="18dp"
                         app:boxCornerRadiusTopEnd="18dp"
                         app:boxCornerRadiusBottomStart="18dp"
                         app:boxCornerRadiusBottomEnd="18dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -133,15 +133,15 @@
                         android:layout_marginBottom="10dp"
                         android:hint="Password"
                         app:startIconDrawable="@android:drawable/ic_lock_idle_lock"
-                        app:startIconTint="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
                         app:endIconMode="password_toggle"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="18dp"
                         app:boxCornerRadiusTopEnd="18dp"
                         app:boxCornerRadiusBottomStart="18dp"
                         app:boxCornerRadiusBottomEnd="18dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true"
                         app:helperTextEnabled="true">
 
@@ -195,14 +195,14 @@
                         android:hint="Username"
                         android:visibility="gone"
                         app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-                        app:startIconTint="?attr/colorPrimary"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="18dp"
                         app:boxCornerRadiusTopEnd="18dp"
                         app:boxCornerRadiusBottomStart="18dp"
                         app:boxCornerRadiusBottomEnd="18dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -281,7 +281,7 @@
                         android:layout_gravity="center"
                         android:padding="18dp"
                         android:text="Don't have an account? Sign Up"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/product_sans"
@@ -352,7 +352,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="28dp"
-                        app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                        app:cardBackgroundColor="?attr/colorOnSurfaceContainer"
                         app:cardCornerRadius="14dp"
                         app:cardElevation="0dp"
                         app:strokeWidth="0dp">
@@ -400,7 +400,7 @@
                             android:layout_gravity="center"
                             app:indicatorSize="56dp"
                             app:trackThickness="5dp"
-                            app:indicatorColor="?attr/colorPrimary"
+                            app:indicatorColor="?attr/colorOnSurface"
                             app:trackColor="?attr/colorSurfaceVariant"
                             app:trackCornerRadius="2.5dp"
                             app:indicatorDirectionCircular="counterclockwise" />
@@ -411,7 +411,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
                             android:text="60"
-                            android:textColor="?attr/colorPrimary"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/product_sans" />
@@ -435,7 +435,7 @@
                             android:layout_marginEnd="8dp"
                             app:indicatorSize="24dp"
                             app:trackThickness="3dp"
-                            app:indicatorColor="?attr/colorPrimary"
+                            app:indicatorColor="?attr/colorOnSurface"
                             app:trackColor="?attr/colorSurfaceVariant"
                             android:indeterminate="true" />
                         
@@ -458,7 +458,7 @@
                         android:text="Back to Sign In"
                         android:textSize="15sp"
                         android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/product_sans" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -499,7 +499,7 @@
                             android:layout_marginBottom="28dp"
                             app:indicatorSize="72dp"
                             app:trackThickness="7dp"
-                            app:indicatorColor="?attr/colorPrimary" />
+                            app:indicatorColor="?attr/colorOnSurface" />
 
                         <TextView
                             android:id="@+id/tvLoadingMessage"

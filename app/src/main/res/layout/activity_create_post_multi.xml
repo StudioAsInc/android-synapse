@@ -97,14 +97,14 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_add_photo"
-                        android:tint="?attr/colorPrimary" />
+                        android:tint="?attr/colorOnSurface" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/photo"
                         android:layout_marginStart="8dp"
-                        android:textColor="?attr/colorPrimary" />
+                        android:textColor="?attr/colorOnSurface" />
 
                 </LinearLayout>
 
@@ -121,14 +121,14 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_videocam"
-                        android:tint="?attr/colorPrimary" />
+                        android:tint="?attr/colorOnSurface" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/video"
                         android:layout_marginStart="8dp"
-                        android:textColor="?attr/colorPrimary" />
+                        android:textColor="?attr/colorOnSurface" />
 
                 </LinearLayout>
 

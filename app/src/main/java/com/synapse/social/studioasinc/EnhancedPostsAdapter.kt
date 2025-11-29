@@ -296,9 +296,10 @@ class EnhancedPostsAdapter(
             }
 
             // Update like button based on user's reaction
-            if (post.userReaction != null) {
-                likeIcon.setImageResource(post.userReaction!!.iconRes)
-                likeText.text = post.userReaction!!.displayName
+            val userReaction = post.userReaction
+            if (userReaction != null) {
+                likeIcon.setImageResource(userReaction.iconRes)
+                likeText.text = userReaction.displayName
                 likeText.setTextColor(context.getColor(R.color.colorPrimary))
             } else {
                 likeIcon.setImageResource(R.drawable.ic_reaction_like)
@@ -364,14 +365,14 @@ class EnhancedPostsAdapter(
             // Perform optimistic UI update immediately
             val updatedReactions = post.reactions?.toMutableMap() ?: mutableMapOf()
             
-            if (post.userReaction != null) {
+            val currentUserReaction = post.userReaction
+            if (currentUserReaction != null) {
                 // User already has a reaction - remove it first
-                val oldReactionType = post.userReaction!!
-                val oldCount = updatedReactions[oldReactionType] ?: 0
+                val oldCount = updatedReactions[currentUserReaction] ?: 0
                 if (oldCount > 0) {
-                    updatedReactions[oldReactionType] = oldCount - 1
-                    if (updatedReactions[oldReactionType] == 0) {
-                        updatedReactions.remove(oldReactionType)
+                    updatedReactions[currentUserReaction] = oldCount - 1
+                    if (updatedReactions[currentUserReaction] == 0) {
+                        updatedReactions.remove(currentUserReaction)
                     }
                 }
             }

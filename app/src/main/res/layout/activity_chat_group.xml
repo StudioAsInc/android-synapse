@@ -218,11 +218,11 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:padding="@dimen/spacing_normal"
-			android:background="@color/colorPrimary"
+			android:background="?attr/colorPrimaryContainer"
 			android:gravity="center_horizontal|bottom"
 			android:text="@string/cant_reply"
 			android:textSize="@dimen/text_size_normal"
-			android:textColor="@color/md_theme_onPrimary"
+			android:textColor="?attr/colorOnPrimaryContainer"
 			android:visibility="gone"
 			android:elevation="5dp" />
 	</LinearLayout>

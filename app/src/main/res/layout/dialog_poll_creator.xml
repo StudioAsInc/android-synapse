@@ -23,7 +23,7 @@
         app:counterMaxLength="200"
         app:endIconMode="clear_text"
         app:startIconDrawable="@drawable/ic_poll"
-        app:startIconTint="?attr/colorPrimary">
+        app:startIconTint="?attr/colorOnSurface">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/pollQuestionInput"
@@ -56,7 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:textColor="?attr/colorPrimary"
+            android:textColor="?attr/colorOnSurface"
             tools:text="2/4" />
 
     </LinearLayout>

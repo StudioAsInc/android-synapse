@@ -13,5 +13,5 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:contentDescription="@string/loading_more_posts"
-        app:indicatorColor="?attr/colorPrimary" />
+        app:indicatorColor="?attr/colorOnSurface" />
 </FrameLayout>

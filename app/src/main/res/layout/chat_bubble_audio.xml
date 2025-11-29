@@ -63,7 +63,7 @@
                         android:id="@+id/selection_overlay"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:background="?attr/colorPrimaryContainer"
+                        android:background="?attr/colorOnSurfaceContainer"
                         android:alpha="0.1"
                         android:visibility="gone" />
                     <LinearLayout
@@ -85,7 +85,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="4dp"
                         android:textSize="12sp"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textStyle="bold"
                         android:visibility="gone"
                         android:singleLine="true"
@@ -193,7 +193,7 @@
                                         android:background="?attr/selectableItemBackgroundBorderless"
                                         android:src="@drawable/ic_play_circle_filled"
                                         android:contentDescription="@string/play_audio"
-                                        android:tint="?attr/colorPrimary" />
+                                        android:tint="?attr/colorOnSurface" />
 
                                     <!-- Current time -->
                                     <TextView
@@ -214,8 +214,8 @@
                                         android:layout_weight="1"
                                         android:layout_marginStart="8dp"
                                         android:layout_marginEnd="8dp"
-                                        android:progressTint="?attr/colorPrimary"
-                                        android:thumbTint="?attr/colorPrimary" />
+                                        android:progressTint="?attr/colorOnSurface"
+                                        android:thumbTint="?attr/colorOnSurface" />
 
                                     <!-- Total duration -->
                                     <TextView
@@ -236,7 +236,7 @@
                                     android:layout_gravity="center"
                                     android:layout_marginTop="8dp"
                                     android:visibility="gone"
-                                    android:indeterminateTint="?attr/colorPrimary" />
+                                    android:indeterminateTint="?attr/colorOnSurface" />
                             </LinearLayout>
 
                             <!-- Upload progress overlay -->
@@ -330,7 +330,7 @@
                                     android:layout_width="4dp"
                                     android:layout_height="match_parent"
                                     android:layout_marginRight="8dp"
-                                    android:background="?attr/colorPrimary"
+                                    android:background="?attr/colorOnSurface"
                                     android:orientation="vertical" />
 
                                 <LinearLayout
@@ -346,7 +346,7 @@
                                         android:layout_height="wrap_content"
                                         android:text="@string/ph_username"
                                         android:textSize="12sp"
-                                        android:textColor="?attr/colorPrimary"
+                                        android:textColor="?attr/colorOnSurface"
                                         android:singleLine="true" />
 
                                     <ImageView
@@ -371,7 +371,7 @@
                                         android:autoLink="all"
                                         android:maxLines="3"
                                         android:ellipsize="end"
-                                        android:textColorLink="?attr/colorPrimary" />
+                                        android:textColorLink="?attr/colorOnSurface" />
                                 </LinearLayout>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
@@ -394,7 +394,7 @@
                                 android:paddingRight="8dp"
                                 android:textSize="16sp"
                                 android:autoLink="all"
-                                android:textColorLink="?attr/colorPrimary"
+                                android:textColorLink="?attr/colorOnSurface"
                                 tools:text="Audio caption" />
                         </com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
                     </LinearLayout>

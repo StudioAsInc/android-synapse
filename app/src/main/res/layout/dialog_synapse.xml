@@ -103,7 +103,7 @@
 								android:padding="8dp"
 								android:text="Cancel"
 								android:textSize="14sp"
-								android:textColor="?attr/colorPrimary" />
+								android:textColor="?attr/colorOnSurface" />
 						</LinearLayout>
 						<LinearLayout
 							android:id="@+id/middlebar"
@@ -130,7 +130,7 @@
 								android:padding="8dp"
 								android:text="Open"
 								android:textSize="14sp"
-								android:textColor="?attr/colorPrimary" />
+								android:textColor="?attr/colorOnSurface" />
 						</LinearLayout>
 					</LinearLayout>
 				</LinearLayout>

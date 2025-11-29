@@ -41,6 +41,9 @@ class HomeFragment : Fragment() {
     private lateinit var publicPostsList: RecyclerView
     private lateinit var loadingBar: ProgressBar
     private lateinit var shimmerContainer: LinearLayout
+    
+    // Reuse single PostRepository instance to avoid creating new ones on each reaction
+    private val postRepository by lazy { PostRepository() }
 
     private val SHIMMER_ITEM_COUNT = 5
 
@@ -456,17 +459,18 @@ class HomeFragment : Fragment() {
     private fun toggleReaction(post: Post, reactionType: ReactionType) {
         val currentUser = SupabaseClient.client.auth.currentUserOrNull() ?: return
         
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val repository = PostRepository()
-                val result = repository.toggleReaction(post.id, currentUser.id, reactionType)
+                val result = postRepository.toggleReaction(post.id, currentUser.id, reactionType)
                 
                 if (result.isSuccess) {
                     // Refresh posts to update UI
                     // Ideally we should just update the single item in the adapter
                     viewModel.loadPosts() 
                 } else {
-                    Toast.makeText(requireContext(), "Failed to react", Toast.LENGTH_SHORT).show()
+                    if (isAdded && context != null) {
+                        Toast.makeText(requireContext(), "Failed to react", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -490,10 +494,12 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadReactionsForSheet(postId: String, reactionType: ReactionType?) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val repository = PostRepository()
-                val result = repository.getUsersWhoReacted(postId, reactionType)
+                val result = postRepository.getUsersWhoReacted(postId, reactionType)
+                
+                // Check if fragment is still attached before accessing views
+                if (!isAdded || context == null) return@launch
                 
                 val sheet = parentFragmentManager.findFragmentByTag("ReactedUsersBottomSheet") as? ReactedUsersBottomSheet
                 

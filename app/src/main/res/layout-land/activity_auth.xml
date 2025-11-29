@@ -37,7 +37,7 @@
                     app:cardCornerRadius="20dp"
                     app:cardElevation="4dp"
                     app:strokeWidth="0dp"
-                    app:cardBackgroundColor="?attr/colorPrimaryContainer">
+                    app:cardBackgroundColor="?attr/colorOnSurfaceContainer">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -112,14 +112,14 @@
                         android:layout_marginBottom="12dp"
                         android:hint="Email"
                         app:startIconDrawable="@android:drawable/ic_dialog_email"
-                        app:startIconTint="?attr/colorPrimary"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="16dp"
                         app:boxCornerRadiusTopEnd="16dp"
                         app:boxCornerRadiusBottomStart="16dp"
                         app:boxCornerRadiusBottomEnd="16dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -141,15 +141,15 @@
                         android:layout_marginBottom="8dp"
                         android:hint="Password"
                         app:startIconDrawable="@android:drawable/ic_lock_idle_lock"
-                        app:startIconTint="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
                         app:endIconMode="password_toggle"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="16dp"
                         app:boxCornerRadiusTopEnd="16dp"
                         app:boxCornerRadiusBottomStart="16dp"
                         app:boxCornerRadiusBottomEnd="16dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true"
                         app:helperTextEnabled="true">
 
@@ -173,7 +173,7 @@
                         android:layout_marginBottom="12dp"
                         android:padding="10dp"
                         android:text="Forgot Password?"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/product_sans"
@@ -222,14 +222,14 @@
                         android:hint="Username"
                         android:visibility="gone"
                         app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-                        app:startIconTint="?attr/colorPrimary"
-                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:startIconTint="?attr/colorOnSurface"
+                        app:boxStrokeColor="?attr/colorOnSurface"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="16dp"
                         app:boxCornerRadiusTopEnd="16dp"
                         app:boxCornerRadiusBottomStart="16dp"
                         app:boxCornerRadiusBottomEnd="16dp"
-                        app:hintTextColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorOnSurface"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -307,7 +307,7 @@
                         android:layout_gravity="center"
                         android:padding="12dp"
                         android:text="Don't have an account? Sign Up"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/product_sans"
@@ -505,7 +505,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
-                            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                            app:cardBackgroundColor="?attr/colorOnSurfaceContainer"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"
                             app:strokeWidth="0dp">
@@ -553,7 +553,7 @@
                                 android:layout_gravity="center"
                                 app:indicatorSize="56dp"
                                 app:trackThickness="5dp"
-                                app:indicatorColor="?attr/colorPrimary"
+                                app:indicatorColor="?attr/colorOnSurface"
                                 app:trackColor="?attr/colorSurfaceVariant"
                                 app:trackCornerRadius="2.5dp"
                                 app:indicatorDirectionCircular="counterclockwise" />
@@ -564,7 +564,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="center"
                                 android:text="60"
-                                android:textColor="?attr/colorPrimary"
+                                android:textColor="?attr/colorOnSurface"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
                                 android:fontFamily="@font/product_sans" />
@@ -588,7 +588,7 @@
                                 android:layout_marginEnd="8dp"
                                 app:indicatorSize="24dp"
                                 app:trackThickness="3dp"
-                                app:indicatorColor="?attr/colorPrimary"
+                                app:indicatorColor="?attr/colorOnSurface"
                                 app:trackColor="?attr/colorSurfaceVariant"
                                 android:indeterminate="true" />
                             
@@ -609,7 +609,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="@dimen/auth_min_touch_target"
                             android:text="Back to Sign In"
-                            android:textColor="?attr/colorPrimary"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/product_sans" />
@@ -653,7 +653,7 @@
                             android:layout_marginBottom="20dp"
                             app:indicatorSize="56dp"
                             app:trackThickness="6dp"
-                            app:indicatorColor="?attr/colorPrimary" />
+                            app:indicatorColor="?attr/colorOnSurface" />
 
                         <TextView
                             android:id="@+id/tvLoadingMessage"

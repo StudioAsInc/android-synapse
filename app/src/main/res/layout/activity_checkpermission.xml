@@ -5,7 +5,7 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:id="@+id/_main"
-	android:background="@color/colorPrimary">
+	android:background="?attr/colorSurface">
 
 	<LinearLayout
 		android:id="@+id/linear1"
@@ -30,7 +30,7 @@
 			android:text="Synapse"
 			android:textSize="28sp"
 			android:textStyle="bold"
-			android:textColor="@android:color/white"
+			?attr/colorOnSurface
 			android:layout_marginBottom="8dp"/>
 
 		<TextView
@@ -38,14 +38,14 @@
 			android:layout_height="wrap_content"
 			android:text="Setting up permissions..."
 			android:textSize="14sp"
-			android:textColor="@android:color/white"
+			?attr/colorOnSurface
 			android:alpha="0.7"/>
 
 		<ProgressBar
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_marginTop="24dp"
-			android:indeterminateTint="@android:color/white"/>
+			android:indeterminateTint="?attr/colorOnSurface"/>
 
 	</LinearLayout>
 

@@ -198,9 +198,9 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:text="@string/send"
-        android:textColor="?attr/colorOnPrimary"
+        android:textColor="?attr/colorOnPrimaryContainer"
         app:icon="@drawable/ic_send"
-        app:iconTint="?attr/colorOnPrimary"
-        app:backgroundTint="?attr/colorPrimary" />
+        app:iconTint="?attr/colorOnPrimaryContainer"
+        app:backgroundTint="?attr/colorPrimaryContainer" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

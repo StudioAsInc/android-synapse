@@ -171,12 +171,13 @@ class PostAdapter(
             postContent.text = post.postText ?: ""
             
             // Load post image if available
-            post.postImage?.let { imageUrl ->
+            val imageUrl = post.postImage
+            if (!imageUrl.isNullOrBlank()) {
                 postImage.visibility = View.VISIBLE
                 Glide.with(context)
                     .load(imageUrl)
                     .into(postImage)
-            } ?: run {
+            } else {
                 postImage.visibility = View.GONE
             }
 

@@ -29,9 +29,9 @@
             app:tabMode="scrollable"
             app:tabGravity="start"
             app:tabTextAppearance="@style/TextAppearance.Material3.TitleMedium"
-            app:tabSelectedTextColor="?attr/colorPrimary"
+            app:tabSelectedTextColor="?attr/colorOnSurface"
             app:tabTextColor="?attr/colorOnSurfaceVariant"
-            app:tabIndicatorColor="?attr/colorPrimary" />
+            app:tabIndicatorColor="?attr/colorOnSurface" />
 
     </LinearLayout>
 

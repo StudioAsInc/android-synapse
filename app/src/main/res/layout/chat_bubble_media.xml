@@ -61,7 +61,7 @@
 					android:layout_marginBottom="4dp"
 					android:layout_marginLeft="8dp"
 					android:textSize="12sp"
-					android:textColor="?attr/colorPrimary"
+					android:textColor="?attr/?attr/colorOnSurface"
 					android:textStyle="bold"
 					android:visibility="gone"
 					android:singleLine="true"
@@ -161,12 +161,12 @@
 								android:layout_marginBottom="4dp"
 								android:text="View all images"
 								android:textSize="14sp"
-								android:textColor="@color/colorPrimary"
+								android:textColor="@color/?attr/colorOnSurface"
 								android:visibility="gone"
 								app:iconGravity="textStart"
 								app:icon="@drawable/ic_image_multiple"
 								app:iconSize="18dp"
-								app:iconTint="@color/colorPrimary" />
+								app:iconTint="@color/?attr/colorOnSurface" />
 						</LinearLayout>
 					</LinearLayout>
 				</androidx.cardview.widget.CardView>

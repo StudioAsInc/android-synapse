@@ -428,9 +428,9 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:padding="8dp"
-					android:background="?attr/colorPrimary"
+					android:background="?attr/colorPrimaryContainer"
 					android:textSize="16sp"
-					android:textColor="?attr/colorOnPrimary"
+					android:textColor="?attr/colorOnPrimaryContainer"
 					tools:replace="android:text"
 					android:text="@string/retry" />
 			</LinearLayout>

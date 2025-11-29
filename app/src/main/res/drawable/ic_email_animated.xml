@@ -12,13 +12,13 @@
             <!-- Envelope body -->
             <path
                 android:name="envelope"
-                android:fillColor="?attr/colorPrimary"
+                android:fillColor="?attr/colorOnSurface"
                 android:pathData="M20,30 L100,30 L100,90 L20,90 Z" />
             
             <!-- Envelope flap -->
             <path
                 android:name="flap"
-                android:fillColor="?attr/colorPrimaryContainer"
+                android:fillColor="?attr/colorSurface"
                 android:pathData="M20,30 L60,60 L100,30 Z" />
             
             <!-- Letter inside -->

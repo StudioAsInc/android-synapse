@@ -63,10 +63,10 @@
 			android:paddingTop="6dp"
 			android:paddingRight="16dp"
 			android:paddingBottom="6dp"
-			android:background="?attr/colorPrimary"
+			android:background="?attr/colorPrimaryContainer"
 			android:text="Share"
 			android:textSize="20sp"
-			android:textColor="?attr/colorOnPrimary"
+			android:textColor="?attr/colorOnPrimaryContainer"
 			app:layout_constraintTop_toTopOf="parent"
 			app:layout_constraintBottom_toBottomOf="parent"
 			app:layout_constraintEnd_toEndOf="parent"/>

@@ -62,7 +62,7 @@
                 android:layout_marginTop="4dp"
                 android:text="@string/tap_to_retry"
                 android:textSize="12sp"
-                android:textColor="?attr/colorPrimary" />
+                android:textColor="?attr/colorOnSurface" />
 
             <!-- Metadata (timestamp) inside bubble -->
             <LinearLayout

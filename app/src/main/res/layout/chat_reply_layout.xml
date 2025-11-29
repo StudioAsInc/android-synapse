@@ -34,7 +34,7 @@
 			android:layout_height="wrap_content"
 			android:text="@string/ph_username"
 			android:textSize="@dimen/text_size_small"
-			android:textColor="?attr/colorPrimary"
+			android:textColor="?attr/colorOnSurface"
 			android:textStyle="bold"
 			android:singleLine="true"
 			android:ellipsize="end" />

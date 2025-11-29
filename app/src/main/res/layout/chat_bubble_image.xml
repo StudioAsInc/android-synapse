@@ -63,7 +63,7 @@
                         android:id="@+id/selection_overlay"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:background="?attr/colorPrimaryContainer"
+                        android:background="?attr/colorOnSurfaceContainer"
                         android:alpha="0.1"
                         android:visibility="gone" />
                     <LinearLayout
@@ -89,7 +89,7 @@
                         android:layout_marginBottom="4dp"
                         android:layout_marginLeft="8dp"
                         android:textSize="12sp"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textStyle="bold"
                         android:visibility="gone"
                         android:singleLine="true"
@@ -280,7 +280,7 @@
                                     android:layout_width="4dp"
                                     android:layout_height="match_parent"
                                     android:layout_marginRight="8dp"
-                                    android:background="?attr/colorPrimary"
+                                    android:background="?attr/colorOnSurface"
                                     android:orientation="vertical" />
 
                                 <LinearLayout
@@ -296,7 +296,7 @@
                                         android:layout_height="wrap_content"
                                         android:text="@string/ph_username"
                                         android:textSize="12sp"
-                                        android:textColor="?attr/colorPrimary"
+                                        android:textColor="?attr/colorOnSurface"
                                         android:singleLine="true" />
 
                                     <ImageView
@@ -321,7 +321,7 @@
                                         android:autoLink="all"
                                         android:maxLines="3"
                                         android:ellipsize="end"
-                                        android:textColorLink="?attr/colorPrimary" />
+                                        android:textColorLink="?attr/colorOnSurface" />
                                 </LinearLayout>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
@@ -344,7 +344,7 @@
                                 android:paddingRight="8dp"
                                 android:textSize="16sp"
                                 android:autoLink="all"
-                                android:textColorLink="?attr/colorPrimary"
+                                android:textColorLink="?attr/colorOnSurface"
                                 tools:text="Image caption" />
                         </com.synapse.social.studioasinc.animations.ShimmerFrameLayout>
                     </LinearLayout>

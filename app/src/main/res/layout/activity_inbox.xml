@@ -78,8 +78,8 @@
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:background="?attr/colorSurface"
-				app:itemIconTint="?attr/colorPrimary"
-				app:itemTextColor="?attr/colorPrimary"
+				app:itemIconTint="?attr/colorOnSurface"
+				app:itemTextColor="?attr/colorOnSurface"
 				android:elevation="10dp" />
 		</LinearLayout>
 	</LinearLayout>

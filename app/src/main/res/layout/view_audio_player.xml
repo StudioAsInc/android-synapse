@@ -51,7 +51,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_play"
             android:contentDescription="@string/play_audio"
-            android:tint="?attr/colorPrimary" />
+            android:tint="?attr/colorOnSurface" />
 
         <!-- Current time -->
         <TextView
@@ -72,8 +72,8 @@
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
-            android:progressTint="?attr/colorPrimary"
-            android:thumbTint="?attr/colorPrimary" />
+            android:progressTint="?attr/colorOnSurface"
+            android:thumbTint="?attr/colorOnSurface" />
 
         <!-- Total duration -->
         <TextView
@@ -94,6 +94,6 @@
         android:layout_gravity="center"
         android:layout_marginTop="8dp"
         android:visibility="gone"
-        android:indeterminateTint="?attr/colorPrimary" />
+        android:indeterminateTint="?attr/colorOnSurface" />
 
 </LinearLayout>

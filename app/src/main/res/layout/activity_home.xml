@@ -30,7 +30,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/product_sans_bold"
                 android:text="@string/app_name"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="40sp"
                 android:textStyle="bold" />
 
@@ -51,7 +51,8 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_search_48px" />
+                android:src="@drawable/ic_search_48px"
+                app:tint="?attr/colorOnSurface" />
 
             <ImageView
                 android:id="@+id/nav_inbox_ic"
@@ -62,7 +63,8 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_comment_48px" />
+                android:src="@drawable/ic_comment_48px"
+                app:tint="?attr/colorOnSurface" />
 
             <ImageView
                 android:id="@+id/nav_profile_ic"
@@ -73,7 +75,8 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:scaleType="centerCrop"
-                android:src="@drawable/ic_account_circle_48px" />
+                android:src="@drawable/ic_account_circle_48px"
+                app:tint="?attr/colorOnSurface" />
 
             <ImageView
                 android:id="@+id/settings_button"
@@ -84,8 +87,8 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:scaleType="centerInside"
-
-                android:src="@drawable/ic_add_white" />
+                android:src="@drawable/ic_add"
+                app:tint="?attr/colorOnSurface" />
 
         </LinearLayout>
 
