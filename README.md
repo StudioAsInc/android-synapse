@@ -97,13 +97,13 @@ graph TB
 ## 🛠️ Tech Stack
 
 ### Android App
-- **Language**: Kotlin 2.2.0 with Android KTX
+- **Language**: Kotlin with Android KTX
 - **Architecture**: MVVM + Repository pattern
 - **UI**: ViewBinding, Material Design 3, Navigation Component
 - **Async**: Kotlin Coroutines + Flow
-- **Image Loading**: Glide 5.0.0-rc01
-- **Markdown**: Markwon 4.6.2
-- **Media**: Media3 1.3.1
+- **Image Loading**: Glide
+- **Markdown**: Markwon
+- **Media**: Media3
 
 ### Backend (Supabase)
 - **Database**: PostgreSQL via Postgrest
@@ -120,32 +120,32 @@ graph TB
 ### Key Libraries
 
 #### Backend & Networking
-- **Supabase BOM 2.6.0**: Backend-as-a-service platform providing database, auth, storage, and realtime
-- **Ktor 2.3.12**: HTTP client for Supabase communication
-- **Kotlinx Serialization 1.6.3**: JSON serialization for API data
+- **Supabase BOM**: Backend-as-a-service platform providing database, auth, storage, and realtime
+- **Ktor**: HTTP client for Supabase communication
+- **Kotlinx Serialization**: JSON serialization for API data
 
 #### UI & Design
-- **Material Design 1.14.0-alpha06**: Modern Material Design 3 components
-- **AndroidX Core KTX 1.17.0-rc01**: Kotlin extensions for Android framework
-- **Glide 5.0.0-rc01**: Efficient image loading and caching
-- **Lottie 6.6.0**: Animated vector graphics and illustrations
-- **CircleImageView 3.1.0**: Circular image views for avatars
+- **Material Design**: Modern Material Design 3 components
+- **AndroidX Core KTX**: Kotlin extensions for Android framework
+- **Glide**: Efficient image loading and caching
+- **Lottie**: Animated vector graphics and illustrations
+- **CircleImageView**: Circular image views for avatars
 
 #### Architecture & Lifecycle
-- **Lifecycle 2.9.2**: Lifecycle-aware components and ViewModels
-- **Navigation 2.9.3**: Fragment navigation and deep linking
-- **Work Manager 2.10.3**: Background task scheduling
-- **Paging 3.3.6**: Efficient data pagination for large lists
+- **Lifecycle**: Lifecycle-aware components and ViewModels
+- **Navigation**: Fragment navigation and deep linking
+- **Work Manager**: Background task scheduling
+- **Paging**: Efficient data pagination for large lists
 
 #### Media & Content
-- **Media3 1.3.1**: Modern media playback (replaces ExoPlayer)
-- **Markwon 4.6.2**: Markdown rendering with GitHub Flavored Markdown support
-- **PhotoView 2.3.0**: Pinch-to-zoom image viewing
+- **Media3**: Modern media playback (replaces ExoPlayer)
+- **Markwon**: Markdown rendering with GitHub Flavored Markdown support
+- **PhotoView**: Pinch-to-zoom image viewing
 
 #### Utilities
-- **OkHttp 5.1.0**: HTTP client for networking
-- **Gson 2.13.1**: JSON parsing and serialization
-- **OneSignal 5.1.x**: Push notifications
+- **OkHttp**: HTTP client for networking
+- **Gson**: JSON parsing and serialization
+- **OneSignal**: Push notifications
 
 ---
 
@@ -157,7 +157,6 @@ graph TB
 
 ## 📚 Documentation
 
-- **[Agent Guidelines](Docs/Agent.md)** - Development guidelines and best practices for working with Synapse
 - **[Contributing Guide](Docs/CONTRIBUTING.md)** - Guidelines for contributing to the Synapse project.
 - **[Roadmap](Docs/ROADMAP.md)** - The future of the Synapse project.
 
@@ -282,7 +281,7 @@ Absolutely! We welcome contributions from everyone. Please check out the <a href
 <details>
 <summary><strong>What technology does Synapse use?</strong></summary>
 <br>
-The Android app is built with Kotlin 2.2.0 using MVVM architecture, Kotlin Coroutines, ViewBinding, and Material Design 3 (1.14.0-alpha06). Key libraries include Supabase BOM 2.6.0, Glide 5.0.0-rc01, Markwon 4.6.2, and Media3 1.3.1. The backend is powered by Supabase (PostgreSQL via Postgrest, GoTrue Auth, Storage, and Realtime). Build targets: Min SDK 26, Target SDK 32, Compile SDK 36, JDK 17.
+The Android app is built with Kotlin using MVVM architecture, Kotlin Coroutines, ViewBinding, and Material Design 3. Key libraries include Supabase BOM, Glide, Markwon, and Media3. The backend is powered by Supabase (PostgreSQL via Postgrest, GoTrue Auth, Storage, and Realtime). Build targets: Min SDK 26, Target SDK 32, Compile SDK 36, JDK 17.
 </details>
 
 <details>

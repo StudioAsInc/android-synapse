@@ -4,14 +4,18 @@ inclusion: always
 
 # Agent Guidelines
 
-**Code**: Kotlin, View Binding mandatory, null safety (`?.`, `?:`, `!!`), coroutines (`viewModelScope`/`lifecycleScope`), no hardcoded strings/colors/dimensions (use XML resources)
+**Code**: Kotlin, View Binding, null safety (`?.`, `?:`, `!!`), coroutines (`viewModelScope`/`lifecycleScope`), XML resources only
 
-**Architecture**: MVVM, Repository pattern in `data/`, SupabaseClient.kt singleton only, domain for business logic
+**Architecture**: MVVM, Repository in `data/`, SupabaseClient.kt singleton, domain for business logic
 
-**Supabase**: Use `SupabaseClient.client` singleton, respect RLS, test with different users, Realtime for live updates
+**Supabase**: `SupabaseClient.client` singleton, respect RLS, test multi-user, Realtime for live updates
 
-**Docs**: Only in `Docs/` directory, never auto-create without permission
+**Testing**: `./gradlew build` before commit, test RLS and nulls
 
-**Testing**: Run `./gradlew build` before commit, test RLS and null handling
+**Avoid**: `findViewById()`, new Supabase instances, `adapter/`+`adapters/` mix (use `adapters/`)
 
-**Avoid**: `findViewById()`, new Supabase instances, mixing `adapter/`+`adapters/` (use `adapters/`), docs outside `Docs/`
+## Docs
+
+**All docs in `Docs/` only**: Source Map, API Documentation, Architecture, Setup Guide, Contributing, Changelog, Troubleshooting
+
+**Rules**: No docs in root/`app/docs/`/`.github/docs/`, use Markdown + TOC, paths from project root
