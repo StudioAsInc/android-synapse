@@ -8,7 +8,6 @@ import com.synapse.social.studioasinc.model.MediaType
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.*
 
 /**
@@ -33,6 +32,8 @@ object MediaUploadManager {
                 
                 mediaItems.forEachIndexed { index, mediaItem ->
                     try {
+                        val uri = Uri.parse(mediaItem.url)
+                        
                         // Generate unique filename
                         val timestamp = System.currentTimeMillis()
                         val extension = when (mediaItem.type) {
@@ -47,22 +48,21 @@ object MediaUploadManager {
                             MediaType.VIDEO -> "post-videos"
                         }
                         
-                        // Read file bytes
+                        // Read file bytes with fallback support
                         val bytes: ByteArray? = try {
-                            val uri = Uri.parse(mediaItem.url)
                             if (uri.scheme == "content") {
                                 context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                             } else {
-                                val file = File(mediaItem.url)
+                                val file = java.io.File(mediaItem.url)
                                 if (file.exists()) file.readBytes() else null
                             }
                         } catch (e: Exception) {
-                            val file = File(mediaItem.url)
+                            val file = java.io.File(mediaItem.url)
                             if (file.exists()) file.readBytes() else null
                         }
 
                         if (bytes == null) {
-                            android.util.Log.w("MediaUpload", "File not found or unreadable: ${mediaItem.url}, using original URL")
+                            android.util.Log.w("MediaUpload", "Cannot read from URI: ${mediaItem.url}")
                             uploadedItems.add(mediaItem)
                         } else {
                             // Upload to Supabase Storage
@@ -88,7 +88,6 @@ object MediaUploadManager {
                         }
                     } catch (uploadError: Exception) {
                         android.util.Log.w("MediaUpload", "Failed to upload ${mediaItem.url}: ${uploadError.message}")
-                        // Add original item if upload fails
                         uploadedItems.add(mediaItem)
                     }
                     
