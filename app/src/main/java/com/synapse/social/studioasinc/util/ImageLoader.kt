@@ -60,6 +60,36 @@ object ImageLoader {
     }
     
     /**
+     * Load a circular image into an ImageView.
+     * Useful for user avatars and profile pictures.
+     *
+     * @param context Android context
+     * @param url Image URL to load
+     * @param imageView Target ImageView
+     * @param placeholder Placeholder drawable resource ID (optional)
+     */
+    fun loadCircularImage(
+        context: Context,
+        url: String?,
+        imageView: ImageView,
+        placeholder: Int = R.drawable.avatar
+    ) {
+        if (url.isNullOrBlank()) {
+            imageView.setImageResource(placeholder)
+            return
+        }
+
+        val glideUrl = buildGlideUrlWithAuth(url)
+
+        Glide.with(context)
+            .load(glideUrl)
+            .circleCrop()
+            .placeholder(placeholder)
+            .error(placeholder)
+            .into(imageView)
+    }
+
+    /**
      * Internal method to load image with retry logic.
      */
     private fun loadImageWithRetry(
