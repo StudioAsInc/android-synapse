@@ -605,7 +605,6 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="report_submitted">Report submitted</string>
     <string name="reply">Reply</string>
     <string name="more_options">More options</string>
-    <string name="replying_to">Replying to %s</string>
     <string name="media">Media</string>
     <string name="play_video">Play video</string>
     <string name="private_visibility">Private</string>
