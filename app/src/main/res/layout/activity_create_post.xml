@@ -277,7 +277,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/removePollButton"
-                            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                            style="@style/Widget.Material3.Button.IconButton.Filled"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
                             app:backgroundTint="?attr/colorSurfaceContainerHighest"
@@ -409,7 +409,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/removeLocationButton"
-                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        style="@style/Widget.Material3.Button.IconButton.Filled"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         app:backgroundTint="?attr/colorSurfaceContainerHighest"
@@ -455,19 +455,19 @@
             <!-- Expressive Icon Buttons -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addMediaButton"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:contentDescription="@string/add_media"
-                app:backgroundTint="?attr/colorOnSurfaceContainer"
+                app:backgroundTint="?attr/colorSurfaceContainer"
                 app:icon="@drawable/ic_image"
                 app:iconSize="24dp"
-                app:iconTint="?attr/colorOnPrimaryContainer"
+                app:iconTint="?attr/colorOnSurface"
                 app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addPollButton"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="4dp"
@@ -480,7 +480,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addYoutubeButton"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="4dp"
@@ -493,7 +493,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addLocationButton"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="4dp"
