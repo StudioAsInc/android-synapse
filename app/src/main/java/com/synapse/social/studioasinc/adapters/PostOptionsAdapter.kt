@@ -38,9 +38,9 @@ class PostOptionsAdapter(
 
         val context = holder.itemView.context
         val color = if (item.isDestructive) {
-            resolveColor(context, com.google.android.material.R.attr.colorError)
+            resolveColor(context, R.attr.colorError)
         } else {
-            resolveColor(context, com.google.android.material.R.attr.colorOnSurface)
+            resolveColor(context, R.attr.colorOnSurface)
         }
 
         holder.label.setTextColor(color)
