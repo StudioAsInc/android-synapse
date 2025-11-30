@@ -339,29 +339,31 @@ class ReadReceiptManager(
         Log.d(TAG, "Flushing ${messagesToProcess.size} pending read receipts")
 
         coroutineScope.launch(exceptionHandler) {
-            // Use optimized batch update for flushing
-            val updatedCount = dbOptimizationService.batchUpdateMessageState(
-                messageIds = messagesToProcess,
-                newState = MessageState.READ,
-                userId = userId
-            )
-            
-            if (updatedCount > 0) {
-                Log.d(TAG, "Successfully flushed $updatedCount read receipts using batch update")
+            try {
+                // Use optimized batch update for flushing
+                val updatedCount = dbOptimizationService.batchUpdateMessageState(
+                    messageIds = messagesToProcess,
+                    newState = MessageState.READ,
+                    userId = userId
+                )
                 
-                // Broadcast read receipt event if privacy setting allows
-                if (isReadReceiptsEnabled()) {
-                    try {
-                        realtimeService.broadcastReadReceipt(chatId, userId, messagesToProcess)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to broadcast flushed read receipt", e)
+                if (updatedCount > 0) {
+                    Log.d(TAG, "Successfully flushed $updatedCount read receipts using batch update")
+                    
+                    // Broadcast read receipt event if privacy setting allows
+                    if (isReadReceiptsEnabled()) {
+                        try {
+                            realtimeService.broadcastReadReceipt(chatId, userId, messagesToProcess)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to broadcast flushed read receipt", e)
+                        }
                     }
+                } else {
+                    Log.w(TAG, "No messages were updated during flush operation")
                 }
-            } else {
-                Log.w(TAG, "No messages were updated during flush operation")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error flushing read receipts", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error flushing read receipts", e)
         }
     }
     
