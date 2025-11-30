@@ -23,12 +23,12 @@ class PostOptionsAdapter(
             label.text = item.label
             
             if (item.isDestructive) {
-                val errorColor = ContextCompat.getColor(itemView.context, R.color.design_default_color_error)
+                val errorColor = ContextCompat.getColor(itemView.context, R.color.md_theme_error)
                 icon.setColorFilter(errorColor)
                 label.setTextColor(errorColor)
             } else {
                 icon.clearColorFilter()
-                label.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.tab_indicator_text))
+                label.setTextColor(ContextCompat.getColor(itemView.context, R.color.text_primary))
             }
             
             itemView.setOnClickListener { item.action() }

@@ -96,6 +96,16 @@ class PostsAdapter(
             }
             authorText.text = authorUsername
 
+            // Load author avatar
+            if (authorAvatar is ImageView) {
+                com.synapse.social.studioasinc.util.ImageLoader.loadImage(
+                    context = context,
+                    url = post.avatarUrl,
+                    imageView = authorAvatar,
+                    placeholder = R.drawable.avatar
+                )
+            }
+
             // Set accessibility content description for card
             cardContainer.contentDescription = context.getString(R.string.post_by_user, authorUsername)
             

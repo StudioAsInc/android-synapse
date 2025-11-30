@@ -157,56 +157,45 @@ class ProfileActivity : AppCompatActivity() {
         val isOwnPost = post.authorUid == currentUid
         
         val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
-        val sheetBinding = com.synapse.social.studioasinc.databinding.BottomSheetPostOptionsBinding.inflate(layoutInflater)
-        bottomSheet.setContentView(sheetBinding.root)
+        val rootView = layoutInflater.inflate(R.layout.bottom_sheet_post_options, null)
+        bottomSheet.setContentView(rootView)
         
-        // Show/hide options based on ownership
-        if (isOwnPost) {
-            sheetBinding.optionEdit.visibility = View.VISIBLE
-            sheetBinding.optionDelete.visibility = View.VISIBLE
-            sheetBinding.optionStatistics.visibility = View.VISIBLE
-            sheetBinding.optionReport.visibility = View.GONE
-            sheetBinding.optionHide.visibility = View.GONE
-        } else {
-            sheetBinding.optionEdit.visibility = View.GONE
-            sheetBinding.optionDelete.visibility = View.GONE
-            sheetBinding.optionStatistics.visibility = View.GONE
-            sheetBinding.optionReport.visibility = View.VISIBLE
-            sheetBinding.optionHide.visibility = View.VISIBLE
-        }
+        val recyclerView = rootView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.optionsRecyclerView)
+        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         
-        // Set click listeners
-        sheetBinding.optionEdit.setOnClickListener {
-            editPost(post)
-            bottomSheet.dismiss()
-        }
-        
-        sheetBinding.optionDelete.setOnClickListener {
-            bottomSheet.dismiss()
-            deletePost(post)
-        }
-        
-        sheetBinding.optionCopyLink.setOnClickListener {
-            copyPostLink(post)
-            bottomSheet.dismiss()
-        }
-        
-        sheetBinding.optionStatistics.setOnClickListener {
-            bottomSheet.dismiss()
-            showPostStatistics(post)
-        }
-        
-        sheetBinding.optionReport.setOnClickListener {
-            bottomSheet.dismiss()
-            reportPost(post)
-        }
-        
-        sheetBinding.optionHide.setOnClickListener {
-            bottomSheet.dismiss()
-            hidePost(post)
-        }
+        val items = buildPostMenuItems(post, isOwnPost)
+        recyclerView.adapter = com.synapse.social.studioasinc.adapters.PostOptionsAdapter(items)
         
         bottomSheet.show()
+    }
+    
+    private fun buildPostMenuItems(post: Post, isOwner: Boolean): List<com.synapse.social.studioasinc.model.PostActionItem> {
+        val items = mutableListOf<com.synapse.social.studioasinc.model.PostActionItem>()
+        
+        if (isOwner) {
+            items.add(com.synapse.social.studioasinc.model.PostActionItem("Edit", R.drawable.ic_edit_note_48px) { 
+                editPost(post)
+            })
+            items.add(com.synapse.social.studioasinc.model.PostActionItem("Delete", R.drawable.ic_delete_48px, true) { 
+                deletePost(post)
+            })
+            items.add(com.synapse.social.studioasinc.model.PostActionItem("Statistics", R.drawable.data_usage_24px) { 
+                showPostStatistics(post)
+            })
+        } else {
+            items.add(com.synapse.social.studioasinc.model.PostActionItem("Report", R.drawable.ic_report_48px, true) { 
+                reportPost(post)
+            })
+            items.add(com.synapse.social.studioasinc.model.PostActionItem("Hide", R.drawable.mobile_block_24px) { 
+                hidePost(post)
+            })
+        }
+        
+        items.add(com.synapse.social.studioasinc.model.PostActionItem("Copy Link", R.drawable.ic_content_copy_48px) { 
+            copyPostLink(post)
+        })
+        
+        return items
     }
 
     private fun showFollowOptionsDialog(userId: String) {
