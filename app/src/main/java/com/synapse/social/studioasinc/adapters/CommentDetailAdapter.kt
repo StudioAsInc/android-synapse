@@ -65,7 +65,7 @@ class CommentDetailAdapter(
             }
 
             // Time and edited
-            binding.tvTime.text = TimeUtils.formatTimestamp(comment.createdAt)
+            binding.tvTime.text = TimeUtils.formatTimestamp(comment.createdAt?.toLongOrNull() ?: System.currentTimeMillis())
             binding.tvEdited.isVisible = comment.isEdited
 
             // Reactions
@@ -170,7 +170,7 @@ class RepliesAdapter(
 
             binding.tvUsername.text = reply.user?.displayName ?: reply.user?.username ?: "Unknown"
             binding.tvContent.text = reply.content
-            binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt)
+            binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt?.toLongOrNull() ?: System.currentTimeMillis())
 
             // Hide reply-specific elements for nested replies
             binding.viewRepliesContainer.isVisible = false

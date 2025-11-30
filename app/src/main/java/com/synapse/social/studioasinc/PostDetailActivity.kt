@@ -166,7 +166,7 @@ class PostDetailActivity : AppCompatActivity() {
             .into(binding.ivAuthorAvatar)
         binding.tvAuthorName.text = author?.displayName ?: author?.username
         binding.ivVerifiedBadge.isVisible = author?.isVerified ?: false
-        binding.tvPostTime.text = "${TimeUtils.formatTimestamp(post.publishDate)} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
+        binding.tvPostTime.text = "${TimeUtils.formatTimestamp(post.publishDate?.toLongOrNull() ?: System.currentTimeMillis())} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
 
         // Content
         binding.tvPostContent.text = post.postText
@@ -206,7 +206,7 @@ class PostDetailActivity : AppCompatActivity() {
     }
 
     private fun setupPoll(post: Post, postDetail: PostDetail) {
-        if (!post.hasPoll) {
+        if (post.hasPoll != true) {
             binding.pollContainer.isVisible = false
             return
         }
