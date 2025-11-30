@@ -48,7 +48,7 @@ class PostDetailRepository {
                 .select(
                     columns = Columns.raw("""
                         *,
-                        users!posts_author_uid_fkey(uid, username, display_name, email, bio, profile_image_url, followers_count, following_count, posts_count, status, account_type, verify, banned)
+                        users!posts_author_uid_fkey(uid, username, display_name, email, bio, avatar, followers_count, following_count, posts_count, status, account_type, verify, banned)
                     """.trimIndent())
                 ) {
                     filter { eq("id", postId) }
@@ -267,7 +267,7 @@ class PostDetailRepository {
                 displayName = userData["display_name"]?.jsonPrimitive?.contentOrNull ?: "",
                 email = userData["email"]?.jsonPrimitive?.contentOrNull ?: "",
                 bio = userData["bio"]?.jsonPrimitive?.contentOrNull,
-                profileImageUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull,
+                profileImageUrl = userData["avatar"]?.jsonPrimitive?.contentOrNull,
                 followersCount = userData["followers_count"]?.jsonPrimitive?.intOrNull ?: 0,
                 followingCount = userData["following_count"]?.jsonPrimitive?.intOrNull ?: 0,
                 postsCount = userData["posts_count"]?.jsonPrimitive?.intOrNull ?: 0,

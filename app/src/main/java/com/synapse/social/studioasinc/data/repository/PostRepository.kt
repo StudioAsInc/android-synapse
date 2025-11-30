@@ -215,7 +215,7 @@ class PostRepository {
                 .select(
                     columns = Columns.raw("""
                         *,
-                        users!posts_author_uid_fkey(uid, username, profile_image_url, verify)
+                        users!posts_author_uid_fkey(uid, username, avatar, verify)
                     """.trimIndent())
                 ) {
                     range(offset.toLong(), (offset + pageSize - 1).toLong())
@@ -290,7 +290,7 @@ class PostRepository {
         val userData = data["users"]?.jsonObject
         if (userData != null) {
             post.username = userData["username"]?.jsonPrimitive?.contentOrNull
-            post.avatarUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
+            post.avatarUrl = userData["avatar"]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
             post.isVerified = userData["verify"]?.jsonPrimitive?.booleanOrNull ?: false
             
             val authorUid = post.authorUid
@@ -455,7 +455,7 @@ class PostRepository {
                 UserReaction(
                     userId = userId,
                     username = user?.get("username")?.jsonPrimitive?.contentOrNull ?: "Unknown",
-                    profileImage = user?.get("profile_image_url")?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
+                    profileImage = user?.get("avatar")?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
                     isVerified = user?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false,
                     reactionType = reaction["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE",
                     reactedAt = reaction["created_at"]?.jsonPrimitive?.contentOrNull

@@ -60,7 +60,7 @@ class CommentRepository {
                 .select(
                     columns = Columns.raw("""
                         *,
-                        users!comments_user_id_fkey(uid, username, display_name, email, bio, profile_image_url, followers_count, following_count, posts_count, status, account_type, verify, banned)
+                        users!comments_user_id_fkey(uid, username, display_name, email, bio, avatar, followers_count, following_count, posts_count, status, account_type, verify, banned)
                     """.trimIndent())
                 ) {
                     filter { 
@@ -105,7 +105,7 @@ class CommentRepository {
                 .select(
                     columns = Columns.raw("""
                         *,
-                        users!comments_user_id_fkey(uid, username, display_name, email, bio, profile_image_url, followers_count, following_count, posts_count, status, account_type, verify, banned)
+                        users!comments_user_id_fkey(uid, username, display_name, email, bio, avatar, followers_count, following_count, posts_count, status, account_type, verify, banned)
                     """.trimIndent())
                 ) {
                     filter { eq("parent_comment_id", commentId) }
@@ -186,7 +186,7 @@ class CommentRepository {
                             select(
                                 columns = Columns.raw("""
                                     *,
-                                    users!comments_user_id_fkey(uid, username, display_name, email, bio, profile_image_url, followers_count, following_count, posts_count, status, account_type, verify, banned)
+                                    users!comments_user_id_fkey(uid, username, display_name, email, bio, avatar, followers_count, following_count, posts_count, status, account_type, verify, banned)
                                 """.trimIndent())
                             )
                         }
@@ -395,7 +395,7 @@ class CommentRepository {
                 displayName = userData["display_name"]?.jsonPrimitive?.contentOrNull ?: "",
                 email = userData["email"]?.jsonPrimitive?.contentOrNull ?: "",
                 bio = userData["bio"]?.jsonPrimitive?.contentOrNull,
-                profileImageUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull,
+                profileImageUrl = userData["avatar"]?.jsonPrimitive?.contentOrNull,
                 followersCount = userData["followers_count"]?.jsonPrimitive?.intOrNull ?: 0,
                 followingCount = userData["following_count"]?.jsonPrimitive?.intOrNull ?: 0,
                 postsCount = userData["posts_count"]?.jsonPrimitive?.intOrNull ?: 0,
