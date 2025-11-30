@@ -325,10 +325,28 @@ class PostRepository {
     
     suspend fun getUserPosts(userId: String, limit: Int = 20): Result<List<Post>> = withContext(Dispatchers.IO) {
         try {
-            val posts = client.from("posts")
-                .select { filter { eq("author_uid", userId) }; limit(limit.toLong()) }
-                .decodeList<Post>()
-                .sortedByDescending { it.timestamp }
+            // Query posts with user join to populate transient fields (avatarUrl, username)
+            val response = client.from("posts")
+                .select(
+                    columns = Columns.raw("""
+                        *,
+                        users!posts_author_uid_fkey(uid, username, profile_image_url, verify)
+                    """.trimIndent())
+                ) {
+                    filter { eq("author_uid", userId) }
+                    limit(limit.toLong())
+                }
+                .decodeList<JsonObject>()
+
+            val posts = response.mapNotNull { postData ->
+                try {
+                    parsePostWithUserData(postData)
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Failed to parse user post: ${e.message}", e)
+                    null
+                }
+            }.sortedByDescending { it.timestamp }
+
             Result.success(populatePostReactions(posts))
         } catch (e: Exception) {
             Result.failure(Exception(mapSupabaseError(e)))
