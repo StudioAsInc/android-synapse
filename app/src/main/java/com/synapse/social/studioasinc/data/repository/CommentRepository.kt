@@ -638,8 +638,8 @@ class CommentRepository {
             client.from("comments")
                 .update({
                     set("is_pinned", false)
-                    set("pinned_at", null)
-                    set("pinned_by", null)
+                    set("pinned_at", null as String?)
+                    set("pinned_by", null as String?)
                 }) {
                     filter { 
                         eq("post_id", postId)

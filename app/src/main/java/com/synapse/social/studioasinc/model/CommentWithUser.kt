@@ -34,6 +34,8 @@ data class CommentWithUser(
     val isDeleted: Boolean = false,
     @SerialName("is_edited")
     val isEdited: Boolean = false,
+    @SerialName("is_pinned")
+    val isPinned: Boolean = false,
     // User information (populated from join)
     @Transient
     val user: UserProfile? = null,
