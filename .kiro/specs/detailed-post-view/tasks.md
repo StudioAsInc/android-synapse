@@ -61,22 +61,22 @@
 
 - [x] 5. Checkpoint (SKIPPED - tests excluded)
 
-- [ ] 6. Implement PollRepository
-  - [ ] 6.1 Create PollRepository for poll operations
-    - Implement `getUserVote(postId)` to check existing vote in poll_votes
-    - Implement `submitVote(postId, optionIndex)` with poll_end_time validation
-    - Implement `getPollResults(postId)` to calculate vote percentages
+- [x] 6. Implement PollRepository
+  - [x] 6.1 Create PollRepository for poll operations
+    - Implement `getUserVote(postId)` to check existing vote in poll_votes ✓
+    - Implement `submitVote(postId, optionIndex)` with poll_end_time validation ✓
+    - Implement `getPollResults(postId)` to calculate vote percentages ✓
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 7. Implement BookmarkRepository and ReshareRepository
-  - [ ] 7.1 Create BookmarkRepository
-    - Implement `isBookmarked(postId)` checking favorites table
-    - Implement `toggleBookmark(postId, collectionId)` for add/remove
+- [x] 7. Implement BookmarkRepository and ReshareRepository
+  - [x] 7.1 Create BookmarkRepository
+    - Implement `isBookmarked(postId)` checking favorites table ✓
+    - Implement `toggleBookmark(postId, collectionId)` for add/remove ✓
     - _Requirements: 8.1, 8.2_
-  - [ ] 7.2 Create ReshareRepository
-    - Implement `createReshare(postId, commentary)` inserting into reshares table
-    - Implement `hasReshared(postId)` to check existing reshare
-    - Update post reshares_count on creation
+  - [x] 7.2 Create ReshareRepository
+    - Implement `createReshare(postId, commentary)` inserting into reshares table ✓
+    - Implement `hasReshared(postId)` to check existing reshare ✓
+    - Update post reshares_count on creation ✓
     - _Requirements: 8.5_
 
 - [ ] 8. Implement text parsing utilities

@@ -42,7 +42,7 @@ async def progress(current, total):
     print(f"{progress_percentage:.2f}% uploaded - {uploaded_size_readable}/{total_size_readable}", end='\r')
 
 
-async def send_file(file_path):
+async def send_file(client, file_path):
     if not os.path.exists(file_path):
         print("File not found", file_path)
         return
@@ -73,7 +73,7 @@ async def main():
     client = TelegramClient('bot_session', api_id, api_hash)
     await client.start(bot_token=bot_token)
     client.parse_mode = 'markdown'
-    await send_file(apk_path)
+    await send_file(client, apk_path)
     await client.disconnect()
 
 if __name__ == '__main__':

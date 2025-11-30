@@ -56,6 +56,14 @@ class PostRepository {
         return "$supabaseUrl/storage/v1/object/public/post-media/$storagePath"
     }
     
+    private fun constructAvatarUrl(storagePath: String): String {
+        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+            return storagePath
+        }
+        val supabaseUrl = SupabaseClient.getUrl()
+        return "$supabaseUrl/storage/v1/object/public/user-avatars/$storagePath"
+    }
+    
     /**
      * Enhanced error mapping with Supabase error codes logged
      */
@@ -245,7 +253,7 @@ class PostRepository {
             key = data["key"]?.jsonPrimitive?.contentOrNull,
             authorUid = data["author_uid"]?.jsonPrimitive?.contentOrNull ?: "",
             postText = data["post_text"]?.jsonPrimitive?.contentOrNull,
-            postImage = data["post_image"]?.jsonPrimitive?.contentOrNull,
+            postImage = data["post_image"]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
             postType = data["post_type"]?.jsonPrimitive?.contentOrNull,
             postHideViewsCount = data["post_hide_views_count"]?.jsonPrimitive?.contentOrNull,
             postHideLikeCount = data["post_hide_like_count"]?.jsonPrimitive?.contentOrNull,
@@ -282,7 +290,7 @@ class PostRepository {
         val userData = data["users"]?.jsonObject
         if (userData != null) {
             post.username = userData["username"]?.jsonPrimitive?.contentOrNull
-            post.avatarUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull
+            post.avatarUrl = userData["profile_image_url"]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
             post.isVerified = userData["verify"]?.jsonPrimitive?.booleanOrNull ?: false
             
             val authorUid = post.authorUid
@@ -302,9 +310,9 @@ class PostRepository {
                 val typeStr = mediaMap["type"]?.jsonPrimitive?.contentOrNull ?: "IMAGE"
                 MediaItem(
                     id = mediaMap["id"]?.jsonPrimitive?.contentOrNull ?: "",
-                    url = url,
+                    url = constructMediaUrl(url),
                     type = if (typeStr.equals("VIDEO", ignoreCase = true)) MediaType.VIDEO else MediaType.IMAGE,
-                    thumbnailUrl = mediaMap["thumbnailUrl"]?.jsonPrimitive?.contentOrNull,
+                    thumbnailUrl = mediaMap["thumbnailUrl"]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
                     duration = mediaMap["duration"]?.jsonPrimitive?.longOrNull,
                     size = mediaMap["size"]?.jsonPrimitive?.longOrNull,
                     mimeType = mediaMap["mimeType"]?.jsonPrimitive?.contentOrNull
@@ -447,7 +455,7 @@ class PostRepository {
                 UserReaction(
                     userId = userId,
                     username = user?.get("username")?.jsonPrimitive?.contentOrNull ?: "Unknown",
-                    profileImage = user?.get("profile_image_url")?.jsonPrimitive?.contentOrNull,
+                    profileImage = user?.get("profile_image_url")?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
                     isVerified = user?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false,
                     reactionType = reaction["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "LIKE",
                     reactedAt = reaction["created_at"]?.jsonPrimitive?.contentOrNull
