@@ -89,10 +89,10 @@ class PostsAdapter(
 
             // FIXME: The ViewModel should fetch the author's username from the users table
             // and include it in the Post model. This avoids database queries in the adapter.
-            val authorUsername = if (post.authorUsername.isNullOrEmpty()) {
+            val authorUsername = if (post.username.isNullOrEmpty()) {
                 "@${post.authorUid}"
             } else {
-                post.authorUsername
+                post.username
             }
             authorText.text = authorUsername
 
