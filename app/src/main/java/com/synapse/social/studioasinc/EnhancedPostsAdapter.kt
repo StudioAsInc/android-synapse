@@ -319,7 +319,7 @@ class EnhancedPostsAdapter(
             postCard.setOnClickListener { onPostClicked?.invoke(post) }
             postContent.setOnClickListener { onPostClicked?.invoke(post) }
             postImage.setOnClickListener { onPostClicked?.invoke(post) }
-            mediaGridView.setOnClickListener { onPostClicked?.invoke(post) }
+            (mediaGridView as? View)?.setOnClickListener { onPostClicked?.invoke(post) }
 
             // Like button - single tap with optimistic UI update
             likeButton.setOnClickListener {
