@@ -23,7 +23,7 @@ class PostOptionsAdapter(
             label.text = item.label
             
             if (item.isDestructive) {
-                val errorColor = ContextCompat.getColor(itemView.context, R.color.md_theme_error)
+                val errorColor = ContextCompat.getColor(itemView.context, R.color.error_red)
                 icon.setColorFilter(errorColor)
                 label.setTextColor(errorColor)
             } else {
