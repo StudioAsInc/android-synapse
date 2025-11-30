@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.ListAdapter
 import com.synapse.social.studioasinc.animations.AnimationConfig
 import com.synapse.social.studioasinc.animations.PostCardAnimations
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.util.ImageLoader
 import com.synapse.social.studioasinc.util.NumberFormatter.formatCount
 import io.noties.markwon.Markwon
 
@@ -55,7 +56,7 @@ class PostsAdapter(
         private val cardContainer: View = itemView.findViewById(R.id.cardContainer)
         private val contentText: TextView = itemView.findViewById(R.id.postContent)
         private val authorText: TextView = itemView.findViewById(R.id.authorName)
-        private val authorAvatar: View = itemView.findViewById(R.id.authorAvatar)
+        private val authorAvatar: ImageView = itemView.findViewById(R.id.authorAvatar)
         private val likeButton: View = itemView.findViewById(R.id.likeButton)
         private val commentButton: View = itemView.findViewById(R.id.commentButton)
         private val shareButton: View = itemView.findViewById(R.id.shareButton)
@@ -95,6 +96,14 @@ class PostsAdapter(
                 post.username
             }
             authorText.text = authorUsername
+
+            // Load avatar using ImageLoader with circular transformation
+            ImageLoader.loadCircularImage(
+                context = context,
+                url = post.avatarUrl,
+                imageView = authorAvatar,
+                placeholder = R.drawable.avatar
+            )
 
             // Set accessibility content description for card
             cardContainer.contentDescription = context.getString(R.string.post_by_user, authorUsername)

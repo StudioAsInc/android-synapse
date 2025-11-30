@@ -158,8 +158,8 @@ class EnhancedPostsAdapter(
             authorName.text = post.username ?: "Unknown User"
             postTimestamp.text = formatTimestamp(post.timestamp)
 
-            // Load avatar using ImageLoader with retry logic
-            ImageLoader.loadImage(
+            // Load avatar using ImageLoader with circular transformation
+            ImageLoader.loadCircularImage(
                 context = context,
                 url = post.avatarUrl,
                 imageView = authorAvatar,
