@@ -1,214 +1,181 @@
 package com.synapse.social.studioasinc
 
 import android.app.AlertDialog
-import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.fragment.app.DialogFragment
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.synapse.social.studioasinc.adapters.PostOptionsAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
-import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.PostActionItem
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 
-class PostMoreBottomSheetDialog : DialogFragment() {
+class PostMoreBottomSheetDialog : BottomSheetDialogFragment() {
 
-    private lateinit var rootView: View
-    private lateinit var dialog: BottomSheetDialog
-    
-    private lateinit var body: LinearLayout
-    private lateinit var sldr: LinearLayout
-    private lateinit var copyPostText: LinearLayout
-    private lateinit var share: LinearLayout
-    private lateinit var editPost: LinearLayout
-    private lateinit var report: LinearLayout
-    private lateinit var deletePost: LinearLayout
-    private lateinit var editPostIc: ImageView
-    private lateinit var editPostTitle: TextView
-    private lateinit var deletePostIc: ImageView
-    private lateinit var deletePostTitle: TextView
-    private lateinit var copyPostTextIc: ImageView
-    private lateinit var copyPostTextTitle: TextView
-    private lateinit var shareIc: ImageView
-    private lateinit var shareTitle: TextView
-    private lateinit var reportIc: ImageView
-    private lateinit var reportTitle: TextView
-    
     private lateinit var authService: SupabaseAuthenticationService
-    private lateinit var databaseService: SupabaseDatabaseService
-    
-    private var postKey: String? = null
-    private var postPublisherUID: String? = null
-    private var postType: String? = null
-    private var postImg: String? = null
-    private var postText: String? = null
+    private var post: Post? = null
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        dialog = BottomSheetDialog(requireContext(), R.style.PostCommentsBottomSheetDialogStyle)
-        rootView = View.inflate(context, R.layout.post_settings_cbsd, null)
-        dialog.setContentView(rootView)
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
-        
-        initializeViews()
-        initializeServices()
-        setupClickListeners()
-        setupDialog()
-        loadArguments()
-        applyDialogStyles()
-        
-        return dialog
-    }
-
-    private fun initializeViews() {
-        body = rootView.findViewById(R.id.body)
-        sldr = rootView.findViewById(R.id.sldr)
-        copyPostText = rootView.findViewById(R.id.copyPostText)
-        share = rootView.findViewById(R.id.share)
-        editPost = rootView.findViewById(R.id.editPost)
-        report = rootView.findViewById(R.id.report)
-        deletePost = rootView.findViewById(R.id.deletePost)
-        editPostIc = rootView.findViewById(R.id.editPostIc)
-        editPostTitle = rootView.findViewById(R.id.editPostTitle)
-        deletePostIc = rootView.findViewById(R.id.deletePostIc)
-        deletePostTitle = rootView.findViewById(R.id.deletePostTitle)
-        copyPostTextIc = rootView.findViewById(R.id.copyPostTextIc)
-        copyPostTextTitle = rootView.findViewById(R.id.copyPostTextTitle)
-        shareIc = rootView.findViewById(R.id.shareIc)
-        shareTitle = rootView.findViewById(R.id.shareTitle)
-        reportIc = rootView.findViewById(R.id.reportIc)
-        reportTitle = rootView.findViewById(R.id.reportTitle)
-    }
-
-    private fun initializeServices() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         authService = SupabaseAuthenticationService()
-        databaseService = SupabaseDatabaseService()
+        arguments?.getString("post_json")?.let {
+            post = Json.decodeFromString(it)
+        }
     }
 
-    private fun setupClickListeners() {
-        copyPostText.setOnClickListener { copyPostTextToClipboard() }
-        share.setOnClickListener { sharePost() }
-        editPost.setOnClickListener { openEditPostActivity() }
-        report.setOnClickListener { /* TODO: Implement report functionality */ }
-        deletePost.setOnClickListener { deletePostDialog(postKey) }
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.bottom_sheet_post_options, container, false)
     }
 
-    private fun setupDialog() {
-        val display = requireActivity().windowManager.defaultDisplay
-        val screenHeight = display.height
-        val desiredHeight = screenHeight * 2 / 4
-        val params = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        body.layoutParams = params
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
+        val items = generateMenuItems()
+        recyclerView.adapter = PostOptionsAdapter(items) {
+            dismiss()
+        }
+    }
 
-        dialog.setOnShowListener { dialogInterface ->
-            val d = dialogInterface as BottomSheetDialog
-            val bottomSheet = d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-            bottomSheet?.let {
-                BottomSheetBehavior.from(it).apply {
-                    isHideable = true
-                    isDraggable = true
-                    state = BottomSheetBehavior.STATE_EXPANDED
+    private fun generateMenuItems(): List<PostActionItem> {
+        val currentPost = post ?: return emptyList()
+        val currentUserId = authService.getCurrentUserId()
+        val isOwner = currentPost.authorUid == currentUserId
+        val items = mutableListOf<PostActionItem>()
+
+        if (isOwner) {
+             items.add(PostActionItem("Edit", R.drawable.ic_edit_note_48px) { openEditPostActivity() })
+             items.add(PostActionItem("Delete", R.drawable.ic_delete_48px, isDestructive = true) { deletePostDialog(currentPost) })
+             items.add(PostActionItem("Archive", R.drawable.ic_download) { showToast("Archive feature coming soon") })
+             items.add(PostActionItem("Turn off commenting", R.drawable.ic_visibility_off) { showToast("Feature coming soon") })
+             items.add(PostActionItem("Pin to Profile", R.drawable.file_save_24px) { showToast("Feature coming soon") })
+             items.add(PostActionItem("View Insights", R.drawable.data_usage_24px) { showPostStatistics(currentPost) })
+             items.add(PostActionItem("Edit Alt Text", R.drawable.ic_text_fields_48px) { showToast("Feature coming soon") })
+        } else {
+             items.add(PostActionItem("Report", R.drawable.ic_report_48px, isDestructive = true) { reportPost(currentPost) })
+             items.add(PostActionItem("Not Interested", R.drawable.ic_visibility_off) { hidePost(currentPost) })
+             items.add(PostActionItem("Follow/Unfollow", R.drawable.ic_person) { showToast("Use profile button to follow") })
+             items.add(PostActionItem("Block", R.drawable.mobile_block_24px, isDestructive = true) { blockUser(currentPost.authorUid) })
+             items.add(PostActionItem("Mute", R.drawable.ic_notifications) { showToast("Mute feature coming soon") })
+             items.add(PostActionItem("Turn on Notifications", R.drawable.ic_notifications) { showToast("Feature coming soon") })
+             items.add(PostActionItem("Download Media", R.drawable.ic_download) { showToast("Download feature coming soon") })
+             items.add(PostActionItem("View Alt Text", R.drawable.ic_text_fields_48px) { showToast("Feature coming soon") })
+        }
+
+        // Universal
+        items.add(PostActionItem("Copy Link", R.drawable.ic_content_copy_48px) { copyPostTextToClipboard(currentPost) })
+        items.add(PostActionItem("Save", R.drawable.file_save_24px) { showToast("Save feature coming soon") })
+        items.add(PostActionItem("Share via...", R.drawable.ic_reply) { sharePost(currentPost) })
+
+        return items
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openEditPostActivity() {
+        post?.let { p ->
+            lifecycleScope.launch {
+                try {
+                     val result = SupabaseClient.client.from("posts").select {
+                         filter { eq("id", p.id) }
+                     }.decodeSingleOrNull<JsonObject>()
+
+                     if (result != null) {
+                        val editIntent = Intent(requireContext(), EditPostActivity::class.java).apply {
+                            putExtra("postKey", p.id)
+                            putExtra("post_id", p.id)
+                            putExtra("postText", p.postText)
+                            putExtra("postImage", p.postImage)
+                            putExtra("postType", p.postType)
+
+                            fun getBool(key: String): Boolean {
+                                val primitive = result[key] as? JsonPrimitive
+                                return primitive?.content?.toBoolean() ?: false
+                            }
+                            
+                            fun getStringVal(key: String): String? {
+                                return (result[key] as? JsonPrimitive)?.content
+                            }
+
+                            putExtra("hideViewsCount", getBool("post_hide_views_count"))
+                            putExtra("hideLikesCount", getBool("post_hide_like_count"))
+                            putExtra("hideCommentsCount", getBool("post_hide_comments_count"))
+                            putExtra("hidePostFromEveryone", getStringVal("post_visibility") == "private")
+                            putExtra("disableSaveToFavorites", getBool("post_disable_favorite"))
+                            putExtra("disableComments", getBool("post_disable_comments"))
+                        }
+
+                        dismiss()
+                        startActivity(editIntent)
+                     } else {
+                         showToast("Failed to load post data")
+                     }
+                } catch (e: Exception) {
+                    showToast("Failed to load post data")
                 }
             }
         }
     }
 
-    private fun loadArguments() {
-        arguments?.let { args ->
-            postKey = args.getString("postKey")
-            postPublisherUID = args.getString("postPublisherUID")
-            postType = args.getString("postType")
-            postImg = args.getString("postImg")
-            postText = args.getString("postText")
-        }
+    private fun deletePostDialog(post: Post) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.delete_message_confirmation)
+            .setMessage(R.string.delete_post_dialog_message)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        SupabaseClient.client.from("posts").delete {
+                            filter {
+                                eq("id", post.id)
+                            }
+                        }
+                        showToast(getString(R.string.post_deleted_toast))
+                    } catch (e: Exception) {
+                        showToast("Failed to delete post: ${e.message}")
+                    }
+                }
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
     }
 
-    private fun applyDialogStyles() {
-        // Apply UI styling
-        val d = requireActivity().resources.displayMetrics.density.toInt()
-        val gradientDrawable = GradientDrawable().apply {
-            setColor(0xFFFFFFFF.toInt())
-            cornerRadii = floatArrayOf(
-                d * 22f, d * 22f, d * 22f, d * 22f,
-                d * 0f, d * 0f, d * 0f, d * 0f
-            )
-        }
-        body.elevation = d * 1f
-        body.background = gradientDrawable
-
-        sldr.background = GradientDrawable().apply {
-            cornerRadius = 300f
-            setColor(0xFFEEEEEE.toInt())
-        }
-
-        // Apply view graphics to clickable items
-        listOf(copyPostText, share, editPost, report, deletePost).forEach { view ->
-            viewGraphics(view, 0xFFFFFFFF.toInt(), 0xFFEEEEEE.toInt(), 0, 0, Color.TRANSPARENT)
-        }
-
-        // Set delete icon color
-        deletePostIc.setColorFilter(0xFFF44336.toInt(), PorterDuff.Mode.SRC_ATOP)
-
-        // Show/hide options based on post type and ownership
-        if (postType == "TEXT") {
-            copyPostText.visibility = View.VISIBLE
-        } else {
-            copyPostText.visibility = View.GONE
-        }
-
-        val currentUserId = authService.getCurrentUserId()
-        val isOwner = postPublisherUID == currentUserId
-        val isAdmin = authService.getCurrentUser()?.email == "mashikahamed0@gmail.com"
-
-        if (isOwner || isAdmin) {
-            share.visibility = View.VISIBLE
-            editPost.visibility = View.VISIBLE
-            report.visibility = View.GONE
-            deletePost.visibility = View.VISIBLE
-        } else {
-            share.visibility = View.VISIBLE
-            editPost.visibility = View.GONE
-            report.visibility = View.VISIBLE
-            deletePost.visibility = View.GONE
-        }
+    private fun copyPostTextToClipboard(post: Post) {
+        val link = "https://synapse.app/post/${post.id}"
+        val clipboard = requireActivity().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Post Link", link)
+        clipboard.setPrimaryClip(clip)
+        showToast("Link copied")
     }
 
-    private fun copyPostTextToClipboard() {
-        if (!postText.isNullOrEmpty()) {
-            val clipboard = requireActivity().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Post text", postText)
-            clipboard.setPrimaryClip(clip)
-            SketchwareUtil.showMessage(requireActivity(), getString(R.string.text_copied_toast))
-            dialog.dismiss()
-        } else {
-            SketchwareUtil.showMessage(requireActivity(), getString(R.string.no_text_to_copy))
-        }
-    }
-
-    private fun sharePost() {
-        val shareLink = "https://web-synapse.pages.dev/post.html?post=$postKey"
-        val shareText = if (!postText.isNullOrEmpty()) {
-            "$postText\n\n$shareLink"
-        } else {
-            shareLink
+    private fun sharePost(post: Post) {
+        val shareText = buildString {
+             append("Check out this post on Synapse!\n\n")
+             if (!post.postText.isNullOrEmpty()) {
+                 append(post.postText)
+                 append("\n\n")
+             }
+             append("https://synapse.app/post/${post.id}")
         }
 
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -216,133 +183,92 @@ class PostMoreBottomSheetDialog : DialogFragment() {
             putExtra(Intent.EXTRA_TEXT, shareText)
             putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_post_subject))
         }
-
-        try {
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.share_post_chooser_title)))
-        } catch (e: Exception) {
-            SketchwareUtil.showMessage(requireActivity(), getString(R.string.share_error))
-        }
-
-        dialog.dismiss()
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_post_chooser_title)))
     }
 
-    private fun openEditPostActivity() {
-        postKey?.let { key ->
-            lifecycleScope.launch {
-                try {
-                    val result = databaseService.selectById("posts", key)
-                    
-                    result.onSuccess { postData ->
-                        if (postData != null) {
-                            val editIntent = Intent(requireActivity(), EditPostActivity::class.java).apply {
-                                putExtra("postKey", key)
-                                putExtra("postText", postText)
-                                putExtra("postImage", postImg)
-                                putExtra("postType", postType)
-                                
-                                // Add post settings
-                                putExtra("hideViewsCount", postData["post_hide_views_count"]?.toString()?.toBoolean() ?: false)
-                                putExtra("hideLikesCount", postData["post_hide_like_count"]?.toString()?.toBoolean() ?: false)
-                                putExtra("hideCommentsCount", postData["post_hide_comments_count"]?.toString()?.toBoolean() ?: false)
-                                putExtra("hidePostFromEveryone", postData["post_visibility"]?.toString() == "private")
-                                putExtra("disableSaveToFavorites", postData["post_disable_favorite"]?.toString()?.toBoolean() ?: false)
-                                putExtra("disableComments", postData["post_disable_comments"]?.toString()?.toBoolean() ?: false)
+    private fun reportPost(post: Post) {
+        val reasons = arrayOf("Spam", "Harassment", "Hate speech", "Violence", "Other")
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.report_title)
+            .setItems(reasons) { _, which ->
+                 lifecycleScope.launch {
+                    try {
+                        val currentUid = authService.getCurrentUserId()
+                        if (currentUid != null) {
+                             val reportData = buildJsonObject {
+                                put("reporter_id", JsonPrimitive(currentUid))
+                                put("post_id", JsonPrimitive(post.id))
+                                put("reason", JsonPrimitive(reasons[which]))
+                                put("status", JsonPrimitive("pending"))
                             }
-                            
-                            dialog.dismiss()
-                            startActivity(editIntent)
+                            SupabaseClient.client.from("post_reports").insert(reportData)
+                            showToast(getString(R.string.report_submitted))
                         }
-                    }.onFailure {
-                        SketchwareUtil.showMessage(requireActivity(), "Failed to load post data")
+                    } catch (e: Exception) {
+                        showToast("Failed to submit report")
                     }
-                } catch (e: Exception) {
-                    SketchwareUtil.showMessage(requireActivity(), "Failed to load post data")
                 }
             }
-        }
+            .show()
     }
 
-    private fun deletePostDialog(key: String?) {
-        if (key == null) return
-
-        val dialogBuilder = AlertDialog.Builder(requireContext())
-        val dialogView = layoutInflater.inflate(R.layout.dialog_synapse_bg_view, null)
-        val alertDialog = dialogBuilder.create()
-        alertDialog.setView(dialogView)
-        alertDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialog_title)
-        val dialogMessage = dialogView.findViewById<TextView>(R.id.dialog_message)
-        val dialogNoButton = dialogView.findViewById<TextView>(R.id.dialog_no_button)
-        val dialogYesButton = dialogView.findViewById<TextView>(R.id.dialog_yes_button)
-
-        dialogYesButton.setTextColor(0xFFF44336.toInt())
-        viewGraphics(dialogYesButton, 0xFFFFFFFF.toInt(), 0xFFFFCDD2.toInt(), 28, 0, Color.TRANSPARENT)
-        dialogNoButton.setTextColor(0xFF2196F3.toInt())
-        viewGraphics(dialogNoButton, 0xFFFFFFFF.toInt(), 0xFFBBDEFB.toInt(), 28, 0, Color.TRANSPARENT)
-
-        dialogTitle.text = getString(R.string.info)
-        dialogMessage.text = getString(R.string.delete_post_dialog_message)
-        dialogYesButton.text = getString(R.string.yes)
-        dialogNoButton.text = getString(R.string.no)
-
-        dialogYesButton.setOnClickListener {
-            deletePostData(key)
-            SketchwareUtil.showMessage(requireActivity(), getString(R.string.post_deleted_toast))
-            alertDialog.dismiss()
-            dialog.dismiss()
-        }
-
-        dialogNoButton.setOnClickListener {
-            alertDialog.dismiss()
-        }
-
-        alertDialog.setCancelable(true)
-        alertDialog.show()
-    }
-
-    private fun deletePostData(key: String) {
-        lifecycleScope.launch {
+    private fun hidePost(post: Post) {
+         lifecycleScope.launch {
             try {
-                // Delete post and related data from Supabase
-                databaseService.delete("posts", "id", key)
-                databaseService.delete("post_comments", "post_id", key)
-                databaseService.delete("post_likes", "post_id", key)
+                val currentUid = authService.getCurrentUserId()
+                if (currentUid != null) {
+                    val hideData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(post.id))
+                    }
+                    SupabaseClient.client.from("hidden_posts").insert(hideData)
+                    showToast("Post hidden")
+                }
             } catch (e: Exception) {
-                // Handle error silently or show error message
+                showToast("Failed to hide post")
             }
         }
     }
 
-    private fun viewGraphics(view: View, onFocus: Int, onRipple: Int, radius: Int, stroke: Int, strokeColor: Int) {
-        val gradientDrawable = GradientDrawable().apply {
-            setColor(onFocus)
-            cornerRadius = radius.toFloat()
-            setStroke(stroke, strokeColor)
-        }
-        val rippleDrawable = RippleDrawable(
-            android.content.res.ColorStateList(arrayOf(intArrayOf()), intArrayOf(onRipple)),
-            gradientDrawable,
-            null
-        )
-        view.background = rippleDrawable
+    private fun blockUser(userId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Block User")
+            .setMessage("Are you sure you want to block this user?")
+            .setPositiveButton("Block") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        val currentUid = authService.getCurrentUserId()
+                        if (currentUid != null) {
+                            val blockData = buildJsonObject {
+                                put("blocker_id", JsonPrimitive(currentUid))
+                                put("blocked_id", JsonPrimitive(userId))
+                            }
+                            SupabaseClient.client.from("blocks").insert(blockData)
+                            showToast("User blocked")
+                        }
+                    } catch (e: Exception) {
+                        showToast("Failed to block user")
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPostStatistics(post: Post) {
+        val message = "Likes: ${post.likesCount}\nComments: ${post.commentsCount}\nViews: ${post.viewsCount}"
+        AlertDialog.Builder(requireContext())
+            .setTitle("Statistics")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     companion object {
-        fun newInstance(
-            postKey: String,
-            postPublisherUID: String,
-            postType: String,
-            postImg: String?,
-            postText: String?
-        ): PostMoreBottomSheetDialog {
+        fun newInstance(post: Post): PostMoreBottomSheetDialog {
             return PostMoreBottomSheetDialog().apply {
                 arguments = Bundle().apply {
-                    putString("postKey", postKey)
-                    putString("postPublisherUID", postPublisherUID)
-                    putString("postType", postType)
-                    putString("postImg", postImg)
-                    putString("postText", postText)
+                    putString("post_json", Json.encodeToString(post))
                 }
             }
         }
