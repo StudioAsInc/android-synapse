@@ -70,7 +70,8 @@ class PostDetailActivity : AppCompatActivity() {
         commentsAdapter = CommentDetailAdapter(
             onReplyClick = { comment -> setReplyMode(comment) },
             onLikeClick = { comment -> viewModel.toggleCommentReaction(comment.id, ReactionType.LIKE) },
-            onUserClick = { userId -> navigateToProfile(userId) }
+            onUserClick = { userId -> navigateToProfile(userId) },
+            onOptionsClick = { comment -> showCommentOptions(comment) }
         )
         binding.rvComments.apply {
             layoutManager = LinearLayoutManager(this@PostDetailActivity)
@@ -360,5 +361,80 @@ class PostDetailActivity : AppCompatActivity() {
         count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
         count >= 1_000 -> String.format("%.1fK", count / 1_000.0)
         else -> count.toString()
+    }
+    
+    private fun showCommentOptions(comment: CommentWithUser) {
+        val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: return
+        val isOwnComment = comment.userId == currentUserId
+        val postAuthorUid = intent.getStringExtra(EXTRA_AUTHOR_UID)
+        val isPostAuthor = currentUserId == postAuthorUid
+        
+        val bottomSheet = com.synapse.social.studioasinc.ui.CommentOptionsBottomSheet(
+            comment = comment,
+            isOwnComment = isOwnComment,
+            isPostAuthor = isPostAuthor,
+            onActionSelected = { action -> handleCommentAction(action) }
+        )
+        bottomSheet.show(supportFragmentManager, com.synapse.social.studioasinc.ui.CommentOptionsBottomSheet.TAG)
+    }
+    
+    private fun handleCommentAction(action: CommentAction) {
+        lifecycleScope.launch {
+            when (action) {
+                is CommentAction.Reply -> setReplyMode(commentsAdapter.currentList.find { it.id == action.commentId } ?: return@launch)
+                is CommentAction.Copy -> Toast.makeText(this@PostDetailActivity, R.string.comment_copied, Toast.LENGTH_SHORT).show()
+                is CommentAction.Share -> Toast.makeText(this@PostDetailActivity, "Comment shared", Toast.LENGTH_SHORT).show()
+                is CommentAction.Hide -> {
+                    viewModel.hideComment(action.commentId)
+                    Toast.makeText(this@PostDetailActivity, R.string.comment_hidden, Toast.LENGTH_SHORT).show()
+                }
+                is CommentAction.Report -> {
+                    viewModel.reportComment(action.commentId, action.reason, action.description)
+                    Toast.makeText(this@PostDetailActivity, R.string.comment_reported, Toast.LENGTH_SHORT).show()
+                }
+                is CommentAction.Pin -> {
+                    viewModel.pinComment(action.commentId, action.postId)
+                    Toast.makeText(this@PostDetailActivity, R.string.comment_pinned, Toast.LENGTH_SHORT).show()
+                }
+                is CommentAction.Delete -> {
+                    showDeleteCommentDialog(action.commentId)
+                }
+                is CommentAction.Edit -> {
+                    showEditCommentDialog(action.commentId, action.newContent)
+                }
+            }
+        }
+    }
+    
+    private fun showDeleteCommentDialog(commentId: String) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.delete_comment)
+            .setMessage("Are you sure you want to delete this comment?")
+            .setPositiveButton(R.string.delete) { _, _ ->
+                viewModel.deleteComment(commentId)
+                Toast.makeText(this, R.string.comment_deleted, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+    
+    private fun showEditCommentDialog(commentId: String, currentContent: String) {
+        val editText = android.widget.EditText(this).apply {
+            setText(currentContent)
+            setSelection(currentContent.length)
+        }
+        
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.edit_comment)
+            .setView(editText)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val newContent = editText.text.toString().trim()
+                if (newContent.isNotEmpty()) {
+                    viewModel.editComment(commentId, newContent)
+                    Toast.makeText(this, R.string.comment_edited, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

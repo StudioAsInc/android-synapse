@@ -17,7 +17,8 @@ import com.synapse.social.studioasinc.util.TimeUtils
 class CommentDetailAdapter(
     private val onReplyClick: (CommentWithUser) -> Unit,
     private val onLikeClick: (CommentWithUser) -> Unit,
-    private val onUserClick: (String) -> Unit
+    private val onUserClick: (String) -> Unit,
+    private val onOptionsClick: (CommentWithUser) -> Unit
 ) : ListAdapter<CommentWithUser, CommentDetailAdapter.ViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -101,7 +102,7 @@ class CommentDetailAdapter(
             binding.tvReplyAction.setOnClickListener { onReplyClick(comment) }
             binding.tvLikeAction.setOnClickListener { onLikeClick(comment) }
             binding.cardComment.setOnLongClickListener {
-                onLikeClick(comment)
+                onOptionsClick(comment)
                 true
             }
 
@@ -118,7 +119,7 @@ class CommentDetailAdapter(
                 binding.tvViewReplies.text = binding.root.context.getString(R.string.hide_replies)
                 // Load replies - in real implementation, fetch from repository
                 if (repliesAdapter == null) {
-                    repliesAdapter = RepliesAdapter(onUserClick)
+                    repliesAdapter = RepliesAdapter(onUserClick, onOptionsClick)
                     binding.rvReplies.layoutManager = LinearLayoutManager(binding.root.context)
                     binding.rvReplies.adapter = repliesAdapter
                 }
@@ -137,7 +138,8 @@ class CommentDetailAdapter(
 }
 
 class RepliesAdapter(
-    private val onUserClick: (String) -> Unit
+    private val onUserClick: (String) -> Unit,
+    private val onOptionsClick: (CommentWithUser) -> Unit
 ) : ListAdapter<CommentWithUser, RepliesAdapter.ViewHolder>(
     object : DiffUtil.ItemCallback<CommentWithUser>() {
         override fun areItemsTheSame(old: CommentWithUser, new: CommentWithUser) = old.id == new.id
@@ -177,6 +179,10 @@ class RepliesAdapter(
             binding.tvReplyAction.isVisible = false
 
             binding.ivAvatar.setOnClickListener { onUserClick(reply.userId) }
+            binding.cardComment.setOnLongClickListener {
+                onOptionsClick(reply)
+                true
+            }
         }
 
         private fun Int.dpToPx(): Int {

@@ -14,5 +14,15 @@ data class Comment(
     @SerialName("post_key")
     val postKey: String = "",  // Post this comment belongs to
     @SerialName("reply_comment_key")
-    val replyCommentKey: String? = null  // If this is a reply, the parent comment key
+    val replyCommentKey: String? = null,  // If this is a reply, the parent comment key
+    @SerialName("is_pinned")
+    val isPinned: Boolean = false,
+    @SerialName("pinned_at")
+    val pinnedAt: String? = null,
+    @SerialName("pinned_by")
+    val pinnedBy: String? = null,
+    @SerialName("edited_at")
+    val editedAt: String? = null,
+    @SerialName("report_count")
+    val reportCount: Int = 0
 )

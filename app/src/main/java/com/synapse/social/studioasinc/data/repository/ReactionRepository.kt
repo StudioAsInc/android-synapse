@@ -68,7 +68,7 @@ class ReactionRepository {
                     
                     val result = if (existingReaction != null) {
                         val existingType = existingReaction["reaction_type"]?.jsonPrimitive?.contentOrNull
-                        if (existingType == reactionType.name) {
+                        if (existingType == reactionType.name.lowercase()) {
                             // Same reaction - remove it
                             client.from("reactions")
                                 .delete { filter { eq("post_id", postId); eq("user_id", userId) } }
@@ -78,7 +78,7 @@ class ReactionRepository {
                             // Different reaction - update it
                             client.from("reactions")
                                 .update({
-                                    set("reaction_type", reactionType.name)
+                                    set("reaction_type", reactionType.name.lowercase())
                                     set("updated_at", java.time.Instant.now().toString())
                                 }) { filter { eq("post_id", postId); eq("user_id", userId) } }
                             Log.d(TAG, "Reaction updated to ${reactionType.name} for post $postId")
@@ -89,7 +89,7 @@ class ReactionRepository {
                         client.from("reactions").insert(buildJsonObject {
                             put("user_id", userId)
                             put("post_id", postId)
-                            put("reaction_type", reactionType.name)
+                            put("reaction_type", reactionType.name.lowercase())
                         })
                         Log.d(TAG, "New reaction ${reactionType.name} added for post $postId")
                         ReactionToggleResult.ADDED
@@ -223,7 +223,7 @@ class ReactionRepository {
                     
                     val result = if (existingReaction != null) {
                         val existingType = existingReaction["reaction_type"]?.jsonPrimitive?.contentOrNull
-                        if (existingType == reactionType.name) {
+                        if (existingType == reactionType.name.lowercase()) {
                             // Same reaction - remove it
                             client.from("comment_reactions")
                                 .delete { filter { eq("comment_id", commentId); eq("user_id", userId) } }
@@ -233,7 +233,7 @@ class ReactionRepository {
                             // Different reaction - update it
                             client.from("comment_reactions")
                                 .update({
-                                    set("reaction_type", reactionType.name)
+                                    set("reaction_type", reactionType.name.lowercase())
                                     set("updated_at", java.time.Instant.now().toString())
                                 }) { filter { eq("comment_id", commentId); eq("user_id", userId) } }
                             Log.d(TAG, "Comment reaction updated to ${reactionType.name} for comment $commentId")
@@ -244,7 +244,7 @@ class ReactionRepository {
                         client.from("comment_reactions").insert(buildJsonObject {
                             put("user_id", userId)
                             put("comment_id", commentId)
-                            put("reaction_type", reactionType.name)
+                            put("reaction_type", reactionType.name.lowercase())
                         })
                         Log.d(TAG, "New comment reaction ${reactionType.name} added for comment $commentId")
                         ReactionToggleResult.ADDED

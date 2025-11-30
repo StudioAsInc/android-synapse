@@ -14,27 +14,6 @@ class PostOptionsAdapter(
     private val items: List<PostActionItem>
 ) : RecyclerView.Adapter<PostOptionsAdapter.ViewHolder>() {
 
-    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val icon: ImageView = view.findViewById(R.id.optionIcon)
-        val label: TextView = view.findViewById(R.id.optionLabel)
-        
-        fun bind(item: PostActionItem) {
-            icon.setImageResource(item.icon)
-            label.text = item.label
-            
-            if (item.isDestructive) {
-                val errorColor = ContextCompat.getColor(itemView.context, R.color.error_red)
-                icon.setColorFilter(errorColor)
-                label.setTextColor(errorColor)
-            } else {
-                icon.clearColorFilter()
-                label.setTextColor(ContextCompat.getColor(itemView.context, R.color.text_primary))
-            }
-            
-            itemView.setOnClickListener { item.action() }
-        }
-    }
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_post_option, parent, false)
@@ -46,4 +25,26 @@ class PostOptionsAdapter(
     }
 
     override fun getItemCount() = items.size
+
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val icon: ImageView = itemView.findViewById(R.id.optionIcon)
+        private val label: TextView = itemView.findViewById(R.id.optionLabel)
+
+        fun bind(item: PostActionItem) {
+            label.text = item.label
+            icon.setImageResource(item.icon)
+
+            if (item.isDestructive) {
+                val errorColor = ContextCompat.getColor(itemView.context, R.color.error_red)
+                label.setTextColor(errorColor)
+                icon.setColorFilter(errorColor)
+            } else {
+                val defaultColor = ContextCompat.getColor(itemView.context, R.color.text_primary)
+                label.setTextColor(defaultColor)
+                icon.clearColorFilter()
+            }
+
+            itemView.setOnClickListener { item.action() }
+        }
+    }
 }

@@ -608,4 +608,120 @@ class CommentRepository {
     fun calculateRepliesCount(allComments: List<CommentWithUser>, commentId: String): Int {
         return allComments.count { it.parentCommentId == commentId }
     }
+    
+    // ==================== COMMENT ACTIONS ====================
+    
+    /**
+     * Pin a comment to the top of the post.
+     * Only post author can pin comments.
+     */
+    suspend fun pinComment(commentId: String, postId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (!SupabaseClient.isConfigured()) {
+                return@withContext Result.failure(Exception("Supabase not configured"))
+            }
+            
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            // Check if user is post author
+            val post = client.from("posts")
+                .select { filter { eq("id", postId) } }
+                .decodeSingleOrNull<JsonObject>()
+            
+            val postAuthorId = post?.get("author_uid")?.jsonPrimitive?.contentOrNull
+            if (postAuthorId != currentUser.id) {
+                return@withContext Result.failure(Exception("Only post author can pin comments"))
+            }
+            
+            // Unpin any existing pinned comment
+            client.from("comments")
+                .update({
+                    set("is_pinned", false)
+                    set("pinned_at", null)
+                    set("pinned_by", null)
+                }) {
+                    filter { 
+                        eq("post_id", postId)
+                        eq("is_pinned", true)
+                    }
+                }
+            
+            // Pin the new comment
+            client.from("comments")
+                .update({
+                    set("is_pinned", true)
+                    set("pinned_at", java.time.Instant.now().toString())
+                    set("pinned_by", currentUser.id)
+                }) {
+                    filter { eq("id", commentId) }
+                }
+            
+            Log.d(TAG, "Comment pinned: $commentId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to pin comment: ${e.message}", e)
+            Result.failure(Exception(mapSupabaseError(e)))
+        }
+    }
+    
+    /**
+     * Hide a comment from the current user's view.
+     */
+    suspend fun hideComment(commentId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (!SupabaseClient.isConfigured()) {
+                return@withContext Result.failure(Exception("Supabase not configured"))
+            }
+            
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            val insertData = buildJsonObject {
+                put("comment_id", commentId)
+                put("user_id", currentUser.id)
+            }
+            
+            client.from("hidden_comments").insert(insertData)
+            
+            Log.d(TAG, "Comment hidden: $commentId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to hide comment: ${e.message}", e)
+            Result.failure(Exception(mapSupabaseError(e)))
+        }
+    }
+    
+    /**
+     * Report a comment for moderation.
+     */
+    suspend fun reportComment(
+        commentId: String,
+        reason: String,
+        description: String?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (!SupabaseClient.isConfigured()) {
+                return@withContext Result.failure(Exception("Supabase not configured"))
+            }
+            
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            val insertData = buildJsonObject {
+                put("comment_id", commentId)
+                put("reporter_id", currentUser.id)
+                put("reason", reason)
+                if (description != null) put("description", description)
+            }
+            
+            client.from("comment_reports").insert(insertData)
+            
+            Log.d(TAG, "Comment reported: $commentId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to report comment: ${e.message}", e)
+            Result.failure(Exception(mapSupabaseError(e)))
+        }
+    }
 }

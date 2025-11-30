@@ -55,6 +55,9 @@ class PostCommentsViewModel : ViewModel() {
                 val uids = mutableListOf<String>()
                 
                 commentsResult.getOrNull()?.forEach { commentData ->
+                    // Skip deleted comments
+                    if (commentData["deleted_at"] != null) return@forEach
+                    
                     // Convert map to Comment object
                     val comment = Comment(
                         uid = commentData["uid"] as? String ?: "",
@@ -93,6 +96,9 @@ class PostCommentsViewModel : ViewModel() {
                 val uids = mutableListOf<String>()
                 
                 repliesResult.getOrNull()?.forEach { replyData ->
+                    // Skip deleted replies
+                    if (replyData["deleted_at"] != null) return@forEach
+                    
                     // Convert map to Reply object
                     val reply = Reply(
                         uid = replyData["uid"] as? String ?: "",
@@ -150,13 +156,14 @@ class PostCommentsViewModel : ViewModel() {
     fun getCommentCount(postKey: String) {
         viewModelScope.launch {
             try {
-                val commentsResult = dbService.selectWithFilter(
-                    table = "comments",
-                    columns = "id",
-                    filter = "post_key",
+                val postResult = dbService.selectWithFilter(
+                    table = "posts",
+                    columns = "comments_count",
+                    filter = "id",
                     value = postKey
                 )
-                _commentCount.postValue(commentsResult.getOrNull()?.size?.toLong() ?: 0L)
+                val count = postResult.getOrNull()?.firstOrNull()?.get("comments_count") as? Number
+                _commentCount.postValue(count?.toLong() ?: 0L)
             } catch (e: Exception) {
                 _error.postValue("Failed to get comment count: ${e.message}")
             }

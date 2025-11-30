@@ -106,4 +106,23 @@ class PostDetailViewModel : ViewModel() {
         val postId = currentPostId ?: return
         viewModelScope.launch { reportRepository.createReport(postId, reason, null) }
     }
+    
+    fun pinComment(commentId: String, postId: String) {
+        viewModelScope.launch {
+            commentRepository.pinComment(commentId, postId).onSuccess { loadComments(postId) }
+        }
+    }
+    
+    fun hideComment(commentId: String) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            commentRepository.hideComment(commentId).onSuccess { loadComments(postId) }
+        }
+    }
+    
+    fun reportComment(commentId: String, reason: String, description: String?) {
+        viewModelScope.launch {
+            commentRepository.reportComment(commentId, reason, description)
+        }
+    }
 }

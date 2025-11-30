@@ -116,11 +116,18 @@ class CommentsAdapter(
             repliesAdapter.setUserData(userMap)
             repliesAdapter.submitList(replies)
 
-            showRepliesButton.setOnClickListener {
-                onShowReplies(comment.key)
+            if (replies.isNotEmpty()) {
                 repliesRecyclerView.visibility = View.VISIBLE
                 showRepliesButton.visibility = View.GONE
                 hideRepliesButton.visibility = View.VISIBLE
+            } else {
+                repliesRecyclerView.visibility = View.GONE
+                showRepliesButton.visibility = View.VISIBLE
+                hideRepliesButton.visibility = View.GONE
+            }
+
+            showRepliesButton.setOnClickListener {
+                onShowReplies(comment.key)
             }
 
             hideRepliesButton.setOnClickListener {
