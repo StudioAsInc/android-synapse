@@ -18,19 +18,21 @@ class ChatUIUpdater(
     }
     
     private var statusTextView: TextView? = null
-    
-    fun setStatusTextView(textView: TextView) {
+
+    fun setStatusTextView(textView: TextView?) {
         statusTextView = textView
     }
     
     fun startUpdates() {
         Log.d(TAG, "Starting chat UI updates for chat: $chatId")
-        // TODO: Implement real-time updates
+        // FIXME: Implement real-time updates using Supabase Realtime.
+        // This should subscribe to the chat channel and listen for new messages.
     }
-    
+
     fun stopUpdates() {
         Log.d(TAG, "Stopping chat UI updates")
-        // TODO: Stop real-time updates
+        // FIXME: Stop real-time updates and clean up resources.
+        // This should unsubscribe from the chat channel.
     }
     
     fun initializeWithMessages(messages: List<HashMap<String, Any?>>) {

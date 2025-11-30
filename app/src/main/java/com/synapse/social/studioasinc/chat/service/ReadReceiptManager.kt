@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc.chat.service
 import android.util.Log
 import com.synapse.social.studioasinc.chat.models.MessageState
 import com.synapse.social.studioasinc.chat.models.ReadReceiptEvent
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,7 +31,11 @@ class ReadReceiptManager(
     
     // Database optimization service for batch operations
     private val dbOptimizationService = DatabaseOptimizationService()
-    
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Coroutine exception", throwable)
+    }
+
     companion object {
         private const val TAG = "ReadReceiptManager"
         private const val BATCH_DELAY = 1000L // 1 second batching delay
@@ -47,13 +52,17 @@ class ReadReceiptManager(
     
     // Track current user ID for filtering own read receipts
     private var currentUserId: String? = null
-    
+
     /**
      * Set the current user ID for filtering purposes.
-     * 
+     *
      * @param userId The current user's ID
      */
-    fun setCurrentUserId(userId: String) {
+    fun setCurrentUserId(userId: String?) {
+        if (userId.isNullOrEmpty()) {
+            Log.w(TAG, "Attempted to set a null or empty user ID.")
+            return
+        }
         currentUserId = userId
         Log.d(TAG, "Current user ID set: $userId")
     }
@@ -88,11 +97,11 @@ class ReadReceiptManager(
         
         // Cancel existing batching job if it exists
         batchingJobs[chatId]?.cancel()
-        
+
         // Create new batching job with delay
-        batchingJobs[chatId] = coroutineScope.launch {
+        batchingJobs[chatId] = coroutineScope.launch(exceptionHandler) {
             delay(BATCH_DELAY)
-            
+
             // Get all pending messages for this chat
             val messagesToProcess = synchronized(pendingList) {
                 pendingList.toList().also {
@@ -216,13 +225,14 @@ class ReadReceiptManager(
         
         try {
             // Get or create the Realtime channel
-            val channel = realtimeService.getChannel(chatId) 
+            val channel = realtimeService.getChannel(chatId)
                 ?: realtimeService.subscribeToChat(chatId)
-            
-            // TODO: Implement broadcast listening when Supabase Realtime API is clarified
+
+            // FIXME: Implement broadcast listening for read receipts once the Supabase Realtime API is finalized.
+            // This will involve listening for a specific event on the channel and invoking the onReadUpdate callback.
             // For now, we'll rely on polling fallback for read receipt updates
             Log.d(TAG, "Read receipt subscription set up for chat: $chatId (broadcast listening pending API clarification)")
-            
+
             Log.d(TAG, "Successfully subscribed to read receipts for chat: $chatId")
             
         } catch (e: Exception) {
@@ -327,8 +337,8 @@ class ReadReceiptManager(
         }
         
         Log.d(TAG, "Flushing ${messagesToProcess.size} pending read receipts")
-        
-        try {
+
+        coroutineScope.launch(exceptionHandler) {
             // Use optimized batch update for flushing
             val updatedCount = dbOptimizationService.batchUpdateMessageState(
                 messageIds = messagesToProcess,

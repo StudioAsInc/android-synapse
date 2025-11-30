@@ -116,7 +116,8 @@ class WaveformView @JvmOverloads constructor(
      * This is a placeholder - should integrate with MediaDownloadManager.
      */
     private suspend fun downloadAudioFile(url: String): File? {
-        // TODO: Integrate with MediaDownloadManager to get cached file
+        // FIXME: Integrate with a proper MediaDownloadManager to handle caching and
+        // retrieval of the audio file. This will prevent re-downloading the same file.
         // For now, return null to use placeholder waveform
         return null
     }
@@ -204,8 +205,18 @@ class WaveformView @JvmOverloads constructor(
     }
 
     /**
+     * Sets the waveform data directly.
+     *
+     * @param data The waveform data to display.
+     */
+    fun setWaveformData(data: FloatArray) {
+        waveformData = data
+        invalidate()
+    }
+
+    /**
      * Sets the current playback progress.
-     * 
+     *
      * @param progress Progress from 0.0 to 1.0
      */
     fun setProgress(progress: Float) {
@@ -215,9 +226,9 @@ class WaveformView @JvmOverloads constructor(
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        
+
         if (waveformData.isEmpty()) return
-        
+
         val width = width.toFloat()
         val height = height.toFloat()
         val centerY = height / 2
@@ -262,7 +273,12 @@ class WaveformView @JvmOverloads constructor(
         }
         return super.onTouchEvent(event)
     }
-    
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        invalidate()
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         scope.cancel()

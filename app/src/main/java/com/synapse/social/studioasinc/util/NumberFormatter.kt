@@ -26,4 +26,15 @@ object NumberFormatter {
             else -> decimalFormat.format(number / 1_000_000_000_000L) + "T"
         }
     }
+
+    /**
+     * Format large numbers for display (e.g., 1.2K, 3.5M)
+     */
+    fun formatCount(count: Int): String {
+        return when {
+            count < 1000 -> count.toString()
+            count < 1_000_000 -> String.format("%.1fK", count / 1000.0)
+            else -> String.format("%.1fM", count / 1_000_000.0)
+        }
+    }
 }

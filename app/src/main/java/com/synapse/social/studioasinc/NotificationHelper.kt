@@ -42,15 +42,21 @@ object NotificationHelper {
         notificationType: String,
         data: Map<String, String>? = null
     ) {
+        if (recipientUid.isNullOrEmpty() || senderUid.isNullOrEmpty()) {
+            Log.w(TAG, "Recipient or sender UID is null or empty.")
+            return
+        }
         if (recipientUid == senderUid) {
             // Don't send notification to self
             return
         }
 
-        // TODO: Implement Supabase notification system
-        // For now, we'll use a simple notification without presence checking
+        // FIXME: Implement a proper Supabase notification system. This should involve
+        // fetching the recipient's OneSignal player ID from the `users` table
+        // and using it to send the notification. Also, implement presence checking
+        // to avoid sending notifications to users who are currently active.
         Log.i(TAG, "Sending notification via OneSignal (Supabase implementation needed)")
-        
+
         // Simple notification sending - would need proper Supabase implementation
         if (NotificationConfig.USE_CLIENT_SIDE_NOTIFICATIONS) {
             sendClientSideNotification(

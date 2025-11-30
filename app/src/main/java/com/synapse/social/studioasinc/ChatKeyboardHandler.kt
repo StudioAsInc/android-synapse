@@ -9,7 +9,6 @@ import android.widget.EditText
 import androidx.recyclerview.widget.RecyclerView
 
 class ChatKeyboardHandler(
-    private val activity: Activity,
     private val rootView: View,
     private val messageInput: EditText,
     private val recyclerView: RecyclerView
@@ -31,9 +30,11 @@ class ChatKeyboardHandler(
     }
     
     fun handleInputFocus() {
-        // TODO: Implement input focus handling
+        messageInput.requestFocus()
+        val imm = messageInput.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(messageInput, InputMethodManager.SHOW_IMPLICIT)
     }
-    
+
     fun handleMessageSent() {
         // Scroll to show the new message
         recyclerView.scrollToPosition(0)
@@ -51,7 +52,7 @@ class ChatKeyboardHandler(
     
     fun handleBackPress(): Boolean {
         // Check if keyboard is open and hide it
-        val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = rootView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         return if (imm.isAcceptingText) {
             hideKeyboard()
             true
@@ -59,13 +60,13 @@ class ChatKeyboardHandler(
             false
         }
     }
-    
+
     fun handleConfigurationChange() {
-        // TODO: Handle configuration changes
+        hideKeyboard()
     }
-    
+
     private fun hideKeyboard() {
-        val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = rootView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(messageInput.windowToken, 0)
     }
     
