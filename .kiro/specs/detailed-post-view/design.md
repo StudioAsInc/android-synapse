@@ -523,6 +523,205 @@ sealed class CommentEvent {
 ### layout_poll.xml Structure
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    app:cardCornerRadius="12dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:cardElevation="2dp">
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+        
+        <!-- Poll Question -->
+        <TextView
+            android:id="@+id/tvPollQuestion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+        
+        <!-- Poll Options (RecyclerView) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvPollOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+        
+        <!-- Poll Footer: Vote count · End time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+            
+            <TextView
+                android:id="@+id/tvVoteCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+            
+            <TextView
+                android:id="@+id/tvPollEndTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+        
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
+### item_poll_option.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp">
+    
+    <!-- Progress Background -->
+    <View
+        android:id="@+id/vProgress"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:background="?attr/colorPrimaryContainer"
+        android:alpha="0.3" />
+    
+    <!-- Option Content -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="8dp"
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardElevation="0dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutline">
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:gravity="center_vertical">
+            
+            <RadioButton
+                android:id="@+id/rbOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false" />
+            
+            <TextView
+                android:id="@+id/tvOptionText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+            
+            <TextView
+                android:id="@+id/tvPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    
+</FrameLayout>
+```
+
+### dialog_reshare.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+    
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Rounded16">
+        
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCommentary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/reshare_hint"
+            android:inputType="textMultiLine"
+            android:maxLength="500"
+            android:minLines="3" />
+    </com.google.android.material.textfield.TextInputLayout>
+    
+</LinearLayout>
+```
+
+### dialog_report.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+    
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/report_reason_label"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp" />
+    
+    <Spinner
+        android:id="@+id/spinnerReason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp" />
+    
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Rounded16">
+        
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/report_description_hint"
+            android:inputType="textMultiLine"
+            android:maxLength="1000"
+            android:minLines="3" />
+    </com.google.android.material.textfield.TextInputLayout>
+    
+</LinearLayout>
+```
+
+### layout_poll.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout android:orientation="vertical">
     
     <!-- Poll Question -->
@@ -581,6 +780,319 @@ sealed class CommentEvent {
 </com.google.android.material.card.MaterialCardView>
 ```
 
+## Realtime Subscriptions Implementation
+
+### CommentRepository Realtime
+```kotlin
+fun observeComments(postId: String): Flow<CommentEvent> = callbackFlow {
+    val channel = SupabaseClient.client.realtime.channel("comments:$postId")
+    
+    channel.on(
+        action = PostgresAction.INSERT,
+        filter = SupabaseFilterBuilder().eq("post_id", postId)
+    ) { payload ->
+        val comment = payload.decodeRecord<Comment>()
+        // Fetch user info
+        val user = getUserProfile(comment.userId)
+        trySend(CommentEvent.Added(CommentWithUser(comment, user)))
+    }
+    
+    channel.on(
+        action = PostgresAction.UPDATE,
+        filter = SupabaseFilterBuilder().eq("post_id", postId)
+    ) { payload ->
+        val comment = payload.decodeRecord<Comment>()
+        val user = getUserProfile(comment.userId)
+        trySend(CommentEvent.Updated(CommentWithUser(comment, user)))
+    }
+    
+    channel.on(
+        action = PostgresAction.DELETE,
+        filter = SupabaseFilterBuilder().eq("post_id", postId)
+    ) { payload ->
+        val commentId = payload.oldRecord["id"] as String
+        trySend(CommentEvent.Deleted(commentId))
+    }
+    
+    channel.subscribe()
+    
+    awaitClose { channel.unsubscribe() }
+}
+```
+
+### ReactionRepository Realtime
+```kotlin
+fun observePostReactions(postId: String): Flow<Map<ReactionType, Int>> = callbackFlow {
+    val channel = SupabaseClient.client.realtime.channel("reactions:$postId")
+    
+    channel.on(
+        action = PostgresAction.INSERT,
+        filter = SupabaseFilterBuilder().eq("post_id", postId)
+    ) {
+        val summary = getPostReactionSummary(postId).getOrNull()
+        summary?.let { trySend(it) }
+    }
+    
+    channel.on(
+        action = PostgresAction.DELETE,
+        filter = SupabaseFilterBuilder().eq("post_id", postId)
+    ) {
+        val summary = getPostReactionSummary(postId).getOrNull()
+        summary?.let { trySend(it) }
+    }
+    
+    channel.subscribe()
+    
+    awaitClose { channel.unsubscribe() }
+}
+```
+
+### ViewModel Realtime Integration
+```kotlin
+class PostDetailViewModel : ViewModel() {
+    private val realtimeJobs = mutableListOf<Job>()
+    
+    fun subscribeToRealtimeUpdates(postId: String) {
+        // Comments subscription
+        realtimeJobs += viewModelScope.launch {
+            commentRepository.observeComments(postId).collect { event ->
+                when (event) {
+                    is CommentEvent.Added -> {
+                        _commentsState.update { state ->
+                            if (state is CommentsState.Success) {
+                                state.copy(comments = state.comments + event.comment)
+                            } else state
+                        }
+                    }
+                    is CommentEvent.Updated -> {
+                        _commentsState.update { state ->
+                            if (state is CommentsState.Success) {
+                                val updated = state.comments.map { 
+                                    if (it.id == event.comment.id) event.comment else it 
+                                }
+                                state.copy(comments = updated)
+                            } else state
+                        }
+                    }
+                    is CommentEvent.Deleted -> {
+                        _commentsState.update { state ->
+                            if (state is CommentsState.Success) {
+                                state.copy(comments = state.comments.filter { it.id != event.commentId })
+                            } else state
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Reactions subscription
+        realtimeJobs += viewModelScope.launch {
+            reactionRepository.observePostReactions(postId).collect { summary ->
+                _postState.update { state ->
+                    if (state is PostDetailState.Success) {
+                        state.copy(postDetail = state.postDetail.copy(reactionSummary = summary))
+                    } else state
+                }
+            }
+        }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        realtimeJobs.forEach { it.cancel() }
+    }
+}
+```
+
+---
+
+## Bottom Sheets and Dialogs
+
+### ReactionPickerBottomSheet
+```kotlin
+class ReactionPickerBottomSheet : BottomSheetDialogFragment() {
+    private lateinit var binding: BottomSheetReactionPickerBinding
+    var onReactionSelected: ((ReactionType) -> Unit)? = null
+    
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        binding = BottomSheetReactionPickerBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+    
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        // Animate entry
+        view.scaleX = 0f
+        view.scaleY = 0f
+        view.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(200)
+            .setInterpolator(OvershootInterpolator(1.5f))
+            .start()
+        
+        binding.tvLike.setOnClickListener { selectReaction(ReactionType.LIKE) }
+        binding.tvLove.setOnClickListener { selectReaction(ReactionType.LOVE) }
+        binding.tvHaha.setOnClickListener { selectReaction(ReactionType.HAHA) }
+        binding.tvWow.setOnClickListener { selectReaction(ReactionType.WOW) }
+        binding.tvSad.setOnClickListener { selectReaction(ReactionType.SAD) }
+        binding.tvAngry.setOnClickListener { selectReaction(ReactionType.ANGRY) }
+    }
+    
+    private fun selectReaction(type: ReactionType) {
+        onReactionSelected?.invoke(type)
+        dismiss()
+    }
+}
+```
+
+### ReshareDialog
+```kotlin
+class ReshareDialog : DialogFragment() {
+    private lateinit var binding: DialogReshareBinding
+    var onReshareConfirmed: ((String?) -> Unit)? = null
+    
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        binding = DialogReshareBinding.inflate(layoutInflater)
+        
+        return MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.reshare_title)
+            .setView(binding.root)
+            .setPositiveButton(R.string.reshare) { _, _ ->
+                val commentary = binding.etCommentary.text?.toString()?.takeIf { it.isNotBlank() }
+                onReshareConfirmed?.invoke(commentary)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+    }
+}
+```
+
+### ReportDialog
+```kotlin
+class ReportDialog : DialogFragment() {
+    private lateinit var binding: DialogReportBinding
+    var onReportSubmitted: ((String, String?) -> Unit)? = null
+    
+    private val reasons = listOf(
+        "spam",
+        "harassment",
+        "hate_speech",
+        "violence",
+        "misinformation",
+        "inappropriate_content",
+        "other"
+    )
+    
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        binding = DialogReportBinding.inflate(layoutInflater)
+        
+        // Set up reason spinner
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, reasons)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerReason.adapter = adapter
+        
+        return MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.report_title)
+            .setView(binding.root)
+            .setPositiveButton(R.string.submit) { _, _ ->
+                val reason = binding.spinnerReason.selectedItem as String
+                val description = binding.etDescription.text?.toString()
+                onReportSubmitted?.invoke(reason, description)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+    }
+}
+```
+
+---
+
+## Hashtag and Mention Navigation
+
+### TextLinkifier Utility
+```kotlin
+object TextLinkifier {
+    private val HASHTAG_PATTERN = "#(\\w+)".toRegex()
+    private val MENTION_PATTERN = "@(\\w+)".toRegex()
+    
+    fun linkify(textView: TextView, text: String, onHashtagClick: (String) -> Unit, onMentionClick: (String) -> Unit) {
+        val spannableString = SpannableString(text)
+        
+        // Linkify hashtags
+        HASHTAG_PATTERN.findAll(text).forEach { match ->
+            val hashtag = match.groupValues[1]
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    onHashtagClick(hashtag)
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.color = textView.context.getColor(R.color.primary)
+                    ds.isUnderlineText = false
+                }
+            }
+            spannableString.setSpan(
+                clickableSpan,
+                match.range.first,
+                match.range.last + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        // Linkify mentions
+        MENTION_PATTERN.findAll(text).forEach { match ->
+            val username = match.groupValues[1]
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    onMentionClick(username)
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.color = textView.context.getColor(R.color.primary)
+                    ds.isUnderlineText = false
+                }
+            }
+            spannableString.setSpan(
+                clickableSpan,
+                match.range.first,
+                match.range.last + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        
+        textView.text = spannableString
+        textView.movementMethod = LinkMovementMethod.getInstance()
+    }
+}
+```
+
+### Navigation Implementation in PostDetailActivity
+```kotlin
+private fun setupTextLinks() {
+    TextLinkifier.linkify(
+        binding.tvPostContent,
+        postDetail.post.text,
+        onHashtagClick = { hashtag ->
+            val intent = Intent(this, SearchActivity::class.java).apply {
+                putExtra(SearchActivity.EXTRA_QUERY, "#$hashtag")
+                putExtra(SearchActivity.EXTRA_FILTER, "posts")
+            }
+            startActivity(intent)
+        },
+        onMentionClick = { username ->
+            val intent = Intent(this, ProfileActivity::class.java).apply {
+                putExtra(ProfileActivity.EXTRA_USERNAME, username)
+            }
+            startActivity(intent)
+        }
+    )
+}
+```
+
+---
+
 ## Testing Strategy
 
 ### Unit Testing (SKIPPED per user request)
@@ -622,6 +1134,177 @@ companion object {
 ### Deep Linking
 - URL pattern: `synapse://post/{postId}`
 - URL pattern with comment: `synapse://post/{postId}/comment/{commentId}`
+
+---
+
+## String Resources
+
+```xml
+<!-- strings.xml additions -->
+<string name="post_detail_title">Post</string>
+<string name="comments_title">Comments</string>
+<string name="comments_count">%d comments</string>
+<string name="no_comments">No comments yet</string>
+<string name="be_first_to_comment">Be the first to comment</string>
+<string name="comment_hint">Write a comment…</string>
+<string name="reply_hint">Reply to %s…</string>
+<string name="author_badge">Author</string>
+<string name="edited_indicator">Edited</string>
+<string name="deleted_comment">[Deleted]</string>
+<string name="view_replies">View %d replies</string>
+<string name="hide_replies">Hide replies</string>
+<string name="sort_most_relevant">Most relevant</string>
+<string name="sort_newest">Newest first</string>
+<string name="sort_all">All comments</string>
+<string name="reaction_like">Like</string>
+<string name="reaction_love">Love</string>
+<string name="reaction_haha">Haha</string>
+<string name="reaction_wow">Wow</string>
+<string name="reaction_sad">Sad</string>
+<string name="reaction_angry">Angry</string>
+<string name="poll_ended">Poll ended</string>
+<string name="poll_ends_in">Ends in %s</string>
+<string name="vote_count">%d votes</string>
+<string name="bookmark_added">Post saved</string>
+<string name="bookmark_removed">Post removed from saved</string>
+<string name="reshare_title">Reshare post</string>
+<string name="reshare_hint">Add a comment (optional)</string>
+<string name="reshare">Reshare</string>
+<string name="cancel">Cancel</string>
+<string name="report_title">Report post</string>
+<string name="report_reason_label">Why are you reporting this?</string>
+<string name="report_description_hint">Additional details (optional)</string>
+<string name="report_submitted">Report submitted</string>
+<string name="submit">Submit</string>
+<string name="error_loading_post">Failed to load post</string>
+<string name="error_loading_comments">Failed to load comments</string>
+<string name="error_adding_comment">Failed to add comment</string>
+<string name="error_voting_poll">Failed to submit vote</string>
+<string name="poll_ended_cannot_vote">This poll has ended</string>
+</string>
+```
+
+---
+
+## Poll UI Implementation
+
+### PollAdapter
+```kotlin
+class PollAdapter(
+    private val hasVoted: Boolean,
+    private val userVote: Int?,
+    private val onOptionClick: (Int) -> Unit
+) : RecyclerView.Adapter<PollAdapter.PollOptionViewHolder>() {
+    
+    private var options: List<PollOptionResult> = emptyList()
+    
+    fun submitList(newOptions: List<PollOptionResult>) {
+        options = newOptions
+        notifyDataSetChanged()
+    }
+    
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PollOptionViewHolder {
+        val binding = ItemPollOptionBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return PollOptionViewHolder(binding)
+    }
+    
+    override fun onBindViewHolder(holder: PollOptionViewHolder, position: Int) {
+        holder.bind(options[position], position)
+    }
+    
+    override fun getItemCount() = options.size
+    
+    inner class PollOptionViewHolder(private val binding: ItemPollOptionBinding) : RecyclerView.ViewHolder(binding.root) {
+        
+        fun bind(option: PollOptionResult, index: Int) {
+            binding.tvOptionText.text = option.text
+            binding.rbOption.isChecked = userVote == index
+            
+            if (hasVoted) {
+                // Show results
+                binding.tvPercentage.visibility = View.VISIBLE
+                binding.tvPercentage.text = "${option.percentage.toInt()}%"
+                
+                // Animate progress bar
+                val layoutParams = binding.vProgress.layoutParams
+                layoutParams.width = (binding.root.width * option.percentage / 100).toInt()
+                binding.vProgress.layoutParams = layoutParams
+                
+                binding.rbOption.isEnabled = false
+                binding.root.isClickable = false
+            } else {
+                // Allow voting
+                binding.tvPercentage.visibility = View.GONE
+                binding.vProgress.layoutParams.width = 0
+                
+                binding.root.setOnClickListener {
+                    onOptionClick(index)
+                }
+            }
+        }
+    }
+}
+```
+
+### Poll Display in PostDetailActivity
+```kotlin
+private fun displayPoll(postDetail: PostDetail) {
+    if (!postDetail.post.hasPoll) {
+        binding.layoutPoll.root.visibility = View.GONE
+        return
+    }
+    
+    binding.layoutPoll.root.visibility = View.VISIBLE
+    binding.layoutPoll.tvPollQuestion.text = postDetail.post.pollQuestion
+    
+    val hasVoted = postDetail.userPollVote != null
+    val pollEnded = postDetail.post.pollEndTime?.let { 
+        Instant.parse(it).isBefore(Instant.now()) 
+    } ?: false
+    
+    // Set up adapter
+    val adapter = PollAdapter(
+        hasVoted = hasVoted || pollEnded,
+        userVote = postDetail.userPollVote,
+        onOptionClick = { index ->
+            if (!pollEnded) {
+                viewModel.votePoll(index)
+            } else {
+                Toast.makeText(this, R.string.poll_ended_cannot_vote, Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+    binding.layoutPoll.rvPollOptions.adapter = adapter
+    binding.layoutPoll.rvPollOptions.layoutManager = LinearLayoutManager(this)
+    
+    // Display results
+    postDetail.pollResults?.let { adapter.submitList(it) }
+    
+    // Display vote count
+    val totalVotes = postDetail.pollResults?.sumOf { it.voteCount } ?: 0
+    binding.layoutPoll.tvVoteCount.text = getString(R.string.vote_count, totalVotes)
+    
+    // Display end time
+    postDetail.post.pollEndTime?.let { endTime ->
+        if (pollEnded) {
+            binding.layoutPoll.tvPollEndTime.text = getString(R.string.poll_ended)
+        } else {
+            val duration = Duration.between(Instant.now(), Instant.parse(endTime))
+            val timeLeft = formatDuration(duration)
+            binding.layoutPoll.tvPollEndTime.text = getString(R.string.poll_ends_in, timeLeft)
+        }
+    }
+}
+
+private fun formatDuration(duration: Duration): String {
+    return when {
+        duration.toDays() > 0 -> "${duration.toDays()}d"
+        duration.toHours() > 0 -> "${duration.toHours()}h"
+        duration.toMinutes() > 0 -> "${duration.toMinutes()}m"
+        else -> "${duration.seconds}s"
+    }
+}
+```
 
 ---
 

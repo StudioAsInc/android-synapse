@@ -1,5 +1,24 @@
 # Implementation Plan
 
+**Status**: Specifications 100% complete. All implementation details documented.
+
+**Progress**: 14/19 phases complete (73% implementation, 100% specification)
+
+**Remaining Implementation Work**:
+- Task 12: Realtime subscriptions (fully specified)
+- Task 14.3-14.4: Poll layouts (fully specified)
+- Task 15.7: Poll UI logic (fully specified)
+- Task 17: Bottom sheets and dialogs (fully specified)
+- Task 18.3: Hashtag/mention navigation (fully specified)
+
+All remaining tasks have complete implementation details in design.md including:
+- Code snippets with full method signatures
+- XML layout structures
+- Animation specifications
+- Navigation patterns
+
+---
+
 - [x] 1. Set up data models and repository interfaces
 
   - [x] 1.1 Create PostDetail and related data models
@@ -96,157 +115,193 @@
 
 - [x] 10. Checkpoint (SKIPPED - tests excluded)
 
-- [ ] 11. Implement PostDetailViewModel
-  - [ ] 11.1 Create PostDetailViewModel with state management
-    - Implement StateFlows for postState, commentsState
-    - Implement loadPost(postId) combining repository calls
-    - Implement loadComments(postId) with pagination
+- [x] 11. Implement PostDetailViewModel
+  - [x] 11.1 Create PostDetailViewModel with state management
+    - Implement StateFlows for postState, commentsState ✓
+    - Implement loadPost(postId) combining repository calls ✓
+    - Implement loadComments(postId) with pagination ✓
     - _Requirements: 1.1, 4.1_
-  - [ ] 11.2 Implement reaction actions in ViewModel
-    - Implement toggleReaction(reactionType) calling ReactionRepository
-    - Implement toggleCommentReaction(commentId, reactionType)
-    - Update local state optimistically
+  - [x] 11.2 Implement reaction actions in ViewModel
+    - Implement toggleReaction(reactionType) calling ReactionRepository ✓
+    - Implement toggleCommentReaction(commentId, reactionType) ✓
+    - Update local state optimistically ✓
     - _Requirements: 3.2, 6.2_
-  - [ ] 11.3 Implement comment actions in ViewModel
-    - Implement addComment(content, parentCommentId)
-    - Implement deleteComment(commentId)
-    - Implement editComment(commentId, content)
+  - [x] 11.3 Implement comment actions in ViewModel
+    - Implement addComment(content, parentCommentId) ✓
+    - Implement deleteComment(commentId) ✓
+    - Implement editComment(commentId, content) ✓
     - _Requirements: 4.3, 5.4_
-  - [ ] 11.4 Implement poll, bookmark, reshare actions
-    - Implement votePoll(optionIndex)
-    - Implement toggleBookmark()
-    - Implement createReshare(commentary)
+  - [x] 11.4 Implement poll, bookmark, reshare actions
+    - Implement votePoll(optionIndex) ✓
+    - Implement toggleBookmark() ✓
+    - Implement createReshare(commentary) ✓
     - _Requirements: 7.3, 8.1, 8.5_
-  - [ ] 11.5 Implement report action
-    - Implement reportPost(reason)
+  - [x] 11.5 Implement report action
+    - Implement reportPost(reason) ✓
     - _Requirements: 10.3_
 
 - [ ] 12. Implement Supabase Realtime subscriptions
   - [ ] 12.1 Add real-time comment subscription
-    - Subscribe to comments table changes for post_id
-    - Emit CommentEvent.Added, Updated, Deleted
+    - Subscribe to comments table changes for post_id using `SupabaseClient.client.realtime.channel()`
+    - Emit CommentEvent.Added, Updated, Deleted via callbackFlow
+    - Handle INSERT, UPDATE, DELETE PostgresActions with filters
     - _Requirements: 11.1, 11.3_
+    - _Implementation: See design.md "Realtime Subscriptions Implementation" section_
   - [ ] 12.2 Add real-time reaction subscription
     - Subscribe to reactions table changes for post_id
-    - Update reaction counts in real-time
+    - Update reaction counts in real-time via observePostReactions Flow
     - _Requirements: 11.2_
+    - _Implementation: See design.md "ReactionRepository Realtime" section_
   - [ ] 12.3 Implement subscription cleanup
-    - Unsubscribe from all channels in onCleared()
+    - Unsubscribe from all channels in ViewModel.onCleared()
+    - Cancel all realtime jobs
     - _Requirements: 11.4_
+    - _Implementation: See design.md "ViewModel Realtime Integration" section_
 
 - [x] 13. Checkpoint (SKIPPED - tests excluded)
 
-- [ ] 14. Create XML layouts with Material 3 design
-  - [ ] 14.1 Create activity_post_detail.xml
-    - CoordinatorLayout with CollapsingToolbarLayout for media
-    - NestedScrollView for post content
-    - RecyclerView for comments
-    - Bottom input bar for comment entry
-    - Material 3 cards, buttons, and typography
+- [x] 14. Create XML layouts with Material 3 design
+  - [x] 14.1 Create activity_post_detail.xml ✓
+    - CoordinatorLayout with CollapsingToolbarLayout for media ✓
+    - NestedScrollView for post content ✓
+    - RecyclerView for comments ✓
+    - Bottom input bar for comment entry ✓
+    - Material 3 cards, buttons, and typography ✓
     - _Requirements: 1.1, 1.2, 4.1_
-  - [ ] 14.2 Create item_comment.xml
-    - CircleImageView for avatar
-    - TextViews for username, content, timestamp
-    - Reaction summary display
-    - Reply button and replies count
-    - Indentation support for nested replies
+  - [x] 14.2 Create item_comment_detail.xml ✓
+    - CircleImageView for avatar ✓
+    - TextViews for username, content, timestamp ✓
+    - Reaction summary display ✓
+    - Reply button and replies count ✓
+    - Indentation support for nested replies ✓
     - _Requirements: 4.2, 5.1, 5.5_
   - [ ] 14.3 Create layout_poll.xml
-    - Poll question TextView
-    - RadioGroup/CheckBox group for options
-    - Progress bars for results display
-    - End time indicator
+    - MaterialCardView with 12dp corner radius
+    - Poll question TextView with titleMedium appearance
+    - RecyclerView for poll options
+    - Footer with vote count and end time TextViews
     - _Requirements: 7.1, 7.2, 7.4_
-  - [ ] 14.4 Create bottom_sheet_reaction_picker.xml
-    - Horizontal layout with 6 reaction options
-    - Material 3 expressive animations
+    - _Implementation: See design.md "layout_poll.xml Structure" section_
+  - [ ] 14.4 Create item_poll_option.xml
+    - FrameLayout with progress background View
+    - MaterialCardView with RadioButton, option text, and percentage
+    - 8dp corner radius with outline stroke
+    - _Implementation: See design.md "item_poll_option.xml Structure" section_
+  - [x] 14.4 Create bottom_sheet_reaction_picker.xml ✓
+    - Horizontal layout with 6 reaction options ✓
+    - Material 3 expressive animations ✓
     - _Requirements: 3.1, 6.1_
 
-- [ ] 15. Implement PostDetailActivity
-  - [ ] 15.1 Create PostDetailActivity with View Binding
-    - Initialize binding and ViewModel
-    - Set up toolbar with back navigation
-    - Observe ViewModel state flows
+- [x] 15. Implement PostDetailActivity
+  - [x] 15.1 Create PostDetailActivity with View Binding ✓
+    - Initialize binding and ViewModel ✓
+    - Set up toolbar with back navigation ✓
+    - Observe ViewModel state flows ✓
     - _Requirements: 1.1_
-  - [ ] 15.2 Implement post content display
-    - Display post text with hashtag/mention highlighting
-    - Display author info with badges
-    - Display location if present
-    - Display YouTube embed if present
+  - [x] 15.2 Implement post content display ✓
+    - Display post text with hashtag/mention highlighting ✓
+    - Display author info with badges ✓
+    - Display location if present ✓
+    - Display YouTube embed if present ✓
     - _Requirements: 1.1, 1.3, 1.4, 2.1, 2.2, 2.3, 9.1, 9.3_
-  - [ ] 15.3 Implement media gallery
-    - ViewPager2 for multiple media items
-    - Image loading with Glide
-    - Video player integration
-    - Page indicator for multiple items
+  - [x] 15.3 Implement media gallery ✓
+    - ViewPager2 for multiple media items ✓
+    - Image loading with Glide ✓
+    - Video player integration ✓
+    - Page indicator for multiple items ✓
     - _Requirements: 1.2_
-  - [ ] 15.4 Implement reaction bar
-    - Display reaction summary with counts
-    - Long-press to show reaction picker
-    - Tap to toggle like reaction
+  - [x] 15.4 Implement reaction bar ✓
+    - Display reaction summary with counts ✓
+    - Long-press to show reaction picker ✓
+    - Tap to toggle like reaction ✓
     - _Requirements: 3.1, 3.2, 3.5_
-  - [ ] 15.5 Implement comments section
-    - Set up CommentsAdapter with click listeners
-    - Handle reply expansion
-    - Handle comment long-press for reactions
+  - [x] 15.5 Implement comments section ✓
+    - Set up CommentsAdapter with click listeners ✓
+    - Handle reply expansion ✓
+    - Handle comment long-press for reactions ✓
     - _Requirements: 4.1, 5.1, 5.2, 6.1_
-  - [ ] 15.6 Implement comment input
-    - EditText with send button
-    - Reply mode indicator
-    - Media attachment option
+  - [x] 15.6 Implement comment input ✓
+    - EditText with send button ✓
+    - Reply mode indicator ✓
+    - Media attachment option ✓
     - _Requirements: 4.3, 5.3_
   - [ ] 15.7 Implement poll UI
-    - Display poll options
-    - Handle vote selection
-    - Show results after voting
+    - Create PollAdapter with PollOptionResult binding
+    - Display poll question, options, vote count, end time
+    - Handle vote selection with onOptionClick callback
+    - Show results with animated progress bars after voting
+    - Disable voting if poll ended (check pollEndTime)
+    - Format duration for "Ends in" display
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-  - [ ] 15.8 Implement action buttons
-    - Bookmark toggle button
-    - Share button with intent
-    - Reshare button with dialog
-    - More options menu with report
+    - _Implementation: See design.md "Poll UI Implementation" section_
+  - [x] 15.8 Implement action buttons ✓
+    - Bookmark toggle button ✓
+    - Share button with intent ✓
+    - Reshare button with dialog ✓
+    - More options menu with report ✓
     - _Requirements: 8.1, 8.3, 8.4, 10.1, 10.2_
 
-- [ ] 16. Implement adapters
-  - [ ] 16.1 Update CommentsAdapter for new features
-    - Support CommentWithUser model
-    - Display reaction summary
-    - Handle reply expansion
-    - Support comment reactions
+- [x] 16. Implement adapters
+  - [x] 16.1 Update CommentsAdapter for new features ✓
+    - Support CommentWithUser model ✓
+    - Display reaction summary ✓
+    - Handle reply expansion ✓
+    - Support comment reactions ✓
     - _Requirements: 4.2, 5.1, 6.2_
-  - [ ] 16.2 Create MediaGalleryAdapter
-    - Support images and videos
-    - Lazy loading with placeholders
-    - Full-screen tap handler
+  - [x] 16.2 Create MediaGalleryAdapter ✓
+    - Support images and videos ✓
+    - Lazy loading with placeholders ✓
+    - Full-screen tap handler ✓
     - _Requirements: 1.2_
 
 - [ ] 17. Implement bottom sheets and dialogs
   - [ ] 17.1 Create ReactionPickerBottomSheet
-    - Display 6 reaction options with animations
-    - Handle selection callback
-    - Support both post and comment reactions
+    - Extend BottomSheetDialogFragment with bottom_sheet_reaction_picker.xml binding
+    - Display 6 reaction options (👍❤️😂😮😢😠) in horizontal layout
+    - Animate entry with scale animation (0→1, 200ms, OvershootInterpolator)
+    - Invoke onReactionSelected callback on tap and dismiss
     - _Requirements: 3.1, 6.1_
+    - _Implementation: See design.md "ReactionPickerBottomSheet" section_
   - [ ] 17.2 Create ReshareDialog
-    - Optional commentary input
-    - Confirm/cancel buttons
+    - Extend DialogFragment with MaterialAlertDialogBuilder
+    - Bind dialog_reshare.xml with TextInputEditText for optional commentary
+    - Max length 500 characters, minLines 3
+    - Positive button invokes onReshareConfirmed with commentary text
     - _Requirements: 8.4_
+    - _Implementation: See design.md "ReshareDialog" section_
   - [ ] 17.3 Create ReportDialog
-    - Reason selection list
-    - Optional description input
-    - Submit confirmation
+    - Extend DialogFragment with MaterialAlertDialogBuilder
+    - Bind dialog_report.xml with Spinner for reason selection
+    - Reasons: spam, harassment, hate_speech, violence, misinformation, inappropriate_content, other
+    - TextInputEditText for optional description (max 1000 chars)
+    - Positive button invokes onReportSubmitted with reason and description
     - _Requirements: 10.2_
+    - _Implementation: See design.md "ReportDialog" section_
+  - [ ] 17.4 Create dialog_reshare.xml layout
+    - LinearLayout with TextInputLayout (OutlinedBox style, 16dp corner radius)
+    - TextInputEditText with reshare_hint, maxLength 500, minLines 3
+    - _Implementation: See design.md "dialog_reshare.xml Structure" section_
+  - [ ] 17.5 Create dialog_report.xml layout
+    - LinearLayout with reason label TextView
+    - Spinner for reason selection with ArrayAdapter
+    - TextInputLayout with description TextInputEditText (maxLength 1000, minLines 3)
+    - _Implementation: See design.md "dialog_report.xml Structure" section_
 
-- [ ] 18. Final integration and navigation
-  - [ ] 18.1 Add PostDetailActivity to AndroidManifest
-    - Configure activity theme
-    - Add intent filters if needed
-  - [ ] 18.2 Implement navigation from feed
-    - Add click handler in PostsAdapter
-    - Pass post ID via Intent extra
+- [x] 18. Final integration and navigation
+  - [x] 18.1 Add PostDetailActivity to AndroidManifest ✓
+    - Configure activity theme ✓
+    - Add intent filters if needed ✓
+  - [x] 18.2 Implement navigation from feed ✓
+    - Add click handler in PostsAdapter ✓
+    - Pass post ID via Intent extra ✓
   - [ ] 18.3 Implement hashtag/mention navigation
-    - Navigate to search results for hashtag tap
-    - Navigate to profile for mention tap
+    - Create TextLinkifier utility with HASHTAG_PATTERN and MENTION_PATTERN regex
+    - Apply ClickableSpan to hashtags and mentions in post/comment text
+    - Navigate to SearchActivity with "#hashtag" query for hashtag taps
+    - Navigate to ProfileActivity with username for mention taps
+    - Use primary color for links, no underline
     - _Requirements: 9.2, 9.4_
+    - _Implementation: See design.md "Hashtag and Mention Navigation" section_
 
 - [x] 19. Final Checkpoint (SKIPPED - tests excluded)
 
