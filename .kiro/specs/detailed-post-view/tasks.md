@@ -79,19 +79,19 @@
     - Update post reshares_count on creation ✓
     - _Requirements: 8.5_
 
-- [ ] 8. Implement text parsing utilities
-  - [ ] 8.1 Create HashtagParser utility
-    - Extract hashtags from text content using regex
-    - Return list of hashtag strings without # prefix
+- [x] 8. Implement text parsing utilities
+  - [x] 8.1 Create HashtagParser utility
+    - Extract hashtags from text content using regex ✓
+    - Return list of hashtag strings without # prefix ✓
     - _Requirements: 9.1_
-  - [ ] 8.2 Create MentionParser utility
-    - Extract mentions from text content using regex
-    - Return list of username strings without @ prefix
+  - [x] 8.2 Create MentionParser utility
+    - Extract mentions from text content using regex ✓
+    - Return list of username strings without @ prefix ✓
     - _Requirements: 9.3_
 
-- [ ] 9. Implement ReportRepository
-  - [ ] 9.1 Create ReportRepository
-    - Implement `createReport(postId, reason, description)` inserting into post_reports
+- [x] 9. Implement ReportRepository
+  - [x] 9.1 Create ReportRepository
+    - Implement `createReport(postId, reason, description)` inserting into post_reports ✓
     - _Requirements: 10.3_
 
 - [x] 10. Checkpoint (SKIPPED - tests excluded)
