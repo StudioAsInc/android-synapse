@@ -67,18 +67,30 @@ class PostMoreBottomSheetDialog : DialogFragment() {
         val currentUserId = authService.getCurrentUserId()
         val isOwner = post?.authorUid == currentUserId
         
-        val items = buildMenuItems(isOwner)
-        recyclerView.adapter = PostOptionsAdapter(items)
+        lifecycleScope.launch {
+            val items = buildMenuItems(isOwner)
+            recyclerView.adapter = PostOptionsAdapter(items)
+        }
     }
 
-    private fun buildMenuItems(isOwner: Boolean): List<PostActionItem> {
+    private suspend fun buildMenuItems(isOwner: Boolean): List<PostActionItem> {
         val items = mutableListOf<PostActionItem>()
+        
+        var commentsDisabled = false
+        post?.id?.let { postId ->
+            databaseService.selectById("posts", postId).onSuccess { postData ->
+                commentsDisabled = postData?.get("post_disable_comments")?.toString()?.toBoolean() ?: false
+            }
+        }
         
         if (isOwner) {
             items.add(PostActionItem("Edit", R.drawable.ic_edit_note_48px) { editPost() })
             items.add(PostActionItem("Delete", R.drawable.ic_delete_48px, true) { confirmDelete() })
             items.add(PostActionItem("Archive", R.drawable.auto_delete_24px) { archivePost() })
-            items.add(PostActionItem("Turn off commenting", R.drawable.ic_comments_disabled) { toggleComments() })
+            
+            val commentLabel = if (commentsDisabled) "Turn on commenting" else "Turn off commenting"
+            items.add(PostActionItem(commentLabel, R.drawable.ic_comments_disabled) { toggleComments() })
+            
             items.add(PostActionItem("Pin to Profile", R.drawable.ic_bookmark) { pinPost() })
             items.add(PostActionItem("View Insights", R.drawable.data_usage_24px) { viewInsights() })
         } else {
@@ -179,8 +191,27 @@ class PostMoreBottomSheetDialog : DialogFragment() {
     }
 
     private fun toggleComments() {
-        SketchwareUtil.showMessage(requireActivity(), "Toggle comments feature coming soon")
-        dialog.dismiss()
+        post?.id?.let { postId ->
+            lifecycleScope.launch {
+                databaseService.selectById("posts", postId).onSuccess { postData ->
+                    val currentState = postData?.get("post_disable_comments")?.toString()?.toBoolean() ?: false
+                    val newState = !currentState
+                    
+                    databaseService.update(
+                        "posts",
+                        mapOf("post_disable_comments" to newState),
+                        "id",
+                        postId
+                    ).onSuccess {
+                        val message = if (newState) "Comments disabled" else "Comments enabled"
+                        SketchwareUtil.showMessage(requireActivity(), message)
+                        dialog.dismiss()
+                    }.onFailure {
+                        SketchwareUtil.showMessage(requireActivity(), "Failed to update comment settings")
+                    }
+                }
+            }
+        }
     }
 
     private fun pinPost() {
