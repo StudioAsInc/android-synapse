@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc.util
 
 import android.content.Context
+import android.net.Uri
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
@@ -19,6 +20,7 @@ object MediaUploadManager {
      * Uploads multiple media items to Supabase Storage
      */
     suspend fun uploadMultipleMedia(
+        context: Context,
         mediaItems: List<MediaItem>,
         onProgress: (Float) -> Unit,
         onComplete: (List<MediaItem>) -> Unit,
@@ -46,13 +48,23 @@ object MediaUploadManager {
                         }
                         
                         // Read file bytes
-                        val file = File(mediaItem.url)
-                        if (!file.exists()) {
-                            android.util.Log.w("MediaUpload", "File not found: ${mediaItem.url}, using original URL")
+                        val bytes: ByteArray? = try {
+                            val uri = Uri.parse(mediaItem.url)
+                            if (uri.scheme == "content") {
+                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                            } else {
+                                val file = File(mediaItem.url)
+                                if (file.exists()) file.readBytes() else null
+                            }
+                        } catch (e: Exception) {
+                            val file = File(mediaItem.url)
+                            if (file.exists()) file.readBytes() else null
+                        }
+
+                        if (bytes == null) {
+                            android.util.Log.w("MediaUpload", "File not found or unreadable: ${mediaItem.url}, using original URL")
                             uploadedItems.add(mediaItem)
                         } else {
-                            val bytes = file.readBytes()
-                            
                             // Upload to Supabase Storage
                             val bucket = storage.from(bucketName)
                             bucket.upload(fileName, bytes)
@@ -110,6 +122,7 @@ object MediaUploadManager {
         onError: (String) -> Unit
     ) {
         uploadMultipleMedia(
+            context,
             listOf(mediaItem),
             onProgress,
             { items -> onComplete(items.first()) },
