@@ -1,6 +1,7 @@
 <resources>
     <!--Main App Theme combining all attributes from both files-->
     <style name="AppTheme" parent="Theme.Material3.Light.NoActionBar">
+        <item name="materialCardViewElevated">true</item>
         <item name="colorPrimary">@color/md_theme_primary</item>
         <item name="colorOnPrimary">@color/md_theme_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_primaryContainer</item>
