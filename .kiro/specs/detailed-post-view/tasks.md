@@ -51,10 +51,10 @@
 
   - [x] 4.2-4.3 ~~Write property tests~~ (SKIPPED - tests excluded)
 
-  - [ ] 4.4 Implement comment CRUD operations
-    - Implement `createComment(postId, content, mediaUrl, parentCommentId)`
-    - Implement `deleteComment(commentId)` with soft delete
-    - Implement `editComment(commentId, content)`
+  - [x] 4.4 Implement comment CRUD operations
+    - Implement `createComment(postId, content, mediaUrl, parentCommentId)` ✓
+    - Implement `deleteComment(commentId)` with soft delete ✓
+    - Implement `editComment(commentId, content)` ✓
     - _Requirements: 4.3, 4.5, 4.6, 5.4_
 
   - [x] 4.5-4.8 ~~Write property tests~~ (SKIPPED - tests excluded)
