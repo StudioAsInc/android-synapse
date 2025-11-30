@@ -40,13 +40,13 @@ class CommentDetailAdapter(
         fun bind(comment: CommentWithUser) {
             // Avatar
             Glide.with(binding.root.context)
-                .load(comment.user.profileImageUrl)
+                .load(comment.user?.profileImageUrl)
                 .placeholder(R.drawable.avatar)
                 .into(binding.ivAvatar)
 
             // User info
-            binding.tvUsername.text = comment.user.displayName ?: comment.user.username
-            binding.ivVerified.isVisible = comment.user.isVerified
+            binding.tvUsername.text = comment.user?.displayName ?: comment.user?.username ?: "Unknown"
+            binding.ivVerified.isVisible = comment.user?.isVerified ?: false
             binding.chipAuthor.isVisible = false // Set based on post author comparison
 
             // Content
@@ -164,11 +164,11 @@ class RepliesAdapter(
             binding.ivAvatar.layoutParams.height = 28.dpToPx()
 
             Glide.with(binding.root.context)
-                .load(reply.user.profileImageUrl)
+                .load(reply.user?.profileImageUrl)
                 .placeholder(R.drawable.avatar)
                 .into(binding.ivAvatar)
 
-            binding.tvUsername.text = reply.user.displayName ?: reply.user.username
+            binding.tvUsername.text = reply.user?.displayName ?: reply.user?.username ?: "Unknown"
             binding.tvContent.text = reply.content
             binding.tvTime.text = TimeUtils.getRelativeTime(reply.createdAt)
 

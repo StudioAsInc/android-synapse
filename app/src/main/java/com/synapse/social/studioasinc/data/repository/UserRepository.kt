@@ -95,13 +95,13 @@ class UserRepository {
             // Build update map manually to avoid serialization issues
             val updateData = mapOf(
                 "username" to user.username,
-                "display_name" to user.display_name,
+                "display_name" to user.displayName,
                 "email" to user.email,
                 "bio" to user.bio,
-                "profile_image_url" to user.profile_image_url,
-                "followers_count" to user.followers_count,
-                "following_count" to user.following_count,
-                "posts_count" to user.posts_count,
+                "profile_image_url" to user.profileImageUrl,
+                "followers_count" to user.followersCount,
+                "following_count" to user.followingCount,
+                "posts_count" to user.postsCount,
                 "status" to user.status,
                 "account_type" to user.account_type,
                 "verify" to user.verify,

@@ -340,10 +340,10 @@ class CompleteProfileActivity : AppCompatActivity() {
                 val userProfile = UserProfile(
                     uid = currentUser.id,
                     username = username,
-                    display_name = nickname,
+                    displayName = nickname,
                     email = userEmail,
                     bio = bio.ifEmpty { null },
-                    profile_image_url = imageUrl
+                    profileImageUrl = imageUrl
                 )
                 
                 // Check if user profile already exists for this UID

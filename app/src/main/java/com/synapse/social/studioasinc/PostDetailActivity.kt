@@ -127,6 +127,10 @@ class PostDetailActivity : AppCompatActivity() {
                         showLoading(false)
                         Toast.makeText(this@PostDetailActivity, state.message, Toast.LENGTH_SHORT).show()
                     }
+                    is PostDetailState.NotFound -> {
+                        showLoading(false)
+                        Toast.makeText(this@PostDetailActivity, "Post not found", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -144,6 +148,10 @@ class PostDetailActivity : AppCompatActivity() {
                         binding.progressComments.isVisible = false
                         Toast.makeText(this@PostDetailActivity, state.message, Toast.LENGTH_SHORT).show()
                     }
+                    is CommentsState.Empty -> {
+                        binding.progressComments.isVisible = false
+                        binding.tvNoComments.isVisible = true
+                    }
                 }
             }
         }
@@ -154,15 +162,15 @@ class PostDetailActivity : AppCompatActivity() {
         val author = postDetail.author
 
         // Author info
-        Glide.with(this).load(author.profileImageUrl).placeholder(R.drawable.avatar)
+        Glide.with(this).load(author?.profileImageUrl).placeholder(R.drawable.avatar)
             .into(binding.ivAuthorAvatar)
-        binding.tvAuthorName.text = author.displayName ?: author.username
-        binding.ivVerifiedBadge.isVisible = author.isVerified
-        binding.tvPostTime.text = "${TimeUtils.getRelativeTime(post.createdAt)} · ${if (post.isPublic) getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
+        binding.tvAuthorName.text = author?.displayName ?: author?.username
+        binding.ivVerifiedBadge.isVisible = author?.isVerified ?: false
+        binding.tvPostTime.text = "${TimeUtils.getRelativeTime(post.publishDate)} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
 
         // Content
-        binding.tvPostContent.text = post.text
-        binding.tvPostContent.isVisible = !post.text.isNullOrBlank()
+        binding.tvPostContent.text = post.postText
+        binding.tvPostContent.isVisible = !post.postText.isNullOrBlank()
 
         // Media
         setupMedia(post.mediaItems)
@@ -244,10 +252,10 @@ class PostDetailActivity : AppCompatActivity() {
 
     private fun setReplyMode(comment: CommentWithUser) {
         replyToCommentId = comment.id
-        replyToUsername = comment.user.username
+        replyToUsername = comment.user?.username
         binding.replyIndicator.isVisible = true
-        binding.tvReplyingTo.text = getString(R.string.replying_to, comment.user.username)
-        binding.etComment.hint = getString(R.string.reply_hint, comment.user.username)
+        binding.tvReplyingTo.text = getString(R.string.replying_to, comment.user?.username ?: "user")
+        binding.etComment.hint = getString(R.string.reply_hint, comment.user?.username ?: "user")
         binding.etComment.requestFocus()
     }
 
@@ -259,7 +267,8 @@ class PostDetailActivity : AppCompatActivity() {
     }
 
     private fun showReactionPicker() {
-        val picker = ReactionPickerBottomSheet { reactionType ->
+        val picker = ReactionPickerBottomSheet()
+        picker.setOnReactionSelected { reactionType ->
             viewModel.toggleReaction(reactionType)
         }
         picker.show(supportFragmentManager, "reaction_picker")

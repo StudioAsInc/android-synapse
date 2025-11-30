@@ -37,7 +37,7 @@ class MediaPagerAdapter(
                 .centerCrop()
                 .into(imageView)
 
-            playButton.isVisible = item.type == "video"
+            playButton.isVisible = item.type == MediaType.VIDEO
 
             itemView.setOnClickListener { onItemClick(position) }
         }

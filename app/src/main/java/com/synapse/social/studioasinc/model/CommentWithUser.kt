@@ -66,7 +66,7 @@ data class CommentWithUser(
     /**
      * Get display name for the commenter
      */
-    fun getDisplayName(): String = user?.display_name ?: "Unknown User"
+    fun getDisplayName(): String = user?.displayName ?: "Unknown User"
 
     /**
      * Get username for the commenter
@@ -76,5 +76,5 @@ data class CommentWithUser(
     /**
      * Get avatar URL for the commenter
      */
-    fun getAvatarUrl(): String? = user?.profile_image_url
+    fun getAvatarUrl(): String? = user?.profileImageUrl
 }
