@@ -315,8 +315,11 @@ class EnhancedPostsAdapter(
             authorAvatar.setOnClickListener { onUserClicked?.invoke(post.authorUid) }
             authorName.setOnClickListener { onUserClicked?.invoke(post.authorUid) }
 
-            // Post click
+            // Post click - open detailed view
             postCard.setOnClickListener { onPostClicked?.invoke(post) }
+            postContent.setOnClickListener { onPostClicked?.invoke(post) }
+            postImage.setOnClickListener { onPostClicked?.invoke(post) }
+            mediaGridView.setOnClickListener { onPostClicked?.invoke(post) }
 
             // Like button - single tap with optimistic UI update
             likeButton.setOnClickListener {

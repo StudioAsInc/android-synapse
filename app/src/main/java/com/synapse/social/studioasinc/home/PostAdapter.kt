@@ -28,7 +28,8 @@ class PostAdapter(
     private val userRepository: UserRepository = UserRepository(),
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
     private val onCommentClicked: ((Post) -> Unit)? = null,
-    private val onShareClicked: ((Post) -> Unit)? = null
+    private val onShareClicked: ((Post) -> Unit)? = null,
+    private val onPostClicked: ((Post) -> Unit)? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -210,6 +211,15 @@ class PostAdapter(
             
             moreButton.setOnClickListener {
                 onMoreOptionsClicked?.invoke(post)
+            }
+            
+            // Open detailed post view when clicking on post content or image
+            postContent.setOnClickListener {
+                onPostClicked?.invoke(post)
+            }
+            
+            postImage.setOnClickListener {
+                onPostClicked?.invoke(post)
             }
             
             // Set comment count

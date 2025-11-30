@@ -66,6 +66,19 @@
 			android:screenOrientation="portrait"
 			android:windowSoftInputMode="stateHidden" />
 		<activity
+			android:name=".PostDetailActivity"
+			android:configChanges="orientation|screenSize|keyboardHidden"
+			android:screenOrientation="portrait"
+			android:windowSoftInputMode="adjustResize"
+			android:parentActivityName=".HomeActivity">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="synapse" android:host="post" />
+			</intent-filter>
+		</activity>
+		<activity
 			android:name=".ProfileActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"

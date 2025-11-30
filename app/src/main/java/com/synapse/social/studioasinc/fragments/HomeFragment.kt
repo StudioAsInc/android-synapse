@@ -26,6 +26,7 @@ import com.synapse.social.studioasinc.ReactionPickerBottomSheet
 import com.synapse.social.studioasinc.ReactedUsersBottomSheet
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.PostCommentsBottomSheetDialog
+import com.synapse.social.studioasinc.PostDetailActivity
 import com.synapse.social.studioasinc.SupabaseClient
 import android.content.Intent
 import io.github.jan.supabase.postgrest.from
@@ -108,7 +109,7 @@ class HomeFragment : Fragment() {
             context = requireContext(),
             currentUserId = currentUserId,
             onPostClicked = { post -> 
-                // TODO: Navigate to post details
+                PostDetailActivity.start(requireContext(), post.id, post.authorUid)
             },
             onLikeClicked = { post ->
                 // Default like action (toggle LIKE reaction)

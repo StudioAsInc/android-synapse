@@ -1,0 +1,353 @@
+package com.synapse.social.studioasinc
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.view.animation.OvershootInterpolator
+import android.widget.PopupMenu
+import android.widget.Toast
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
+import com.google.android.material.tabs.TabLayoutMediator
+import com.synapse.social.studioasinc.adapters.CommentDetailAdapter
+import com.synapse.social.studioasinc.adapters.MediaPagerAdapter
+import com.synapse.social.studioasinc.databinding.ActivityPostDetailBinding
+import com.synapse.social.studioasinc.model.*
+import com.synapse.social.studioasinc.util.TimeUtils
+import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
+class PostDetailActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityPostDetailBinding
+    private val viewModel: PostDetailViewModel by viewModels()
+    private lateinit var commentsAdapter: CommentDetailAdapter
+    private var replyToCommentId: String? = null
+    private var replyToUsername: String? = null
+
+    companion object {
+        const val EXTRA_POST_ID = "post_id"
+        const val EXTRA_AUTHOR_UID = "author_uid"
+
+        fun start(context: Context, postId: String, authorUid: String? = null) {
+            context.startActivity(Intent(context, PostDetailActivity::class.java).apply {
+                putExtra(EXTRA_POST_ID, postId)
+                putExtra(EXTRA_AUTHOR_UID, authorUid)
+            })
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityPostDetailBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setupToolbar()
+        setupCommentsRecyclerView()
+        setupCommentInput()
+        setupClickListeners()
+        observeState()
+
+        intent.getStringExtra(EXTRA_POST_ID)?.let { postId ->
+            viewModel.loadPost(postId)
+            viewModel.loadComments(postId)
+        }
+    }
+
+    private fun setupToolbar() {
+        binding.toolbar.setNavigationOnClickListener { finish() }
+    }
+
+    private fun setupCommentsRecyclerView() {
+        commentsAdapter = CommentDetailAdapter(
+            onReplyClick = { comment -> setReplyMode(comment) },
+            onLikeClick = { comment -> viewModel.toggleCommentReaction(comment.id, ReactionType.LIKE) },
+            onUserClick = { userId -> navigateToProfile(userId) }
+        )
+        binding.rvComments.apply {
+            layoutManager = LinearLayoutManager(this@PostDetailActivity)
+            adapter = commentsAdapter
+        }
+    }
+
+    private fun setupCommentInput() {
+        binding.etComment.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                binding.ivSend.alpha = if (s.isNullOrBlank()) 0.38f else 1f
+            }
+        })
+
+        binding.ivSend.setOnClickListener {
+            val content = binding.etComment.text?.toString()?.trim() ?: return@setOnClickListener
+            if (content.isNotEmpty()) {
+                animateSendButton()
+                viewModel.addComment(content, replyToCommentId)
+                binding.etComment.text?.clear()
+                clearReplyMode()
+            }
+        }
+
+        binding.ivCancelReply.setOnClickListener { clearReplyMode() }
+
+        // Load current user avatar
+        loadCurrentUserAvatar()
+    }
+
+    private fun setupClickListeners() {
+        binding.btnLike.setOnClickListener { viewModel.toggleReaction(ReactionType.LIKE) }
+        binding.btnLike.setOnLongClickListener { showReactionPicker(); true }
+        binding.btnComment.setOnClickListener { binding.etComment.requestFocus() }
+        binding.btnShare.setOnClickListener { sharePost() }
+        binding.ivMoreOptions.setOnClickListener { showMoreOptions(it) }
+        binding.ivAuthorAvatar.setOnClickListener { navigateToAuthorProfile() }
+        binding.tvAuthorName.setOnClickListener { navigateToAuthorProfile() }
+        binding.reactionsContainer.setOnClickListener { showReactedUsers() }
+    }
+
+    private fun observeState() {
+        lifecycleScope.launch {
+            viewModel.postState.collectLatest { state ->
+                when (state) {
+                    is PostDetailState.Loading -> showLoading(true)
+                    is PostDetailState.Success -> {
+                        showLoading(false)
+                        displayPost(state.postDetail)
+                    }
+                    is PostDetailState.Error -> {
+                        showLoading(false)
+                        Toast.makeText(this@PostDetailActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.commentsState.collectLatest { state ->
+                when (state) {
+                    is CommentsState.Loading -> binding.progressComments.isVisible = true
+                    is CommentsState.Success -> {
+                        binding.progressComments.isVisible = false
+                        commentsAdapter.submitList(state.comments)
+                        binding.tvNoComments.isVisible = state.comments.isEmpty()
+                    }
+                    is CommentsState.Error -> {
+                        binding.progressComments.isVisible = false
+                        Toast.makeText(this@PostDetailActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun displayPost(postDetail: PostDetail) {
+        val post = postDetail.post
+        val author = postDetail.author
+
+        // Author info
+        Glide.with(this).load(author.profileImageUrl).placeholder(R.drawable.avatar)
+            .into(binding.ivAuthorAvatar)
+        binding.tvAuthorName.text = author.displayName ?: author.username
+        binding.ivVerifiedBadge.isVisible = author.isVerified
+        binding.tvPostTime.text = "${TimeUtils.getRelativeTime(post.createdAt)} · ${if (post.isPublic) getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
+
+        // Content
+        binding.tvPostContent.text = post.text
+        binding.tvPostContent.isVisible = !post.text.isNullOrBlank()
+
+        // Media
+        setupMedia(post.mediaItems)
+
+        // Poll
+        setupPoll(post, postDetail)
+
+        // Engagement stats
+        displayReactions(postDetail.reactionSummary, postDetail.userReaction)
+        binding.tvCommentCount.text = getString(R.string.comments_count, post.commentsCount)
+        binding.tvShareCount.text = "${post.resharesCount} shares"
+
+        // Update like button state
+        updateLikeButton(postDetail.userReaction)
+    }
+
+    private fun setupMedia(mediaItems: List<MediaItem>?) {
+        if (mediaItems.isNullOrEmpty()) {
+            binding.mediaContainer.isVisible = false
+            return
+        }
+
+        binding.mediaContainer.isVisible = true
+        val adapter = MediaPagerAdapter(mediaItems) { /* fullscreen */ }
+        binding.vpMedia.adapter = adapter
+
+        if (mediaItems.size > 1) {
+            binding.tabIndicator.isVisible = true
+            TabLayoutMediator(binding.tabIndicator, binding.vpMedia) { _, _ -> }.attach()
+        } else {
+            binding.tabIndicator.isVisible = false
+        }
+    }
+
+    private fun setupPoll(post: Post, postDetail: PostDetail) {
+        if (!post.hasPoll) {
+            binding.pollContainer.isVisible = false
+            return
+        }
+
+        binding.pollContainer.isVisible = true
+        binding.tvPollQuestion.text = post.pollQuestion
+
+        // Poll options would be set up with a RecyclerView adapter
+        val voteCount = postDetail.pollResults?.sumOf { it.voteCount } ?: 0
+        binding.tvPollInfo.text = getString(R.string.vote_count, voteCount)
+    }
+
+    private fun displayReactions(summary: Map<ReactionType, Int>, userReaction: ReactionType?) {
+        val total = summary.values.sum()
+        if (total == 0) {
+            binding.tvReactionEmojis.isVisible = false
+            binding.tvReactionCount.isVisible = false
+            return
+        }
+
+        binding.tvReactionEmojis.isVisible = true
+        binding.tvReactionCount.isVisible = true
+
+        val emojis = summary.entries
+            .filter { it.value > 0 }
+            .sortedByDescending { it.value }
+            .take(3)
+            .joinToString("") { it.key.emoji }
+
+        binding.tvReactionEmojis.text = emojis
+        binding.tvReactionCount.text = formatCount(total)
+    }
+
+    private fun updateLikeButton(userReaction: ReactionType?) {
+        if (userReaction != null) {
+            binding.tvLike.text = userReaction.displayName
+            binding.tvLike.setTextColor(getColor(R.color.colorPrimary))
+        } else {
+            binding.tvLike.text = getString(R.string.reaction_like)
+            binding.tvLike.setTextColor(getColor(R.color.colorOnSurfaceVariant))
+        }
+    }
+
+    private fun setReplyMode(comment: CommentWithUser) {
+        replyToCommentId = comment.id
+        replyToUsername = comment.user.username
+        binding.replyIndicator.isVisible = true
+        binding.tvReplyingTo.text = getString(R.string.replying_to, comment.user.username)
+        binding.etComment.hint = getString(R.string.reply_hint, comment.user.username)
+        binding.etComment.requestFocus()
+    }
+
+    private fun clearReplyMode() {
+        replyToCommentId = null
+        replyToUsername = null
+        binding.replyIndicator.isVisible = false
+        binding.etComment.hint = getString(R.string.comment_hint)
+    }
+
+    private fun showReactionPicker() {
+        val picker = ReactionPickerBottomSheet { reactionType ->
+            viewModel.toggleReaction(reactionType)
+        }
+        picker.show(supportFragmentManager, "reaction_picker")
+    }
+
+    private fun showMoreOptions(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, R.string.bookmark_added)
+            menu.add(0, 2, 1, R.string.reshare_title)
+            menu.add(0, 3, 2, R.string.report_title)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> { viewModel.toggleBookmark(); true }
+                    2 -> { showReshareDialog(); true }
+                    3 -> { showReportDialog(); true }
+                    else -> false
+                }
+            }
+            show()
+        }
+    }
+
+    private fun sharePost() {
+        val postId = intent.getStringExtra(EXTRA_POST_ID) ?: return
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, "Check out this post on Synapse: synapse://post/$postId")
+        }
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.share)))
+    }
+
+    private fun showReshareDialog() {
+        // Simple reshare - could be expanded to a dialog
+        viewModel.createReshare(null)
+        Toast.makeText(this, "Post reshared", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showReportDialog() {
+        val reasons = arrayOf("Spam", "Harassment", "Hate speech", "Violence", "Other")
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.report_title)
+            .setItems(reasons) { _, which ->
+                viewModel.reportPost(reasons[which])
+                Toast.makeText(this, R.string.report_submitted, Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    private fun showReactedUsers() {
+        // Could show a bottom sheet with users who reacted
+    }
+
+    private fun navigateToProfile(userId: String) {
+        ProfileActivity.start(this, userId)
+    }
+
+    private fun navigateToAuthorProfile() {
+        intent.getStringExtra(EXTRA_AUTHOR_UID)?.let { navigateToProfile(it) }
+    }
+
+    private fun loadCurrentUserAvatar() {
+        lifecycleScope.launch {
+            try {
+                val user = SupabaseClient.client.auth.currentUserOrNull()
+                // Load avatar from user metadata or profile
+            } catch (e: Exception) { /* ignore */ }
+        }
+    }
+
+    private fun animateSendButton() {
+        binding.ivSend.animate()
+            .scaleX(1.2f).scaleY(1.2f)
+            .setDuration(100)
+            .setInterpolator(OvershootInterpolator())
+            .withEndAction {
+                binding.ivSend.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+            }
+            .start()
+    }
+
+    private fun showLoading(show: Boolean) {
+        binding.progressBar.isVisible = show
+        binding.scrollView.isVisible = !show
+    }
+
+    private fun formatCount(count: Int): String = when {
+        count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
+        count >= 1_000 -> String.format("%.1fK", count / 1_000.0)
+        else -> count.toString()
+    }
+}
