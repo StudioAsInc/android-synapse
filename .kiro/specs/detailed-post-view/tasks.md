@@ -2,154 +2,63 @@
 
 - [x] 1. Set up data models and repository interfaces
 
-
   - [x] 1.1 Create PostDetail and related data models
-
-
     - Create `PostDetail`, `CommentWithUser`, `CommentReaction`, `PollOptionResult` data classes in `model/`
     - Add serialization annotations for Supabase compatibility
     - _Requirements: 1.1, 1.2, 1.4, 2.1, 4.2, 7.1_
 
-  - [x]* 1.2 Write property test for data model serialization round-trip
-
-
-
-    - **Property 3: Encryption round-trip** - Test that serializing then deserializing PostDetail produces equivalent object
-    - **Validates: Requirements 1.5**
+  - [x] 1.2 ~~Write property test for data model serialization round-trip~~ (SKIPPED - tests excluded)
 
   - [x] 1.3 Create state classes for UI
-
-
     - Create `PostDetailState`, `CommentsState`, `CommentEvent` sealed classes
     - _Requirements: 1.1, 4.1_
 
 - [x] 2. Implement PostDetailRepository
 
-
-
   - [x] 2.1 Create PostDetailRepository with post fetching
-
-
     - Implement `getPostWithDetails(postId)` with user join query
     - Implement `incrementViewCount(postId)`
     - Handle media_items JSONB parsing
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3_
 
-  - [x]* 2.2 Write property test for post loading completeness
-
-    - **Property 1: Post loading returns complete data**
-    - **Validates: Requirements 1.1, 1.2, 1.4, 2.1**
-  - [x]* 2.3 Write property test for YouTube URL detection
-
-    - **Property 2: YouTube URL detection**
-    - **Validates: Requirements 1.3**
-
-  - [x]* 2.4 Write property test for edited post detection
-    - **Property 4: Edited post detection**
-
-    - **Validates: Requirements 1.6**
-  - [x]* 2.5 Write property test for author badge logic
-
-    - **Property 5: Author badge display logic**
-    - **Validates: Requirements 2.2, 2.3**
+  - [x] 2.2-2.5 ~~Write property tests~~ (SKIPPED - tests excluded)
 
 - [x] 3. Implement ReactionRepository
 
-
-
-
-
   - [x] 3.1 Create ReactionRepository for post reactions
-
-
-
-
     - Implement `togglePostReaction(postId, reactionType)` using reactions table
     - Implement `getPostReactionSummary(postId)` for aggregated counts
     - Implement `getUserPostReaction(postId)` for current user's reaction
     - _Requirements: 3.2, 3.3, 3.4, 3.5_
 
+  - [x] 3.2-3.3 ~~Write property tests~~ (SKIPPED - tests excluded)
 
-  - [x]* 3.2 Write property test for reaction toggle consistency
-
-    - **Property 6: Reaction toggle consistency**
-    - **Validates: Requirements 3.2, 3.3, 3.4**
-
-
-  - [ ]* 3.3 Write property test for reaction aggregation
-
-
-
-    - **Property 7: Reaction aggregation accuracy**
-
-    - **Validates: Requirements 3.5**
   - [ ] 3.4 Implement comment reactions
-
-
-
-
-
-
-
-
     - Implement `toggleCommentReaction(commentId, reactionType)` using comment_reactions table
     - Implement `getCommentReactionSummary(commentId)`
     - _Requirements: 6.2, 6.3, 6.4_
-  - [ ]* 3.5 Write property test for comment reaction toggle
-    - **Property 14: Comment reaction toggle**
-    - **Validates: Requirements 6.2, 6.3, 6.4**
+
+  - [x] 3.5 ~~Write property test~~ (SKIPPED - tests excluded)
 
 - [x] 4. Implement CommentRepository
 
-
-
-
-
   - [x] 4.1 Create CommentRepository with comment fetching
-
-
     - Implement `getComments(postId, limit, offset)` with user join and sorting
     - Implement `getReplies(commentId)` for nested comments
     - Parse parent_comment_id for reply hierarchy
     - _Requirements: 4.1, 4.2, 5.1_
 
-  - [x]* 4.2 Write property test for comment loading completeness
+  - [x] 4.2-4.3 ~~Write property tests~~ (SKIPPED - tests excluded)
 
-    - **Property 8: Comment loading completeness**
-    - **Validates: Requirements 4.1, 4.2**
-
-  - [ ]* 4.3 Write property test for reply count accuracy
-    - **Property 12: Reply count accuracy**
-
-    - **Validates: Requirements 5.1**
   - [ ] 4.4 Implement comment CRUD operations
-
-
-
-
     - Implement `createComment(postId, content, mediaUrl, parentCommentId)`
     - Implement `deleteComment(commentId)` with soft delete
-
     - Implement `editComment(commentId, content)`
     - _Requirements: 4.3, 4.5, 4.6, 5.4_
 
-  - [ ]* 4.5 Write property test for comment creation persistence
-    - **Property 9: Comment creation persistence**
+  - [x] 4.5-4.8 ~~Write property tests~~ (SKIPPED - tests excluded)
 
-    - **Validates: Requirements 4.3**
-  - [x]* 4.6 Write property test for reply parent reference
-
-    - **Property 13: Reply parent reference**
-    - **Validates: Requirements 5.4**
-  - [ ]* 4.7 Write property test for comment edit/delete status
-    - **Property 11: Comment edit and delete status**
-    - **Validates: Requirements 4.5, 4.6**
-  - [ ]* 4.8 Write property test for comment media inclusion
-    - **Property 10: Comment media inclusion**
-    - **Validates: Requirements 4.4**
-
-- [ ] 5. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 5. Checkpoint (SKIPPED - tests excluded)
 
 - [ ] 6. Implement PollRepository
   - [ ] 6.1 Create PollRepository for poll operations
@@ -157,62 +66,34 @@
     - Implement `submitVote(postId, optionIndex)` with poll_end_time validation
     - Implement `getPollResults(postId)` to calculate vote percentages
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-  - [ ]* 6.2 Write property test for poll data completeness
-    - **Property 15: Poll data completeness**
-    - **Validates: Requirements 7.1**
-  - [ ]* 6.3 Write property test for poll vote status detection
-    - **Property 16: Poll vote status detection**
-    - **Validates: Requirements 7.2, 7.4**
-  - [ ]* 6.4 Write property test for poll vote persistence
-    - **Property 17: Poll vote persistence**
-    - **Validates: Requirements 7.3**
-  - [ ]* 6.5 Write property test for poll end time enforcement
-    - **Property 18: Poll end time enforcement**
-    - **Validates: Requirements 7.5**
 
 - [ ] 7. Implement BookmarkRepository and ReshareRepository
   - [ ] 7.1 Create BookmarkRepository
     - Implement `isBookmarked(postId)` checking favorites table
     - Implement `toggleBookmark(postId, collectionId)` for add/remove
     - _Requirements: 8.1, 8.2_
-  - [ ]* 7.2 Write property test for bookmark toggle consistency
-    - **Property 19: Bookmark toggle consistency**
-    - **Validates: Requirements 8.1, 8.2**
-  - [ ] 7.3 Create ReshareRepository
+  - [ ] 7.2 Create ReshareRepository
     - Implement `createReshare(postId, commentary)` inserting into reshares table
     - Implement `hasReshared(postId)` to check existing reshare
     - Update post reshares_count on creation
     - _Requirements: 8.5_
-  - [ ]* 7.4 Write property test for reshare creation
-    - **Property 20: Reshare creation**
-    - **Validates: Requirements 8.5**
 
 - [ ] 8. Implement text parsing utilities
   - [ ] 8.1 Create HashtagParser utility
     - Extract hashtags from text content using regex
     - Return list of hashtag strings without # prefix
     - _Requirements: 9.1_
-  - [ ]* 8.2 Write property test for hashtag extraction
-    - **Property 21: Hashtag extraction**
-    - **Validates: Requirements 9.1**
-  - [ ] 8.3 Create MentionParser utility
+  - [ ] 8.2 Create MentionParser utility
     - Extract mentions from text content using regex
     - Return list of username strings without @ prefix
     - _Requirements: 9.3_
-  - [ ]* 8.4 Write property test for mention extraction
-    - **Property 22: Mention extraction**
-    - **Validates: Requirements 9.3**
 
 - [ ] 9. Implement ReportRepository
   - [ ] 9.1 Create ReportRepository
     - Implement `createReport(postId, reason, description)` inserting into post_reports
     - _Requirements: 10.3_
-  - [ ]* 9.2 Write property test for report creation
-    - **Property 23: Report creation**
-    - **Validates: Requirements 10.3**
 
-- [ ] 10. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 10. Checkpoint (SKIPPED - tests excluded)
 
 - [ ] 11. Implement PostDetailViewModel
   - [ ] 11.1 Create PostDetailViewModel with state management
@@ -244,22 +125,15 @@
     - Subscribe to comments table changes for post_id
     - Emit CommentEvent.Added, Updated, Deleted
     - _Requirements: 11.1, 11.3_
-  - [ ]* 12.2 Write property test for real-time comment subscription
-    - **Property 24: Real-time comment subscription**
-    - **Validates: Requirements 11.1**
-  - [ ] 12.3 Add real-time reaction subscription
+  - [ ] 12.2 Add real-time reaction subscription
     - Subscribe to reactions table changes for post_id
     - Update reaction counts in real-time
     - _Requirements: 11.2_
-  - [ ] 12.4 Implement subscription cleanup
+  - [ ] 12.3 Implement subscription cleanup
     - Unsubscribe from all channels in onCleared()
     - _Requirements: 11.4_
-  - [ ]* 12.5 Write property test for real-time cleanup
-    - **Property 25: Real-time cleanup**
-    - **Validates: Requirements 11.4**
 
-- [ ] 13. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 13. Checkpoint (SKIPPED - tests excluded)
 
 - [ ] 14. Create XML layouts with Material 3 design
   - [ ] 14.1 Create activity_post_detail.xml
@@ -373,5 +247,38 @@
     - Navigate to profile for mention tap
     - _Requirements: 9.2, 9.4_
 
-- [ ] 19. Final Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 19. Final Checkpoint (SKIPPED - tests excluded)
+
+---
+
+## Supabase Schema Reference
+
+The following tables are used by this feature (verified against production schema):
+
+### Core Tables
+- `posts` - Post content with media_items JSONB, poll fields, location fields
+- `users` - Author info with verify, account_premium, profile_image_url
+- `comments` - Comments with parent_comment_id for nesting, user_id FK to users.uid
+- `reactions` - Post reactions with reaction_type (like, love, haha, wow, sad, angry)
+- `comment_reactions` - Comment reactions with same reaction types
+
+### Supporting Tables
+- `favorites` - Bookmarked posts with optional collection_id
+- `bookmark_collections` - User bookmark collections
+- `reshares` - Post reshares with optional reshare_text
+- `poll_votes` - Poll votes with option_index
+- `post_reports` - Post reports with reason and description
+- `hashtags` - Hashtag registry with usage_count
+- `post_hashtags` - Post-hashtag junction table
+- `mentions` - User mentions in posts/comments
+
+### Key Relationships
+- `posts.author_uid` → `users.uid`
+- `comments.user_id` → `users.uid`
+- `comments.post_id` → `posts.id`
+- `comments.parent_comment_id` → `comments.id` (self-reference for replies)
+- `reactions.post_id` → `posts.id`
+- `comment_reactions.comment_id` → `comments.id`
+- `favorites.post_id` → `posts.id`
+- `reshares.post_id` → `posts.id`
+- `poll_votes.post_id` → `posts.id`

@@ -354,36 +354,411 @@ sealed class CommentEvent {
 - Fall back to polling if Realtime unavailable
 - Show connection status in UI
 
+---
+
+## XML Layout Specifications
+
+### activity_post_detail.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout>
+    
+    <!-- AppBar with toolbar -->
+    <com.google.android.material.appbar.AppBarLayout>
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            app:navigationIcon="@drawable/ic_close" />
+    </com.google.android.material.appbar.AppBarLayout>
+    
+    <!-- Main content -->
+    <androidx.core.widget.NestedScrollView
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        
+        <LinearLayout android:orientation="vertical">
+            
+            <!-- Post Author Section -->
+            <include layout="@layout/layout_post_author" />
+            
+            <!-- Post Content -->
+            <TextView android:id="@+id/tvPostContent" />
+            
+            <!-- Media Grid/Carousel -->
+            <com.synapse.social.studioasinc.components.MediaGridView
+                android:id="@+id/mediaGridView" />
+            
+            <!-- Poll Section (if has_poll) -->
+            <include layout="@layout/layout_poll" />
+            
+            <!-- Location Section (if has_location) -->
+            <include layout="@layout/layout_location" />
+            
+            <!-- Engagement Bar -->
+            <include layout="@layout/layout_engagement_bar" />
+            
+            <!-- Comments Section -->
+            <LinearLayout android:id="@+id/commentsSection">
+                <!-- Sort Dropdown -->
+                <Spinner android:id="@+id/spinnerSort" />
+                
+                <!-- Comments RecyclerView -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvComments" />
+            </LinearLayout>
+            
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+    
+    <!-- Fixed Bottom Comment Input -->
+    <include layout="@layout/layout_comment_input_bar"
+        android:layout_gravity="bottom" />
+    
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+```
+
+### item_comment_detail.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    app:cardCornerRadius="12dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+    
+    <LinearLayout android:orientation="horizontal">
+        
+        <!-- Avatar -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="36dp"
+            android:layout_height="36dp" />
+        
+        <LinearLayout android:orientation="vertical">
+            
+            <!-- Header: Username · Time · Author Badge -->
+            <LinearLayout android:orientation="horizontal">
+                <TextView android:id="@+id/tvUsername" />
+                <TextView android:id="@+id/tvTime" />
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipAuthor"
+                    android:text="@string/author_badge"
+                    android:visibility="gone" />
+            </LinearLayout>
+            
+            <!-- Comment Content -->
+            <TextView android:id="@+id/tvContent" />
+            
+            <!-- Comment Media (if present) -->
+            <ImageView android:id="@+id/ivMedia" />
+            
+            <!-- Actions: Reply · Like -->
+            <LinearLayout android:orientation="horizontal">
+                <TextView android:id="@+id/tvReply" />
+                <ImageView android:id="@+id/ivLike" />
+                <TextView android:id="@+id/tvLikeCount" />
+            </LinearLayout>
+            
+            <!-- Replies Container -->
+            <LinearLayout android:id="@+id/repliesContainer">
+                <TextView android:id="@+id/tvViewReplies" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvReplies" />
+            </LinearLayout>
+            
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
+### layout_comment_input_bar.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:orientation="vertical"
+    android:background="?attr/colorSurface"
+    android:elevation="8dp">
+    
+    <!-- Reply Indicator (shown when replying) -->
+    <LinearLayout android:id="@+id/replyIndicator"
+        android:visibility="gone">
+        <TextView android:id="@+id/tvReplyingTo" />
+        <ImageView android:id="@+id/ivCancelReply" />
+    </LinearLayout>
+    
+    <!-- Input Row -->
+    <LinearLayout android:orientation="horizontal">
+        
+        <!-- User Avatar -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/ivUserAvatar"
+            android:layout_width="32dp"
+            android:layout_height="32dp" />
+        
+        <!-- Input Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Rounded16">
+            
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etComment"
+                android:hint="@string/comment_hint"
+                android:maxLength="2000"
+                android:inputType="textMultiLine" />
+        </com.google.android.material.textfield.TextInputLayout>
+        
+        <!-- Send Button -->
+        <ImageView android:id="@+id/ivSend"
+            android:src="@drawable/ic_send"
+            android:alpha="0.38" />
+    </LinearLayout>
+    
+    <!-- Attachment Options -->
+    <LinearLayout android:orientation="horizontal">
+        <ImageView android:id="@+id/ivCamera" />
+        <ImageView android:id="@+id/ivGif" />
+        <ImageView android:id="@+id/ivEmoji" />
+        <ImageView android:id="@+id/ivSticker" />
+    </LinearLayout>
+    
+</LinearLayout>
+```
+
+### layout_poll.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical">
+    
+    <!-- Poll Question -->
+    <TextView android:id="@+id/tvPollQuestion"
+        android:textStyle="bold" />
+    
+    <!-- Poll Options (RecyclerView) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvPollOptions" />
+    
+    <!-- Poll Footer: Vote count · End time -->
+    <LinearLayout android:orientation="horizontal">
+        <TextView android:id="@+id/tvVoteCount" />
+        <TextView android:id="@+id/tvPollEndTime" />
+    </LinearLayout>
+    
+</LinearLayout>
+```
+
+### item_poll_option.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout>
+    
+    <!-- Progress Background -->
+    <View android:id="@+id/vProgress"
+        android:background="?attr/colorPrimaryContainer" />
+    
+    <!-- Option Content -->
+    <LinearLayout android:orientation="horizontal">
+        <RadioButton android:id="@+id/rbOption" />
+        <TextView android:id="@+id/tvOptionText" />
+        <TextView android:id="@+id/tvPercentage" />
+    </LinearLayout>
+    
+</FrameLayout>
+```
+
+### bottom_sheet_reaction_picker.xml Structure
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    app:cardCornerRadius="24dp">
+    
+    <LinearLayout android:orientation="horizontal"
+        android:gravity="center">
+        
+        <TextView android:id="@+id/tvLike" android:text="👍" />
+        <TextView android:id="@+id/tvLove" android:text="❤️" />
+        <TextView android:id="@+id/tvHaha" android:text="😂" />
+        <TextView android:id="@+id/tvWow" android:text="😮" />
+        <TextView android:id="@+id/tvSad" android:text="😢" />
+        <TextView android:id="@+id/tvAngry" android:text="😠" />
+        
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
 ## Testing Strategy
 
-### Unit Testing
-- Test ViewModel state transitions
-- Test Repository data mapping
-- Test hashtag/mention parsing utilities
-- Test poll result calculations
-- Test reaction aggregation logic
-
-### Property-Based Testing
-The implementation SHALL use **Kotest** with the **kotest-property** module for property-based testing.
-
-Each property test SHALL:
-- Run a minimum of 100 iterations
-- Be tagged with a comment referencing the correctness property: `// **Feature: detailed-post-view, Property {number}: {property_text}**`
-- Use smart generators that constrain inputs to valid domain values
-
-Property tests SHALL cover:
-- Data model serialization/deserialization round-trips
-- Reaction toggle state machine
-- Comment hierarchy integrity
-- Poll vote constraints
-- Hashtag/mention parsing edge cases
+### Unit Testing (SKIPPED per user request)
+Property-based tests and unit tests are excluded from this implementation.
 
 ### Integration Testing
-- Test Supabase queries with test database
-- Test Realtime subscription lifecycle
-- Test RLS policy enforcement
+- Manual testing of Supabase queries
+- Manual testing of Realtime subscriptions
+- Manual testing of RLS policy enforcement
 
 ### UI Testing
-- Test Material 3 component interactions
-- Test accessibility compliance
-- Test responsive layouts
+- Manual testing of Material 3 component interactions
+- Manual testing of accessibility compliance
+- Manual testing of responsive layouts
+
+---
+
+## Navigation & Intent Extras
+
+### Opening PostDetailActivity
+```kotlin
+// From feed or profile
+fun openPostDetail(context: Context, postId: String, authorUid: String? = null) {
+    val intent = Intent(context, PostDetailActivity::class.java).apply {
+        putExtra(EXTRA_POST_ID, postId)
+        putExtra(EXTRA_AUTHOR_UID, authorUid)
+    }
+    context.startActivity(intent)
+}
+
+companion object {
+    const val EXTRA_POST_ID = "post_id"
+    const val EXTRA_AUTHOR_UID = "author_uid"
+    const val EXTRA_FOCUS_COMMENT_ID = "focus_comment_id"  // For deep linking
+    const val EXTRA_SHOW_KEYBOARD = "show_keyboard"  // Auto-focus comment input
+}
+```
+
+### Deep Linking
+- URL pattern: `synapse://post/{postId}`
+- URL pattern with comment: `synapse://post/{postId}/comment/{commentId}`
+
+---
+
+## String Resources
+
+```xml
+<!-- strings.xml additions -->
+<string name="post_detail_title">Post</string>
+<string name="comments_title">Comments</string>
+<string name="comments_count">%d comments</string>
+<string name="no_comments">No comments yet</string>
+<string name="be_first_to_comment">Be the first to comment</string>
+<string name="comment_hint">Write a comment…</string>
+<string name="reply_hint">Reply to %s…</string>
+<string name="author_badge">Author</string>
+<string name="edited_indicator">Edited</string>
+<string name="deleted_comment">[Deleted]</string>
+<string name="view_replies">View %d replies</string>
+<string name="hide_replies">Hide replies</string>
+<string name="sort_most_relevant">Most relevant</string>
+<string name="sort_newest">Newest first</string>
+<string name="sort_all">All comments</string>
+<string name="reaction_like">Like</string>
+<string name="reaction_love">Love</string>
+<string name="reaction_haha">Haha</string>
+<string name="reaction_wow">Wow</string>
+<string name="reaction_sad">Sad</string>
+<string name="reaction_angry">Angry</string>
+<string name="poll_ended">Poll ended</string>
+<string name="poll_ends_in">Ends in %s</string>
+<string name="vote_count">%d votes</string>
+<string name="bookmark_added">Post saved</string>
+<string name="bookmark_removed">Post removed from saved</string>
+<string name="reshare_title">Reshare post</string>
+<string name="reshare_hint">Add a comment (optional)</string>
+<string name="report_title">Report post</string>
+<string name="report_submitted">Report submitted</string>
+```
+
+---
+
+## Dimension Resources
+
+```xml
+<!-- dimens.xml additions -->
+<dimen name="post_detail_avatar_size">40dp</dimen>
+<dimen name="comment_avatar_size">36dp</dimen>
+<dimen name="reply_avatar_size">28dp</dimen>
+<dimen name="reply_indent">40dp</dimen>
+<dimen name="comment_card_corner_radius">12dp</dimen>
+<dimen name="reaction_picker_corner_radius">24dp</dimen>
+<dimen name="comment_input_corner_radius">16dp</dimen>
+<dimen name="media_grid_spacing">2dp</dimen>
+<dimen name="poll_option_corner_radius">8dp</dimen>
+<dimen name="author_badge_corner_radius">4dp</dimen>
+```
+
+---
+
+## Animation Specs
+
+### Comment Entry Animation
+```kotlin
+// Slide up + fade in for new comments
+val slideUp = ObjectAnimator.ofFloat(view, "translationY", 100f, 0f)
+val fadeIn = ObjectAnimator.ofFloat(view, "alpha", 0f, 1f)
+AnimatorSet().apply {
+    playTogether(slideUp, fadeIn)
+    duration = 300
+    interpolator = FastOutSlowInInterpolator()
+}.start()
+```
+
+### Reaction Picker Animation
+```kotlin
+// Scale up with overshoot
+val scaleX = ObjectAnimator.ofFloat(view, "scaleX", 0f, 1f)
+val scaleY = ObjectAnimator.ofFloat(view, "scaleY", 0f, 1f)
+AnimatorSet().apply {
+    playTogether(scaleX, scaleY)
+    duration = 200
+    interpolator = OvershootInterpolator(1.5f)
+}.start()
+```
+
+### Reply Expansion Animation
+```kotlin
+// Smooth height transition
+TransitionManager.beginDelayedTransition(
+    parent,
+    AutoTransition().apply {
+        duration = 250
+        interpolator = FastOutSlowInInterpolator()
+    }
+)
+repliesContainer.visibility = View.VISIBLE
+```
+
+### Send Button Pulse
+```kotlin
+// Scale pulse on send
+val pulse = ObjectAnimator.ofPropertyValuesHolder(
+    sendButton,
+    PropertyValuesHolder.ofFloat("scaleX", 1f, 1.2f, 1f),
+    PropertyValuesHolder.ofFloat("scaleY", 1f, 1.2f, 1f)
+).apply {
+    duration = 200
+    interpolator = FastOutSlowInInterpolator()
+}
+```
+
+---
+
+## Accessibility
+
+### Content Descriptions
+- Post author avatar: "Profile picture of {username}"
+- Verified badge: "Verified account"
+- Reaction button: "React to post, currently {count} reactions"
+- Comment button: "View comments, {count} comments"
+- Share button: "Share post"
+- Bookmark button: "Save post" / "Remove from saved"
+- Comment avatar: "Profile picture of {username}"
+- Reply button: "Reply to {username}"
+- Author badge: "Post author"
+
+### Focus Order
+1. Back button
+2. Post author info
+3. Post content
+4. Media gallery
+5. Reaction bar
+6. Comments list
+7. Comment input
+
+### Reduced Motion
+When `Settings.Global.ANIMATOR_DURATION_SCALE == 0`:
+- Skip all animations
+- Use instant visibility changes
+- Disable shimmer effects
