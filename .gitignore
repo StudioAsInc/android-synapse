@@ -50,3 +50,4 @@ package-lock.json
 android-sdk/
 .gemini/
 gha-creds-*.json
+.aider*
