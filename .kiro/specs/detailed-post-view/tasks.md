@@ -33,9 +33,10 @@
 
   - [x] 3.2-3.3 ~~Write property tests~~ (SKIPPED - tests excluded)
 
-  - [ ] 3.4 Implement comment reactions
-    - Implement `toggleCommentReaction(commentId, reactionType)` using comment_reactions table
-    - Implement `getCommentReactionSummary(commentId)`
+  - [x] 3.4 Implement comment reactions
+    - Implement `toggleCommentReaction(commentId, reactionType)` using comment_reactions table ✓
+    - Implement `getCommentReactionSummary(commentId)` ✓
+    - Implement `getUserCommentReaction(commentId)` ✓
     - _Requirements: 6.2, 6.3, 6.4_
 
   - [x] 3.5 ~~Write property test~~ (SKIPPED - tests excluded)
