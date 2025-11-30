@@ -588,7 +588,6 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="edited_indicator">Edited</string>
     <string name="deleted_comment">[Deleted]</string>
     <string name="view_replies">View %d replies</string>
-    <string name="hide_replies">Hide replies</string>
     <string name="reaction_like">Like</string>
     <string name="reaction_love">Love</string>
     <string name="reaction_haha">Haha</string>
