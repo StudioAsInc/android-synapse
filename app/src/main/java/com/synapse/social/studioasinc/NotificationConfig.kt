@@ -15,9 +15,11 @@ object NotificationConfig {
     
     // ===== ONESIGNAL CONFIGURATION =====
     // OneSignal credentials
+    // FIXME: For security, move the OneSignal App ID and REST API Key to gradle.properties.
+    // Access them via BuildConfig to avoid hardcoding credentials in the source code.
     const val ONESIGNAL_APP_ID = "044e1911-6911-4871-95f9-d60003002fe2"
-    const val ONESIGNAL_REST_API_KEY = "os_v2_app_arhbseljcfehdfpz2yaagabp4lrkqazbu5guijm3a6jsas5fky62x5yw2ysh7qak55uuxd76acvtktma3fvlotg432fzcmcxwsqnu7y"
-    
+    const val ONESIGNAL_REST_API_KEY = "YOUR_ONESIGNAL_REST_API_KEY_HERE"
+
     // ===== NOTIFICATION SETTINGS =====
     const val NOTIFICATION_TITLE = "New Message"
     const val NOTIFICATION_SUBTITLE = "Synapse Social"

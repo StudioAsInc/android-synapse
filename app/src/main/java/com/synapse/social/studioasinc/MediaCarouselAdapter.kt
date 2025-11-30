@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
+import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -86,6 +87,7 @@ class MediaCarouselAdapter(
     }
 
     inner class VideoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val playerView: PlayerView = itemView.findViewById(R.id.playerView)
         private val videoThumbnail: ImageView? = itemView.findViewById(R.id.videoThumbnail)
         private val playButton: ImageView? = itemView.findViewById(R.id.playPauseButton)
         private val progressBar: ProgressBar = itemView.findViewById(R.id.videoProgressBar)
@@ -119,15 +121,26 @@ class MediaCarouselAdapter(
             itemView.contentDescription = "Video ${position + 1} of ${mediaItems.size}"
         }
 
+        fun playVideo(url: String) {
+            playerView.player?.play()
+            playButton?.visibility = View.GONE
+        }
+
         fun pauseVideo() {
-            // TODO: Implement video pause when ViewPager2 swipes away
+            playerView.player?.pause()
+            playButton?.visibility = View.VISIBLE
         }
     }
 
     /**
      * Pause all videos (call when swiping between pages)
      */
-    fun pauseAllVideos() {
-        // TODO: Implement pause for all video holders
+    fun pauseAllVideos(recyclerView: RecyclerView) {
+        for (i in 0 until mediaItems.size) {
+            val viewHolder = recyclerView.findViewHolderForAdapterPosition(i)
+            if (viewHolder is VideoViewHolder) {
+                viewHolder.pauseVideo()
+            }
+        }
     }
 }

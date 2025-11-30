@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.ListAdapter
 import com.synapse.social.studioasinc.animations.AnimationConfig
 import com.synapse.social.studioasinc.animations.PostCardAnimations
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.util.NumberFormatter.formatCount
 import io.noties.markwon.Markwon
 
 /**
@@ -74,7 +75,7 @@ class PostsAdapter(
             // Detect content changes and animate if needed
             val postContent = post.postText ?: ""
             val hasContentChanged = previousPostText != null && previousPostText != postContent
-            
+
             if (hasContentChanged && enableMD3Animations) {
                 // Animate content update with cross-fade
                 PostCardAnimations.animateContentUpdate(contentText, animationConfig) {
@@ -86,10 +87,15 @@ class PostsAdapter(
             }
             previousPostText = postContent
 
-            // Set author info (TODO: Load actual username from users table)
-            val authorUsername = "@${post.authorUid}"
+            // FIXME: The ViewModel should fetch the author's username from the users table
+            // and include it in the Post model. This avoids database queries in the adapter.
+            val authorUsername = if (post.username.isNullOrEmpty()) {
+                "@${post.authorUid}"
+            } else {
+                post.username
+            }
             authorText.text = authorUsername
-            
+
             // Set accessibility content description for card
             cardContainer.contentDescription = context.getString(R.string.post_by_user, authorUsername)
             
@@ -244,33 +250,6 @@ class PostsAdapter(
             isLiked = false
         }
         
-        /**
-         * Format large numbers for display (e.g., 1.2K, 3.5M)
-         */
-        private fun formatCount(count: Int): String {
-            return when {
-                count < 1000 -> count.toString()
-                count < 1_000_000 -> String.format("%.1fK", count / 1000.0)
-                else -> String.format("%.1fM", count / 1_000_000.0)
-            }
-        }
-
-        /**
-         * Format timestamp to relative time string (e.g., "2h ago", "3d ago")
-         */
-        private fun formatTimestamp(timestamp: Long): String {
-            val now = System.currentTimeMillis()
-            val diff = now - timestamp
-            
-            return when {
-                diff < 0 -> "Just now" // Handle future timestamps
-                diff < 60_000 -> "Just now"
-                diff < 3600_000 -> "${diff / 60_000}m ago"
-                diff < 86400_000 -> "${diff / 3600_000}h ago"
-                diff < 604800_000 -> "${diff / 86400_000}d ago"
-                else -> "${diff / 604800_000}w ago"
-            }
-        }
     }
 
     class PostDiffCallback : DiffUtil.ItemCallback<Post>() {

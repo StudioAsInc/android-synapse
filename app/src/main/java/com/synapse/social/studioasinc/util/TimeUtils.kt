@@ -43,4 +43,20 @@ object TimeUtils {
             }
         }
     }
+
+    /**
+     * Format timestamp to relative time string (e.g., "2h ago", "3d ago")
+     */
+    fun formatTimestamp(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+        val diff = now - timestamp
+
+        return when {
+            diff < 0 -> "Just now"
+            diff < 60_000 -> "Just now"
+            diff < 3600_000 -> "${diff / 60_000}m ago"
+            diff < 86400_000 -> "${diff / 3600_000}h ago"
+            diff < 604800_000 -> "${diff / 86400_000}d ago"
+            else -> "${diff / 604800_000}w ago"
+        }
+    }
 }

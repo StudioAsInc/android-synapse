@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.chat.service
 
 import android.util.Log
 import com.synapse.social.studioasinc.chat.models.TypingStatus
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,7 +26,11 @@ class TypingIndicatorManager(
     private val preferencesManager: PreferencesManager,
     private val coroutineScope: CoroutineScope
 ) {
-    
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Coroutine exception", throwable)
+    }
+
     companion object {
         private const val TAG = "TypingIndicatorManager"
         private const val DEBOUNCE_DELAY = 500L // 500ms debounce for typing events
@@ -58,9 +63,13 @@ class TypingIndicatorManager(
      * @param chatId The chat room identifier
      * @param userId The current user's ID
      */
-    fun onUserTyping(chatId: String, userId: String) {
+    fun onUserTyping(chatId: String, userId: String?) {
+        if (userId.isNullOrEmpty()) {
+            Log.w(TAG, "User ID is null or empty, cannot send typing event.")
+            return
+        }
         Log.d(TAG, "User typing in chat: $chatId")
-        
+
         // Check if typing indicators are enabled
         if (!preferencesManager.isTypingIndicatorsEnabled()) {
             Log.d(TAG, "Typing indicators disabled - skipping broadcast for chat: $chatId")
@@ -77,11 +86,13 @@ class TypingIndicatorManager(
         if (shouldSendEvent) {
             // Cancel existing typing job if it exists
             typingJobs[chatId]?.cancel()
-            
+
             // Send typing event immediately
-            typingJobs[chatId] = coroutineScope.launch {
+            typingJobs[chatId] = coroutineScope.launch(exceptionHandler) {
                 try {
-                    realtimeService.broadcastTyping(chatId, userId, true)
+                    userId?.let {
+                        realtimeService.broadcastTyping(chatId, it, true)
+                    }
                     lastTypingTime[chatId] = currentTime
                     isTypingInChat[chatId] = true
                     Log.d(TAG, "Typing event sent for chat: $chatId")
@@ -126,7 +137,7 @@ class TypingIndicatorManager(
         // Only send stopped event if we were actually typing and typing indicators are enabled
         if (isTypingInChat.getOrDefault(chatId, false)) {
             if (preferencesManager.isTypingIndicatorsEnabled()) {
-                coroutineScope.launch {
+                coroutineScope.launch(exceptionHandler) {
                     try {
                         realtimeService.broadcastTyping(chatId, userId, false)
                         Log.d(TAG, "Typing stopped event sent for chat: $chatId")
@@ -210,10 +221,11 @@ class TypingIndicatorManager(
             val channel = realtimeService.getChannel(chatId) 
                 ?: realtimeService.subscribeToChat(chatId)
             
-            // TODO: Implement broadcast listening when Supabase Realtime API is clarified
+            // FIXME: Implement broadcast listening for typing events once the Supabase Realtime API is finalized.
+            // This will involve listening for a specific event on the channel and invoking the onTypingUpdate callback.
             // For now, we'll rely on polling fallback for typing indicator updates
             Log.d(TAG, "Typing indicator subscription set up for chat: $chatId (broadcast listening pending API clarification)")
-            
+
             Log.d(TAG, "Successfully subscribed to typing events for chat: $chatId")
             
         } catch (e: Exception) {

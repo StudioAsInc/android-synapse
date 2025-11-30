@@ -19,6 +19,7 @@ import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.ReactionType
 import com.synapse.social.studioasinc.util.ImageLoader
+import com.synapse.social.studioasinc.util.TimeUtils.formatTimestamp
 
 /**
  * Enhanced adapter for displaying posts with reactions and multi-media support
@@ -38,7 +39,8 @@ class EnhancedPostsAdapter(
 ) : ListAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
     fun setLoadingMore(isLoading: Boolean) {
-        // TODO: Implement footer loading view
+        // FIXME: Implement a footer loading view to indicate that more posts are being loaded.
+        // This should be shown when the user scrolls to the end of the list and a network request is in progress.
     }
 
     /**
@@ -406,20 +408,6 @@ class EnhancedPostsAdapter(
             // Fallback to old callback if new one not provided
             if (onReactionToggled == null) {
                 onLikeClicked?.invoke(post)
-            }
-        }
-
-        private fun formatTimestamp(timestamp: Long): String {
-            val now = System.currentTimeMillis()
-            val diff = now - timestamp
-
-            return when {
-                diff < 0 -> "Just now"
-                diff < 60_000 -> "Just now"
-                diff < 3600_000 -> "${diff / 60_000}m ago"
-                diff < 86400_000 -> "${diff / 3600_000}h ago"
-                diff < 604800_000 -> "${diff / 86400_000}d ago"
-                else -> "${diff / 604800_000}w ago"
             }
         }
     }
