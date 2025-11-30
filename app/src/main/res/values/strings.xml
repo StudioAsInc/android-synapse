@@ -362,6 +362,7 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="report_description_hint">Additional details (optional)</string>
     <string name="delete_comment">Delete Comment</string>
     <string name="edit_comment">Edit Comment</string>
+    <string name="edit">Edit</string>
     <string name="save">Save</string>
     <string name="deleted_comment">[deleted]</string>
     <string name="message_deleted_successfully">Message deleted successfully</string>
