@@ -166,7 +166,7 @@ class PostDetailActivity : AppCompatActivity() {
             .into(binding.ivAuthorAvatar)
         binding.tvAuthorName.text = author?.displayName ?: author?.username
         binding.ivVerifiedBadge.isVisible = author?.isVerified ?: false
-        binding.tvPostTime.text = "${TimeUtils.getRelativeTime(post.publishDate)} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
+        binding.tvPostTime.text = "${TimeUtils.formatTimestamp(post.publishDate)} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
 
         // Content
         binding.tvPostContent.text = post.postText
@@ -246,7 +246,7 @@ class PostDetailActivity : AppCompatActivity() {
             binding.tvLike.setTextColor(getColor(R.color.colorPrimary))
         } else {
             binding.tvLike.text = getString(R.string.reaction_like)
-            binding.tvLike.setTextColor(getColor(R.color.colorOnSurfaceVariant))
+            binding.tvLike.setTextColor(getColor(R.color.colorOnSurface))
         }
     }
 
@@ -268,7 +268,7 @@ class PostDetailActivity : AppCompatActivity() {
 
     private fun showReactionPicker() {
         val picker = ReactionPickerBottomSheet()
-        picker.setOnReactionSelected { reactionType ->
+        picker.setOnReactionSelectedListener { reactionType ->
             viewModel.toggleReaction(reactionType)
         }
         picker.show(supportFragmentManager, "reaction_picker")
@@ -322,7 +322,9 @@ class PostDetailActivity : AppCompatActivity() {
     }
 
     private fun navigateToProfile(userId: String) {
-        ProfileActivity.start(this, userId)
+        startActivity(Intent(this, ProfileActivity::class.java).apply {
+            putExtra("user_id", userId)
+        })
     }
 
     private fun navigateToAuthorProfile() {

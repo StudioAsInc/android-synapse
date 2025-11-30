@@ -65,7 +65,7 @@ class CommentDetailAdapter(
             }
 
             // Time and edited
-            binding.tvTime.text = TimeUtils.getRelativeTime(comment.createdAt)
+            binding.tvTime.text = TimeUtils.formatTimestamp(comment.createdAt)
             binding.tvEdited.isVisible = comment.isEdited
 
             // Reactions
@@ -85,7 +85,7 @@ class CommentDetailAdapter(
                 )
             } else {
                 binding.tvLikeAction.setTextColor(
-                    binding.root.context.getColor(R.color.colorOnSurfaceVariant)
+                    binding.root.context.getColor(R.color.colorOnSurface)
                 )
             }
 
@@ -170,7 +170,7 @@ class RepliesAdapter(
 
             binding.tvUsername.text = reply.user?.displayName ?: reply.user?.username ?: "Unknown"
             binding.tvContent.text = reply.content
-            binding.tvTime.text = TimeUtils.getRelativeTime(reply.createdAt)
+            binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt)
 
             // Hide reply-specific elements for nested replies
             binding.viewRepliesContainer.isVisible = false

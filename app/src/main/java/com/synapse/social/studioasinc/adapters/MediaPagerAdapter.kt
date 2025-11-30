@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.model.MediaItem
+import com.synapse.social.studioasinc.model.MediaType
 
 class MediaPagerAdapter(
     private val items: List<MediaItem>,
