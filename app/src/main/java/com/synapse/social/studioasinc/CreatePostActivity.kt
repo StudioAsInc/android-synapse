@@ -31,6 +31,7 @@ import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.databinding.ActivityCreatePostBinding
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
+import com.synapse.social.studioasinc.model.PollOption
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.FileUtil
 import com.synapse.social.studioasinc.util.MediaUploadManager
@@ -506,7 +507,7 @@ class CreatePostActivity : AppCompatActivity() {
             youtubeUrl = youtubeUrl,
             hasPoll = pollData != null,
             pollQuestion = pollData?.question,
-            pollOptions = pollData?.options?.let { Json.encodeToString(it.map { opt -> mapOf("text" to opt, "votes" to 0) }) },
+            pollOptions = pollData?.options?.map { PollOption(text = it, votes = 0) },
             pollEndTime = pollEndTime,
             hasLocation = locationData != null,
             locationName = locationData?.name,
@@ -526,6 +527,7 @@ class CreatePostActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 MediaUploadManager.uploadMultipleMedia(
+                    this@CreatePostActivity,
                     selectedMedia,
                     onProgress = { progress ->
                         runOnUiThread {

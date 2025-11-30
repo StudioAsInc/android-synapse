@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.PollOption
 import com.synapse.social.studioasinc.model.ReactionType
 import com.synapse.social.studioasinc.model.UserReaction
 import com.synapse.social.studioasinc.model.MediaItem
@@ -131,7 +132,16 @@ class PostRepository {
                 // Poll fields
                 post.hasPoll?.let { put("has_poll", it) }
                 post.pollQuestion?.let { put("poll_question", it) }
-                post.pollOptions?.let { put("poll_options", it) }
+                post.pollOptions?.let { options ->
+                    put("poll_options", buildJsonArray {
+                        options.forEach { opt ->
+                            add(buildJsonObject {
+                                put("text", opt.text)
+                                put("votes", opt.votes)
+                            })
+                        }
+                    })
+                }
                 post.pollEndTime?.let { put("poll_end_time", it) }
                 // Location fields
                 post.hasLocation?.let { put("has_location", it) }
@@ -251,7 +261,12 @@ class PostRepository {
             // Poll fields
             hasPoll = data["has_poll"]?.jsonPrimitive?.booleanOrNull,
             pollQuestion = data["poll_question"]?.jsonPrimitive?.contentOrNull,
-            pollOptions = data["poll_options"]?.toString(),
+            pollOptions = data["poll_options"]?.jsonArray?.mapNotNull {
+                val obj = it.jsonObject
+                val text = obj["text"]?.jsonPrimitive?.contentOrNull
+                val votes = obj["votes"]?.jsonPrimitive?.intOrNull ?: 0
+                if (text != null) PollOption(text, votes) else null
+            },
             pollEndTime = data["poll_end_time"]?.jsonPrimitive?.contentOrNull,
             // Location fields
             hasLocation = data["has_location"]?.jsonPrimitive?.booleanOrNull,

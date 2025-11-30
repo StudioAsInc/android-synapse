@@ -42,23 +42,5 @@ data class PollOptionResult(
             }
         }
 
-        /**
-         * Parse poll options from JSON string
-         */
-        fun parseOptions(pollOptionsJson: String?): List<String> {
-            if (pollOptionsJson.isNullOrEmpty()) return emptyList()
-            return try {
-                // Poll options are stored as JSON array string
-                pollOptionsJson
-                    .trim()
-                    .removePrefix("[")
-                    .removeSuffix("]")
-                    .split(",")
-                    .map { it.trim().removeSurrounding("\"") }
-                    .filter { it.isNotEmpty() }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
     }
 }

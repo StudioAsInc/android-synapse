@@ -196,7 +196,12 @@ class PostDetailRepository {
             // Poll fields
             hasPoll = data["has_poll"]?.jsonPrimitive?.booleanOrNull,
             pollQuestion = data["poll_question"]?.jsonPrimitive?.contentOrNull,
-            pollOptions = data["poll_options"]?.toString(),
+            pollOptions = data["poll_options"]?.jsonArray?.mapNotNull {
+                val obj = it.jsonObject
+                val text = obj["text"]?.jsonPrimitive?.contentOrNull
+                val votes = obj["votes"]?.jsonPrimitive?.intOrNull ?: 0
+                if (text != null) PollOption(text, votes) else null
+            },
             pollEndTime = data["poll_end_time"]?.jsonPrimitive?.contentOrNull,
             pollAllowMultiple = data["poll_allow_multiple"]?.jsonPrimitive?.booleanOrNull,
             // Location fields
@@ -354,8 +359,9 @@ class PostDetailRepository {
                 .select { filter { eq("id", postId) } }
                 .decodeSingleOrNull<JsonObject>()
             
-            val pollOptionsJson = post?.get("poll_options")?.toString()
-            val options = PollOptionResult.parseOptions(pollOptionsJson)
+            val options = post?.get("poll_options")?.jsonArray?.mapNotNull {
+                it.jsonObject["text"]?.jsonPrimitive?.contentOrNull
+            } ?: emptyList()
             
             if (options.isEmpty()) {
                 return Pair(null, null)
