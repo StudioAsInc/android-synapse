@@ -45,6 +45,13 @@ data class Post(
     val viewsCount: Int = 0,
     @SerialName("reshares_count")
     val resharesCount: Int = 0,
+    // Caption-level interactions (when caption is treated as separate entity)
+    @Transient
+    val captionLikesCount: Int = 0,
+    @Transient
+    val captionCommentsCount: Int = 0,
+    @Transient
+    val userHasLikedCaption: Boolean = false,
     // Media stored as JSONB in posts table
     @SerialName("media_items")
     var mediaItems: MutableList<MediaItem>? = null,
@@ -134,6 +141,33 @@ data class Post(
     }
 
     fun hasMultipleMedia(): Boolean = (mediaItems?.size ?: 0) > 1
+
+    fun toDetailItems(): List<PostDetailItem> {
+        val items = mutableListOf<PostDetailItem>()
+        
+        // Add caption if present
+        if (!postText.isNullOrEmpty()) {
+            items.add(
+                PostDetailItem.Caption(
+                    postId = id,
+                    text = postText,
+                    likesCount = captionLikesCount,
+                    commentsCount = captionCommentsCount,
+                    userHasLiked = userHasLikedCaption
+                )
+            )
+        }
+        
+        // Add media items
+        mediaItems?.forEach { media ->
+            when (media.type) {
+                MediaType.IMAGE -> items.add(PostDetailItem.Image(media, id))
+                MediaType.VIDEO -> items.add(PostDetailItem.Video(media, id))
+            }
+        }
+        
+        return items
+    }
 }
 
 fun HashMap<String, Any>.toPost(): Post = Post(
