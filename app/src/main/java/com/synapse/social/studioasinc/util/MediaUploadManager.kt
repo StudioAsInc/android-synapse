@@ -2,21 +2,24 @@ package com.synapse.social.studioasinc.util
 
 import android.content.Context
 import android.net.Uri
-import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.FileUtil
+import com.synapse.social.studioasinc.ImageUploader
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
-import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.*
+import kotlin.coroutines.resume
 
 /**
- * Manager for uploading media files to Supabase Storage
+ * Manager for uploading media files to ImgBB
  */
 object MediaUploadManager {
     
     /**
-     * Uploads multiple media items to Supabase Storage
+     * Uploads multiple media items to ImgBB
      */
     suspend fun uploadMultipleMedia(
         context: Context,
@@ -28,70 +31,33 @@ object MediaUploadManager {
         withContext(Dispatchers.IO) {
             try {
                 val uploadedItems = mutableListOf<MediaItem>()
-                val storage = SupabaseClient.client.storage
                 
                 mediaItems.forEachIndexed { index, mediaItem ->
-                    try {
-                        val uri = Uri.parse(mediaItem.url)
-                        
-                        // Generate unique filename
-                        val timestamp = System.currentTimeMillis()
-                        val extension = when (mediaItem.type) {
-                            MediaType.IMAGE -> "jpg"
-                            MediaType.VIDEO -> "mp4"
-                        }
-                        val fileName = "${mediaItem.type.name.lowercase()}_${timestamp}_${UUID.randomUUID()}.${extension}"
-                        
-                        // Determine bucket based on media type
-                        val bucketName = when (mediaItem.type) {
-                            MediaType.IMAGE -> "post-images"
-                            MediaType.VIDEO -> "post-videos"
-                        }
-                        
-                        // Read file bytes with fallback support
-                        val bytes: ByteArray? = try {
-                            if (uri.scheme == "content") {
-                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (mediaItem.type == MediaType.IMAGE) {
+                        try {
+                            val filePath = getFilePathFromUri(context, mediaItem.url)
+                            if (filePath != null) {
+                                val imgbbUrl = uploadToImgBB(filePath)
+                                val uploadedItem = mediaItem.copy(
+                                    id = UUID.randomUUID().toString(),
+                                    url = imgbbUrl,
+                                    mimeType = "image/jpeg"
+                                )
+                                uploadedItems.add(uploadedItem)
+                                android.util.Log.d("MediaUpload", "Uploaded image: $imgbbUrl")
                             } else {
-                                val file = java.io.File(mediaItem.url)
-                                if (file.exists()) file.readBytes() else null
+                                android.util.Log.w("MediaUpload", "Cannot get file path: ${mediaItem.url}")
+                                uploadedItems.add(mediaItem)
                             }
                         } catch (e: Exception) {
-                            val file = java.io.File(mediaItem.url)
-                            if (file.exists()) file.readBytes() else null
-                        }
-
-                        if (bytes == null) {
-                            android.util.Log.w("MediaUpload", "Cannot read from URI: ${mediaItem.url}")
+                            android.util.Log.w("MediaUpload", "Failed to upload ${mediaItem.url}: ${e.message}")
                             uploadedItems.add(mediaItem)
-                        } else {
-                            // Upload to Supabase Storage
-                            val bucket = storage.from(bucketName)
-                            bucket.upload(fileName, bytes)
-                            
-                            // Get public URL
-                            val publicUrl = bucket.publicUrl(fileName)
-                            
-                            // Create uploaded media item
-                            val uploadedItem = mediaItem.copy(
-                                id = UUID.randomUUID().toString(),
-                                url = publicUrl,
-                                size = bytes.size.toLong(),
-                                mimeType = when (mediaItem.type) {
-                                    MediaType.IMAGE -> "image/jpeg"
-                                    MediaType.VIDEO -> "video/mp4"
-                                }
-                            )
-                            
-                            uploadedItems.add(uploadedItem)
-                            android.util.Log.d("MediaUpload", "Uploaded ${mediaItem.type}: $publicUrl")
                         }
-                    } catch (uploadError: Exception) {
-                        android.util.Log.w("MediaUpload", "Failed to upload ${mediaItem.url}: ${uploadError.message}")
+                    } else {
+                        // Videos not supported by ImgBB, keep original URL
                         uploadedItems.add(mediaItem)
                     }
                     
-                    // Update progress
                     val progress = (index + 1).toFloat() / mediaItems.size
                     withContext(Dispatchers.Main) {
                         onProgress(progress)
@@ -110,22 +76,32 @@ object MediaUploadManager {
         }
     }
     
-    /**
-     * Upload single media item
-     */
-    suspend fun uploadSingleMedia(
-        context: Context,
-        mediaItem: MediaItem,
-        onProgress: (Float) -> Unit = {},
-        onComplete: (MediaItem) -> Unit,
-        onError: (String) -> Unit
-    ) {
-        uploadMultipleMedia(
-            context,
-            listOf(mediaItem),
-            onProgress,
-            { items -> onComplete(items.first()) },
-            onError
-        )
+    private suspend fun uploadToImgBB(filePath: String): String = suspendCancellableCoroutine { continuation ->
+        ImageUploader.uploadImage(filePath, object : ImageUploader.UploadCallback {
+            override fun onUploadComplete(imageUrl: String) {
+                continuation.resume(imageUrl)
+            }
+            
+            override fun onUploadError(errorMessage: String) {
+                continuation.cancel(Exception(errorMessage))
+            }
+        })
+    }
+    
+    private fun getFilePathFromUri(context: Context, uriString: String): String? {
+        return try {
+            val uri = Uri.parse(uriString)
+            when {
+                uri.scheme == "content" -> FileUtil.convertUriToFilePath(context, uri)
+                uri.scheme == "file" -> uri.path
+                else -> {
+                    val file = File(uriString)
+                    if (file.exists()) file.absolutePath else null
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MediaUpload", "Error getting file path", e)
+            null
+        }
     }
 }
