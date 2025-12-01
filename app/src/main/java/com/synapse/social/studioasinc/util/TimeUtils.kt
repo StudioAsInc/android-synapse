@@ -59,4 +59,16 @@ object TimeUtils {
             else -> "${diff / 604800_000}w ago"
         }
     }
+
+    fun getTimeAgo(isoTimestamp: String): String {
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val timestamp = sdf.parse(isoTimestamp.substringBefore('+').substringBefore('Z'))?.time ?: return "Just now"
+            formatTimestamp(timestamp)
+        } catch (e: Exception) {
+            "Just now"
+        }
+    }
 }
