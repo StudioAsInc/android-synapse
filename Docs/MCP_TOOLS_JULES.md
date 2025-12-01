@@ -1,13 +1,10 @@
-# Supabase MCP Server Test Results
+# Supabase MCP Tools
 
-The Supabase MCP server was successfully tested.
-**Date:** 2024-05-22
-**Project Ref:** apqvyyphlrtmuyjznmuq
-**Status:** Success
+This document lists the available tools from the Supabase MCP server and instructions on how to verify them.
 
 ## Reproducing the Test
 
-A script `test_supabase_mcp.js` has been included in the root directory to verify the MCP server connection.
+A script `mcp.js` is available in the root directory to verify the MCP server connection.
 
 **Prerequisites:**
 - Node.js installed.
@@ -15,12 +12,12 @@ A script `test_supabase_mcp.js` has been included in the root directory to verif
 
 **Run the test:**
 ```bash
-node test_supabase_mcp.js
+node mcp.js
 ```
 
 ## Available Tools
 
-The following tools were returned by the MCP server `tools/list` command during the initial test:
+The following tools were returned by the MCP server `tools/list` command:
 
 - **run_sql_query**: Execute a SQL query on the project's database.
 - **get_database_schema**: Gets the schema of the project's database.
