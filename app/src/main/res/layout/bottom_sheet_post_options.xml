@@ -4,7 +4,8 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingTop="8dp"
-    android:paddingBottom="24dp">
+    android:paddingBottom="24dp"
+    android:background="@drawable/bottom_sheet_background">
 
     <View
         android:layout_width="32dp"
