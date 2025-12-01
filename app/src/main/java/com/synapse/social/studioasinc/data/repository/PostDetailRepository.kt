@@ -121,7 +121,7 @@ class PostDetailRepository {
      */
     suspend fun incrementViewCount(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            client.rpc("increment_post_views", mapOf("post_id" to postId))
+            client.postgrest.rpc("increment_post_views", mapOf("post_id" to postId))
             Log.d(TAG, "Incremented view count for post: $postId")
             Result.success(Unit)
         } catch (e: Exception) {
