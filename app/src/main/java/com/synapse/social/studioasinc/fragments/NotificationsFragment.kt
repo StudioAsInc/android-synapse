@@ -11,7 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.synapse.social.studioasinc.R
-import com.synapse.social.studioasinc.adapter.NotificationAdapter
+import com.synapse.social.studioasinc.adapters.NotificationAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.Notification

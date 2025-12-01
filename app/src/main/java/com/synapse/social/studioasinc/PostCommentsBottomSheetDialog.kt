@@ -24,7 +24,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 // Using direct Supabase services - NO Firebase
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.backend.User
-import com.synapse.social.studioasinc.adapter.CommentsAdapter
+import com.synapse.social.studioasinc.adapters.CommentsAdapter
 import com.synapse.social.studioasinc.model.Comment
 import com.synapse.social.studioasinc.model.Reply
 import java.text.DecimalFormat

@@ -1,4 +1,4 @@
-package com.synapse.social.studioasinc.adapter;
+package com.synapse.social.studioasinc.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;

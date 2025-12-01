@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.synapse.social.studioasinc.adapter.FollowListAdapter
+import com.synapse.social.studioasinc.adapters.FollowListAdapter
 import com.synapse.social.studioasinc.backend.SupabaseFollowService
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch

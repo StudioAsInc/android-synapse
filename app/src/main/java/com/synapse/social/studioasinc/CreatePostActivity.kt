@@ -25,7 +25,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
-import com.synapse.social.studioasinc.adapter.SelectedMediaAdapter
+import com.synapse.social.studioasinc.adapters.SelectedMediaAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.databinding.ActivityCreatePostBinding
