@@ -779,7 +779,7 @@ class ChatActivity : AppCompatActivity(), DefaultLifecycleObserver {
                     
                     // Update adapter with deleted message IDs
                     runOnUiThread {
-                        (chatAdapter as? com.synapse.social.studioasinc.adapter.ChatAdapter)?.userDeletedMessageIds = deletedIds
+                        (chatAdapter as? com.synapse.social.studioasinc.adapters.ChatAdapter)?.userDeletedMessageIds = deletedIds
                     }
                 },
                 onFailure = { error ->

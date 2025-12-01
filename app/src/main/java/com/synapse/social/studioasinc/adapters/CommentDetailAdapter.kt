@@ -35,7 +35,7 @@ class CommentDetailAdapter(
     inner class ViewHolder(private val binding: ItemCommentDetailBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        private var repliesAdapter: RepliesAdapter? = null
+        private var repliesAdapter: NestedRepliesAdapter? = null
         private var repliesExpanded = false
 
         fun bind(comment: CommentWithUser) {
@@ -119,7 +119,7 @@ class CommentDetailAdapter(
                 binding.tvViewReplies.text = binding.root.context.getString(R.string.hide_replies)
                 // Load replies - in real implementation, fetch from repository
                 if (repliesAdapter == null) {
-                    repliesAdapter = RepliesAdapter(onUserClick, onLikeClick, onOptionsClick)
+                    repliesAdapter = NestedRepliesAdapter(onUserClick, onLikeClick, onOptionsClick)
                     binding.rvReplies.layoutManager = LinearLayoutManager(binding.root.context)
                     binding.rvReplies.adapter = repliesAdapter
                 }
@@ -137,20 +137,18 @@ class CommentDetailAdapter(
     }
 }
 
-class RepliesAdapter(
+private class NestedRepliesAdapter(
     private val onUserClick: (String) -> Unit,
     private val onLikeClick: (CommentWithUser) -> Unit,
     private val onOptionsClick: (CommentWithUser) -> Unit
-) : ListAdapter<CommentWithUser, RepliesAdapter.ViewHolder>(
+) : ListAdapter<CommentWithUser, NestedRepliesAdapter.ViewHolder>(
     object : DiffUtil.ItemCallback<CommentWithUser>() {
         override fun areItemsTheSame(old: CommentWithUser, new: CommentWithUser) = old.id == new.id
         override fun areContentsTheSame(old: CommentWithUser, new: CommentWithUser) = old == new
     }
 ) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemCommentDetailBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false
-        )
+        val binding = ItemCommentDetailBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return ViewHolder(binding)
     }
 
@@ -158,58 +156,20 @@ class RepliesAdapter(
         holder.bind(getItem(position))
     }
 
-    inner class ViewHolder(private val binding: ItemCommentDetailBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
+    inner class ViewHolder(private val binding: ItemCommentDetailBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(reply: CommentWithUser) {
-            // Smaller avatar for replies
             binding.ivAvatar.layoutParams.width = 28.dpToPx()
             binding.ivAvatar.layoutParams.height = 28.dpToPx()
-
-            Glide.with(binding.root.context)
-                .load(reply.user?.profileImageUrl)
-                .placeholder(R.drawable.avatar)
-                .into(binding.ivAvatar)
-
+            Glide.with(binding.root.context).load(reply.user?.profileImageUrl).placeholder(R.drawable.avatar).into(binding.ivAvatar)
             binding.tvUsername.text = reply.user?.displayName ?: reply.user?.username ?: "Unknown"
             binding.tvContent.text = reply.content
             binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt?.toLongOrNull() ?: System.currentTimeMillis())
-
-            // Reactions
-            val totalReactions = reply.reactionSummary.values.sum()
-            binding.reactionBadge.isVisible = totalReactions > 0
-            if (totalReactions > 0) {
-                val topEmoji = reply.reactionSummary.entries
-                    .maxByOrNull { it.value }?.key?.emoji ?: "👍"
-                binding.tvReactionEmoji.text = topEmoji
-                binding.tvReactionCount.text = totalReactions.toString()
-            }
-
-            // Like button state
-            if (reply.userReaction != null) {
-                binding.tvLikeAction.setTextColor(
-                    binding.root.context.getColor(R.color.colorPrimary)
-                )
-            } else {
-                binding.tvLikeAction.setTextColor(
-                    binding.root.context.getColor(R.color.colorOnSurface)
-                )
-            }
-
-            // Hide reply-specific elements for nested replies
+            binding.reactionBadge.isVisible = reply.reactionSummary.values.sum() > 0
             binding.viewRepliesContainer.isVisible = false
-            binding.tvReplyAction.isVisible = false
-
-            binding.ivAvatar.setOnClickListener { onUserClick(reply.userId) }
+            binding.ivAvatar.setOnClickListener { reply.user?.id?.let(onUserClick) }
             binding.tvLikeAction.setOnClickListener { onLikeClick(reply) }
-            binding.cardComment.setOnLongClickListener {
-                onOptionsClick(reply)
-                true
-            }
-        }
-
-        private fun Int.dpToPx(): Int {
-            return (this * binding.root.context.resources.displayMetrics.density).toInt()
+            binding.tvOptionsAction.setOnClickListener { onOptionsClick(reply) }
         }
     }
 }
+    private val onUserClick: (String) -> Unit,
