@@ -62,8 +62,20 @@ class HomeFragment : Fragment() {
         setupRecyclerView()
         setupViewModel()
         setupListeners()
+        setupFragmentResultListener()
 
         viewModel.loadPosts()
+    }
+
+    private fun setupFragmentResultListener() {
+        parentFragmentManager.setFragmentResultListener("post_action", viewLifecycleOwner) { key, bundle ->
+            if (key == "post_action") {
+                val action = bundle.getString("action")
+                if (action == "delete") {
+                    viewModel.loadPosts()
+                }
+            }
+        }
     }
 
     override fun onPause() {
@@ -130,6 +142,9 @@ class HomeFragment : Fragment() {
             },
             onReactionPickerRequested = { post, _ ->
                 showReactionPicker(post)
+            },
+            onMoreOptionsClicked = { post ->
+                showMoreOptionsDialog(post)
             }
         )
         headerAdapter = HeaderAdapter(requireContext(), this)
@@ -301,50 +316,13 @@ class HomeFragment : Fragment() {
     }
     
     private fun showMoreOptionsDialog(post: Post) {
-        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
-        val currentUid = currentUser?.id
-        val isOwnPost = post.authorUid == currentUid
-        
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-        val rootView = layoutInflater.inflate(R.layout.bottom_sheet_post_options, null)
-        bottomSheet.setContentView(rootView)
-        
-        val recyclerView = rootView.findViewById<RecyclerView>(R.id.optionsRecyclerView)
-        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
-        
-        val items = buildPostMenuItems(post, isOwnPost)
-        recyclerView.adapter = com.synapse.social.studioasinc.adapters.PostOptionsAdapter(items)
-        
-        bottomSheet.show()
-    }
-    
-    private fun buildPostMenuItems(post: Post, isOwner: Boolean): List<com.synapse.social.studioasinc.model.PostActionItem> {
-        val items = mutableListOf<com.synapse.social.studioasinc.model.PostActionItem>()
-        
-        if (isOwner) {
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Edit", R.drawable.ic_edit_note_48px) { 
-                editPost(post)
-            })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Delete", R.drawable.ic_delete_48px, true) { 
-                deletePost(post)
-            })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Statistics", R.drawable.data_usage_24px) { 
-                showPostStatistics(post)
-            })
-        } else {
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Report", R.drawable.ic_report_48px, true) { 
-                reportPost(post)
-            })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Hide", R.drawable.mobile_block_24px) { 
-                hidePost(post)
-            })
-        }
-        
-        items.add(com.synapse.social.studioasinc.model.PostActionItem("Copy Link", R.drawable.ic_content_copy_48px) { 
-            copyPostLink(post)
-        })
-        
-        return items
+        com.synapse.social.studioasinc.PostMoreBottomSheetDialog.newInstance(
+            post.id,
+            post.authorUid,
+            post.postType ?: "text",
+            post.postImage,
+            post.postText
+        ).show(parentFragmentManager, "PostMoreOptions")
     }
     
     private fun showCommentsDialog(post: Post) {

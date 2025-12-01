@@ -35,7 +35,8 @@ class EnhancedPostsAdapter(
     private val onReactionSelected: ((Post, ReactionType) -> Unit)? = null,
     private val onReactionSummaryClicked: ((Post) -> Unit)? = null,
     private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
-    private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null
+    private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null,
+    private val onMoreOptionsClicked: ((Post) -> Unit)? = null
 ) : ListAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
     fun setLoadingMore(isLoading: Boolean) {
@@ -356,7 +357,7 @@ class EnhancedPostsAdapter(
 
             // Options button
             postOptions.setOnClickListener {
-                // Show post options menu
+                onMoreOptionsClicked?.invoke(post)
             }
         }
 

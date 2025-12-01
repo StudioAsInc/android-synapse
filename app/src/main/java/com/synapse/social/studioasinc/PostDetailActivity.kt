@@ -32,6 +32,7 @@ class PostDetailActivity : AppCompatActivity() {
     private lateinit var commentsAdapter: CommentDetailAdapter
     private var replyToCommentId: String? = null
     private var replyToUsername: String? = null
+    private var currentPost: Post? = null
 
     companion object {
         const val EXTRA_POST_ID = "post_id"
@@ -160,6 +161,7 @@ class PostDetailActivity : AppCompatActivity() {
 
     private fun displayPost(postDetail: PostDetail) {
         val post = postDetail.post
+        currentPost = post
         val author = postDetail.author
 
         // Author info
@@ -283,20 +285,14 @@ class PostDetailActivity : AppCompatActivity() {
     }
 
     private fun showMoreOptions(anchor: View) {
-        PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, R.string.bookmark_added)
-            menu.add(0, 2, 1, R.string.reshare_title)
-            menu.add(0, 3, 2, R.string.report_title)
-            setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    1 -> { viewModel.toggleBookmark(); true }
-                    2 -> { showReshareDialog(); true }
-                    3 -> { showReportDialog(); true }
-                    else -> false
-                }
-            }
-            show()
-        }
+        val post = currentPost ?: return
+        com.synapse.social.studioasinc.PostMoreBottomSheetDialog.newInstance(
+            post.id,
+            post.authorUid,
+            post.postType ?: "text",
+            post.postImage,
+            post.postText
+        ).show(supportFragmentManager, "PostMoreOptions")
     }
 
     private fun sharePost() {
