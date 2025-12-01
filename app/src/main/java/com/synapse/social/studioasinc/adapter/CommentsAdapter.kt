@@ -65,6 +65,7 @@ class CommentsAdapter(
         private val likeButton: ImageView = itemView.findViewById(R.id.like_unlike_ic)
         private val replyButton: LinearLayout = itemView.findViewById(R.id.body)
         private val badge: ImageView = itemView.findViewById(R.id.badge)
+        private val timestamp: TextView = itemView.findViewById(R.id.push)
         private val repliesRecyclerView: RecyclerView = itemView.findViewById(R.id.other_replies_list)
         private val showRepliesButton: TextView = itemView.findViewById(R.id.show_other_replies_button)
         private val hideRepliesButton: TextView = itemView.findViewById(R.id.hide_replies_list_button)
@@ -88,6 +89,7 @@ class CommentsAdapter(
         ) {
             commentText.text = comment.comment
             likeCount.text = comment.like.toString()
+            timestamp.text = com.synapse.social.studioasinc.util.TimeUtils.getTimeAgo(comment.push_time)
 
             user?.let {
                 username.text = it.nickname ?: "@${it.username}"
@@ -116,14 +118,15 @@ class CommentsAdapter(
             repliesAdapter.setUserData(userMap)
             repliesAdapter.submitList(replies)
 
-            if (replies.isNotEmpty()) {
-                repliesRecyclerView.visibility = View.VISIBLE
-                showRepliesButton.visibility = View.GONE
-                hideRepliesButton.visibility = View.VISIBLE
-            } else {
+            // Show/hide based on whether replies exist
+            if (replies.isEmpty()) {
                 repliesRecyclerView.visibility = View.GONE
                 showRepliesButton.visibility = View.VISIBLE
                 hideRepliesButton.visibility = View.GONE
+            } else {
+                repliesRecyclerView.visibility = View.VISIBLE
+                showRepliesButton.visibility = View.GONE
+                hideRepliesButton.visibility = View.VISIBLE
             }
 
             showRepliesButton.setOnClickListener {
