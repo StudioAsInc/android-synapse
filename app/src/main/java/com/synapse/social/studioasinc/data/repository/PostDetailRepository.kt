@@ -4,6 +4,7 @@ import android.util.Log
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.model.*
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.gotrue.auth
@@ -122,7 +123,7 @@ class PostDetailRepository {
      */
     suspend fun incrementViewCount(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            client.rpc("increment_post_views", mapOf("post_id" to postId))
+            client.postgrest.rpc("increment_post_views", mapOf("post_id" to postId))
             Log.d(TAG, "Incremented view count for post: $postId")
             Result.success(Unit)
         } catch (e: Exception) {
