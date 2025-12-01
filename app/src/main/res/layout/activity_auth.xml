@@ -256,7 +256,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnGoogleAuth"
-                    style="@style/Widget.Material3.Button.OutlinedIcon"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:minWidth="48dp"
                     android:layout_height="wrap_content"
@@ -266,7 +266,7 @@
                     android:contentDescription="@string/sign_in_with_google"/>
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnFacebookAuth"
-                    style="@style/Widget.Material3.Button.OutlinedIcon"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:minWidth="48dp"
                     android:layout_height="wrap_content"
@@ -276,7 +276,7 @@
                     android:contentDescription="@string/sign_in_with_facebook"/>
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAppleAuth"
-                    style="@style/Widget.Material3.Button.OutlinedIcon"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:minWidth="48dp"
                     android:layout_height="wrap_content"
