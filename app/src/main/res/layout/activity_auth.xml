@@ -22,11 +22,11 @@
                 android:id="@+id/cardLogo"
                 android:layout_width="96dp"
                 android:layout_height="96dp"
-                android:layout_marginTop="48dp"
+                android:layout_marginTop="32dp"
                 app:cardCornerRadius="24dp"
                 app:cardElevation="4dp"
                 app:strokeWidth="0dp"
-                app:cardBackgroundColor="?attr/colorOnSurfaceContainer"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
@@ -99,17 +99,17 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         android:hint="Email"
                         app:startIconDrawable="@drawable/ic_email_enhanced"
-                        app:startIconTint="?attr/colorOnSurface"
-                        app:boxStrokeColor="?attr/colorOnSurface"
+                        app:startIconTint="?attr/colorPrimary"
+                        app:boxStrokeColor="?attr/colorPrimary"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusBottomEnd="12dp"
-                        app:hintTextColor="?attr/colorOnSurface"
+                        app:hintTextColor="?attr/colorPrimary"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -131,15 +131,15 @@
                         android:layout_marginBottom="8dp"
                         android:hint="Password"
                         app:startIconDrawable="@drawable/ic_lock_enhanced"
-                        app:startIconTint="?attr/colorOnSurface"
+                        app:startIconTint="?attr/colorPrimary"
                         app:endIconMode="password_toggle"
-                        app:boxStrokeColor="?attr/colorOnSurface"
+                        app:boxStrokeColor="?attr/colorPrimary"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusBottomEnd="12dp"
-                        app:hintTextColor="?attr/colorOnSurface"
+                        app:hintTextColor="?attr/colorPrimary"
                         app:errorEnabled="true"
                         app:helperTextEnabled="true">
 
@@ -160,20 +160,20 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="end"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         android:text="Forgot Password?"
-                        android:textColor="?attr/colorOnSurface"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="14sp"
                         android:fontFamily="@font/product_sans"
                         android:visibility="visible"
-                        app:rippleColor="?attr/colorOnSurfaceContainer" />
+                        app:rippleColor="?attr/colorPrimaryContainer" />
 
                     <!-- Password Strength Indicator -->
                     <LinearLayout
                         android:id="@+id/layoutPasswordStrength"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         android:orientation="vertical"
                         android:visibility="gone">
 
@@ -203,18 +203,18 @@
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         android:hint="Username"
                         android:visibility="gone"
                         app:startIconDrawable="@drawable/ic_person_enhanced"
-                        app:startIconTint="?attr/colorOnSurface"
-                        app:boxStrokeColor="?attr/colorOnSurface"
+                        app:startIconTint="?attr/colorPrimary"
+                        app:boxStrokeColor="?attr/colorPrimary"
                         app:boxStrokeWidth="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusBottomEnd="12dp"
-                        app:hintTextColor="?attr/colorOnSurface"
+                        app:hintTextColor="?attr/colorPrimary"
                         app:errorEnabled="true">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -232,7 +232,7 @@
                         android:id="@+id/cardError"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         android:visibility="gone"
                         app:cardBackgroundColor="?attr/colorErrorContainer"
                         app:cardCornerRadius="16dp"
@@ -292,7 +292,7 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp"
                         android:fontFamily="@font/product_sans"
-                        app:rippleColor="?attr/colorOnSurfaceContainer" />
+                        app:rippleColor="?attr/colorPrimaryContainer" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -478,7 +478,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="24dp"
-                        app:cardBackgroundColor="?attr/colorOnSurfaceContainer"
+                        app:cardBackgroundColor="?attr/colorPrimaryContainer"
                         app:cardCornerRadius="12dp"
                         app:cardElevation="0dp"
                         app:strokeWidth="0dp">
@@ -526,7 +526,7 @@
                             android:layout_gravity="center"
                             app:indicatorSize="56dp"
                             app:trackThickness="5dp"
-                            app:indicatorColor="?attr/colorOnSurface"
+                            app:indicatorColor="?attr/colorPrimary"
                             app:trackColor="?attr/colorSurfaceVariant"
                             app:trackCornerRadius="2.5dp"
                             app:indicatorDirectionCircular="counterclockwise" />
@@ -537,7 +537,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
                             android:text="60"
-                            android:textColor="?attr/colorOnSurface"
+                            android:textColor="?attr/colorPrimary"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/product_sans" />
@@ -561,7 +561,7 @@
                             android:layout_marginEnd="8dp"
                             app:indicatorSize="24dp"
                             app:trackThickness="3dp"
-                            app:indicatorColor="?attr/colorOnSurface"
+                            app:indicatorColor="?attr/colorPrimary"
                             app:trackColor="?attr/colorSurfaceVariant"
                             android:indeterminate="true" />
                         
@@ -582,7 +582,7 @@
                         android:layout_height="wrap_content"
                         android:minHeight="@dimen/auth_min_touch_target"
                         android:text="Back to Sign In"
-                        android:textColor="?attr/colorOnSurface"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="15sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/product_sans" />
@@ -625,7 +625,7 @@
                             android:layout_marginBottom="24dp"
                             app:indicatorSize="64dp"
                             app:trackThickness="6dp"
-                            app:indicatorColor="?attr/colorOnSurface" />
+                            app:indicatorColor="?attr/colorPrimary" />
 
                         <TextView
                             android:id="@+id/tvLoadingMessage"

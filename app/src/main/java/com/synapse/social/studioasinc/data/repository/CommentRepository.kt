@@ -73,7 +73,10 @@ class CommentRepository {
                 }
                 .decodeList<JsonObject>()
             
-            val comments = response.mapNotNull { parseCommentFromJson(it) }
+            val comments = mutableListOf<CommentWithUser>()
+            for (json in response) {
+                parseCommentFromJson(json)?.let { comments.add(it) }
+            }
             
             Log.d(TAG, "Fetched ${comments.size} comments for post: $postId")
             Result.success(comments)
@@ -113,7 +116,10 @@ class CommentRepository {
                 }
                 .decodeList<JsonObject>()
             
-            val replies = response.mapNotNull { parseCommentFromJson(it) }
+            val replies = mutableListOf<CommentWithUser>()
+            for (json in response) {
+                parseCommentFromJson(json)?.let { replies.add(it) }
+            }
             
             Log.d(TAG, "Fetched ${replies.size} replies for comment: $commentId")
             Result.success(replies)
@@ -357,12 +363,17 @@ class CommentRepository {
     /**
      * Parse CommentWithUser from JsonObject with embedded user data.
      */
-    private fun parseCommentFromJson(data: JsonObject): CommentWithUser? {
+    private suspend fun parseCommentFromJson(data: JsonObject): CommentWithUser? {
         return try {
             val user = parseUserProfileFromJson(data["users"]?.jsonObject)
+            val commentId = data["id"]?.jsonPrimitive?.contentOrNull ?: return null
+            
+            // Fetch reaction data
+            val reactionSummary = getCommentReactionSummarySync(commentId)
+            val userReaction = getUserCommentReactionSync(commentId)
             
             CommentWithUser(
-                id = data["id"]?.jsonPrimitive?.contentOrNull ?: return null,
+                id = commentId,
                 postId = data["post_id"]?.jsonPrimitive?.contentOrNull ?: return null,
                 userId = data["user_id"]?.jsonPrimitive?.contentOrNull ?: return null,
                 parentCommentId = data["parent_comment_id"]?.jsonPrimitive?.contentOrNull,
@@ -374,10 +385,51 @@ class CommentRepository {
                 repliesCount = data["replies_count"]?.jsonPrimitive?.intOrNull ?: 0,
                 isDeleted = data["is_deleted"]?.jsonPrimitive?.booleanOrNull ?: false,
                 isEdited = data["is_edited"]?.jsonPrimitive?.booleanOrNull ?: false,
-                user = user
+                isPinned = data["is_pinned"]?.jsonPrimitive?.booleanOrNull ?: false,
+                user = user,
+                reactionSummary = reactionSummary,
+                userReaction = userReaction
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse comment: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Get reaction summary for a comment synchronously (for use in parsing).
+     */
+    private suspend fun getCommentReactionSummarySync(commentId: String): Map<ReactionType, Int> {
+        return try {
+            val reactions = client.from("comment_reactions")
+                .select { filter { eq("comment_id", commentId) } }
+                .decodeList<JsonObject>()
+            
+            reactions
+                .groupBy { ReactionType.fromString(it["reaction_type"]?.jsonPrimitive?.contentOrNull ?: "like") }
+                .mapValues { it.value.size }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch comment reaction summary: ${e.message}")
+            emptyMap()
+        }
+    }
+    
+    /**
+     * Get current user's reaction for a comment synchronously (for use in parsing).
+     */
+    private suspend fun getUserCommentReactionSync(commentId: String): ReactionType? {
+        return try {
+            val currentUser = client.auth.currentUserOrNull() ?: return null
+            
+            val reaction = client.from("comment_reactions")
+                .select { filter { eq("comment_id", commentId); eq("user_id", currentUser.id) } }
+                .decodeSingleOrNull<JsonObject>()
+            
+            reaction?.get("reaction_type")?.jsonPrimitive?.contentOrNull?.let {
+                ReactionType.fromString(it)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user comment reaction: ${e.message}")
             null
         }
     }

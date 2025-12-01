@@ -119,7 +119,7 @@ class CommentDetailAdapter(
                 binding.tvViewReplies.text = binding.root.context.getString(R.string.hide_replies)
                 // Load replies - in real implementation, fetch from repository
                 if (repliesAdapter == null) {
-                    repliesAdapter = RepliesAdapter(onUserClick, onOptionsClick)
+                    repliesAdapter = RepliesAdapter(onUserClick, onLikeClick, onOptionsClick)
                     binding.rvReplies.layoutManager = LinearLayoutManager(binding.root.context)
                     binding.rvReplies.adapter = repliesAdapter
                 }
@@ -139,6 +139,7 @@ class CommentDetailAdapter(
 
 class RepliesAdapter(
     private val onUserClick: (String) -> Unit,
+    private val onLikeClick: (CommentWithUser) -> Unit,
     private val onOptionsClick: (CommentWithUser) -> Unit
 ) : ListAdapter<CommentWithUser, RepliesAdapter.ViewHolder>(
     object : DiffUtil.ItemCallback<CommentWithUser>() {
@@ -174,11 +175,33 @@ class RepliesAdapter(
             binding.tvContent.text = reply.content
             binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt?.toLongOrNull() ?: System.currentTimeMillis())
 
+            // Reactions
+            val totalReactions = reply.reactionSummary.values.sum()
+            binding.reactionBadge.isVisible = totalReactions > 0
+            if (totalReactions > 0) {
+                val topEmoji = reply.reactionSummary.entries
+                    .maxByOrNull { it.value }?.key?.emoji ?: "👍"
+                binding.tvReactionEmoji.text = topEmoji
+                binding.tvReactionCount.text = totalReactions.toString()
+            }
+
+            // Like button state
+            if (reply.userReaction != null) {
+                binding.tvLikeAction.setTextColor(
+                    binding.root.context.getColor(R.color.colorPrimary)
+                )
+            } else {
+                binding.tvLikeAction.setTextColor(
+                    binding.root.context.getColor(R.color.colorOnSurface)
+                )
+            }
+
             // Hide reply-specific elements for nested replies
             binding.viewRepliesContainer.isVisible = false
             binding.tvReplyAction.isVisible = false
 
             binding.ivAvatar.setOnClickListener { onUserClick(reply.userId) }
+            binding.tvLikeAction.setOnClickListener { onLikeClick(reply) }
             binding.cardComment.setOnLongClickListener {
                 onOptionsClick(reply)
                 true

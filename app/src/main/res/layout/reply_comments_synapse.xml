@@ -14,7 +14,7 @@
 		android:orientation="horizontal">
 		<androidx.cardview.widget.CardView
 			android:id="@+id/profileCard"
-			android:layout_width="28dp"
+			android:layout_width="20dp"
 			android:layout_height="28dp"
 			app:cardElevation="0dp">
 			<de.hdodenhof.circleimageview.CircleImageView
@@ -102,13 +102,13 @@
 					android:layout_height="wrap_content"
 					android:gravity="center_horizontal|center_vertical"
 					android:orientation="vertical"
-					android:alpha="0.0">
+					
 					<ImageView
 						android:id="@+id/more_ic"
 						android:focusable="false"
-						android:layout_width="28dp"
-						android:layout_height="22dp"
-						android:src="@drawable/default_image"
+						android:layout_width="20dp"
+						android:layout_height="20dp"
+						android:src="@drawable/ic_more_vert"
 						android:scaleType="fitCenter" />
 				</LinearLayout>
 			</LinearLayout>
@@ -280,7 +280,7 @@
 		android:id="@+id/progress"
 		android:focusable="false"
 		android:layout_width="match_parent"
-		android:layout_height="22dp"
+		android:layout_height="20dp"
 		android:layout_marginBottom="8dp"
 		android:indeterminate="false"
 		style="?android:progressBarStyle"

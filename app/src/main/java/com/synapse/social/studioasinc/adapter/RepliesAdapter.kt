@@ -46,6 +46,7 @@ class RepliesAdapter(
         private val likeCount: TextView = itemView.findViewById(R.id.like_count)
         private val likeButton: ImageView = itemView.findViewById(R.id.like_unlike_ic)
         private val badge: ImageView = itemView.findViewById(R.id.badge)
+        private val timestamp: TextView = itemView.findViewById(R.id.push)
 
         fun bind(
             reply: Reply,
@@ -55,6 +56,7 @@ class RepliesAdapter(
         ) {
             replyText.text = reply.comment
             likeCount.text = reply.like.toString()
+            timestamp.text = com.synapse.social.studioasinc.util.TimeUtils.getTimeAgo(reply.push_time)
 
             user?.let {
                 username.text = it.nickname ?: "@${it.username}"

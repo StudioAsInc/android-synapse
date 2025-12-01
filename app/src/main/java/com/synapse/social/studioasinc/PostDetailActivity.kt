@@ -167,7 +167,8 @@ class PostDetailActivity : AppCompatActivity() {
             .into(binding.ivAuthorAvatar)
         binding.tvAuthorName.text = author?.displayName ?: author?.username
         binding.ivVerifiedBadge.isVisible = author?.isVerified ?: false
-        binding.tvPostTime.text = "${TimeUtils.formatTimestamp(post.publishDate?.toLongOrNull() ?: System.currentTimeMillis())} · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
+        val timeAgo = post.publishDate?.let { TimeUtils.getTimeAgo(it) } ?: "Just now"
+        binding.tvPostTime.text = "$timeAgo · ${if (post.postVisibility == "public") getString(R.string.public_visibility) else getString(R.string.private_visibility)}"
 
         // Content
         binding.tvPostContent.text = post.postText
@@ -257,6 +258,11 @@ class PostDetailActivity : AppCompatActivity() {
         binding.replyIndicator.isVisible = true
         binding.tvReplyingTo.text = getString(R.string.replying_to, comment.user?.username ?: "user")
         binding.etComment.hint = getString(R.string.reply_hint, comment.user?.username ?: "user")
+        
+        // Auto-add @mention
+        val mention = "@${comment.user?.username ?: "user"} "
+        binding.etComment.setText(mention)
+        binding.etComment.setSelection(mention.length)
         binding.etComment.requestFocus()
     }
 
@@ -265,6 +271,7 @@ class PostDetailActivity : AppCompatActivity() {
         replyToUsername = null
         binding.replyIndicator.isVisible = false
         binding.etComment.hint = getString(R.string.comment_hint)
+        binding.etComment.text?.clear()
     }
 
     private fun showReactionPicker() {
