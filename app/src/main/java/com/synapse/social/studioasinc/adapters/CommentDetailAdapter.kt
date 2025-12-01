@@ -158,17 +158,14 @@ private class NestedRepliesAdapter(
 
     inner class ViewHolder(private val binding: ItemCommentDetailBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(reply: CommentWithUser) {
-            binding.ivAvatar.layoutParams.width = 28.dpToPx()
-            binding.ivAvatar.layoutParams.height = 28.dpToPx()
             Glide.with(binding.root.context).load(reply.user?.profileImageUrl).placeholder(R.drawable.avatar).into(binding.ivAvatar)
             binding.tvUsername.text = reply.user?.displayName ?: reply.user?.username ?: "Unknown"
             binding.tvContent.text = reply.content
             binding.tvTime.text = TimeUtils.formatTimestamp(reply.createdAt?.toLongOrNull() ?: System.currentTimeMillis())
             binding.reactionBadge.isVisible = reply.reactionSummary.values.sum() > 0
             binding.viewRepliesContainer.isVisible = false
-            binding.ivAvatar.setOnClickListener { reply.user?.id?.let(onUserClick) }
+            binding.ivAvatar.setOnClickListener { reply.userId?.let { onUserClick(it) } }
             binding.tvLikeAction.setOnClickListener { onLikeClick(reply) }
-            binding.tvOptionsAction.setOnClickListener { onOptionsClick(reply) }
         }
     }
 }
