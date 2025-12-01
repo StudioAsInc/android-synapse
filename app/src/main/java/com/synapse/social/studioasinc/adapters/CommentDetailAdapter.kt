@@ -172,4 +172,3 @@ private class NestedRepliesAdapter(
         }
     }
 }
-    private val onUserClick: (String) -> Unit,
