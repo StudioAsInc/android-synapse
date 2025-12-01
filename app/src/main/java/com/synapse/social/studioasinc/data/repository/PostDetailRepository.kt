@@ -121,14 +121,7 @@ class PostDetailRepository {
      */
     suspend fun incrementViewCount(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Use PostgreSQL's atomic increment to avoid race conditions
-            client.from("posts")
-                .update({
-                    set("views_count", "views_count + 1")
-                }) {
-                    filter { eq("id", postId) }
-                }
-            
+            client.rpc("increment_post_views", mapOf("post_id" to postId))
             Log.d(TAG, "Incremented view count for post: $postId")
             Result.success(Unit)
         } catch (e: Exception) {

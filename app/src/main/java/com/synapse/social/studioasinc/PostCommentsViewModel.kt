@@ -43,7 +43,7 @@ class PostCommentsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Fetch comments from Supabase (only top-level comments, not replies)
+                // Fetch all comments (including replies) for the post
                 val commentsResult = dbService.selectWithFilter(
                     table = "comments",
                     columns = "*",
@@ -52,26 +52,44 @@ class PostCommentsViewModel : ViewModel() {
                 )
                 
                 val commentsList = mutableListOf<Comment>()
+                val repliesList = mutableListOf<Reply>()
                 val uids = mutableListOf<String>()
                 
                 commentsResult.getOrNull()?.forEach { commentData ->
-                    // Skip deleted comments and replies (parent_comment_id is not null)
-                    if (commentData["deleted_at"] != null || commentData["parent_comment_id"] != null) return@forEach
+                    // Skip deleted comments
+                    if (commentData["deleted_at"] != null) return@forEach
                     
-                    // Convert map to Comment object
-                    val comment = Comment(
-                        uid = commentData["user_id"] as? String ?: "",
-                        comment = commentData["content"] as? String ?: "",
-                        push_time = commentData["created_at"] as? String ?: "",
-                        key = commentData["id"] as? String ?: "",
-                        like = (commentData["likes_count"] as? Number)?.toLong() ?: 0L,
-                        postKey = commentData["post_id"] as? String ?: ""
-                    )
-                    commentsList.add(comment)
-                    comment.uid.let { uids.add(it) }
+                    val parentCommentId = commentData["parent_comment_id"] as? String
+                    
+                    if (parentCommentId == null) {
+                        // This is a top-level comment
+                        val comment = Comment(
+                            uid = commentData["user_id"] as? String ?: "",
+                            comment = commentData["content"] as? String ?: "",
+                            push_time = commentData["created_at"] as? String ?: "",
+                            key = commentData["id"] as? String ?: "",
+                            like = (commentData["likes_count"] as? Number)?.toLong() ?: 0L,
+                            postKey = commentData["post_id"] as? String ?: ""
+                        )
+                        commentsList.add(comment)
+                        comment.uid.let { uids.add(it) }
+                    } else {
+                        // This is a reply
+                        val reply = Reply(
+                            uid = commentData["user_id"] as? String ?: "",
+                            comment = commentData["content"] as? String ?: "",
+                            push_time = commentData["created_at"] as? String ?: "",
+                            key = commentData["id"] as? String ?: "",
+                            like = (commentData["likes_count"] as? Number)?.toLong() ?: 0L,
+                            replyCommentkey = parentCommentId
+                        )
+                        repliesList.add(reply)
+                        reply.uid.let { uids.add(it) }
+                    }
                 }
                 
                 _comments.postValue(commentsList.sortedByDescending { it.like ?: 0L })
+                _replies.postValue(repliesList.sortedByDescending { it.like ?: 0L })
                 fetchUsersData(uids)
             } catch (e: Exception) {
                 _error.postValue("Failed to load comments: ${e.message}")
