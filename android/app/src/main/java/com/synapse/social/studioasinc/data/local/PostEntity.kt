@@ -59,68 +59,62 @@ data class PostEntity(
 )
 
 class MediaItemConverter {
+    private val gson = Gson()
+    
     @TypeConverter
     fun fromMediaItemList(mediaItems: List<MediaItem>?): String? {
-        if (mediaItems == null) {
-            return null
-        }
-        val gson = Gson()
-        val type = object : TypeToken<List<MediaItem>>() {}.type
-        return gson.toJson(mediaItems, type)
+        return mediaItems?.let { gson.toJson(it) }
     }
 
     @TypeConverter
     fun toMediaItemList(mediaItemsString: String?): List<MediaItem>? {
-        if (mediaItemsString == null) {
-            return null
+        if (mediaItemsString == null) return null
+        return try {
+            val type = object : TypeToken<List<MediaItem>>() {}.type
+            gson.fromJson(mediaItemsString, type)
+        } catch (e: Exception) {
+            null
         }
-        val gson = Gson()
-        val type = object : TypeToken<List<MediaItem>>() {}.type
-        return gson.fromJson(mediaItemsString, type)
     }
 }
 
 class PollOptionConverter {
+    private val gson = Gson()
+    
     @TypeConverter
     fun fromPollOptionList(pollOptions: List<PollOption>?): String? {
-        if (pollOptions == null) {
-            return null
-        }
-        val gson = Gson()
-        val type = object : TypeToken<List<PollOption>>() {}.type
-        return gson.toJson(pollOptions, type)
+        return pollOptions?.let { gson.toJson(it) }
     }
 
     @TypeConverter
     fun toPollOptionList(pollOptionsString: String?): List<PollOption>? {
-        if (pollOptionsString == null) {
-            return null
+        if (pollOptionsString == null) return null
+        return try {
+            val type = object : TypeToken<List<PollOption>>() {}.type
+            gson.fromJson(pollOptionsString, type)
+        } catch (e: Exception) {
+            null
         }
-        val gson = Gson()
-        val type = object : TypeToken<List<PollOption>>() {}.type
-        return gson.fromJson(pollOptionsString, type)
     }
 }
 
 class ReactionTypeConverter {
+    private val gson = Gson()
+    
     @TypeConverter
     fun fromReactionMap(reactions: Map<ReactionType, Int>?): String? {
-        if (reactions == null) {
-            return null
-        }
-        val gson = Gson()
-        val type = object : TypeToken<Map<ReactionType, Int>>() {}.type
-        return gson.toJson(reactions, type)
+        return reactions?.let { gson.toJson(it) }
     }
 
     @TypeConverter
     fun toReactionMap(reactionsString: String?): Map<ReactionType, Int>? {
-        if (reactionsString == null) {
-            return null
+        if (reactionsString == null) return null
+        return try {
+            val type = object : TypeToken<Map<ReactionType, Int>>() {}.type
+            gson.fromJson(reactionsString, type)
+        } catch (e: Exception) {
+            null
         }
-        val gson = Gson()
-        val type = object : TypeToken<Map<ReactionType, Int>>() {}.type
-        return gson.fromJson(reactionsString, type)
     }
 
     @TypeConverter
@@ -130,6 +124,12 @@ class ReactionTypeConverter {
 
     @TypeConverter
     fun toReactionType(reactionTypeString: String?): ReactionType? {
-        return reactionTypeString?.let { ReactionType.valueOf(it) }
+        return reactionTypeString?.let { 
+            try {
+                ReactionType.valueOf(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }

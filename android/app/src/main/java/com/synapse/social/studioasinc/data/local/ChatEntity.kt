@@ -22,23 +22,21 @@ data class ChatEntity(
 )
 
 class ParticipantsConverter {
+    private val gson = Gson()
+    
     @TypeConverter
     fun fromParticipantsList(participants: List<String>?): String? {
-        if (participants == null) {
-            return null
-        }
-        val gson = Gson()
-        val type = object : TypeToken<List<String>>() {}.type
-        return gson.toJson(participants, type)
+        return participants?.let { gson.toJson(it) }
     }
 
     @TypeConverter
     fun toParticipantsList(participantsString: String?): List<String>? {
-        if (participantsString == null) {
-            return null
+        if (participantsString == null) return null
+        return try {
+            val type = object : TypeToken<List<String>>() {}.type
+            gson.fromJson(participantsString, type)
+        } catch (e: Exception) {
+            null
         }
-        val gson = Gson()
-        val type = object : TypeToken<List<String>>() {}.type
-        return gson.fromJson(participantsString, type)
     }
 }
