@@ -2409,18 +2409,15 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
     override fun onPause() {
         super<BaseActivity>.onPause()
         Log.d(TAG, "Lifecycle: onPause")
-        
+
         // App is going to background
         isAppInBackground = true
-        
+
         // Defer read receipt updates when app is backgrounded
         if (::chatViewModel.isInitialized) {
             chatViewModel.setChatVisibility(false)
-            
-            // Unsubscribe when chat screen closes
-            chatViewModel.onChatClosed()
         }
-        
+
         // Stop typing indicator when leaving chat
         val currentChatId = chatId
         val currentUser = currentUserId
@@ -2522,25 +2519,15 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
         // Remove lifecycle observer to prevent memory leaks.
         lifecycle.removeObserver(this)
 
-        // Unsubscribe from the Supabase Realtime channel to stop listening for new messages
-        // and prevent resource leaks. This is crucial for stopping background network activity.
-        try {
-            chatId?.let {
-                Log.d(TAG, "Unsubscribing from Realtime channel for chat: $it")
-                SupabaseClient.client.realtime.removeChannel(SupabaseClient.client.realtime.channel("chat:$it"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error unsubscribing from Realtime channel", e)
-        }
 
         // Clear all Glide image loading requests associated with this activity.
         // This is a critical step to free up memory from images and prevent memory leaks.
         if (isFinishing) {
             Log.d(TAG, "Clearing Glide resources")
-            Glide.with(applicationContext).clear(recyclerView) // Clear RecyclerView images
-            Glide.with(applicationContext).clear(chatAvatarImage) // Clear avatar
-            Glide.with(applicationContext).clear(typingAvatar) // Clear typing indicator avatar
-            Glide.with(applicationContext).clear(replyMediaPreview) // Clear reply preview
+            recyclerView?.let { Glide.with(this).clear(it) } // Clear RecyclerView images
+            chatAvatarImage?.let { Glide.with(this).clear(it) } // Clear avatar
+            typingAvatar?.let { Glide.with(this).clear(it) } // Clear typing indicator avatar
+            replyMediaPreview?.let { Glide.with(this).clear(it) } // Clear reply preview
         }
         
         // Stop any running animations and cancel related coroutine jobs to prevent leaks.
@@ -2556,6 +2543,13 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
         // between the RecyclerView and the adapter, which can cause memory leaks.
         recyclerView?.adapter = null
         chatAdapter = null
+
+        // Clean up ChatViewModel resources, which includes unsubscribing from the Realtime channel.
+        // This is the most critical cleanup step to prevent memory leaks and stop background network activity.
+        if (::chatViewModel.isInitialized) {
+            Log.d(TAG, "Cleaning up ChatViewModel and unsubscribing from Realtime channel.")
+            chatViewModel.onChatClosed()
+        }
     }
     
 }

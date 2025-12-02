@@ -1,32 +1,38 @@
 package com.synapse.social.studioasinc
 
+import android.app.ProgressDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.material.tabs.TabLayout
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.serialization.json.JsonObject
-import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.tabs.TabLayout
+import com.synapse.social.studioasinc.adapters.PostOptionsAdapter
+import com.synapse.social.studioasinc.backend.SupabaseChatService
+import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
-import android.util.Log
-import com.bumptech.glide.Glide
-
+import com.synapse.social.studioasinc.model.PostActionItem
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.noties.markwon.Markwon
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import java.util.Calendar
-import java.util.HashMap
 
 /**
  * Activity for displaying a user's profile.
@@ -140,7 +146,7 @@ class ProfileActivity : BaseActivity() {
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
-                    android.util.Log.e("ProfileActivity", "Posts load error: ${state.message}")
+                    Log.e(TAG, "Posts load error: ${state.message}")
                     Toast.makeText(this, "Posts error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -161,46 +167,46 @@ class ProfileActivity : BaseActivity() {
         val currentUser = SupabaseClient.client.auth.currentUserOrNull()
         val currentUid = currentUser?.id
         val isOwnPost = post.authorUid == currentUid
-        
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+
+        val bottomSheet = BottomSheetDialog(this)
         val rootView = layoutInflater.inflate(R.layout.bottom_sheet_post_options, null)
         bottomSheet.setContentView(rootView)
-        
+
         val recyclerView = rootView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.optionsRecyclerView)
-        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
-        
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
         val items = buildPostMenuItems(post, isOwnPost)
-        recyclerView.adapter = com.synapse.social.studioasinc.adapters.PostOptionsAdapter(items)
-        
+        recyclerView.adapter = PostOptionsAdapter(items)
+
         bottomSheet.show()
     }
-    
-    private fun buildPostMenuItems(post: Post, isOwner: Boolean): List<com.synapse.social.studioasinc.model.PostActionItem> {
-        val items = mutableListOf<com.synapse.social.studioasinc.model.PostActionItem>()
-        
+
+    private fun buildPostMenuItems(post: Post, isOwner: Boolean): List<PostActionItem> {
+        val items = mutableListOf<PostActionItem>()
+
         if (isOwner) {
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Edit", R.drawable.ic_edit_note_48px) { 
+            items.add(PostActionItem("Edit", R.drawable.ic_edit_note_48px) {
                 editPost(post)
             })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Delete", R.drawable.ic_delete_48px, true) { 
+            items.add(PostActionItem("Delete", R.drawable.ic_delete_48px, true) {
                 deletePost(post)
             })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Statistics", R.drawable.data_usage_24px) { 
+            items.add(PostActionItem("Statistics", R.drawable.data_usage_24px) {
                 showPostStatistics(post)
             })
         } else {
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Report", R.drawable.ic_report_48px, true) { 
+            items.add(PostActionItem("Report", R.drawable.ic_report_48px, true) {
                 reportPost(post)
             })
-            items.add(com.synapse.social.studioasinc.model.PostActionItem("Hide", R.drawable.mobile_block_24px) { 
+            items.add(PostActionItem("Hide", R.drawable.mobile_block_24px) {
                 hidePost(post)
             })
         }
-        
-        items.add(com.synapse.social.studioasinc.model.PostActionItem("Copy Link", R.drawable.ic_content_copy_48px) { 
+
+        items.add(PostActionItem("Copy Link", R.drawable.ic_content_copy_48px) {
             copyPostLink(post)
         })
-        
+
         return items
     }
 
@@ -264,15 +270,15 @@ class ProfileActivity : BaseActivity() {
                     
                     // Load profile image if available
                     user.profileImageUrl?.let { imageUrl ->
-                        com.bumptech.glide.Glide.with(this)
+                        Glide.with(this)
                             .load(imageUrl)
                             .placeholder(R.drawable.ph_imgbluredsqure)
                             .into(binding.ProfilePageTabUserInfoProfileImage)
                     }
-                    
+
                     // Load cover image if available
                     user.profileCoverImage?.let { coverUrl ->
-                        com.bumptech.glide.Glide.with(this)
+                        Glide.with(this)
                             .load(coverUrl)
                             .placeholder(R.drawable.user_null_cover_photo)
                             .into(binding.ProfilePageTabUserInfoCoverImage)
@@ -281,7 +287,7 @@ class ProfileActivity : BaseActivity() {
                 is ProfileViewModel.State.Error -> {
                     // Handle error state
                     binding.joinDateLayoutText.text = "Error loading data"
-                    android.util.Log.e("ProfileActivity", "Profile load error: ${state.message}")
+                    Log.e(TAG, "Profile load error: ${state.message}")
                     Toast.makeText(this, "Profile error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -317,7 +323,7 @@ class ProfileActivity : BaseActivity() {
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.e("ProfileActivity", "Error formatting date: $dateString", e)
+            Log.e(TAG, "Error formatting date: $dateString", e)
             "Joined recently"
         }
     }
@@ -361,9 +367,9 @@ class ProfileActivity : BaseActivity() {
             showProfileMenu(userId, currentUid)
         }
         binding.btnFollow.setOnClickListener {
-            android.util.Log.d("ProfileActivity", "Follow button clicked for user: $userId, current user: $currentUid")
+            Log.d(TAG, "Follow button clicked for user: $userId, current user: $currentUid")
             if (userId.isEmpty() || currentUid.isEmpty()) {
-                android.util.Log.e("ProfileActivity", "Invalid user IDs for follow action")
+                Log.e(TAG, "Invalid user IDs for follow action")
                 Toast.makeText(this, "Failed to get user info", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -389,7 +395,7 @@ class ProfileActivity : BaseActivity() {
         }
 
         binding.btnMessage.setOnClickListener {
-            android.util.Log.d("ProfileActivity", "Message button clicked for user: $userId")
+            Log.d(TAG, "Message button clicked for user: $userId")
             startDirectChat(userId, currentUid)
         }
 
@@ -444,7 +450,7 @@ class ProfileActivity : BaseActivity() {
                 if (userData != null) {
                     val avatar = userData["avatar"] as? String
                     if (avatar != null && avatar != "null") {
-                        com.bumptech.glide.Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
+                        Glide.with(this@ProfileActivity).load(avatar).into(dialogBinding.avatar)
                         dialogBinding.saveToHistory.setOnClickListener {
                             saveToHistory(avatar)
                             dialog.dismiss()
@@ -484,16 +490,16 @@ class ProfileActivity : BaseActivity() {
     }
 
     private fun startDirectChat(targetUserId: String, currentUserId: String?) {
-        android.util.Log.d("ProfileActivity", "startDirectChat called - Target: $targetUserId, Current: $currentUserId")
+        Log.d(TAG, "startDirectChat called - Target: $targetUserId, Current: $currentUserId")
         lifecycleScope.launch {
             try {
                 // Get current user UID (not auth UUID)
-                val authRepository = com.synapse.social.studioasinc.data.repository.AuthRepository()
+                val authRepository = AuthRepository()
                 val currentUserUid = authRepository.getCurrentUserUid()
-                android.util.Log.d("ProfileActivity", "Got current user UID: $currentUserUid")
+                Log.d(TAG, "Got current user UID: $currentUserUid")
 
                 if (currentUserUid == null) {
-                    android.util.Log.e("ProfileActivity", "Failed to get current user UID")
+                    Log.e(TAG, "Failed to get current user UID")
                     Toast.makeText(this@ProfileActivity, "Failed to get user info", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
@@ -504,21 +510,21 @@ class ProfileActivity : BaseActivity() {
                 }
 
                 // Show loading
-                val progressDialog = android.app.ProgressDialog(this@ProfileActivity).apply {
+                val progressDialog = ProgressDialog(this@ProfileActivity).apply {
                     setMessage("Starting chat...")
                     setCancelable(false)
                     show()
                 }
 
-                android.util.Log.d("ProfileActivity", "Creating/getting chat...")
-                val chatService = com.synapse.social.studioasinc.backend.SupabaseChatService()
+                Log.d(TAG, "Creating/getting chat...")
+                val chatService = SupabaseChatService()
                 val result = chatService.getOrCreateDirectChat(currentUserUid, targetUserId)
-                
+
                 result.fold(
                     onSuccess = { chatId ->
                         progressDialog.dismiss()
-                        android.util.Log.d("ProfileActivity", "Chat created successfully: $chatId")
-                        
+                        Log.d(TAG, "Chat created successfully: $chatId")
+
                         // Navigate to ChatActivity
                         val intent = Intent(this@ProfileActivity, ChatActivity::class.java)
                         intent.putExtra("chatId", chatId)
@@ -543,16 +549,16 @@ class ProfileActivity : BaseActivity() {
                             else -> 
                                 "Failed to start chat. Please try again."
                         }
-                        
-                        android.util.Log.e("ProfileActivity", "Failed to create chat: ${error.message}", error)
+
+                        Log.e(TAG, "Failed to create chat: ${error.message}", error)
                         Toast.makeText(this@ProfileActivity, userMessage, Toast.LENGTH_SHORT).show()
                     }
                 )
             } catch (e: Exception) {
-                android.util.Log.e("ProfileActivity", "Unexpected error starting chat", e)
+                Log.e(TAG, "Unexpected error starting chat", e)
                 Toast.makeText(
-                    this@ProfileActivity, 
-                    "An unexpected error occurred. Please try again.", 
+                    this@ProfileActivity,
+                    "An unexpected error occurred. Please try again.",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -652,9 +658,9 @@ class ProfileActivity : BaseActivity() {
                     try {
                         val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
                         if (currentUid != null) {
-                            val blockData = kotlinx.serialization.json.buildJsonObject {
-                                put("blocker_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
-                                put("blocked_id", kotlinx.serialization.json.JsonPrimitive(userId))
+                        val blockData = buildJsonObject {
+                                put("blocker_id", JsonPrimitive(currentUid))
+                                put("blocked_id", JsonPrimitive(userId))
                                 // Let database handle created_at with default value
                             }
                             SupabaseClient.client.from("blocks").insert(blockData)
@@ -694,11 +700,11 @@ class ProfileActivity : BaseActivity() {
             try {
                 val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
                 if (currentUid != null) {
-                    val reportData = kotlinx.serialization.json.buildJsonObject {
-                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
-                        put("reported_user_id", kotlinx.serialization.json.JsonPrimitive(userId))
-                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
-                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                    val reportData = buildJsonObject {
+                        put("reporter_id", JsonPrimitive(currentUid))
+                        put("reported_user_id", JsonPrimitive(userId))
+                        put("reason", JsonPrimitive(reason))
+                        put("status", JsonPrimitive("pending"))
                         // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("user_reports").insert(reportData)
@@ -794,11 +800,11 @@ class ProfileActivity : BaseActivity() {
             try {
                 val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
                 if (currentUid != null) {
-                    val reportData = kotlinx.serialization.json.buildJsonObject {
-                        put("reporter_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
-                        put("post_id", kotlinx.serialization.json.JsonPrimitive(postId))
-                        put("reason", kotlinx.serialization.json.JsonPrimitive(reason))
-                        put("status", kotlinx.serialization.json.JsonPrimitive("pending"))
+                    val reportData = buildJsonObject {
+                        put("reporter_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(postId))
+                        put("reason", JsonPrimitive(reason))
+                        put("status", JsonPrimitive("pending"))
                         // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("post_reports").insert(reportData)
@@ -815,9 +821,9 @@ class ProfileActivity : BaseActivity() {
             try {
                 val currentUid = SupabaseClient.client.auth.currentUserOrNull()?.id
                 if (currentUid != null) {
-                    val hideData = kotlinx.serialization.json.buildJsonObject {
-                        put("user_id", kotlinx.serialization.json.JsonPrimitive(currentUid))
-                        put("post_id", kotlinx.serialization.json.JsonPrimitive(post.id))
+                    val hideData = buildJsonObject {
+                        put("user_id", JsonPrimitive(currentUid))
+                        put("post_id", JsonPrimitive(post.id))
                         // Let database handle created_at with default value
                     }
                     SupabaseClient.client.from("hidden_posts").insert(hideData)
@@ -840,17 +846,15 @@ class ProfileActivity : BaseActivity() {
         // This is essential to prevent Glide from holding references to views that are no longer valid.
         if (isFinishing) {
             Log.d(TAG, "Clearing Glide resources")
-            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoProfileImage)
-            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoCoverImage)
+            // It's safer to use the activity context here, but applicationContext is also acceptable
+            // if you're sure no context-specific UI elements are held.
+            Glide.with(this).clear(binding.ProfilePageTabUserInfoProfileImage)
+            Glide.with(this).clear(binding.ProfilePageTabUserInfoCoverImage)
         }
 
         // Nullify the RecyclerView adapter to break the reference cycle.
         // The RecyclerView can hold a strong reference to the adapter, which in turn can hold a
-        // reference to the activity, causing a memory leak.
+        // reference to the activity (e.g., through listeners), causing a memory leak.
         binding.ProfilePageTabUserPostsRecyclerView.adapter = null
-
-        // Cancel all coroutines launched in the lifecycleScope of this activity.
-        // This ensures that no background work continues after the activity is destroyed.
-        lifecycleScope.coroutineContext.cancelChildren()
     }
 }
