@@ -8,7 +8,8 @@ import com.synapse.social.studioasinc.data.repository.ChatRepository
  * Use case for sending messages
  */
 class SendMessageUseCase(chatDao: ChatDao) {
-    private val chatRepository = ChatRepository(chatDao) {
+    private val chatRepository = ChatRepository(chatDao)
+    
     suspend operator fun invoke(
         chatId: String,
         senderId: String,

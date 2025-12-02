@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.Flow
  * Use case for observing messages in real-time
  */
 class ObserveMessagesUseCase(chatDao: ChatDao) {
-    private val chatRepository = ChatRepository(chatDao) {
+    private val chatRepository = ChatRepository(chatDao)
+    
     operator fun invoke(chatId: String): Flow<List<Message>> {
         return chatRepository.observeMessages(chatId)
     }
