@@ -26,6 +26,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         pageSize = 20,
         scrollThreshold = 5,
         onLoadPage = { page, pageSize ->
+            val refreshResult = postRepository.refreshPosts(page, pageSize)
+            if (refreshResult.isFailure) {
+                return@PaginationManager Result.failure(refreshResult.exceptionOrNull() ?: Exception("Failed to refresh posts"))
+            }
             var result: Result<List<Post>> = Result.success(emptyList())
             postRepository.getPosts().collect { flowResult ->
                 result = flowResult
