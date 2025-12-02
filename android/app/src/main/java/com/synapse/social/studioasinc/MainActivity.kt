@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
@@ -28,7 +29,7 @@ class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val authRepository = AuthRepository()
-    private val userRepository = UserRepository()
+    private val userRepository by lazy { UserRepository(AppDatabase.getDatabase(this).userDao()) }
     
     private val viewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
