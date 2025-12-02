@@ -176,6 +176,8 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
     
+    // Firebase Vertex AI for Gemini
+    implementation("com.google.firebase:firebase-vertexai:16.0.2")
 
 
     // AndroidX Core & UI Components
@@ -243,10 +245,7 @@ dependencies {
     implementation 'androidx.collection:collection-jvm:1.5.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.0"
     implementation 'androidx.browser:browser:1.9.0'
-    
-    implementation 'com.google.genai:google-genai:1.12.0'
-	implementation 'androidx.gridlayout:gridlayout:1.0.0'
-	implementation 'org.jsoup:jsoup:1.21.1'
+    implementation 'org.jsoup:jsoup:1.21.1'
 
     // Markdown (Markwon + GFM)
     implementation 'io.noties.markwon:core:4.6.2'

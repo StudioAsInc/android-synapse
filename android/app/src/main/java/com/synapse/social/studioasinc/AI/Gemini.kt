@@ -3,17 +3,17 @@ package com.synapse.social.studioasinc.AI
 import android.content.Context
 import android.util.Log
 import android.widget.TextView
+import com.google.firebase.vertexai.GenerativeModel
+import com.google.firebase.vertexai.type.content
+import com.google.firebase.vertexai.type.generationConfig
 import com.synapse.social.studioasinc.BuildConfig
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class Gemini private constructor(
     private val context: Context,
-    private val apiKeys: List<String>,
     private var model: String,
     private var responseType: String,
     private var tone: String,
@@ -33,7 +33,6 @@ class Gemini private constructor(
     }
 
     class Builder(private val context: Context) {
-        private var apiKeys: List<String> = loadApiKeyFromBuildConfig()
         private var model: String = "gemini-1.5-flash"
         private var responseType: String = "text"
         private var tone: String = "normal"
@@ -60,7 +59,6 @@ class Gemini private constructor(
         fun build(): Gemini {
             return Gemini(
                 context = context,
-                apiKeys = apiKeys,
                 model = model,
                 responseType = responseType,
                 tone = tone,
@@ -73,11 +71,6 @@ class Gemini private constructor(
                 responseTextView = responseTextView
             )
         }
-
-        private fun loadApiKeyFromBuildConfig(): List<String> {
-            val key = BuildConfig.GEMINI_API_KEY
-            return if (key.isNotBlank()) listOf(key) else emptyList()
-        }
     }
 
     fun sendPrompt(prompt: String, callback: GeminiCallback? = null) {
@@ -86,8 +79,9 @@ class Gemini private constructor(
             return
         }
 
-        if (apiKeys.isEmpty()) {
-            handleError("No API keys available!", callback)
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) {
+            handleError("No API key available!", callback)
             return
         }
 
@@ -97,96 +91,35 @@ class Gemini private constructor(
             }
         }
 
-        Thread {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val selectedApiKey = apiKeys.random()
-                val response = sendGeminiRequest(prompt, selectedApiKey)
-
-                responseTextView?.post {
-                    responseTextView?.text = response
+                val response = withContext(Dispatchers.IO) {
+                    sendGeminiRequest(prompt, apiKey)
                 }
 
+                responseTextView?.text = response
                 callback?.onSuccess(response)
             } catch (e: Exception) {
                 val error = "Error: ${e.message}"
                 Log.e(TAG, error, e)
                 handleError(error, callback)
             }
-        }.start()
-    }
-
-    private fun sendGeminiRequest(prompt: String, apiKey: String): String {
-        val urlString = "$BASE_URL$model:generateContent?key=$apiKey"
-        var conn: HttpURLConnection? = null
-
-        try {
-            val url = URL(urlString)
-            conn = url.openConnection() as HttpURLConnection
-            conn.apply {
-                requestMethod = "POST"
-                connectTimeout = 15000
-                readTimeout = 30000
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            }
-
-            val payload = buildPayload(prompt)
-            val body = payload.toString()
-
-            conn.outputStream.use { os ->
-                val input = body.toByteArray(StandardCharsets.UTF_8)
-                os.write(input)
-                os.flush()
-            }
-
-            val code = conn.responseCode
-            val inputStream = if (code >= 400) conn.errorStream else conn.inputStream
-            val rawResponse = inputStream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }?.trim() ?: ""
-
-            Log.d(TAG, "HTTP code=$code rawResponse=$rawResponse")
-
-            return if (code in 200..299) {
-                try {
-                    extractTextFromGeminiResponse(rawResponse)
-                } catch (e: JSONException) {
-                    throw Exception("Failed to parse AI response.", e)
-                }
-            } else {
-                throw Exception("HTTP $code error: $rawResponse")
-            }
-        } finally {
-            conn?.disconnect()
         }
     }
 
-    private fun buildPayload(prompt: String): JSONObject {
-        return JSONObject().apply {
-            try {
-                val fullSystemInstruction = buildFullSystemInstruction()
-                if (fullSystemInstruction.isNotEmpty()) {
-                    put("system_instruction", JSONObject().apply {
-                        put("parts", JSONArray().apply {
-                            put(JSONObject().put("text", fullSystemInstruction))
-                        })
-                    })
-                }
+    private suspend fun sendGeminiRequest(prompt: String, apiKey: String): String {
+        val generativeModel = GenerativeModel(
+            modelName = model,
+            apiKey = apiKey,
+            generationConfig = generationConfig {
+                temperature = this@Gemini.temperature.toFloat()
+                maxOutputTokens = maxTokens
+            },
+            systemInstruction = content { text(buildFullSystemInstruction()) }
+        )
 
-                put("contents", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("parts", JSONArray().apply {
-                            put(JSONObject().put("text", prompt))
-                        })
-                    })
-                })
-
-                put("generationConfig", JSONObject().apply {
-                    put("temperature", temperature)
-                    put("maxOutputTokens", maxTokens)
-                })
-            } catch (e: JSONException) {
-                Log.e(TAG, "buildPayload JSONException: ${e.message}")
-            }
-        }
+        val response = generativeModel.generateContent(prompt)
+        return response.text ?: "No response generated"
     }
 
     private fun buildFullSystemInstruction(): String {
@@ -204,37 +137,6 @@ class Gemini private constructor(
             if (responseType != "text") {
                 append(" Format the response as $responseType.")
             }
-        }
-    }
-
-    private fun extractTextFromGeminiResponse(raw: String): String {
-        if (raw.isEmpty()) {
-            throw JSONException("Empty response from API")
-        }
-
-        try {
-            val root = JSONObject(raw)
-
-            if (root.has("candidates")) {
-                val candidates = root.optJSONArray("candidates")
-                if (candidates != null && candidates.length() > 0) {
-                    val candidate = candidates.getJSONObject(0)
-                    if (candidate.has("content")) {
-                        val content = candidate.getJSONObject("content")
-                        if (content.has("parts")) {
-                            val parts = content.getJSONArray("parts")
-                            if (parts.length() > 0) {
-                                return parts.getJSONObject(0).optString("text", "No text found in response part.")
-                            }
-                        }
-                    }
-                }
-            }
-
-            throw JSONException("Could not extract text from the response.")
-        } catch (e: JSONException) {
-            Log.w(TAG, "extractTextFromGeminiResponse JSON parse error: ${e.message}")
-            throw e
         }
     }
 
@@ -268,6 +170,5 @@ class Gemini private constructor(
 
     companion object {
         private const val TAG = "GeminiAPI"
-        private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
     }
 }
