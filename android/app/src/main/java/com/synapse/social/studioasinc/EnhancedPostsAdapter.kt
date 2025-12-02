@@ -39,11 +39,6 @@ class EnhancedPostsAdapter(
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null
 ) : PagingDataAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
-    fun setLoadingMore(isLoading: Boolean) {
-        // FIXME: Implement a footer loading view to indicate that more posts are being loaded.
-        // This should be shown when the user scrolls to the end of the list and a network request is in progress.
-    }
-
     /**
      * Update a post's reaction state optimistically
      * This updates the UI immediately before the server responds

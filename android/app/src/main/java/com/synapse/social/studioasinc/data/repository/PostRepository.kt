@@ -1,41 +1,28 @@
 package com.synapse.social.studioasinc.data.repository
 
+import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.model.Post
+import com.synapse.social.studioasinc.model.PollOption
+import com.synapse.social.studioasinc.model.ReactionType
+import com.synapse.social.studioasinc.model.UserReaction
+import com.synapse.social.studioasinc.model.MediaItem
+import com.synapse.social.studioasinc.model.MediaType
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.data.paging.PostPagingSource
-import com.synapse.social.studioasinc.model.MediaItem
-import com.synapse.social.studioasinc.model.MediaType
-import com.synapse.social.studioasinc.model.PollOption
-import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.model.ReactionType
-import com.synapse.social.studioasinc.model.UserReaction
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 
 class PostRepository {
 
     private val client = SupabaseClient.client
-    private val postgrest = SupabaseClient.client.from("posts")
 
     fun getPosts(): Flow<PagingData<Post>> {
         return Pager(
@@ -43,7 +30,7 @@ class PostRepository {
                 pageSize = 20,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { PostPagingSource(postgrest) }
+            pagingSourceFactory = { PostPagingSource(client.from("posts")) }
         ).flow
     }
     

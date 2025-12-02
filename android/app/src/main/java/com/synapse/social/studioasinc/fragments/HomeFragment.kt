@@ -28,6 +28,7 @@ import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.PostDetailActivity
 import com.synapse.social.studioasinc.SupabaseClient
 import android.content.Intent
+import androidx.paging.LoadState
 import com.synapse.social.studioasinc.adapters.PostLoadStateAdapter
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.gotrue.auth
@@ -36,7 +37,6 @@ class HomeFragment : Fragment() {
     private lateinit var viewModel: HomeViewModel
     private lateinit var postAdapter: EnhancedPostsAdapter
     private lateinit var headerAdapter: HeaderAdapter
-    private lateinit var concatAdapter: ConcatAdapter
 
     private lateinit var swipeLayout: SwipeRefreshLayout
     private lateinit var publicPostsList: RecyclerView
@@ -151,11 +151,15 @@ class HomeFragment : Fragment() {
 
         publicPostsList.apply {
             layoutManager = LinearLayoutManager(context)
-            adapter = postAdapter.withLoadStateHeaderAndFooter(
+            adapter = ConcatAdapter(headerAdapter, postAdapter.withLoadStateHeaderAndFooter(
                 header = PostLoadStateAdapter { postAdapter.retry() },
                 footer = PostLoadStateAdapter { postAdapter.retry() }
-            )
+            ))
+        }
 
+        postAdapter.addLoadStateListener { loadState ->
+            val isListEmpty = loadState.refresh is LoadState.NotLoading && postAdapter.itemCount == 0
+            emptyState.visibility = if (isListEmpty) View.VISIBLE else View.GONE
         }
     }
 
@@ -206,26 +210,6 @@ class HomeFragment : Fragment() {
 
     private fun hideShimmer() {
         shimmerContainer.visibility = View.GONE
-    }
-    
-    private fun showErrorWithRetry(errorMessage: String) {
-        // Create Snackbar with retry action
-        val snackbar = Snackbar.make(
-            requireView(),
-            errorMessage,
-            Snackbar.LENGTH_INDEFINITE
-        )
-        
-        snackbar.setAction(R.string.retry) {
-            // Retry loading posts
-            postAdapter.retry()
-            viewModel.clearError()
-        }
-        
-        // Announce error for accessibility
-        requireView().announceForAccessibility(errorMessage)
-        
-        snackbar.show()
     }
     
     /**
@@ -298,7 +282,7 @@ class HomeFragment : Fragment() {
                 }
                 Toast.makeText(requireContext(), "Post deleted", Toast.LENGTH_SHORT).show()
                 // Refresh posts
-                viewModel.loadPosts()
+                postAdapter.refresh()
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Failed to delete post: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -351,7 +335,7 @@ class HomeFragment : Fragment() {
                     SupabaseClient.client.from("hidden_posts").insert(hideData)
                     Toast.makeText(requireContext(), "Post hidden. You won't see posts like this.", Toast.LENGTH_SHORT).show()
                     // Refresh posts
-                    viewModel.loadPosts()
+                    postAdapter.refresh()
                 }
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -368,7 +352,7 @@ class HomeFragment : Fragment() {
                 if (result.isSuccess) {
                     // Refresh posts to update UI
                     // Ideally we should just update the single item in the adapter
-                    viewModel.loadPosts() 
+                    postAdapter.refresh()
                 } else {
                     if (isAdded && context != null) {
                         Toast.makeText(requireContext(), "Failed to react", Toast.LENGTH_SHORT).show()

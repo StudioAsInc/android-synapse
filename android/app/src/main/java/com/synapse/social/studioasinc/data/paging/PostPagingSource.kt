@@ -3,29 +3,29 @@ package com.synapse.social.studioasinc.data.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.synapse.social.studioasinc.data.model.Post
-import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.PostgrestQueryBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class PostPagingSource(
-    private val postgrest: Postgrest
+    private val queryBuilder: PostgrestQueryBuilder
 ) : PagingSource<Int, Post>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Post> {
-        val page = params.key ?: 1
+        val position = params.key ?: 0
         val pageSize = params.loadSize
         return try {
             val response = withContext(Dispatchers.IO) {
-                postgrest.from("posts")
+                queryBuilder
                     .select()
-                    .range((page - 1) * pageSize, page * pageSize - 1)
+                    .range(position, position + pageSize - 1)
                     .executeAs<List<Post>>()
             }
 
             LoadResult.Page(
                 data = response,
-                prevKey = if (page == 1) null else page - 1,
-                nextKey = if (response.isEmpty()) null else page + 1
+                prevKey = if (position == 0) null else position - pageSize,
+                nextKey = if (response.isEmpty()) null else position + pageSize
             )
         } catch (e: Exception) {
             LoadResult.Error(e)

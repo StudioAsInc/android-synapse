@@ -26,14 +26,7 @@ class HomeViewModel(
     val posts: Flow<PagingData<Post>> = postRepository.getPosts()
         .cachedIn(viewModelScope)
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
     private var savedScrollPosition: ScrollPositionState? = null
-
-    fun clearError() {
-        _error.value = null
-    }
     
     /**
      * Save scroll position for restoration
