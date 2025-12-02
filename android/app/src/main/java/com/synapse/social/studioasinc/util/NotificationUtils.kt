@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc.util
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.NotificationConfig
 import com.synapse.social.studioasinc.NotificationHelper
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

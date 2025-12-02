@@ -26,12 +26,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         pageSize = 20,
         scrollThreshold = 5,
         onLoadPage = { page, pageSize ->
+            var result: Result<List<Post>> = Result.success(emptyList())
             postRepository.getPosts()
-                .map { result ->
-                    result.getOrElse { emptyList() }
+                .map { flowResult ->
+                    result = flowResult
                 }
-                .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-                .value
+                .stateIn(viewModelScope, SharingStarted.Lazily, Result.success(emptyList()))
+            result
         },
         onError = { error ->
             _error.value = error
