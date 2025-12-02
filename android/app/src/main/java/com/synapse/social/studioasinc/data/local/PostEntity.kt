@@ -11,7 +11,6 @@ import com.synapse.social.studioasinc.model.PollOption
 import com.synapse.social.studioasinc.model.ReactionType
 
 @Entity(tableName = "posts")
-@TypeConverters(MediaItemConverter::class, PollOptionConverter::class, ReactionTypeConverter::class)
 data class PostEntity(
     @PrimaryKey
     val id: String,
