@@ -2,10 +2,6 @@ package com.synapse.social.studioasinc.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.synapse.social.studioasinc.data.repository.AuthRepository
-import com.synapse.social.studioasinc.data.repository.PostRepository
-import com.synapse.social.studioasinc.model.Post
-import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.synapse.social.studioasinc.data.repository.AuthRepository

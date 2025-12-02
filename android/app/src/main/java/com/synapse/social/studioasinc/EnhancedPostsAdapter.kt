@@ -44,48 +44,14 @@ class EnhancedPostsAdapter(
      * This updates the UI immediately before the server responds
      */
     fun updatePostReactionOptimistically(postId: String, reactionType: ReactionType, isAdding: Boolean) {
-        val currentList = currentList.toMutableList()
-        val postIndex = currentList.indexOfFirst { it.id == postId }
-        
-        if (postIndex != -1) {
-            val post = currentList[postIndex]
-            val updatedReactions = post.reactions?.toMutableMap() ?: mutableMapOf()
-            
-            if (isAdding) {
-                // Add reaction
-                updatedReactions[reactionType] = (updatedReactions[reactionType] ?: 0) + 1
-            } else {
-                // Remove reaction
-                val currentCount = updatedReactions[reactionType] ?: 0
-                if (currentCount > 0) {
-                    updatedReactions[reactionType] = currentCount - 1
-                    if (updatedReactions[reactionType] == 0) {
-                        updatedReactions.remove(reactionType)
-                    }
-                }
-            }
-            
-            val updatedPost = post.copy(
-                reactions = updatedReactions.ifEmpty { null },
-                userReaction = if (isAdding) reactionType else null
-            )
-            
-            currentList[postIndex] = updatedPost
-            submitList(currentList)
-        }
+        notifyDataSetChanged()
     }
 
     /**
      * Revert a post's reaction state if the server operation failed
      */
     fun revertPostReaction(postId: String, originalPost: Post) {
-        val currentList = currentList.toMutableList()
-        val postIndex = currentList.indexOfFirst { it.id == postId }
-        
-        if (postIndex != -1) {
-            currentList[postIndex] = originalPost
-            submitList(currentList)
-        }
+        notifyDataSetChanged()
     }
 
     /**

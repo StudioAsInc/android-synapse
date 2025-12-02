@@ -2,8 +2,8 @@ package com.synapse.social.studioasinc.data.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.synapse.social.studioasinc.data.model.Post
-import io.github.jan.supabase.postgrest.PostgrestQueryBuilder
+import com.synapse.social.studioasinc.model.Post
+import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
