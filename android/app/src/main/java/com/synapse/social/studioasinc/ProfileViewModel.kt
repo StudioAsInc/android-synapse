@@ -1,9 +1,11 @@
 package com.synapse.social.studioasinc
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.model.User
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.Follow
@@ -20,7 +22,7 @@ import kotlinx.serialization.json.put
  * ViewModel for managing profile data and operations
  * Uses direct Supabase calls without wrapper services
  */
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val client = SupabaseClient.client
 
@@ -124,7 +126,9 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _userPosts.value = State.Loading
-                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository()
+                val postRepository = com.synapse.social.studioasinc.data.repository.PostRepository(
+                    AppDatabase.getDatabase(getApplication()).postDao()
+                )
                 postRepository.getUserPosts(uid)
                     .onSuccess { posts ->
                         _userPosts.value = State.Success(posts)

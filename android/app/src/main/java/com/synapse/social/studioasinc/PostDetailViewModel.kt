@@ -43,7 +43,12 @@ class PostDetailViewModel(application: Application) : AndroidViewModel(applicati
             _commentsState.value = CommentsState.Loading
             commentRepository.getComments(postId).collect { result ->
                 result.fold(
-                    onSuccess = { _commentsState.value = CommentsState.Success(it, it.size >= limit) },
+                    onSuccess = { comments ->
+                        val commentsWithUser = comments.map { comment ->
+                            CommentWithUser(comment, null)
+                        }
+                        _commentsState.value = CommentsState.Success(commentsWithUser, commentsWithUser.size >= limit)
+                    },
                     onFailure = { _commentsState.value = CommentsState.Error(it.message ?: "Failed") }
                 )
             }
@@ -126,7 +131,7 @@ class PostDetailViewModel(application: Application) : AndroidViewModel(applicati
     
     fun reportComment(commentId: String, reason: String, description: String?) {
         viewModelScope.launch {
-            commentRepository.reportComment(commentId, reason, description)
+            commentRepository.reportComment(commentId, reason)
         }
     }
 }

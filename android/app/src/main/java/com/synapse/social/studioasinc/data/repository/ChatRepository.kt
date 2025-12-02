@@ -4,6 +4,8 @@ import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.data.local.ChatDao
+import com.synapse.social.studioasinc.data.local.ChatEntity
+import com.synapse.social.studioasinc.data.mapper.ChatMapper
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
 import io.github.jan.supabase.postgrest.from
@@ -13,6 +15,8 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
