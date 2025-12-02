@@ -3,7 +3,9 @@ package com.synapse.social.studioasinc.AI
 import android.content.Context
 import android.util.Log
 import android.widget.TextView
-import com.google.firebase.vertexai.GenerativeModel
+import com.google.firebase.Firebase
+import com.google.firebase.vertexai.GenerativeBackend
+import com.google.firebase.vertexai.ai
 import com.google.firebase.vertexai.type.content
 import com.google.firebase.vertexai.type.generationConfig
 import com.synapse.social.studioasinc.BuildConfig
@@ -108,9 +110,8 @@ class Gemini private constructor(
     }
 
     private suspend fun sendGeminiRequest(prompt: String, apiKey: String): String {
-        val generativeModel = GenerativeModel(
+        val generativeModel = Firebase.ai(backend = GenerativeBackend.googleAI(apiKey)).generativeModel(
             modelName = model,
-            apiKey = apiKey,
             generationConfig = generationConfig {
                 temperature = this@Gemini.temperature.toFloat()
                 maxOutputTokens = maxTokens
