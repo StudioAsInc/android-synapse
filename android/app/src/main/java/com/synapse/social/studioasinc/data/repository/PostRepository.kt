@@ -209,6 +209,34 @@ class PostRepository(private val postDao: PostDao) {
         }
     }
 
+    suspend fun getUserPosts(userId: String): Result<List<Post>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.from("posts")
+                .select(
+                    columns = Columns.raw("""
+                        *,
+                        users!posts_author_uid_fkey(uid, username, avatar, verify)
+                    """.trimIndent())
+                ) {
+                    filter { eq("author_uid", userId) }
+                }
+                .decodeList<JsonObject>()
+            
+            val posts = response.mapNotNull { postData ->
+                try {
+                    parsePostWithUserData(postData)
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Failed to parse post: ${e.message}", e)
+                    null
+                }
+            }
+            Result.success(posts)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to fetch user posts: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     private fun parsePostWithUserData(data: JsonObject): Post {
         val post = Post(
             id = data["id"]?.jsonPrimitive?.contentOrNull ?: "",

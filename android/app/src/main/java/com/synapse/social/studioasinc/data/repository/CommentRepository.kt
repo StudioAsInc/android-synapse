@@ -67,6 +67,36 @@ class CommentRepository(private val commentDao: CommentDao) {
             Result.failure(e)
         }
     }
+
+    suspend fun getReplies(commentId: String): Result<List<CommentWithUser>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.from("comments")
+                .select(
+                    columns = Columns.raw("""
+                        *,
+                        users!comments_user_id_fkey(uid, username, display_name, email, bio, avatar, followers_count, following_count, posts_count, status, account_type, verify, banned)
+                    """.trimIndent())
+                ) {
+                    filter { eq("parent_comment_id", commentId) }
+                    order("created_at", Order.ASCENDING)
+                }
+                .decodeList<JsonObject>()
+            
+            val replies = mutableListOf<CommentWithUser>()
+            for (json in response) {
+                parseCommentFromJson(json)?.let { replies.add(it) }
+            }
+            
+            commentDao.insertAll(replies.map { 
+                CommentMapper.toEntity(it.toComment(), it.user?.username, it.user?.profileImageUrl) 
+            })
+            
+            Result.success(replies)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch replies: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
     
     suspend fun createComment(
         postId: String,
@@ -240,6 +270,73 @@ class CommentRepository(private val commentDao: CommentDao) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to edit comment: ${e.message}", e)
             Result.failure(Exception(mapSupabaseError(e)))
+        }
+    }
+
+    suspend fun pinComment(commentId: String, postId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            val post = client.from("posts")
+                .select { filter { eq("id", postId) } }
+                .decodeSingleOrNull<JsonObject>()
+                ?: return@withContext Result.failure(Exception("Post not found"))
+            
+            val postAuthor = post["author_uid"]?.jsonPrimitive?.contentOrNull
+            if (postAuthor != currentUser.id) {
+                return@withContext Result.failure(Exception("Only post author can pin comments"))
+            }
+            
+            client.from("comments")
+                .update({ set("is_pinned", true) }) {
+                    filter { eq("id", commentId) }
+                }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to pin comment: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun hideComment(commentId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            client.from("comments")
+                .update({
+                    set("is_hidden", true)
+                    set("hidden_by", currentUser.id)
+                }) {
+                    filter { eq("id", commentId) }
+                }
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to hide comment: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun reportComment(commentId: String, reason: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val currentUser = client.auth.currentUserOrNull()
+                ?: return@withContext Result.failure(Exception("User must be authenticated"))
+            
+            client.from("comment_reports")
+                .insert(buildJsonObject {
+                    put("comment_id", commentId)
+                    put("reporter_id", currentUser.id)
+                    put("reason", reason)
+                    put("created_at", java.time.Instant.now().toString())
+                })
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to report comment: ${e.message}", e)
+            Result.failure(e)
         }
     }
     

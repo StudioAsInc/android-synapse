@@ -6,8 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [PostEntity::class, CommentEntity::class, UserEntity::class, ChatEntity::class], version = 1, exportSchema = false)
-@TypeConverters(MediaItemConverter::class, PollOptionConverter::class, ReactionTypeConverter::class, ParticipantsConverter::class)
+@Database(
+    entities = [PostEntity::class, CommentEntity::class, UserEntity::class, ChatEntity::class], 
+    version = 1, 
+    exportSchema = true
+)
+@TypeConverters(MediaItemConverter::class, PollOptionConverter::class, ReactionTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun postDao(): PostDao
@@ -26,8 +30,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "synapse_database"
                 )
-                // TODO: Replace with proper migrations for production
-                // fallbackToDestructiveMigration() wipes user data on schema changes
+                // For v1, destructive migration is acceptable as this is initial offline implementation
+                // TODO: Add proper migrations before v2 to preserve user data
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

@@ -14,6 +14,9 @@ interface PostDao {
     @Query("SELECT * FROM posts WHERE id = :postId")
     suspend fun getPostById(postId: String): PostEntity?
 
+    @Query("SELECT * FROM posts WHERE authorUid = :userId ORDER BY timestamp DESC")
+    suspend fun getPostsByUser(userId: String): List<PostEntity>
+
     @Query("DELETE FROM posts")
     suspend fun deleteAll()
 }

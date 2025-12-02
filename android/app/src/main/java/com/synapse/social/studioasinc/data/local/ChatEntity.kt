@@ -11,7 +11,6 @@ import com.google.gson.reflect.TypeToken
 data class ChatEntity(
     @PrimaryKey
     val id: String,
-    val participants: List<String>,
     val lastMessage: String?,
     val timestamp: Long,
     val isGroup: Boolean,
@@ -19,23 +18,3 @@ data class ChatEntity(
     val createdAt: Long,
     val isActive: Boolean
 )
-
-class ParticipantsConverter {
-    private val gson = Gson()
-    
-    @TypeConverter
-    fun fromParticipantsList(participants: List<String>?): String? {
-        return participants?.let { gson.toJson(it) }
-    }
-
-    @TypeConverter
-    fun toParticipantsList(participantsString: String?): List<String>? {
-        if (participantsString == null) return null
-        return try {
-            val type = object : TypeToken<List<String>>() {}.type
-            gson.fromJson(participantsString, type)
-        } catch (e: Exception) {
-            null
-        }
-    }
-}

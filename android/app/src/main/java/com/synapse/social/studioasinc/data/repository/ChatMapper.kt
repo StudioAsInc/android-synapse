@@ -8,9 +8,6 @@ object ChatMapper {
     fun toEntity(chat: Chat): ChatEntity {
         return ChatEntity(
             id = chat.id,
-            // Participants are stored in separate chat_participants table
-            // and managed by ChatRepository, not included in Chat model
-            participants = emptyList(),
             lastMessage = chat.lastMessage,
             timestamp = chat.lastMessageTime ?: 0,
             isGroup = chat.isGroup,
