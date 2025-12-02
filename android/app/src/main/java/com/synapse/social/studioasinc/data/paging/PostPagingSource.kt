@@ -17,8 +17,9 @@ class PostPagingSource(
         return try {
             val response = withContext(Dispatchers.IO) {
                 queryBuilder
-                    .select()
-                    .range(position.toLong(), (position + pageSize - 1).toLong())
+                    .select {
+                        range(position.toLong(), (position + pageSize - 1).toLong())
+                    }
                     .decodeList<Post>()
             }
 
