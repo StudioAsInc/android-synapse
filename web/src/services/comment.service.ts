@@ -60,12 +60,11 @@ export class CommentService {
       const commentsWithLikes = await Promise.all(
         (data || []).map(async (comment: any) => {
           const isLiked = userId ? await this.checkIfLiked(comment.id, userId) : false;
-          const replies = await this.fetchReplies(comment.id);
           return {
             ...comment,
             user: comment.users,
             is_liked: isLiked,
-            replies
+            replies: []
           };
         })
       );

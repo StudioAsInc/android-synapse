@@ -11,6 +11,7 @@ import com.synapse.social.studioasinc.model.PollOption
 import com.synapse.social.studioasinc.model.ReactionType
 
 @Entity(tableName = "posts")
+@TypeConverters(MediaItemConverter::class, PollOptionConverter::class, ReactionTypeConverter::class)
 data class PostEntity(
     @PrimaryKey
     val id: String,
@@ -30,7 +31,6 @@ data class PostEntity(
     val commentsCount: Int,
     val viewsCount: Int,
     val resharesCount: Int,
-    @TypeConverters(MediaItemConverter::class)
     var mediaItems: List<MediaItem>?,
     val isEncrypted: Boolean?,
     val nonce: String?,
@@ -41,7 +41,6 @@ data class PostEntity(
     val deletedAt: String?,
     val hasPoll: Boolean?,
     val pollQuestion: String?,
-    @TypeConverters(PollOptionConverter::class)
     val pollOptions: List<PollOption>?,
     val pollEndTime: String?,
     val pollAllowMultiple: Boolean?,
@@ -52,9 +51,7 @@ data class PostEntity(
     val locationLongitude: Double?,
     val locationPlaceId: String?,
     val youtubeUrl: String?,
-    @TypeConverters(ReactionTypeConverter::class)
     var reactions: Map<ReactionType, Int>?,
-    @TypeConverters(ReactionTypeConverter::class)
     var userReaction: ReactionType?,
     var username: String?,
     var avatarUrl: String?,
