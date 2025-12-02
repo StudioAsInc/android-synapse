@@ -101,7 +101,7 @@ graph TB
 ### Android App
 - **Language**: Kotlin with Android KTX
 - **Architecture**: MVVM + Repository pattern
-- **UI**: ViewBinding, Material Design 3, Navigation Component
+- **UI**: ViewBinding, Jetpack Compose, Material Design 3, Navigation Component
 - **Async**: Kotlin Coroutines + Flow
 - **Image Loading**: Glide
 - **Markdown**: Markwon
@@ -114,7 +114,7 @@ graph TB
 - **Real-time**: Supabase Realtime for live updates
 
 ### Build Configuration
-- Target SDK: 32
+- Target SDK: 34
 - Min SDK: 26
 - Compile SDK: 36
 - Build System: Gradle with Kotlin DSL
@@ -283,7 +283,7 @@ Absolutely! We welcome contributions from everyone. Please check out the <a href
 <details>
 <summary><strong>What technology does Synapse use?</strong></summary>
 <br>
-The Android app is built with Kotlin using MVVM architecture, Kotlin Coroutines, ViewBinding, and Material Design 3. Key libraries include Supabase BOM, Glide, Markwon, and Media3. The backend is powered by Supabase (PostgreSQL via Postgrest, GoTrue Auth, Storage, and Realtime). Build targets: Min SDK 26, Target SDK 32, Compile SDK 36, JDK 17.
+The Android app is built with Kotlin using MVVM architecture, Kotlin Coroutines, ViewBinding, Jetpack Compose, and Material Design 3. Key libraries include Supabase BOM, Glide, Markwon, and Media3. The backend is powered by Supabase (PostgreSQL via Postgrest, GoTrue Auth, Storage, and Realtime). Build targets: Min SDK 26, Target SDK 34, Compile SDK 36, JDK 17.
 </details>
 
 <details>
@@ -295,7 +295,7 @@ While self-hosting is a goal for the future, it is not officially supported at t
 <details>
 <summary><strong>What was the Java to Kotlin migration?</strong></summary>
 <br>
-In late 2024, Synapse underwent a comprehensive migration from Java to Kotlin, converting 27 core files. This modernization brought improved null safety, coroutines for async operations, Kotlin idioms (data classes, sealed classes, extensions), and better code maintainability. The migration is complete and documented in <a href="Docs/JAVA_TO_KOTLIN_MIGRATION.md">JAVA_TO_KOTLIN_MIGRATION.md</a>.
+In late 2024, Synapse underwent a comprehensive migration from Java to Kotlin, converting 27 core files. This modernization brought improved null safety, coroutines for async operations, Kotlin idioms (data classes, sealed classes, extensions), and better code maintainability. The migration is now complete.
 </details>
 
 <details>
@@ -307,7 +307,7 @@ Yes, to build and test the app locally, you'll need a free Supabase account to c
 <details>
 <summary><strong>How do I test the app locally?</strong></summary>
 <br>
-After setting up your Supabase credentials in <code>gradle.properties</code>, open the project in Android Studio, sync Gradle, and run the app on an emulator or physical device. For automated testing, run <code>./gradlew test</code> for unit tests or <code>./gradlew connectedAndroidTest</code> for instrumented tests. See <a href="Docs/CHAT_TESTING_GUIDE.md">CHAT_TESTING_GUIDE.md</a> for feature-specific testing guidance.
+After setting up your Supabase credentials in <code>gradle.properties</code>, open the project in Android Studio, sync Gradle, and run the app on an emulator or physical device. For automated testing, run <code>./gradlew test</code> for unit tests or <code>./gradlew connectedAndroidTest</code> for instrumented tests.
 </details>
 
 <details>

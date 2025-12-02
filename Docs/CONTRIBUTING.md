@@ -12,7 +12,7 @@ To maintain code quality and consistency, please follow these guidelines:
   - Use data classes for models
   - Leverage Kotlin extensions and Android KTX
   
-- **ViewBinding**: All UI code must use ViewBinding (no `findViewById` or synthetic imports)
+- **UI Toolkit**: Use ViewBinding for XML-based layouts, or Jetpack Compose for new UI components. Avoid `findViewById` or synthetic imports.
 
 - **Coroutines for Async Operations**: Use Kotlin coroutines instead of callbacks
 
