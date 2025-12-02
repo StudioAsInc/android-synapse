@@ -124,7 +124,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
     private var isAppInBackground = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super<AppCompatActivity>.onCreate(savedInstanceState)
+        super<BaseActivity>.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         
         // Get intent data
@@ -2374,7 +2374,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      * Requirements: 7.4
      */
     override fun onResume() {
-        super<AppCompatActivity>.onResume()
+        super<BaseActivity>.onResume()
         
         // App is returning to foreground
         isAppInBackground = false
@@ -2405,7 +2405,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      * Requirements: 7.4
      */
     override fun onPause() {
-        super<AppCompatActivity>.onPause()
+        super<BaseActivity>.onPause()
         
         // App is going to background
         isAppInBackground = true
@@ -2513,7 +2513,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      * Requirements: 7.4
      */
     override fun onDestroy() {
-        super<AppCompatActivity>.onDestroy()
+        super<BaseActivity>.onDestroy()
         
         // Remove lifecycle observer
         lifecycle.removeObserver(this)

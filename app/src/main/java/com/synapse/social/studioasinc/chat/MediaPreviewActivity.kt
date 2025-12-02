@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 // import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
+import com.synapse.social.studioasinc.BaseActivity
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.databinding.ActivityMediaPreviewBinding
 import java.text.DecimalFormat
