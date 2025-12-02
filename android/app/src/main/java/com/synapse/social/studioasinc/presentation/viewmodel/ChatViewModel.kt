@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.data.repository.ChatRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.domain.usecase.*
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
@@ -45,7 +46,7 @@ import java.util.UUID
 class ChatViewModel : ViewModel() {
 
     private val authService = SupabaseAuthenticationService()
-    private val chatRepository = ChatRepository()
+    private val chatRepository = ChatRepository(AppDatabase.getDatabase(context).chatDao())
     
     // Use cases
     private val sendMessageUseCase = SendMessageUseCase(chatRepository)

@@ -25,6 +25,7 @@ import com.synapse.social.studioasinc.model.ReactionType
 import com.synapse.social.studioasinc.ReactionPickerBottomSheet
 import com.synapse.social.studioasinc.ReactedUsersBottomSheet
 import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.PostDetailActivity
 import com.synapse.social.studioasinc.SupabaseClient
 import android.content.Intent
@@ -44,7 +45,7 @@ class HomeFragment : Fragment() {
     private lateinit var emptyState: LinearLayout
     
     // Reuse single PostRepository instance to avoid creating new ones on each reaction
-    private val postRepository by lazy { PostRepository() }
+    private val postRepository by lazy { PostRepository(AppDatabase.getDatabase(requireContext()).postDao()) }
 
     private val SHIMMER_ITEM_COUNT = 5
 

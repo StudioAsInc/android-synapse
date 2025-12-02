@@ -1,9 +1,11 @@
 package com.synapse.social.studioasinc.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.PaginationManager
 import com.synapse.social.studioasinc.util.ScrollPositionState
@@ -17,7 +19,7 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val authRepository: AuthRepository = AuthRepository(),
-    private val postRepository: PostRepository = PostRepository()
+    private val postRepository: PostRepository = PostRepository(AppDatabase.getDatabase(getApplication()).postDao())
 ) : ViewModel() {
 
     // Pagination manager instance
@@ -25,7 +27,8 @@ class HomeViewModel(
         pageSize = 20,
         scrollThreshold = 5,
         onLoadPage = { page, pageSize ->
-            postRepository.getPostsPage(page, pageSize)
+            // Use getPosts() which returns Flow<Result<List<Post>>>
+            postRepository.getPosts()
         },
         onError = { error ->
             _error.value = error
