@@ -1,0 +1,59 @@
+================================================================================
+SYNAPSE BUG FIX - THEME SERVICE ACCESSIBILITY ISSUE
+================================================================================
+
+FILE: src/services/theme.service.ts
+LINES: 73-82
+
+--- BEFORE (BUGGY CODE)
++++ AFTER (FIXED CODE)
+
+  toggle(event?: MouseEvent) {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    
+-   // Force immediate DOM update
+    this.darkMode.update(d => !d);
+    
+-   // Force repaint to ensure all components update
+-   requestAnimationFrame(() => {
+-     document.body.style.display = 'none';
+-     document.body.offsetHeight; // Trigger reflow
+-     document.body.style.display = '';
+-     
+-     setTimeout(() => {
+-       this.isTransitioning = false;
+-     }, 50);
+-   });
++   setTimeout(() => {
++     this.isTransitioning = false;
++   }, 50);
+  }
+
+================================================================================
+SUMMARY OF CHANGES
+================================================================================
+
+Lines Removed: 7
+Lines Added: 3
+Net Change: -4 lines (simpler code)
+
+REMOVED:
+  ❌ requestAnimationFrame wrapper
+  ❌ document.body.style.display = 'none' (accessibility violation)
+  ❌ document.body.offsetHeight (forced reflow)
+  ❌ Nested setTimeout
+
+KEPT:
+  ✅ isTransitioning guard
+  ✅ darkMode.update() signal
+  ✅ Transition timeout
+
+IMPACT:
+  ✓ Fixes WCAG accessibility violations
+  ✓ Eliminates visual flashing
+  ✓ Improves screen reader support
+  ✓ Reduces code complexity
+  ✓ Better performance (no forced reflows)
+
+================================================================================

@@ -1,11 +1,14 @@
 # Keystores & credentials
 *.keystore
 keystore.properties
+.env
+.kiro/settings/mcp.json
 
 # Build artifacts
 build/
 app/build/
 .gradle/
+.vscode/
 *.apk
 *.aab
 *.dex
@@ -25,6 +28,7 @@ gradle-app.setting
 
 # Local configuration
 local.properties
+/local.properties
 
 # OS generated files
 .DS_Store
@@ -40,6 +44,10 @@ Thumbs.db
 *.temp
 *.log
 *.cache
+package-lock.json
 
 # Android SDK (should never be committed)
 android-sdk/
+.gemini/
+gha-creds-*.json
+.aider*
