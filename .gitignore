@@ -4,6 +4,14 @@ keystore.properties
 .env
 .kiro/settings/mcp.json
 
+# Sensitive configuration files
+android/gradle.properties
+android/app/src/main/res/raw/gemini_api.json
+web/src/firebase.config.ts
+web/.env
+web/.env.local
+web/.env.production
+
 # Build artifacts
 build/
 app/build/

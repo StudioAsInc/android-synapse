@@ -3,20 +3,13 @@ package com.synapse.social.studioasinc.AI
 import android.content.Context
 import android.util.Log
 import android.widget.TextView
-import com.synapse.social.studioasinc.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.synapse.social.studioasinc.BuildConfig
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
-import kotlin.random.Random
 
 class Gemini private constructor(
     private val context: Context,
@@ -40,7 +33,7 @@ class Gemini private constructor(
     }
 
     class Builder(private val context: Context) {
-        private var apiKeys: List<String> = loadApiKeysFromRaw(context)
+        private var apiKeys: List<String> = loadApiKeyFromBuildConfig()
         private var model: String = "gemini-1.5-flash"
         private var responseType: String = "text"
         private var tone: String = "normal"
@@ -81,22 +74,9 @@ class Gemini private constructor(
             )
         }
 
-        private fun loadApiKeysFromRaw(context: Context): List<String> {
-            val keys = mutableListOf<String>()
-            try {
-                context.resources.openRawResource(R.raw.gemini_api).use { inputStream ->
-                    val reader = BufferedReader(InputStreamReader(inputStream))
-                    val jsonString = reader.readText()
-                    val jsonArray = JSONArray(jsonString)
-                    
-                    for (i in 0 until jsonArray.length()) {
-                        keys.add(jsonArray.getString(i))
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading API keys: ${e.message}")
-            }
-            return keys
+        private fun loadApiKeyFromBuildConfig(): List<String> {
+            val key = BuildConfig.GEMINI_API_KEY
+            return if (key.isNotBlank()) listOf(key) else emptyList()
         }
     }
 
