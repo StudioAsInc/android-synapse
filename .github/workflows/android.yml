@@ -4,14 +4,14 @@ on:
   push:
     paths:
       - '.github/workflows/android.yml'
-      - 'android/mobile/app/**'
-      - 'android/mobile/gradle/**'
-      - 'android/mobile/build.gradle'
-      - 'android/mobile/gradle.properties'
-      - 'android/mobile/gradlew'
-      - 'android/mobile/gradlew.bat'
+      - 'android/app/**'
+      - 'android/gradle/**'
+      - 'android/build.gradle'
+      - 'android/gradle.properties'
+      - 'android/gradlew'
+      - 'android/gradlew.bat'
       - 'android/public-stable-ids.txt'
-      - 'android/mobile/settings.gradle'
+      - 'android/settings.gradle'
     branches-ignore:
       - 'wip/**'
   workflow_dispatch:
@@ -51,7 +51,7 @@ jobs:
           SUPABASE_SYNAPSE_S3_ENDPOINT_REGION: ${{ secrets.SUPABASE_SYNAPSE_S3_ENDPOINT_REGION }}
           SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID }}
           SUPABASE_SYNAPSE_S3_ACCESS_KEY: ${{ secrets.SUPABASE_SYNAPSE_S3_ACCESS_KEY }}
-        run: cd android/mobile && gradle assembleRelease
+        run: cd android && gradle assembleRelease
 
       - name: Set short SHA
         id: set_sha
@@ -59,14 +59,14 @@ jobs:
 
       - name: Rename APK with commit hash
         run: |
-          mv android/mobile/app/build/outputs/apk/release/app-release.apk \
-             android/mobile/app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
+          mv android/app/build/outputs/apk/release/app-release.apk \
+             android/app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: apk-release-${{ steps.set_sha.outputs.short_sha }}
-          path: android/mobile/app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
+          path: android/app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
 
   aggregateAndSend:
     name: Send APKs to Telegram
