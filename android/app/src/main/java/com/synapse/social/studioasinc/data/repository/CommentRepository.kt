@@ -34,7 +34,7 @@ class CommentRepository(private val commentDao: CommentDao) {
         }
     }
     
-    suspend fun refreshComments(postId: String): Result<Unit> {
+    suspend fun refreshComments(postId: String, limit: Int = 50, offset: Int = 0): Result<Unit> {
         return try {
             val response = client.from("comments")
                 .select(
@@ -48,6 +48,8 @@ class CommentRepository(private val commentDao: CommentDao) {
                         exact("parent_comment_id", null)
                     }
                     order("created_at", Order.ASCENDING)
+                    limit(limit.toLong())
+                    range(offset.toLong(), (offset + limit - 1).toLong())
                 }
                 .decodeList<JsonObject>()
             
@@ -56,7 +58,9 @@ class CommentRepository(private val commentDao: CommentDao) {
                 parseCommentFromJson(json)?.let { comments.add(it) }
             }
             
-            commentDao.insertAll(comments.map { CommentMapper.toEntity(it.toComment()) })
+            commentDao.insertAll(comments.map { 
+                CommentMapper.toEntity(it.toComment(), it.user?.username, it.user?.profileImageUrl) 
+            })
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch comments: ${e.message}", e)
@@ -392,12 +396,10 @@ class CommentRepository(private val commentDao: CommentDao) {
 
 private fun CommentWithUser.toComment(): Comment {
     return Comment(
-        id = this.id,
-        postId = this.postId,
-        authorUid = this.userId,
-        text = this.content,
-        timestamp = System.currentTimeMillis(),
-        username = this.user?.username,
-        avatarUrl = this.user?.profileImageUrl
+        key = this.id,
+        postKey = this.postId,
+        uid = this.userId,
+        comment = this.content,
+        push_time = this.createdAt.toString()
     )
 }

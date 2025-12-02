@@ -5,27 +5,33 @@ import com.synapse.social.studioasinc.model.Comment
 
 object CommentMapper {
 
-    fun toEntity(comment: Comment): CommentEntity {
+    fun toEntity(comment: Comment, username: String? = null, avatarUrl: String? = null): CommentEntity {
         return CommentEntity(
-            id = comment.id,
-            postId = comment.postId,
-            authorUid = comment.authorUid,
-            text = comment.text,
-            timestamp = comment.timestamp,
-            username = comment.username,
-            avatarUrl = comment.avatarUrl
+            id = comment.key,
+            postId = comment.postKey,
+            authorUid = comment.uid,
+            text = comment.comment,
+            timestamp = parsePushTime(comment.push_time),
+            username = username,
+            avatarUrl = avatarUrl
         )
     }
 
     fun toModel(entity: CommentEntity): Comment {
         return Comment(
-            id = entity.id,
-            postId = entity.postId,
-            authorUid = entity.authorUid,
-            text = entity.text,
-            timestamp = entity.timestamp,
-            username = entity.username,
-            avatarUrl = entity.avatarUrl
+            key = entity.id,
+            postKey = entity.postId,
+            uid = entity.authorUid,
+            comment = entity.text,
+            push_time = entity.timestamp.toString()
         )
+    }
+
+    private fun parsePushTime(pushTime: String): Long {
+        return try {
+            pushTime.toLongOrNull() ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
     }
 }

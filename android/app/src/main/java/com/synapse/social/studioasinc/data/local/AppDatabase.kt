@@ -26,6 +26,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "synapse_database"
                 )
+                // TODO: Replace with proper migrations for production
+                // fallbackToDestructiveMigration() wipes user data on schema changes
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
