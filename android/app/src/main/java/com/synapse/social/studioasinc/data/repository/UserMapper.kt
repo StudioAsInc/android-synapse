@@ -10,8 +10,8 @@ object UserMapper {
             uid = user.uid,
             username = user.username,
             email = user.email,
-            avatarUrl = user.avatarUrl,
-            isVerified = user.isVerified
+            avatarUrl = user.avatar,
+            isVerified = user.verify
         )
     }
 
@@ -20,8 +20,8 @@ object UserMapper {
             uid = entity.uid,
             username = entity.username,
             email = entity.email,
-            avatarUrl = entity.avatarUrl,
-            isVerified = entity.isVerified
+            avatar = entity.avatarUrl,
+            verify = entity.isVerified
         )
     }
 }
