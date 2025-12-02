@@ -125,6 +125,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super<BaseActivity>.onCreate(savedInstanceState)
+        Log.d(TAG, "Lifecycle: onCreate")
         setContentView(R.layout.activity_chat)
         
         // Get intent data
@@ -2375,6 +2376,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onResume() {
         super<BaseActivity>.onResume()
+        Log.d(TAG, "Lifecycle: onResume")
         
         // App is returning to foreground
         isAppInBackground = false
@@ -2406,6 +2408,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onPause() {
         super<BaseActivity>.onPause()
+        Log.d(TAG, "Lifecycle: onPause")
         
         // App is going to background
         isAppInBackground = true
@@ -2514,33 +2517,45 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onDestroy() {
         super<BaseActivity>.onDestroy()
-        
-        // Remove lifecycle observer
+        Log.d(TAG, "Lifecycle: onDestroy")
+
+        // Remove lifecycle observer to prevent memory leaks.
         lifecycle.removeObserver(this)
-        
-        // Unsubscribe from realtime channel when chat screen is closed
-        lifecycleScope.launch {
-            try {
-                realtimeChannel?.unsubscribe()
-                android.util.Log.d("ChatActivity", "Realtime channel unsubscribed")
-            } catch (e: Exception) {
-                android.util.Log.e("ChatActivity", "Error unsubscribing from realtime channel", e)
+
+        // Unsubscribe from the Supabase Realtime channel to stop listening for new messages
+        // and prevent resource leaks. This is crucial for stopping background network activity.
+        try {
+            chatId?.let {
+                Log.d(TAG, "Unsubscribing from Realtime channel for chat: $it")
+                SupabaseClient.client.realtime.removeChannel(SupabaseClient.client.realtime.channel("chat:$it"))
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unsubscribing from Realtime channel", e)
+        }
+
+        // Clear all Glide image loading requests associated with this activity.
+        // This is a critical step to free up memory from images and prevent memory leaks.
+        if (isFinishing) {
+            Log.d(TAG, "Clearing Glide resources")
+            Glide.with(applicationContext).clear(recyclerView) // Clear RecyclerView images
+            Glide.with(applicationContext).clear(chatAvatarImage) // Clear avatar
+            Glide.with(applicationContext).clear(typingAvatar) // Clear typing indicator avatar
+            Glide.with(applicationContext).clear(replyMediaPreview) // Clear reply preview
         }
         
-        // Clean up typing indicator coroutine jobs
-        typingIndicatorAutoHideJob?.cancel()
-        
-        // Stop typing indicator animations
+        // Stop any running animations and cancel related coroutine jobs to prevent leaks.
         typingAnimation?.stopAnimation()
-        
-        // Clean up ChatViewModel resources
-        if (::chatViewModel.isInitialized) {
-            chatViewModel.onChatClosed()
-        }
-        
+        typingIndicatorAutoHideJob?.cancel()
+
+        // Dismiss any showing dialogs and nullify them to prevent window leaks,
+        // which can happen if a dialog is showing when the activity is destroyed.
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null
+
+        // Nullify the adapter and any other listeners to break reference cycles
+        // between the RecyclerView and the adapter, which can cause memory leaks.
+        recyclerView?.adapter = null
+        chatAdapter = null
     }
     
 }

@@ -283,7 +283,9 @@ class SupabaseRealtimeService {
     }
     
     /**
-     * Clean up all channels and resources.
+     * Clean up all channels and resources. This method should be called when the service is
+     * no longer needed, such as in the ViewModel's onCleared() method, to prevent memory
+     * and resource leaks from active WebSocket connections and polling jobs.
      */
     suspend fun cleanup() {
         Log.d(TAG, "Cleaning up all channels")

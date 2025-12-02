@@ -21,6 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
+import android.util.Log
+import com.bumptech.glide.Glide
 
 import io.noties.markwon.Markwon
 import java.util.Calendar
@@ -41,8 +43,13 @@ class ProfileActivity : BaseActivity() {
     private lateinit var postAdapter: PostsAdapter
     private lateinit var markwon: Markwon
 
+    companion object {
+        private const val TAG = "ProfileActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "Lifecycle: onCreate")
         binding = ActivityProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -823,5 +830,27 @@ class ProfileActivity : BaseActivity() {
                 Toast.makeText(this@ProfileActivity, "Failed to hide post: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "Lifecycle: onDestroy")
+
+        // Clear Glide image loading requests to free up memory when the activity is finishing.
+        // This is essential to prevent Glide from holding references to views that are no longer valid.
+        if (isFinishing) {
+            Log.d(TAG, "Clearing Glide resources")
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoProfileImage)
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoCoverImage)
+        }
+
+        // Nullify the RecyclerView adapter to break the reference cycle.
+        // The RecyclerView can hold a strong reference to the adapter, which in turn can hold a
+        // reference to the activity, causing a memory leak.
+        binding.ProfilePageTabUserPostsRecyclerView.adapter = null
+
+        // Cancel all coroutines launched in the lifecycleScope of this activity.
+        // This ensures that no background work continues after the activity is destroyed.
+        lifecycleScope.coroutineContext.cancelChildren()
     }
 }
