@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.util
 
+import android.content.Context
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.NotificationConfig
 import com.synapse.social.studioasinc.NotificationHelper
@@ -17,7 +18,7 @@ object NotificationUtils {
     /**
      * Send notification when someone likes a post
      */
-    fun sendPostLikeNotification(postKey: String, postAuthorUid: String) {
+    fun sendPostLikeNotification(context: Context, postKey: String, postAuthorUid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
@@ -52,7 +53,7 @@ object NotificationUtils {
     /**
      * Send notification when someone comments on a post
      */
-    fun sendPostCommentNotification(postKey: String, postAuthorUid: String, commentText: String) {
+    fun sendPostCommentNotification(context: Context, postKey: String, postAuthorUid: String, commentText: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
@@ -88,7 +89,7 @@ object NotificationUtils {
     /**
      * Send notification when someone likes a comment
      */
-    fun sendCommentLikeNotification(postKey: String, commentKey: String, commentAuthorUid: String) {
+    fun sendCommentLikeNotification(context: Context, postKey: String, commentKey: String, commentAuthorUid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
@@ -124,7 +125,7 @@ object NotificationUtils {
     /**
      * Send notification when someone follows a user
      */
-    fun sendFollowNotification(followedUid: String) {
+    fun sendFollowNotification(context: Context, followedUid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
@@ -159,7 +160,7 @@ object NotificationUtils {
     /**
      * Send notification for chat messages
      */
-    fun sendChatMessageNotification(recipientUid: String, messageText: String, chatId: String) {
+    fun sendChatMessageNotification(context: Context, recipientUid: String, messageText: String, chatId: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
@@ -203,7 +204,7 @@ object NotificationUtils {
     /**
      * Send mention notification (used by MentionUtils)
      */
-    fun sendMentionNotification(mentionedUid: String, postKey: String, commentKey: String?, contentType: String) {
+    fun sendMentionNotification(context: Context, mentionedUid: String, postKey: String, commentKey: String?, contentType: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()

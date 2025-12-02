@@ -86,6 +86,7 @@ object MentionUtils {
      * Send notifications to mentioned users
      */
     fun sendMentionNotifications(
+        context: Context,
         text: String, 
         postKey: String, 
         commentKey: String?, 
@@ -117,7 +118,7 @@ object MentionUtils {
                     userResult.fold(
                         onSuccess = { user ->
                             if (user != null) {
-                                sendMentionNotification(user.uid, postKey, commentKey, contentType)
+                                sendMentionNotification(context, user.uid, postKey, commentKey, contentType)
                             }
                         },
                         onFailure = { error ->
@@ -135,6 +136,7 @@ object MentionUtils {
      * Send a mention notification to a specific user
      */
     private suspend fun sendMentionNotification(
+        context: Context,
         mentionedUid: String, 
         postKey: String, 
         commentKey: String?, 
