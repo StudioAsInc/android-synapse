@@ -41,6 +41,7 @@ class HomeFragment : Fragment() {
     private lateinit var publicPostsList: RecyclerView
     private lateinit var loadingBar: ProgressBar
     private lateinit var shimmerContainer: LinearLayout
+    private lateinit var emptyState: LinearLayout
     
     // Reuse single PostRepository instance to avoid creating new ones on each reaction
     private val postRepository by lazy { PostRepository() }
@@ -104,6 +105,7 @@ class HomeFragment : Fragment() {
         publicPostsList = view.findViewById(R.id.PublicPostsList)
         loadingBar = view.findViewById(R.id.loading_bar)
         shimmerContainer = view.findViewById(R.id.shimmer_container)
+        emptyState = view.findViewById(R.id.empty_state)
     }
 
     private fun setupViewModel() {
@@ -207,6 +209,7 @@ class HomeFragment : Fragment() {
                 }
                 hideShimmer()
                 postAdapter.submitList(posts)
+                emptyState.visibility = if (posts.isEmpty()) View.VISIBLE else View.GONE
             }
         }
         

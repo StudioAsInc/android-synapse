@@ -138,6 +138,7 @@
     <string name="m_no_posts">This user hasn’t shared a post yet</string>
     <string name="m_no_chats">You don’t have any chats with this user yet</string>
     <string name="explore">Explore</string>
+    <string name="no_posts">No posts yet</string>
     <string name="statistics_settings">Statistics Settings</string>
     <string name="hide_the_number_of_views">Hide view count</string>
     <string name="hide_the_number_of_views_subtitle">View count will be hidden.</string>
