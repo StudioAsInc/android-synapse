@@ -24,7 +24,8 @@ class CommentsAdapter(
     private val onCommentLongClicked: (Comment) -> Unit,
     private val onShowReplies: (String) -> Unit,
     private val onReplyLiked: (Reply) -> Unit,
-    private val onReplyLongClicked: (Reply) -> Unit
+    private val onReplyLongClicked: (Reply) -> Unit,
+    private val onCommentReactionPicker: (Comment) -> Unit
 ) : ListAdapter<Comment, CommentsAdapter.CommentViewHolder>(CommentDiffCallback()) {
 
     private var userMap: Map<String, User> = emptyMap()
@@ -43,20 +44,24 @@ class CommentsAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CommentViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.synapse_comments_list_cv, parent, false)
-        return CommentViewHolder(view, onReplyLiked, onReplyLongClicked)
+        return CommentViewHolder(view, onReplyLiked, onReplyLongClicked, { reply ->
+            // Convert Reply to Comment-like structure for reaction picker
+            // This will be handled by the activity/fragment
+        })
     }
 
     override fun onBindViewHolder(holder: CommentViewHolder, position: Int) {
         val comment = getItem(position)
         val user = userMap[comment.uid]
         val replies = repliesMap[comment.key] ?: emptyList()
-        holder.bind(comment, user, replies, onCommentLiked, onReplyClicked, onCommentLongClicked, onShowReplies, userMap)
+        holder.bind(comment, user, replies, onCommentLiked, onReplyClicked, onCommentLongClicked, onShowReplies, userMap, onCommentReactionPicker)
     }
 
     class CommentViewHolder(
         itemView: View,
         onReplyLiked: (Reply) -> Unit,
-        onReplyLongClicked: (Reply) -> Unit
+        onReplyLongClicked: (Reply) -> Unit,
+        onReplyReactionPicker: (Reply) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
         private val profileImage: CircleImageView = itemView.findViewById(R.id.profileImage)
         private val username: TextView = itemView.findViewById(R.id.username)
@@ -72,7 +77,7 @@ class CommentsAdapter(
         private val mediaImage: ImageView = itemView.findViewById(R.id.commentMediaImage)
         private val mediaPlaceholder: TextView = itemView.findViewById(R.id.commentMediaPlaceholder)
 
-        private val repliesAdapter = RepliesAdapter(onReplyLiked, onReplyLongClicked)
+        private val repliesAdapter = RepliesAdapter(onReplyLiked, onReplyLongClicked, onReplyReactionPicker)
 
         init {
             repliesRecyclerView.adapter = repliesAdapter
@@ -87,7 +92,8 @@ class CommentsAdapter(
             onReplyClicked: (Comment) -> Unit,
             onCommentLongClicked: (Comment) -> Unit,
             onShowReplies: (String) -> Unit,
-            userMap: Map<String, User>
+            userMap: Map<String, User>,
+            onCommentReactionPicker: (Comment) -> Unit
         ) {
             commentText.text = comment.comment
             likeCount.text = comment.like.toString()
@@ -136,6 +142,10 @@ class CommentsAdapter(
             }
 
             likeButton.setOnClickListener { onCommentLiked(comment) }
+            likeButton.setOnLongClickListener { 
+                onCommentReactionPicker(comment)
+                true 
+            }
             replyButton.setOnClickListener { onReplyClicked(comment) }
             replyButton.setOnLongClickListener {
                 onCommentLongClicked(comment)
@@ -153,16 +163,19 @@ class CommentsAdapter(
                 hideRepliesButton.visibility = View.GONE
             } else {
                 // Has replies - initially hidden, show button to expand
-                repliesRecyclerView.visibility = View.GONE
                 showRepliesButton.visibility = View.VISIBLE
                 hideRepliesButton.visibility = View.GONE
                 showRepliesButton.text = "View ${replies.size} ${if (replies.size == 1) "reply" else "replies"}"
+                
+                // Ensure replies are hidden initially
+                repliesRecyclerView.visibility = View.GONE
             }
 
             showRepliesButton.setOnClickListener {
                 repliesRecyclerView.visibility = View.VISIBLE
                 showRepliesButton.visibility = View.GONE
                 hideRepliesButton.visibility = View.VISIBLE
+                onShowReplies(comment.key)
             }
 
             hideRepliesButton.setOnClickListener {

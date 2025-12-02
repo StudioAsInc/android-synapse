@@ -17,7 +17,8 @@ import de.hdodenhof.circleimageview.CircleImageView
 
 class RepliesAdapter(
     private val onReplyLiked: (Reply) -> Unit,
-    private val onReplyLongClicked: (Reply) -> Unit
+    private val onReplyLongClicked: (Reply) -> Unit,
+    private val onReplyReactionPicker: (Reply) -> Unit
 ) : ListAdapter<Reply, RepliesAdapter.ReplyViewHolder>(ReplyDiffCallback()) {
 
     private var userMap: Map<String, User> = emptyMap()
@@ -36,7 +37,7 @@ class RepliesAdapter(
     override fun onBindViewHolder(holder: ReplyViewHolder, position: Int) {
         val reply = getItem(position)
         val user = userMap[reply.uid]
-        holder.bind(reply, user, onReplyLiked, onReplyLongClicked)
+        holder.bind(reply, user, onReplyLiked, onReplyLongClicked, onReplyReactionPicker)
     }
 
     class ReplyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -52,7 +53,8 @@ class RepliesAdapter(
             reply: Reply,
             user: User?,
             onReplyLiked: (Reply) -> Unit,
-            onReplyLongClicked: (Reply) -> Unit
+            onReplyLongClicked: (Reply) -> Unit,
+            onReplyReactionPicker: (Reply) -> Unit
         ) {
             replyText.text = reply.comment
             likeCount.text = reply.like.toString()
@@ -76,6 +78,10 @@ class RepliesAdapter(
             }
 
             likeButton.setOnClickListener { onReplyLiked(reply) }
+            likeButton.setOnLongClickListener { 
+                onReplyReactionPicker(reply)
+                true 
+            }
             itemView.setOnLongClickListener {
                 onReplyLongClicked(reply)
                 true

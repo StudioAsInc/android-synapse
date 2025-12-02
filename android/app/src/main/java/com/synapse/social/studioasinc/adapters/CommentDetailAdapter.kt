@@ -18,7 +18,8 @@ class CommentDetailAdapter(
     private val onReplyClick: (CommentWithUser) -> Unit,
     private val onLikeClick: (CommentWithUser) -> Unit,
     private val onUserClick: (String) -> Unit,
-    private val onOptionsClick: (CommentWithUser) -> Unit
+    private val onOptionsClick: (CommentWithUser) -> Unit,
+    private val onReactionPickerClick: (CommentWithUser) -> Unit
 ) : ListAdapter<CommentWithUser, CommentDetailAdapter.ViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -101,6 +102,10 @@ class CommentDetailAdapter(
             binding.tvUsername.setOnClickListener { onUserClick(comment.userId) }
             binding.tvReplyAction.setOnClickListener { onReplyClick(comment) }
             binding.tvLikeAction.setOnClickListener { onLikeClick(comment) }
+            binding.tvLikeAction.setOnLongClickListener { 
+                onReactionPickerClick(comment)
+                true 
+            }
             binding.cardComment.setOnLongClickListener {
                 onOptionsClick(comment)
                 true
@@ -119,7 +124,7 @@ class CommentDetailAdapter(
                 binding.tvViewReplies.text = binding.root.context.getString(R.string.hide_replies)
                 // Load replies - in real implementation, fetch from repository
                 if (repliesAdapter == null) {
-                    repliesAdapter = NestedRepliesAdapter(onUserClick, onLikeClick, onOptionsClick)
+                    repliesAdapter = NestedRepliesAdapter(onUserClick, onLikeClick, onOptionsClick, onReactionPickerClick)
                     binding.rvReplies.layoutManager = LinearLayoutManager(binding.root.context)
                     binding.rvReplies.adapter = repliesAdapter
                 }
@@ -140,7 +145,8 @@ class CommentDetailAdapter(
 private class NestedRepliesAdapter(
     private val onUserClick: (String) -> Unit,
     private val onLikeClick: (CommentWithUser) -> Unit,
-    private val onOptionsClick: (CommentWithUser) -> Unit
+    private val onOptionsClick: (CommentWithUser) -> Unit,
+    private val onReactionPickerClick: (CommentWithUser) -> Unit
 ) : ListAdapter<CommentWithUser, NestedRepliesAdapter.ViewHolder>(
     object : DiffUtil.ItemCallback<CommentWithUser>() {
         override fun areItemsTheSame(old: CommentWithUser, new: CommentWithUser) = old.id == new.id
@@ -166,6 +172,10 @@ private class NestedRepliesAdapter(
             binding.viewRepliesContainer.isVisible = false
             binding.ivAvatar.setOnClickListener { reply.userId?.let { onUserClick(it) } }
             binding.tvLikeAction.setOnClickListener { onLikeClick(reply) }
+            binding.tvLikeAction.setOnLongClickListener { 
+                onReactionPickerClick(reply)
+                true 
+            }
         }
     }
 }

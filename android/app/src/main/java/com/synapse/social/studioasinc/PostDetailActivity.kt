@@ -72,7 +72,8 @@ class PostDetailActivity : BaseActivity() {
             onReplyClick = { comment -> setReplyMode(comment) },
             onLikeClick = { comment -> viewModel.toggleCommentReaction(comment.id, ReactionType.LIKE) },
             onUserClick = { userId -> navigateToProfile(userId) },
-            onOptionsClick = { comment -> showCommentOptions(comment) }
+            onOptionsClick = { comment -> showCommentOptions(comment) },
+            onReactionPickerClick = { comment -> showCommentReactionPicker(comment) }
         )
         binding.rvComments.apply {
             layoutManager = LinearLayoutManager(this@PostDetailActivity)
@@ -282,6 +283,14 @@ class PostDetailActivity : BaseActivity() {
             viewModel.toggleReaction(reactionType)
         }
         picker.show(supportFragmentManager, "reaction_picker")
+    }
+
+    private fun showCommentReactionPicker(comment: CommentWithUser) {
+        val picker = ReactionPickerBottomSheet()
+        picker.setOnReactionSelectedListener { reactionType ->
+            viewModel.toggleCommentReaction(comment.id, reactionType)
+        }
+        picker.show(supportFragmentManager, "comment_reaction_picker")
     }
 
     private fun showMoreOptions(anchor: View) {
