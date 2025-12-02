@@ -19,11 +19,11 @@ import com.synapse.social.studioasinc.model.ReactionType
  */
 @Deprecated(
     message = "Use PostRepository.toggleReaction() instead. The reactions table is now the single source of truth.",
-    replaceWith = ReplaceWith("PostRepository().toggleReaction(postId, userId, ReactionType.LIKE)")
+    replaceWith = ReplaceWith("PostRepository(postDao).toggleReaction(postId, userId, ReactionType.LIKE)")
 )
-class LikeRepository {
+class LikeRepository(private val postDao: com.synapse.social.studioasinc.data.local.PostDao) {
     
-    private val postRepository = PostRepository()
+    private val postRepository = PostRepository(postDao)
     
     /**
      * @deprecated Use [PostRepository.toggleReaction] with [ReactionType.LIKE]

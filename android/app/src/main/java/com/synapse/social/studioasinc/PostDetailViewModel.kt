@@ -45,7 +45,15 @@ class PostDetailViewModel(application: Application) : AndroidViewModel(applicati
                 result.fold(
                     onSuccess = { comments ->
                         val commentsWithUser = comments.map { comment ->
-                            CommentWithUser(comment, null)
+                            CommentWithUser(
+                                id = comment.key,
+                                postId = comment.postKey,
+                                userId = comment.uid,
+                                parentCommentId = comment.replyCommentKey,
+                                content = comment.comment,
+                                createdAt = comment.push_time,
+                                user = null
+                            )
                         }
                         _commentsState.value = CommentsState.Success(commentsWithUser, commentsWithUser.size >= limit)
                     },

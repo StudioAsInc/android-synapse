@@ -5,7 +5,7 @@ import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.data.local.ChatDao
 import com.synapse.social.studioasinc.data.local.ChatEntity
-import com.synapse.social.studioasinc.data.mapper.ChatMapper
+import com.synapse.social.studioasinc.data.repository.ChatMapper
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
 import io.github.jan.supabase.postgrest.from
