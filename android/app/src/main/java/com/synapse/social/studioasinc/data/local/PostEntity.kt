@@ -62,15 +62,21 @@ class MediaItemConverter {
     
     @TypeConverter
     fun fromMediaItemList(mediaItems: List<MediaItem>?): String? {
-        return mediaItems?.let { gson.toJson(it) }
+        return mediaItems?.let { 
+            try {
+                gson.toJson(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
     @TypeConverter
     fun toMediaItemList(mediaItemsString: String?): List<MediaItem>? {
-        if (mediaItemsString == null) return null
+        if (mediaItemsString.isNullOrBlank()) return null
         return try {
             val type = object : TypeToken<List<MediaItem>>() {}.type
-            gson.fromJson(mediaItemsString, type)
+            gson.fromJson<List<MediaItem>>(mediaItemsString, type)
         } catch (e: Exception) {
             null
         }
