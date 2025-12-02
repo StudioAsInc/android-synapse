@@ -125,6 +125,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super<BaseActivity>.onCreate(savedInstanceState)
+        Log.d(TAG, "Lifecycle: onCreate")
         setContentView(R.layout.activity_chat)
         
         // Get intent data
@@ -2375,6 +2376,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onResume() {
         super<BaseActivity>.onResume()
+        Log.d(TAG, "Lifecycle: onResume")
         
         // App is returning to foreground
         isAppInBackground = false
@@ -2406,18 +2408,16 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onPause() {
         super<BaseActivity>.onPause()
-        
+        Log.d(TAG, "Lifecycle: onPause")
+
         // App is going to background
         isAppInBackground = true
-        
+
         // Defer read receipt updates when app is backgrounded
         if (::chatViewModel.isInitialized) {
             chatViewModel.setChatVisibility(false)
-            
-            // Unsubscribe when chat screen closes
-            chatViewModel.onChatClosed()
         }
-        
+
         // Stop typing indicator when leaving chat
         val currentChatId = chatId
         val currentUser = currentUserId
@@ -2514,33 +2514,42 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      */
     override fun onDestroy() {
         super<BaseActivity>.onDestroy()
-        
-        // Remove lifecycle observer
+        Log.d(TAG, "Lifecycle: onDestroy")
+
+        // Remove lifecycle observer to prevent memory leaks.
         lifecycle.removeObserver(this)
-        
-        // Unsubscribe from realtime channel when chat screen is closed
-        lifecycleScope.launch {
-            try {
-                realtimeChannel?.unsubscribe()
-                android.util.Log.d("ChatActivity", "Realtime channel unsubscribed")
-            } catch (e: Exception) {
-                android.util.Log.e("ChatActivity", "Error unsubscribing from realtime channel", e)
-            }
+
+
+        // Clear all Glide image loading requests associated with this activity.
+        // This is a critical step to free up memory from images and prevent memory leaks.
+        if (isFinishing) {
+            Log.d(TAG, "Clearing Glide resources")
+            recyclerView?.let { Glide.with(this).clear(it) } // Clear RecyclerView images
+            chatAvatarImage?.let { Glide.with(this).clear(it) } // Clear avatar
+            typingAvatar?.let { Glide.with(this).clear(it) } // Clear typing indicator avatar
+            replyMediaPreview?.let { Glide.with(this).clear(it) } // Clear reply preview
         }
         
-        // Clean up typing indicator coroutine jobs
-        typingIndicatorAutoHideJob?.cancel()
-        
-        // Stop typing indicator animations
+        // Stop any running animations and cancel related coroutine jobs to prevent leaks.
         typingAnimation?.stopAnimation()
-        
-        // Clean up ChatViewModel resources
-        if (::chatViewModel.isInitialized) {
-            chatViewModel.onChatClosed()
-        }
-        
+        typingIndicatorAutoHideJob?.cancel()
+
+        // Dismiss any showing dialogs and nullify them to prevent window leaks,
+        // which can happen if a dialog is showing when the activity is destroyed.
         synapseLoadingDialog?.dismiss()
         synapseLoadingDialog = null
+
+        // Nullify the adapter and any other listeners to break reference cycles
+        // between the RecyclerView and the adapter, which can cause memory leaks.
+        recyclerView?.adapter = null
+        chatAdapter = null
+
+        // Clean up ChatViewModel resources, which includes unsubscribing from the Realtime channel.
+        // This is the most critical cleanup step to prevent memory leaks and stop background network activity.
+        if (::chatViewModel.isInitialized) {
+            Log.d(TAG, "Cleaning up ChatViewModel and unsubscribing from Realtime channel.")
+            chatViewModel.onChatClosed()
+        }
     }
     
 }
