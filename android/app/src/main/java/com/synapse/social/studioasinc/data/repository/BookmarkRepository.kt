@@ -2,18 +2,19 @@ package com.synapse.social.studioasinc.data.repository
 
 import android.util.Log
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.SynapseApplication
+import com.synapse.social.studioasinc.data.Result
+import com.synapse.social.studioasinc.util.ErrorHandler
+import com.synapse.social.studioasinc.util.RetryPolicy
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Repository for post bookmarking/favorites.
- * Requirements: 8.1, 8.2
- */
 class BookmarkRepository {
     private val client = SupabaseClient.client
+    private val retryPolicy = RetryPolicy()
     
     @Serializable
     private data class Favorite(
@@ -23,55 +24,62 @@ class BookmarkRepository {
         @SerialName("collection_id") val collectionId: String? = null
     )
     
-    /**
-     * Check if post is bookmarked by current user.
-     * Requirement: 8.1
-     */
-    suspend fun isBookmarked(postId: String): Result<Boolean> = runCatching {
-        val userId = client.auth.currentUserOrNull()?.id 
-            ?: return Result.failure(Exception("Not authenticated"))
-        
-        val favorites = client.from("favorites")
-            .select(Columns.list("id")) {
-                filter {
-                    eq("post_id", postId)
-                    eq("user_id", userId)
-                }
+    suspend fun isBookmarked(postId: String): Result<Boolean> {
+        return try {
+            val userId = client.auth.currentUserOrNull()?.id
+                ?: return Result.Error(Exception("Not authenticated"), "Not authenticated")
+
+            val favorites = retryPolicy.executeWithRetry {
+                client.from("favorites")
+                    .select(Columns.list("id")) {
+                        filter {
+                            eq("post_id", postId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    .decodeList<Favorite>()
             }
-            .decodeList<Favorite>()
-        
-        favorites.isNotEmpty()
+
+            Result.Success(favorites.isNotEmpty())
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
     
-    /**
-     * Toggle bookmark status for a post.
-     * Returns true if bookmarked, false if removed.
-     * Requirement: 8.2
-     */
-    suspend fun toggleBookmark(postId: String, collectionId: String? = null): Result<Boolean> = runCatching {
-        val userId = client.auth.currentUserOrNull()?.id 
-            ?: return Result.failure(Exception("Not authenticated"))
-        
-        val existing = client.from("favorites")
-            .select(Columns.list("id")) {
-                filter {
-                    eq("post_id", postId)
-                    eq("user_id", userId)
-                }
+    suspend fun toggleBookmark(postId: String, collectionId: String? = null): Result<Boolean> {
+        return try {
+            val userId = client.auth.currentUserOrNull()?.id
+                ?: return Result.Error(Exception("Not authenticated"), "Not authenticated")
+
+            val existing = retryPolicy.executeWithRetry {
+                client.from("favorites")
+                    .select(Columns.list("id")) {
+                        filter {
+                            eq("post_id", postId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    .decodeList<Favorite>()
+                    .firstOrNull()
             }
-            .decodeList<Favorite>()
-            .firstOrNull()
-        
-        if (existing != null) {
-            client.from("favorites")
-                .delete { filter { eq("id", existing.id!!) } }
-            Log.d(TAG, "Bookmark removed: $postId")
-            false
-        } else {
-            client.from("favorites")
-                .insert(Favorite(postId = postId, userId = userId, collectionId = collectionId))
-            Log.d(TAG, "Bookmark added: $postId")
-            true
+
+            if (existing != null) {
+                retryPolicy.executeWithRetry {
+                    client.from("favorites")
+                        .delete { filter { eq("id", existing.id!!) } }
+                }
+                Log.d(TAG, "Bookmark removed: $postId")
+                Result.Success(false)
+            } else {
+                retryPolicy.executeWithRetry {
+                    client.from("favorites")
+                        .insert(Favorite(postId = postId, userId = userId, collectionId = collectionId))
+                }
+                Log.d(TAG, "Bookmark added: $postId")
+                Result.Success(true)
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
     

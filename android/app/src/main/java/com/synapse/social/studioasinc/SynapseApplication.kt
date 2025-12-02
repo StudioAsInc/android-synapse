@@ -6,10 +6,24 @@ import com.synapse.social.studioasinc.backend.AuthDevelopmentUtils
 import com.synapse.social.studioasinc.util.MediaCacheCleanupManager
 import com.synapse.social.studioasinc.chat.service.DatabaseMaintenanceManager
 
+import android.content.Context
+
 class SynapseApplication : Application() {
     
     private lateinit var mediaCacheCleanupManager: MediaCacheCleanupManager
     private lateinit var databaseMaintenanceManager: DatabaseMaintenanceManager
+
+    init {
+        instance = this
+    }
+
+    companion object {
+        private var instance: SynapseApplication? = null
+
+        fun applicationContext(): Context {
+            return instance!!.applicationContext
+        }
+    }
     
     override fun onCreate() {
         super.onCreate()

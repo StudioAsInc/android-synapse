@@ -1,10 +1,14 @@
 package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.SynapseApplication
 import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.data.Result
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
+import com.synapse.social.studioasinc.util.ErrorHandler
+import com.synapse.social.studioasinc.util.RetryPolicy
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.realtime.PostgresAction
@@ -17,17 +21,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
-/**
- * Repository for chat operations
- * Provides a clean API for chat functionality with proper data mapping
- */
 class ChatRepository {
 
     private val chatService = SupabaseChatService()
     private val databaseService = SupabaseDatabaseService()
     private val client = SupabaseClient.client
+    private val retryPolicy = RetryPolicy()
     
-    // In-memory cache for recently fetched pages
     private data class CacheEntry<T>(
         val data: T,
         val timestamp: Long = System.currentTimeMillis()
@@ -43,35 +43,34 @@ class ChatRepository {
         private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L // 5 minutes
     }
     
-    /**
-     * Invalidate cache on refresh operations
-     */
     fun invalidateCache() {
         messagesCache.clear()
-        android.util.Log.d("ChatRepository", "Cache invalidated")
     }
     
-    /**
-     * Get cache key for a specific chat and timestamp
-     */
     private fun getCacheKey(chatId: String, beforeTimestamp: Long?, limit: Int): String {
         return "messages_chat_${chatId}_before_${beforeTimestamp}_limit_${limit}"
     }
 
-    /**
-     * Creates a new chat or gets existing one
-     */
     suspend fun createChat(participantUids: List<String>, chatName: String? = null): Result<String> {
-        return if (participantUids.size == 2) {
-            chatService.getOrCreateDirectChat(participantUids[0], participantUids[1])
-        } else {
-            Result.failure(Exception("Group chats not yet implemented"))
+        return try {
+            if (participantUids.size == 2) {
+                val result = retryPolicy.executeWithRetry {
+                    chatService.getOrCreateDirectChat(participantUids[0], participantUids[1])
+                }
+                if (result.isSuccess) {
+                    Result.Success(result.getOrThrow())
+                } else {
+                    val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                    Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+                }
+            } else {
+                Result.Error(Exception("Group chats not yet implemented"), "Group chats not yet implemented")
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Sends a message
-     */
     suspend fun sendMessage(
         chatId: String,
         senderId: String,
@@ -79,311 +78,247 @@ class ChatRepository {
         messageType: String = "text",
         replyToId: String? = null
     ): Result<String> {
-        android.util.Log.d("ChatRepository", "=== sendMessage START ===")
-        android.util.Log.d("ChatRepository", "Sending message:")
-        android.util.Log.d("ChatRepository", "  - chatId: $chatId")
-        android.util.Log.d("ChatRepository", "  - senderId: $senderId")
-        android.util.Log.d("ChatRepository", "  - content length: ${content.length}")
-        android.util.Log.d("ChatRepository", "  - messageType: $messageType")
-        android.util.Log.d("ChatRepository", "  - replyToId: $replyToId")
-        
-        val result = chatService.sendMessage(
-            chatId = chatId,
-            senderId = senderId,
-            content = content,
-            messageType = messageType,
-            replyToId = replyToId
-        )
-        
-        result.onSuccess { messageId ->
-            android.util.Log.d("ChatRepository", "✓ Message sent successfully, messageId: $messageId")
-        }.onFailure { error ->
-            android.util.Log.e("ChatRepository", "✗ Failed to send message: ${error.message}", error)
+        return try {
+            val result = retryPolicy.executeWithRetry {
+                 chatService.sendMessage(
+                    chatId = chatId,
+                    senderId = senderId,
+                    content = content,
+                    messageType = messageType,
+                    replyToId = replyToId
+                )
+            }
+            if (result.isSuccess) {
+                Result.Success(result.getOrThrow())
+            } else {
+                val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
-        
-        android.util.Log.d("ChatRepository", "=== sendMessage END ===")
-        return result
     }
 
-    /**
-     * Gets messages for a chat with proper data mapping
-     * @param chatId The chat ID
-     * @param limit Maximum number of messages to fetch
-     * @param beforeTimestamp Optional timestamp to fetch messages before (for pagination)
-     */
     suspend fun getMessages(
         chatId: String, 
         limit: Int = 50, 
         beforeTimestamp: Long? = null
     ): Result<List<Message>> {
         return try {
-            val result = chatService.getMessages(chatId, limit, beforeTimestamp)
-            result.map { messagesList ->
-                messagesList.map { messageData ->
+            val result = retryPolicy.executeWithRetry {
+                chatService.getMessages(chatId, limit, beforeTimestamp)
+            }
+            if(result.isSuccess){
+                val messages = result.getOrThrow().map { messageData ->
                     mapToMessage(messageData)
                 }
+                Result.Success(messages)
+            } else {
+                 val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
     
-    /**
-     * Fetch messages with pagination support (for loading older messages)
-     * @param chatId Chat conversation ID
-     * @param beforeTimestamp Load messages before this timestamp (for loading older messages)
-     * @param limit Number of messages to fetch (use Int.MAX_VALUE for all messages)
-     * @return Result containing list of messages
-     */
     suspend fun getMessagesPage(
         chatId: String,
         beforeTimestamp: Long? = null,
         limit: Int = 50
     ): Result<List<Message>> = withContext(Dispatchers.IO) {
         return@withContext try {
-            android.util.Log.d("ChatRepository", "=== getMessagesPage START ===")
-            android.util.Log.d("ChatRepository", "Parameters: chatId=$chatId, beforeTimestamp=$beforeTimestamp, limit=$limit")
-            
-            // Check cache before making network request
             val cacheKey = getCacheKey(chatId, beforeTimestamp, limit)
             val cachedEntry = messagesCache[cacheKey]
             
             if (cachedEntry != null && !cachedEntry.isExpired()) {
-                android.util.Log.d("ChatRepository", "✓ Cache HIT - Returning ${cachedEntry.data.size} cached messages")
-                android.util.Log.d("ChatRepository", "=== getMessagesPage END (cached) ===")
-                return@withContext Result.success(cachedEntry.data)
+                return@withContext Result.Success(cachedEntry.data)
             }
             
-            android.util.Log.d("ChatRepository", "✗ Cache MISS - Fetching from database")
-            android.util.Log.d("ChatRepository", "Query details:")
-            android.util.Log.d("ChatRepository", "  - Table: messages")
-            android.util.Log.d("ChatRepository", "  - Filter: chat_id = $chatId")
-            if (beforeTimestamp != null) {
-                android.util.Log.d("ChatRepository", "  - Filter: created_at < $beforeTimestamp")
-            }
-            android.util.Log.d("ChatRepository", "  - Limit: ${if (limit == Int.MAX_VALUE) "ALL (Int.MAX_VALUE)" else limit}")
-            android.util.Log.d("ChatRepository", "  - Order: created_at DESC")
-            
-            // Build query with filters and ordering
-            val messages = client.from("messages")
-                .select() {
-                    filter {
-                        // Filter by chat_id
-                        eq("chat_id", chatId)
-                        // If beforeTimestamp is provided, load messages before that timestamp
-                        beforeTimestamp?.let { 
-                            lt("created_at", it) 
+            val messages = retryPolicy.executeWithRetry {
+                client.from("messages")
+                    .select() {
+                        filter {
+                            eq("chat_id", chatId)
+                            beforeTimestamp?.let {
+                                lt("created_at", it)
+                            }
                         }
+                        if (limit < Int.MAX_VALUE) {
+                            limit(limit.toLong())
+                        }
+                        order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
                     }
-                    // Only apply limit if it's not requesting all messages
-                    if (limit < Int.MAX_VALUE) {
-                        limit(limit.toLong())
-                        android.util.Log.d("ChatRepository", "Applied limit: $limit")
-                    } else {
-                        android.util.Log.d("ChatRepository", "No limit applied - fetching ALL messages")
-                    }
-                    // Order by created_at descending (newest first) in the query
-                    order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
-                }
-                .decodeList<Message>()
-            
-            android.util.Log.d("ChatRepository", "✓ Query successful - Received ${messages.size} messages")
-            
-            // Log first and last few messages for debugging
-            if (messages.isNotEmpty()) {
-                android.util.Log.d("ChatRepository", "First message: id=${messages.first().id}, content=${messages.first().content.take(30)}, createdAt=${messages.first().createdAt}")
-                android.util.Log.d("ChatRepository", "Last message: id=${messages.last().id}, content=${messages.last().content.take(30)}, createdAt=${messages.last().createdAt}")
+                    .decodeList<Message>()
             }
             
-            // Store in cache
             messagesCache[cacheKey] = CacheEntry(messages)
-            android.util.Log.d("ChatRepository", "Messages cached with key: $cacheKey")
-            
-            android.util.Log.d("ChatRepository", "=== getMessagesPage END (success) ===")
-            Result.success(messages)
+            Result.Success(messages)
         } catch (e: Exception) {
-            android.util.Log.e("ChatRepository", "=== getMessagesPage FAILED ===")
-            android.util.Log.e("ChatRepository", "Failed to fetch messages page: ${e.message}", e)
-            
-            // Provide detailed error messages for common failures
-            val errorMessage = when {
-                e.message?.contains("relation \"messages\" does not exist", ignoreCase = true) == true -> 
-                    "Database table 'messages' does not exist. Please create the messages table in your Supabase database."
-                e.message?.contains("connection", ignoreCase = true) == true -> 
-                    "Cannot connect to Supabase. Check your internet connection and Supabase configuration."
-                e.message?.contains("timeout", ignoreCase = true) == true -> 
-                    "Request timed out. Please check your internet connection and try again."
-                e.message?.contains("unauthorized", ignoreCase = true) == true -> 
-                    "Unauthorized access to messages. Check your API key and RLS policies."
-                e.message?.contains("serialization", ignoreCase = true) == true -> 
-                    "Data format error. The database schema might not match the expected format."
-                e.message?.contains("network", ignoreCase = true) == true -> 
-                    "Network error occurred. Please check your internet connection."
-                else -> "Failed to load messages: ${e.message ?: "Unknown error"}"
-            }
-            
-            Result.failure(Exception(errorMessage))
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Gets user's chats with proper data mapping
-     */
     suspend fun getUserChats(userId: String): Result<List<Chat>> {
         return try {
-            val result = chatService.getUserChats(userId)
-            result.map { chatsList ->
-                chatsList.map { chatData ->
+            val result = retryPolicy.executeWithRetry {
+                chatService.getUserChats(userId)
+            }
+            if(result.isSuccess) {
+                val chats = result.getOrThrow().map { chatData ->
                     mapToChat(chatData)
                 }
+                Result.Success(chats)
+            } else {
+                 val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Deletes a message
-     */
     suspend fun deleteMessage(messageId: String): Result<Unit> {
-        return chatService.deleteMessage(messageId)
+        return try {
+            val result = retryPolicy.executeWithRetry {
+                chatService.deleteMessage(messageId)
+            }
+             if (result.isSuccess) {
+                Result.Success(Unit)
+            } else {
+                val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
 
-    /**
-     * Edits a message
-     */
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
         return try {
-            val updateData = mapOf(
-                "content" to newContent,
-                "is_edited" to true,
-                "edited_at" to System.currentTimeMillis()
-            )
-            databaseService.update("messages", updateData, "id", messageId)
+            retryPolicy.executeWithRetry {
+                val updateData = mapOf(
+                    "content" to newContent,
+                    "is_edited" to true,
+                    "edited_at" to System.currentTimeMillis()
+                )
+                databaseService.update("messages", updateData, "id", messageId)
+            }
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Gets chat participants
-     */
     suspend fun getChatParticipants(chatId: String): Result<List<String>> {
         return try {
-            val participants = client.from("chat_participants")
-                .select(columns = Columns.raw("user_id")) {
-                    filter { eq("chat_id", chatId) }
-                }
-                .decodeList<JsonObject>()
+            val participants = retryPolicy.executeWithRetry {
+                client.from("chat_participants")
+                    .select(columns = Columns.raw("user_id")) {
+                        filter { eq("chat_id", chatId) }
+                    }
+                    .decodeList<JsonObject>()
+            }
             
             val userIds = participants.map { 
                 it["user_id"].toString().removeSurrounding("\"") 
             }
-            Result.success(userIds)
+            Result.Success(userIds)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Adds a participant to a chat
-     */
     suspend fun addParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
-            val participantData = mapOf(
-                "chat_id" to chatId,
-                "user_id" to userId,
-                "role" to "member",
-                "is_admin" to false,
-                "can_send_messages" to true,
-                "joined_at" to System.currentTimeMillis()
-            )
-            databaseService.insert("chat_participants", participantData)
+            retryPolicy.executeWithRetry {
+                val participantData = mapOf(
+                    "chat_id" to chatId,
+                    "user_id" to userId,
+                    "role" to "member",
+                    "is_admin" to false,
+                    "can_send_messages" to true,
+                    "joined_at" to System.currentTimeMillis()
+                )
+                databaseService.insert("chat_participants", participantData)
+            }
+             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Removes a participant from a chat
-     */
     suspend fun removeParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
-            client.from("chat_participants").delete {
-                filter {
-                    eq("chat_id", chatId)
-                    eq("user_id", userId)
+            retryPolicy.executeWithRetry {
+                client.from("chat_participants").delete {
+                    filter {
+                        eq("chat_id", chatId)
+                        eq("user_id", userId)
+                    }
                 }
             }
-            Result.success(Unit)
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Observes messages in a chat (real-time)
-     */
-    fun observeMessages(chatId: String): Flow<List<Message>> {
-        return try {
-            val channel = client.channel("messages:$chatId")
-            channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+    fun observeMessages(chatId: String): Flow<Result<List<Message>>> = flow {
+        emit(Result.Loading)
+        try {
+            client.channel("messages:$chatId").postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "messages"
                 filter = "chat_id=eq.$chatId"
-            }.map { action ->
-                when (action) {
-                    is PostgresAction.Insert, is PostgresAction.Update, is PostgresAction.Delete -> {
-                        // Reload messages when changes occur
-                        val result = chatService.getMessages(chatId)
-                        result.getOrNull()?.map { mapToMessage(it) } ?: emptyList()
-                    }
-                    else -> emptyList()
+            }.map {
+                when (val result = getMessages(chatId)) {
+                    is Result.Success -> Result.Success(result.data)
+                    is Result.Error -> Result.Error(result.exception, result.message)
+                    else -> Result.Loading
                 }
             }.catch { e ->
-                android.util.Log.e("ChatRepository", "Error observing messages", e)
-                emit(emptyList())
-            }
+                emit(Result.Error(e as Exception, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
+            }.collect { emit(it) }
         } catch (e: Exception) {
-            kotlinx.coroutines.flow.flowOf(emptyList())
+            emit(Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
         }
     }
 
-    /**
-     * Observes user's chats (real-time)
-     */
-    fun observeUserChats(userId: String): Flow<List<Chat>> {
-        return try {
-            val channel = client.channel("user_chats:$userId")
-            channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+    fun observeUserChats(userId: String): Flow<Result<List<Chat>>> = flow {
+        emit(Result.Loading)
+        try {
+            client.channel("user_chats:$userId").postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "chats"
-            }.map { action ->
-                when (action) {
-                    is PostgresAction.Insert, is PostgresAction.Update, is PostgresAction.Delete -> {
-                        // Reload chats when changes occur
-                        val result = chatService.getUserChats(userId)
-                        result.getOrNull()?.map { mapToChat(it) } ?: emptyList()
-                    }
-                    else -> emptyList()
+            }.map {
+                when (val result = getUserChats(userId)) {
+                    is Result.Success -> Result.Success(result.data)
+                    is Result.Error -> Result.Error(result.exception, result.message)
+                    else -> Result.Loading
                 }
             }.catch { e ->
-                android.util.Log.e("ChatRepository", "Error observing chats", e)
-                emit(emptyList())
-            }
+                emit(Result.Error(e as Exception, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
+            }.collect { emit(it) }
         } catch (e: Exception) {
-            kotlinx.coroutines.flow.flowOf(emptyList())
+            emit(Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
         }
     }
 
-    /**
-     * Creates a direct chat between two users
-     */
     suspend fun createDirectChat(currentUserId: String, otherUserId: String): Result<String> {
-        return chatService.getOrCreateDirectChat(currentUserId, otherUserId)
+        return try {
+            val result = retryPolicy.executeWithRetry {
+                chatService.getOrCreateDirectChat(currentUserId, otherUserId)
+            }
+            if(result.isSuccess) {
+                Result.Success(result.getOrThrow())
+            } else {
+                 val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
 
-    /**
-     * Finds existing direct chat between two users
-     */
     suspend fun findDirectChat(userId1: String, userId2: String): Result<String?> {
         return try {
             val chatId = if (userId1 < userId2) {
@@ -392,38 +327,57 @@ class ChatRepository {
                 "dm_${userId2}_${userId1}"
             }
             
-            val existingChat = client.from("chats")
-                .select(columns = Columns.raw("chat_id")) {
-                    filter { eq("chat_id", chatId) }
-                    limit(1)
-                }
-                .decodeList<JsonObject>()
+            val existingChat = retryPolicy.executeWithRetry {
+                client.from("chats")
+                    .select(columns = Columns.raw("chat_id")) {
+                        filter { eq("chat_id", chatId) }
+                        limit(1)
+                    }
+                    .decodeList<JsonObject>()
+            }
             
             if (existingChat.isNotEmpty()) {
-                Result.success(chatId)
+                Result.Success(chatId)
             } else {
-                Result.success(null)
+                Result.Success(null)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
     }
 
-    /**
-     * Gets or creates a direct chat between two users
-     */
     suspend fun getOrCreateDirectChat(currentUserId: String, otherUserId: String): Result<String> {
-        return chatService.getOrCreateDirectChat(currentUserId, otherUserId)
+        return try {
+            val result = retryPolicy.executeWithRetry {
+                chatService.getOrCreateDirectChat(currentUserId, otherUserId)
+            }
+            if(result.isSuccess) {
+                Result.Success(result.getOrThrow())
+            } else {
+                 val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
 
-    /**
-     * Marks messages as read
-     */
     suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
-        return chatService.markMessagesAsRead(chatId, userId)
+        return try {
+            val result = retryPolicy.executeWithRetry {
+                chatService.markMessagesAsRead(chatId, userId)
+            }
+            if(result.isSuccess) {
+                Result.Success(Unit)
+            } else {
+                 val exception = result.exceptionOrNull() as? Exception ?: Exception("Unknown error")
+                Result.Error(exception, ErrorHandler.getErrorMessage(exception, SynapseApplication.applicationContext()))
+            }
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
 
-    // Helper methods for data mapping
     private fun mapToMessage(data: Map<String, Any?>): Message {
         return Message(
             id = data["id"]?.toString() ?: "",

@@ -643,4 +643,13 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="settings_notifications_subtitle">Manage notification preferences</string>
     <string name="settings_logout">Log out</string>
 
+    <!-- Error Messages -->
+    <string name="error_no_internet">No internet connection.</string>
+    <string name="error_unauthorized">Unauthorized. Please log in again.</string>
+    <string name="error_bad_request">Bad request. Please try again.</string>
+    <string name="error_forbidden">Forbidden. You don\'t have permission.</string>
+    <string name="error_not_found">Content not found.</string>
+    <string name="error_conflict">Conflict. The data has been modified.</string>
+    <string name="error_unknown_rest">An unknown error occurred.</string>
+    <string name="error_generic">An unexpected error occurred.</string>
 </resources>

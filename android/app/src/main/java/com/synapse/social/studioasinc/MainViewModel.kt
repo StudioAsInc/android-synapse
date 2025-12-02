@@ -14,6 +14,7 @@ import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
+import com.synapse.social.studioasinc.data.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,29 +90,26 @@ class MainViewModel(
 
     fun checkUserAuthentication() {
         viewModelScope.launch {
-            try {
-                val userId = authRepository.getCurrentUserId()
-                if (userId != null) {
-                    userRepository.getUserById(userId)
-                        .onSuccess { user ->
-                            if (user != null) {
-                                if (!user.banned) {
-                                    _authState.value = AuthState.Authenticated
-                                } else {
-                                    _authState.value = AuthState.Banned
-                                }
+            val userId = authRepository.getCurrentUserId()
+            if (userId != null) {
+                when (val result = userRepository.getUserById(userId)) {
+                    is Result.Success -> {
+                        val user = result.data
+                        if (user != null) {
+                            if (!user.banned) {
+                                _authState.value = AuthState.Authenticated
                             } else {
-                                _authState.value = AuthState.NeedsProfileCompletion
+                                _authState.value = AuthState.Banned
                             }
-                        }
-                        .onFailure {
+                        } else {
                             _authState.value = AuthState.NeedsProfileCompletion
                         }
-                } else {
-                    _authState.value = AuthState.Unauthenticated
+                    }
+                    is Result.Error -> _authState.value = AuthState.Error(result.message)
+                    else -> {}
                 }
-            } catch (e: Exception) {
-                _authState.value = AuthState.Error("Database error: ${e.message}")
+            } else {
+                _authState.value = AuthState.Unauthenticated
             }
         }
     }

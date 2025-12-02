@@ -2,18 +2,19 @@ package com.synapse.social.studioasinc.data.repository
 
 import android.util.Log
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.SynapseApplication
+import com.synapse.social.studioasinc.data.Result
+import com.synapse.social.studioasinc.util.ErrorHandler
+import com.synapse.social.studioasinc.util.RetryPolicy
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Repository for post resharing.
- * Requirement: 8.5
- */
 class ReshareRepository {
     private val client = SupabaseClient.client
+    private val retryPolicy = RetryPolicy()
     
     @Serializable
     private data class Reshare(
@@ -23,52 +24,57 @@ class ReshareRepository {
         @SerialName("reshare_text") val reshareText: String? = null
     )
     
-    /**
-     * Check if current user has reshared a post.
-     */
-    suspend fun hasReshared(postId: String): Result<Boolean> = runCatching {
-        val userId = client.auth.currentUserOrNull()?.id 
-            ?: return Result.failure(Exception("Not authenticated"))
-        
-        val reshares = client.from("reshares")
-            .select(Columns.list("id")) {
-                filter {
-                    eq("post_id", postId)
-                    eq("user_id", userId)
-                }
+    suspend fun hasReshared(postId: String): Result<Boolean> {
+        return try {
+            val userId = client.auth.currentUserOrNull()?.id
+                ?: return Result.Error(Exception("Not authenticated"), "Not authenticated")
+
+            val reshares = retryPolicy.executeWithRetry {
+                client.from("reshares")
+                    .select(Columns.list("id")) {
+                        filter {
+                            eq("post_id", postId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    .decodeList<Reshare>()
             }
-            .decodeList<Reshare>()
-        
-        reshares.isNotEmpty()
+
+            Result.Success(reshares.isNotEmpty())
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
+        }
     }
     
-    /**
-     * Create a reshare for a post with optional commentary.
-     */
-    suspend fun createReshare(postId: String, commentary: String? = null): Result<Unit> = runCatching {
-        val userId = client.auth.currentUserOrNull()?.id 
-            ?: return Result.failure(Exception("Not authenticated"))
-        
-        // Check if already reshared
-        val existing = client.from("reshares")
-            .select(Columns.list("id")) {
-                filter {
-                    eq("post_id", postId)
-                    eq("user_id", userId)
+    suspend fun createReshare(postId: String, commentary: String? = null): Result<Unit> {
+        return try {
+            val userId = client.auth.currentUserOrNull()?.id
+                ?: return Result.Error(Exception("Not authenticated"), "Not authenticated")
+
+            retryPolicy.executeWithRetry {
+                val existing = client.from("reshares")
+                    .select(Columns.list("id")) {
+                        filter {
+                            eq("post_id", postId)
+                            eq("user_id", userId)
+                        }
+                    }
+                    .decodeList<Reshare>()
+                    .firstOrNull()
+
+                if (existing != null) {
+                    throw Exception("Already reshared")
                 }
+
+                client.from("reshares")
+                    .insert(Reshare(postId = postId, userId = userId, reshareText = commentary))
             }
-            .decodeList<Reshare>()
-            .firstOrNull()
-        
-        if (existing != null) {
-            return Result.failure(Exception("Already reshared"))
+
+            Log.d(TAG, "Reshare created: $postId")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext()))
         }
-        
-        client.from("reshares")
-            .insert(Reshare(postId = postId, userId = userId, reshareText = commentary))
-        
-        // Increment reshares_count via RPC or trigger (handled by DB)
-        Log.d(TAG, "Reshare created: $postId")
     }
     
     companion object {
