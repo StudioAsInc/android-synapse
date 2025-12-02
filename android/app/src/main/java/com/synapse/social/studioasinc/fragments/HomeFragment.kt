@@ -28,6 +28,7 @@ import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.PostDetailActivity
 import com.synapse.social.studioasinc.SupabaseClient
 import android.content.Intent
+import com.synapse.social.studioasinc.adapters.PostLoadStateAdapter
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.gotrue.auth
 class HomeFragment : Fragment() {
@@ -63,8 +64,6 @@ class HomeFragment : Fragment() {
         setupViewModel()
         setupListeners()
         setupFragmentResultListener()
-
-        viewModel.loadPosts()
     }
 
     private fun setupFragmentResultListener() {
@@ -72,7 +71,7 @@ class HomeFragment : Fragment() {
             if (key == "post_action") {
                 val action = bundle.getString("action")
                 if (action == "delete") {
-                    viewModel.loadPosts()
+                    postAdapter.refresh()
                 }
             }
         }
@@ -150,31 +149,13 @@ class HomeFragment : Fragment() {
         )
         headerAdapter = HeaderAdapter(requireContext(), this)
 
-        concatAdapter = ConcatAdapter(headerAdapter, postAdapter)
         publicPostsList.apply {
             layoutManager = LinearLayoutManager(context)
-            adapter = concatAdapter
-            
-            // Add scroll listener for infinite scroll
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    super.onScrolled(recyclerView, dx, dy)
-                    
-                    val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
-                    layoutManager?.let {
-                        val totalItemCount = it.itemCount
-                        val lastVisibleItem = it.findLastVisibleItemPosition()
-                        
-                        // Calculate distance from end
-                        val distanceFromEnd = totalItemCount - lastVisibleItem - 1
-                        
-                        // Trigger load when within threshold (5 items) and not already loading
-                        if (distanceFromEnd <= 5 && !viewModel.isLoadingMore.value) {
-                            viewModel.loadNextPage()
-                        }
-                    }
-                }
-            })
+            adapter = postAdapter.withLoadStateHeaderAndFooter(
+                header = PostLoadStateAdapter { postAdapter.retry() },
+                footer = PostLoadStateAdapter { postAdapter.retry() }
+            )
+
         }
     }
 
@@ -196,62 +177,14 @@ class HomeFragment : Fragment() {
         swipeLayout.setOnRefreshListener {
             // Announce refresh action for accessibility
             swipeLayout.announceForAccessibility(getString(R.string.refreshing_posts))
-            viewModel.loadPosts()
+            postAdapter.refresh()
         }
     }
 
     private fun observePosts() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.posts.collect { posts ->
-                android.util.Log.d("HomeFragment", "Posts received: ${posts.size}")
-                posts.forEachIndexed { i, post -> 
-                    android.util.Log.d("HomeFragment", "Post $i: id=${post.id}, text=${post.postText?.take(50)}")
-                }
-                hideShimmer()
-                postAdapter.submitList(posts)
-                emptyState.visibility = if (posts.isEmpty()) View.VISIBLE else View.GONE
-            }
-        }
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.isLoading.collect { isLoading ->
-                // Control SwipeRefreshLayout refreshing state
-                swipeLayout.isRefreshing = isLoading
-                
-                if (isLoading) {
-                    showShimmer()
-                } else {
-                    hideShimmer()
-                    // Announce when refresh completes
-                    announceLoadingState(false, isRefresh = true)
-                }
-            }
-        }
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.isLoadingMore.collect { isLoadingMore ->
-                // Show/hide bottom loading indicator
-                postAdapter.setLoadingMore(isLoadingMore)
-                // Announce loading state changes
-                announceLoadingState(isLoadingMore, isRefresh = false)
-            }
-        }
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.error.collect { error ->
-                error?.let {
-                    hideShimmer()
-                    showErrorWithRetry(it)
-                }
-            }
-        }
-        
-        // Observe end of list state
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.paginationState.collect { state ->
-                if (state is com.synapse.social.studioasinc.util.PaginationManager.PaginationState.EndOfList) {
-                    announceEndOfList()
-                }
+            viewModel.posts.collect {
+                postAdapter.submitData(it)
             }
         }
     }
@@ -285,7 +218,7 @@ class HomeFragment : Fragment() {
         
         snackbar.setAction(R.string.retry) {
             // Retry loading posts
-            viewModel.loadNextPage()
+            postAdapter.retry()
             viewModel.clearError()
         }
         

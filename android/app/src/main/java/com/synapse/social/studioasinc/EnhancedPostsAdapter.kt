@@ -9,7 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.synapse.social.studioasinc.animations.ReactionAnimations
@@ -37,7 +37,7 @@ class EnhancedPostsAdapter(
     private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
     private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null,
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null
-) : ListAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
+) : PagingDataAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
     fun setLoadingMore(isLoading: Boolean) {
         // FIXME: Implement a footer loading view to indicate that more posts are being loaded.
@@ -124,7 +124,10 @@ class EnhancedPostsAdapter(
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val post = getItem(position)
+        if (post != null) {
+            holder.bind(post)
+        }
     }
 
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
