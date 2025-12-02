@@ -3,6 +3,7 @@ package com.synapse.social.studioasinc.data.repository
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.backend.SupabaseChatService
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
+import com.synapse.social.studioasinc.data.local.ChatDao
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
 import io.github.jan.supabase.postgrest.from
@@ -17,17 +18,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
-/**
- * Repository for chat operations
- * Provides a clean API for chat functionality with proper data mapping
- */
-class ChatRepository {
+class ChatRepository(private val chatDao: ChatDao) {
 
     private val chatService = SupabaseChatService()
     private val databaseService = SupabaseDatabaseService()
     private val client = SupabaseClient.client
     
-    // In-memory cache for recently fetched pages
     private data class CacheEntry<T>(
         val data: T,
         val timestamp: Long = System.currentTimeMillis()
@@ -43,35 +39,29 @@ class ChatRepository {
         private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L // 5 minutes
     }
     
-    /**
-     * Invalidate cache on refresh operations
-     */
     fun invalidateCache() {
         messagesCache.clear()
         android.util.Log.d("ChatRepository", "Cache invalidated")
     }
     
-    /**
-     * Get cache key for a specific chat and timestamp
-     */
     private fun getCacheKey(chatId: String, beforeTimestamp: Long?, limit: Int): String {
         return "messages_chat_${chatId}_before_${beforeTimestamp}_limit_${limit}"
     }
 
-    /**
-     * Creates a new chat or gets existing one
-     */
     suspend fun createChat(participantUids: List<String>, chatName: String? = null): Result<String> {
-        return if (participantUids.size == 2) {
+        val result = if (participantUids.size == 2) {
             chatService.getOrCreateDirectChat(participantUids[0], participantUids[1])
         } else {
             Result.failure(Exception("Group chats not yet implemented"))
         }
+
+        result.onSuccess { chatId ->
+            refreshUserChats(participantUids[0])
+        }
+
+        return result
     }
 
-    /**
-     * Sends a message
-     */
     suspend fun sendMessage(
         chatId: String,
         senderId: String,
@@ -97,6 +87,7 @@ class ChatRepository {
         
         result.onSuccess { messageId ->
             android.util.Log.d("ChatRepository", "✓ Message sent successfully, messageId: $messageId")
+            refreshUserChats(senderId)
         }.onFailure { error ->
             android.util.Log.e("ChatRepository", "✗ Failed to send message: ${error.message}", error)
         }
@@ -105,12 +96,6 @@ class ChatRepository {
         return result
     }
 
-    /**
-     * Gets messages for a chat with proper data mapping
-     * @param chatId The chat ID
-     * @param limit Maximum number of messages to fetch
-     * @param beforeTimestamp Optional timestamp to fetch messages before (for pagination)
-     */
     suspend fun getMessages(
         chatId: String, 
         limit: Int = 50, 
@@ -128,13 +113,6 @@ class ChatRepository {
         }
     }
     
-    /**
-     * Fetch messages with pagination support (for loading older messages)
-     * @param chatId Chat conversation ID
-     * @param beforeTimestamp Load messages before this timestamp (for loading older messages)
-     * @param limit Number of messages to fetch (use Int.MAX_VALUE for all messages)
-     * @return Result containing list of messages
-     */
     suspend fun getMessagesPage(
         chatId: String,
         beforeTimestamp: Long? = null,
@@ -144,7 +122,6 @@ class ChatRepository {
             android.util.Log.d("ChatRepository", "=== getMessagesPage START ===")
             android.util.Log.d("ChatRepository", "Parameters: chatId=$chatId, beforeTimestamp=$beforeTimestamp, limit=$limit")
             
-            // Check cache before making network request
             val cacheKey = getCacheKey(chatId, beforeTimestamp, limit)
             val cachedEntry = messagesCache[cacheKey]
             
@@ -164,38 +141,31 @@ class ChatRepository {
             android.util.Log.d("ChatRepository", "  - Limit: ${if (limit == Int.MAX_VALUE) "ALL (Int.MAX_VALUE)" else limit}")
             android.util.Log.d("ChatRepository", "  - Order: created_at DESC")
             
-            // Build query with filters and ordering
             val messages = client.from("messages")
                 .select() {
                     filter {
-                        // Filter by chat_id
                         eq("chat_id", chatId)
-                        // If beforeTimestamp is provided, load messages before that timestamp
                         beforeTimestamp?.let { 
                             lt("created_at", it) 
                         }
                     }
-                    // Only apply limit if it's not requesting all messages
                     if (limit < Int.MAX_VALUE) {
                         limit(limit.toLong())
                         android.util.Log.d("ChatRepository", "Applied limit: $limit")
                     } else {
                         android.util.Log.d("ChatRepository", "No limit applied - fetching ALL messages")
                     }
-                    // Order by created_at descending (newest first) in the query
                     order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.DESCENDING)
                 }
                 .decodeList<Message>()
             
             android.util.Log.d("ChatRepository", "✓ Query successful - Received ${messages.size} messages")
             
-            // Log first and last few messages for debugging
             if (messages.isNotEmpty()) {
                 android.util.Log.d("ChatRepository", "First message: id=${messages.first().id}, content=${messages.first().content.take(30)}, createdAt=${messages.first().createdAt}")
                 android.util.Log.d("ChatRepository", "Last message: id=${messages.last().id}, content=${messages.last().content.take(30)}, createdAt=${messages.last().createdAt}")
             }
             
-            // Store in cache
             messagesCache[cacheKey] = CacheEntry(messages)
             android.util.Log.d("ChatRepository", "Messages cached with key: $cacheKey")
             
@@ -205,7 +175,6 @@ class ChatRepository {
             android.util.Log.e("ChatRepository", "=== getMessagesPage FAILED ===")
             android.util.Log.e("ChatRepository", "Failed to fetch messages page: ${e.message}", e)
             
-            // Provide detailed error messages for common failures
             val errorMessage = when {
                 e.message?.contains("relation \"messages\" does not exist", ignoreCase = true) == true -> 
                     "Database table 'messages' does not exist. Please create the messages table in your Supabase database."
@@ -226,32 +195,31 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Gets user's chats with proper data mapping
-     */
-    suspend fun getUserChats(userId: String): Result<List<Chat>> {
+    fun getUserChats(): Flow<Result<List<Chat>>> {
+        return chatDao.getAllChats().map<List<ChatEntity>, Result<List<Chat>>> { entities ->
+            Result.success(entities.map { ChatMapper.toModel(it) })
+        }.catch { e ->
+            emit(Result.failure(Exception("Error getting chats from database: ${e.message}")))
+        }
+    }
+
+    suspend fun refreshUserChats(userId: String): Result<Unit> {
         return try {
             val result = chatService.getUserChats(userId)
-            result.map { chatsList ->
-                chatsList.map { chatData ->
-                    mapToChat(chatData)
-                }
+            result.getOrNull()?.let { chats ->
+                chatDao.insertAll(chats.map { ChatMapper.toEntity(mapToChat(it)) })
             }
+            Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "Failed to refresh user chats: ${e.message}", e)
             Result.failure(e)
         }
     }
 
-    /**
-     * Deletes a message
-     */
     suspend fun deleteMessage(messageId: String): Result<Unit> {
         return chatService.deleteMessage(messageId)
     }
 
-    /**
-     * Edits a message
-     */
     suspend fun editMessage(messageId: String, newContent: String): Result<Unit> {
         return try {
             val updateData = mapOf(
@@ -265,9 +233,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Gets chat participants
-     */
     suspend fun getChatParticipants(chatId: String): Result<List<String>> {
         return try {
             val participants = client.from("chat_participants")
@@ -285,9 +250,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Adds a participant to a chat
-     */
     suspend fun addParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
             val participantData = mapOf(
@@ -304,9 +266,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Removes a participant from a chat
-     */
     suspend fun removeParticipant(chatId: String, userId: String): Result<Unit> {
         return try {
             client.from("chat_participants").delete {
@@ -321,9 +280,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Observes messages in a chat (real-time)
-     */
     fun observeMessages(chatId: String): Flow<List<Message>> {
         return try {
             val channel = client.channel("messages:$chatId")
@@ -333,7 +289,6 @@ class ChatRepository {
             }.map { action ->
                 when (action) {
                     is PostgresAction.Insert, is PostgresAction.Update, is PostgresAction.Delete -> {
-                        // Reload messages when changes occur
                         val result = chatService.getMessages(chatId)
                         result.getOrNull()?.map { mapToMessage(it) } ?: emptyList()
                     }
@@ -348,9 +303,6 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Observes user's chats (real-time)
-     */
     fun observeUserChats(userId: String): Flow<List<Chat>> {
         return try {
             val channel = client.channel("user_chats:$userId")
@@ -359,7 +311,6 @@ class ChatRepository {
             }.map { action ->
                 when (action) {
                     is PostgresAction.Insert, is PostgresAction.Update, is PostgresAction.Delete -> {
-                        // Reload chats when changes occur
                         val result = chatService.getUserChats(userId)
                         result.getOrNull()?.map { mapToChat(it) } ?: emptyList()
                     }
@@ -374,16 +325,10 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Creates a direct chat between two users
-     */
     suspend fun createDirectChat(currentUserId: String, otherUserId: String): Result<String> {
         return chatService.getOrCreateDirectChat(currentUserId, otherUserId)
     }
 
-    /**
-     * Finds existing direct chat between two users
-     */
     suspend fun findDirectChat(userId1: String, userId2: String): Result<String?> {
         return try {
             val chatId = if (userId1 < userId2) {
@@ -409,21 +354,14 @@ class ChatRepository {
         }
     }
 
-    /**
-     * Gets or creates a direct chat between two users
-     */
     suspend fun getOrCreateDirectChat(currentUserId: String, otherUserId: String): Result<String> {
         return chatService.getOrCreateDirectChat(currentUserId, otherUserId)
     }
 
-    /**
-     * Marks messages as read
-     */
     suspend fun markMessagesAsRead(chatId: String, userId: String): Result<Unit> {
         return chatService.markMessagesAsRead(chatId, userId)
     }
 
-    // Helper methods for data mapping
     private fun mapToMessage(data: Map<String, Any?>): Message {
         return Message(
             id = data["id"]?.toString() ?: "",
