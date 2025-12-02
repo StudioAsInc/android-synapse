@@ -44,7 +44,7 @@ object MentionUtils {
                         // Use Supabase to find user by username
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                                 val userResult = userRepository.getUserByUsername(username)
                                 
                                 userResult.fold(
@@ -109,7 +109,7 @@ object MentionUtils {
         // Send notifications using Supabase
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 for (username in mentionedUsernames) {
                     val userResult = userRepository.getUserByUsername(username)
@@ -141,7 +141,7 @@ object MentionUtils {
     ) {
         try {
             val authService = com.synapse.social.studioasinc.backend.SupabaseAuthenticationService()
-            val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+            val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
             
             val currentUser = authService.getCurrentUser()
             if (currentUser == null || currentUser.id == mentionedUid) {

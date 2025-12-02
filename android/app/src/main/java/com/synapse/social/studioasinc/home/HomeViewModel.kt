@@ -17,18 +17,21 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class HomeViewModel(
-    private val authRepository: AuthRepository = AuthRepository(),
-    private val postRepository: PostRepository = PostRepository(AppDatabase.getDatabase(getApplication()).postDao())
-) : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+    private val authRepository: AuthRepository = AuthRepository()
+    private val postRepository: PostRepository = PostRepository(AppDatabase.getDatabase(application).postDao())
 
     // Pagination manager instance
     private val paginationManager = PaginationManager<Post>(
         pageSize = 20,
         scrollThreshold = 5,
         onLoadPage = { page, pageSize ->
-            // Use getPosts() which returns Flow<Result<List<Post>>>
             postRepository.getPosts()
+                .map { result ->
+                    result.getOrElse { emptyList() }
+                }
+                .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+                .value
         },
         onError = { error ->
             _error.value = error

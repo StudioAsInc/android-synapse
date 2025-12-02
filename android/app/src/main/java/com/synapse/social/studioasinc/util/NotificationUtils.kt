@@ -20,7 +20,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == postAuthorUid) {
@@ -55,7 +55,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == postAuthorUid) {
@@ -91,7 +91,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == commentAuthorUid) {
@@ -127,7 +127,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == followedUid) {
@@ -162,7 +162,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == recipientUid) {
@@ -206,7 +206,7 @@ object NotificationUtils {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authService = SupabaseAuthenticationService()
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context).userDao())
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 val currentUser = authService.getCurrentUser()
                 if (currentUser == null || currentUser.id == mentionedUid) {
