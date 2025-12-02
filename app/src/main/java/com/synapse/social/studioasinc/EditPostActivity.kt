@@ -24,7 +24,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
@@ -37,7 +37,7 @@ import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import kotlinx.coroutines.launch
 import java.util.*
 
-class EditPostActivity : AppCompatActivity() {
+class EditPostActivity : BaseActivity() {
 
     companion object {
         private const val REQ_CD_IMAGE_PICKER = 101

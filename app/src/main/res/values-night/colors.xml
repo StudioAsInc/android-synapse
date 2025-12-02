@@ -212,4 +212,13 @@
     <!-- Message Bubble Colors -->
     <color name="sent_message_background">@color/md_theme_primaryContainer</color>
     <color name="received_message_background">@color/md_theme_surfaceVariant</color>
+    
+    <!-- Auth Screen Enhancement Colors (Dark theme) -->
+    <color name="auth_gradient_start">@color/md_theme_background</color>
+    <color name="auth_gradient_center">@color/md_theme_surfaceContainerLow</color>
+    <color name="auth_gradient_end">@color/md_theme_surfaceContainer</color>
+    <color name="glassmorphic_overlay">#F01A1C16</color>
+    <color name="password_weak">#EF5350</color>
+    <color name="password_fair">#FFA726</color>
+    <color name="password_strong">#66BB6A</color>
 </resources>

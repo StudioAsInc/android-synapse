@@ -17,7 +17,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -27,7 +27,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  * Displays error information and provides debugging utilities.
  * Follows MVVM pattern and Android best practices.
  */
-class DebugActivity : AppCompatActivity() {
+class DebugActivity : BaseActivity() {
 
     // View Binding alternative (manual for legacy layout)
     private lateinit var body: LinearLayout

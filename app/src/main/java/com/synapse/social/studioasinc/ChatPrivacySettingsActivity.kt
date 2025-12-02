@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.synapse.social.studioasinc.chat.service.PreferencesManager
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
  * 
  * Requirements: 5.1, 5.5
  */
-class ChatPrivacySettingsActivity : AppCompatActivity() {
+class ChatPrivacySettingsActivity : BaseActivity() {
     
     private lateinit var backButton: ImageView
     private lateinit var titleText: TextView

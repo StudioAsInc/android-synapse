@@ -18,7 +18,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.view.Window
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -28,7 +28,7 @@ import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import kotlinx.coroutines.*
 import java.util.*
 
-class ProfileEditActivity : AppCompatActivity() {
+class ProfileEditActivity : BaseActivity() {
 
     companion object {
         const val REQ_CD_FP = 101

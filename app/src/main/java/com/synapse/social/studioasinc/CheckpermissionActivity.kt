@@ -4,10 +4,10 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.LinearLayout
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import com.synapse.social.studioasinc.permissionreq.AskPermission
 
-class CheckpermissionActivity : AppCompatActivity() {
+class CheckpermissionActivity : BaseActivity() {
     
     private lateinit var linear1: LinearLayout
     private var askPermission: AskPermission? = null

@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,7 +16,7 @@ import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.model.SearchResult
 import kotlinx.coroutines.*
 
-class SearchActivity : AppCompatActivity() {
+class SearchActivity : BaseActivity() {
 
     // Supabase services
     private val authService = SupabaseAuthenticationService()

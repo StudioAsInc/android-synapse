@@ -15,7 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -29,7 +29,7 @@ import java.net.MalformedURLException
 import java.net.URL
 import java.util.*
 
-class ProfileCoverPhotoHistoryActivity : AppCompatActivity() {
+class ProfileCoverPhotoHistoryActivity : BaseActivity() {
 
     // Supabase services
     private val authService = SupabaseAuthenticationService()

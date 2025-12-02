@@ -10,7 +10,7 @@ import android.view.animation.OvershootInterpolator
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -25,7 +25,7 @@ import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class PostDetailActivity : AppCompatActivity() {
+class PostDetailActivity : BaseActivity() {
 
     private lateinit var binding: ActivityPostDetailBinding
     private val viewModel: PostDetailViewModel by viewModels()

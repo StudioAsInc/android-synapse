@@ -7,7 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -29,7 +29,7 @@ import android.view.View
  * CompleteProfileActivity - Migrated to Supabase
  * Allows users to complete their profile after registration
  */
-class CompleteProfileActivity : AppCompatActivity() {
+class CompleteProfileActivity : BaseActivity() {
 
     // No wrapper services needed - using Supabase client directly
     

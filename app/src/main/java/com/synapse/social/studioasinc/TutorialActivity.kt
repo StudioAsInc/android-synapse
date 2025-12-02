@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.fragments.MissionDetailFragment
@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 /**
  * Activity for displaying and managing tutorial missions
  */
-class TutorialActivity : AppCompatActivity() {
+class TutorialActivity : BaseActivity() {
     
     private lateinit var viewModel: TutorialViewModel
     private lateinit var containerLayout: FrameLayout

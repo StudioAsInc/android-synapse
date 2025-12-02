@@ -12,7 +12,7 @@ import android.text.TextWatcher
 import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.synapse.social.studioasinc.R
@@ -25,7 +25,7 @@ import kotlin.math.pow
  * Activity for previewing selected media files before sending
  * Displays thumbnails in a grid, allows caption input, and shows upload estimates
  */
-class MediaPreviewActivity : AppCompatActivity() {
+class MediaPreviewActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMediaPreviewBinding
     private lateinit var mediaAdapter: MediaPreviewAdapter

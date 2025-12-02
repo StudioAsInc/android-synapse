@@ -7,7 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.view.animation.OvershootInterpolator
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityForgotPasswordBinding
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
  * ForgotPasswordActivity handles the password reset flow.
  * Allows users to request a password reset link via email using Supabase authentication.
  */
-class ForgotPasswordActivity : AppCompatActivity() {
+class ForgotPasswordActivity : BaseActivity() {
 
     private lateinit var binding: ActivityForgotPasswordBinding
     

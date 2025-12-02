@@ -7,10 +7,10 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 
-class DisappearingMessageSettingsActivity : AppCompatActivity() {
+class DisappearingMessageSettingsActivity : BaseActivity() {
     
     private lateinit var parentLayout: LinearLayout
     private lateinit var linear2: LinearLayout

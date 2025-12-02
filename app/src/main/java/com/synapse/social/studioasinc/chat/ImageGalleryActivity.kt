@@ -14,7 +14,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -53,7 +53,7 @@ import java.io.OutputStream
  * - Progressive image loading (thumbnail → full resolution)
  * - Preloading of adjacent images
  */
-class ImageGalleryActivity : AppCompatActivity() {
+class ImageGalleryActivity : BaseActivity() {
     
     companion object {
         private const val TAG = "ImageGalleryActivity"

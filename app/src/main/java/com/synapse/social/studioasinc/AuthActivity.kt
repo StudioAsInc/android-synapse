@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityAuthBinding
 import io.github.jan.supabase.gotrue.auth
@@ -57,7 +57,7 @@ enum class ErrorField {
  * Handles user authentication with email/password using Supabase GoTrue.
  * Includes email verification flow handling and UI state management.
  */
-class AuthActivity : AppCompatActivity() {
+class AuthActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAuthBinding
     // Using Supabase client directly

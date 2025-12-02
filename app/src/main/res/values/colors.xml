@@ -213,9 +213,9 @@
     <color name="rocket_pay_accent">#E2136E</color>
     
     <!-- Auth Screen Enhancement Colors -->
-    <color name="auth_gradient_start">#F9FAEF</color>
-    <color name="auth_gradient_center">#E8F5E9</color>
-    <color name="auth_gradient_end">#C8E6C9</color>
+    <color name="auth_gradient_start">@color/md_theme_background</color>
+    <color name="auth_gradient_center">@color/md_theme_surfaceContainerLow</color>
+    <color name="auth_gradient_end">@color/md_theme_surfaceContainer</color>
     <color name="glassmorphic_overlay">#F0FFFFFF</color>
     <color name="password_weak">#F44336</color>
     <color name="password_fair">#FF9800</color>

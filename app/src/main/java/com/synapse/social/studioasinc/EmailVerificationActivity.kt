@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.databinding.ActivityEmailVerificationBinding
 import io.github.jan.supabase.gotrue.auth
@@ -17,7 +17,7 @@ import android.view.View
  * Dedicated EmailVerificationActivity for handling email verification flow
  * Provides clear instructions, resend functionality, and automatic verification checking
  */
-class EmailVerificationActivity : AppCompatActivity() {
+class EmailVerificationActivity : BaseActivity() {
 
     private lateinit var binding: ActivityEmailVerificationBinding
     // Using Supabase client directly

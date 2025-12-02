@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -14,7 +14,7 @@ import com.synapse.social.studioasinc.backend.SupabaseFollowService
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 
-class FollowListActivity : AppCompatActivity() {
+class FollowListActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_USER_ID = "user_id"

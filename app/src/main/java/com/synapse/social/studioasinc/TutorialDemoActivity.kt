@@ -8,7 +8,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+// import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.synapse.social.studioasinc.domain.TutorialManager
 import com.synapse.social.studioasinc.util.getTutorialTracker
@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
  * 
  * Use this for development and testing purposes.
  */
-class TutorialDemoActivity : AppCompatActivity() {
+class TutorialDemoActivity : BaseActivity() {
     
     private lateinit var tutorialManager: TutorialManager
     private lateinit var progressText: TextView
