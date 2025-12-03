@@ -37,6 +37,8 @@ data class Post(
     @SerialName("publish_date")
     val publishDate: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    @SerialName("created_at")
+    val createdAt: String? = null,
     @SerialName("likes_count")
     val likesCount: Int = 0,
     @SerialName("comments_count")
