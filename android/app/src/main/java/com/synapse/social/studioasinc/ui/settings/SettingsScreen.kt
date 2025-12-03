@@ -9,19 +9,15 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,8 +25,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-// ViewModel import removed - pass viewModel as parameter
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.local.AIConfig
 import com.synapse.social.studioasinc.data.local.StorageConfig
@@ -47,8 +41,11 @@ fun SettingsScreen(
 ) {
     val aiConfig by viewModel.aiConfig.collectAsState()
     val storageConfig by viewModel.storageConfig.collectAsState()
+    
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = { Text("Settings") },
@@ -56,96 +53,110 @@ fun SettingsScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             // AI Configuration Section
-            SettingsSection(title = "AI Configuration") {
-                AIConfigurationCard(
-                    aiConfig = aiConfig,
-                    onConfigChange = { provider, key, endpoint ->
-                        viewModel.updateAIConfig(provider, key, endpoint)
-                    }
-                )
-            }
-
-            // Storage & Data Section
-            SettingsSection(title = "Storage & Data") {
-                StorageConfigurationCard(
-                    storageConfig = storageConfig,
-                    onProviderChange = { viewModel.updateStorageProvider(it) },
-                    onImgBBChange = { viewModel.updateImgBBConfig(it) },
-                    onCloudinaryChange = { cloud, key, secret -> viewModel.updateCloudinaryConfig(cloud, key, secret) },
-                    onR2Change = { acc, key, secret, bucket -> viewModel.updateR2Config(acc, key, secret, bucket) }
-                )
-            }
-
-            // General Preferences Section
-            SettingsSection(title = "General") {
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    SettingRow(
-                        icon = R.drawable.ic_person,
-                        title = stringResource(R.string.settings_account),
-                        subtitle = stringResource(R.string.settings_account_subtitle),
-                        onClick = onAccountClick
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    SettingRow(
-                        icon = R.drawable.ic_shield_lock,
-                        title = stringResource(R.string.settings_privacy),
-                        subtitle = stringResource(R.string.settings_privacy_subtitle),
-                        onClick = onPrivacyClick
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    SettingRow(
-                        icon = R.drawable.ic_notifications,
-                        title = stringResource(R.string.settings_notifications),
-                        subtitle = stringResource(R.string.settings_notifications_subtitle),
-                        onClick = onNotificationsClick
+            item {
+                SettingsSection(title = "AI Configuration") {
+                    AIConfigurationCard(
+                        aiConfig = aiConfig,
+                        onConfigChange = { provider, key, endpoint ->
+                            viewModel.updateAIConfig(provider, key, endpoint)
+                        }
                     )
                 }
             }
 
+            // Storage & Data Section
+            item {
+                SettingsSection(title = "Storage & Data") {
+                    StorageConfigurationCard(
+                        storageConfig = storageConfig,
+                        onProviderChange = { viewModel.updateStorageProvider(it) },
+                        onImgBBChange = { viewModel.updateImgBBConfig(it) },
+                        onCloudinaryChange = { cloud, key, secret -> viewModel.updateCloudinaryConfig(cloud, key, secret) },
+                        onR2Change = { acc, key, secret, bucket -> viewModel.updateR2Config(acc, key, secret, bucket) }
+                    )
+                }
+            }
+
+            // General Preferences Section
+            item {
+                SettingsSection(title = "General") {
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                    ) {
+                        SettingRow(
+                            icon = R.drawable.ic_person,
+                            title = stringResource(R.string.settings_account),
+                            subtitle = stringResource(R.string.settings_account_subtitle),
+                            onClick = onAccountClick
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingRow(
+                            icon = R.drawable.ic_shield_lock,
+                            title = stringResource(R.string.settings_privacy),
+                            subtitle = stringResource(R.string.settings_privacy_subtitle),
+                            onClick = onPrivacyClick
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingRow(
+                            icon = R.drawable.ic_notifications,
+                            title = stringResource(R.string.settings_notifications),
+                            subtitle = stringResource(R.string.settings_notifications_subtitle),
+                            onClick = onNotificationsClick
+                        )
+                    }
+                }
+            }
+
             // Logout Section
-            Button(
-                onClick = onLogoutClick,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_logout),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Log Out")
+            item {
+                Button(
+                    onClick = onLogoutClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_logout),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Log Out")
+                }
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

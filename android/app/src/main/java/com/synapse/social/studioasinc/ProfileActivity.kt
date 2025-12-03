@@ -364,7 +364,14 @@ class ProfileActivity : BaseActivity() {
             loadUserProfile(userId, currentUid)
         }
         binding.ProfilePageTopBarMenu.setOnClickListener {
-            showProfileMenu(userId, currentUid)
+            if (isOwnProfile) {
+                // Open settings directly for own profile
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)
+            } else {
+                // Show menu for other users' profiles
+                showProfileMenu(userId, currentUid)
+            }
         }
         binding.btnFollow.setOnClickListener {
             Log.d(TAG, "Follow button clicked for user: $userId, current user: $currentUid")

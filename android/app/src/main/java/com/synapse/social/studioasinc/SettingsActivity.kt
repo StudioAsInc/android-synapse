@@ -6,12 +6,12 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.lifecycleScope
 import androidx.activity.viewModels
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.ui.settings.SettingsScreen
 import com.synapse.social.studioasinc.ui.settings.SettingsViewModel
+import com.synapse.social.studioasinc.ui.theme.SynapseTheme
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
@@ -23,7 +23,7 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            SynapseTheme {
                 SettingsScreen(
                     viewModel = viewModel,
                     onBackClick = { finish() },

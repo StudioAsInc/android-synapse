@@ -120,7 +120,7 @@ class HomeActivity : BaseActivity() {
         }
 
         settingsButton.setOnClickListener {
-            val intent = Intent(this@HomeActivity, SettingsActivity::class.java)
+            val intent = Intent(this@HomeActivity, CreatePostActivity::class.java)
             startActivity(intent)
         }
 
