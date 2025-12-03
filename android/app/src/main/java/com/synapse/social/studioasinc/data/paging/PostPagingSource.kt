@@ -28,7 +28,7 @@ class PostPagingSource(
                             users!posts_author_uid_fkey(username, avatar, verify)
                         """.trimIndent())
                     ) {
-                        order("timestamp", ascending = false)
+                        order("timestamp", order = Order.DESCENDING)
                         range(position.toLong(), (position + pageSize - 1).toLong())
                     }
                     .decodeList<JsonObject>()
