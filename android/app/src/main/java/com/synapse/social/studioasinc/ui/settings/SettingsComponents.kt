@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -55,21 +58,28 @@ fun SettingsToggleItem(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true
 ) {
+    val toggleDescription = stringResource(R.string.settings_toggle_description)
+    val fullDescription = "$title, $toggleDescription, ${if (checked) "enabled" else "disabled"}"
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .semantics(mergeDescendants = true) {
+                contentDescription = fullDescription
+            }
             .padding(
                 horizontal = SettingsSpacing.itemHorizontalPadding,
                 vertical = SettingsSpacing.itemVerticalPadding
-            ),
+            )
+            .heightIn(min = SettingsSpacing.minTouchTarget),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Leading icon
         if (icon != null) {
             Icon(
                 painter = painterResource(icon),
-                contentDescription = null,
+                contentDescription = null, // Merged into parent semantics
                 modifier = Modifier.size(SettingsSpacing.iconSize),
                 tint = SettingsColors.itemIcon
             )
@@ -136,21 +146,28 @@ fun SettingsNavigationItem(
     onClick: () -> Unit,
     enabled: Boolean = true
 ) {
+    val chevronDescription = stringResource(R.string.settings_chevron_description)
+    val fullDescription = "$title, $chevronDescription"
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = fullDescription
+            }
             .padding(
                 horizontal = SettingsSpacing.itemHorizontalPadding,
                 vertical = SettingsSpacing.itemVerticalPadding
-            ),
+            )
+            .heightIn(min = SettingsSpacing.minTouchTarget),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Leading icon
         if (icon != null) {
             Icon(
                 painter = painterResource(icon),
-                contentDescription = null,
+                contentDescription = null, // Merged into parent semantics
                 modifier = Modifier.size(SettingsSpacing.iconSize),
                 tint = SettingsColors.itemIcon
             )
@@ -183,7 +200,7 @@ fun SettingsNavigationItem(
         // Chevron icon with onSurfaceVariant at 0.5 alpha
         Icon(
             painter = painterResource(R.drawable.ic_chevron_right),
-            contentDescription = null,
+            contentDescription = null, // Merged into parent semantics
             modifier = Modifier.size(SettingsSpacing.iconSize),
             tint = SettingsColors.chevronIcon
         )
@@ -218,10 +235,14 @@ fun SettingsSelectionItem(
     enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val dropdownDescription = stringResource(R.string.settings_dropdown_description)
     
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = "$title, $dropdownDescription, $selectedOption"
+            }
             .padding(
                 horizontal = SettingsSpacing.itemHorizontalPadding,
                 vertical = SettingsSpacing.itemVerticalPadding
@@ -335,9 +356,14 @@ fun SettingsSliderItem(
     valueLabel: (Float) -> String = { it.toString() },
     enabled: Boolean = true
 ) {
+    val sliderDescription = stringResource(R.string.settings_slider_description)
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = "$title, $sliderDescription, ${valueLabel(value)}"
+            }
             .padding(
                 horizontal = SettingsSpacing.itemHorizontalPadding,
                 vertical = SettingsSpacing.itemVerticalPadding
@@ -571,6 +597,9 @@ fun ProfileHeaderCard(
     onEditProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val profileAvatarDescription = stringResource(R.string.settings_profile_avatar_description)
+    val editProfileText = stringResource(R.string.account_settings_edit_profile)
+    
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = SettingsShapes.cardShape,
@@ -592,7 +621,7 @@ fun ProfileHeaderCard(
                 if (avatarUrl != null) {
                     GlideImage(
                         model = avatarUrl,
-                        contentDescription = "Profile picture",
+                        contentDescription = "$profileAvatarDescription, $displayName",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape),
@@ -611,7 +640,7 @@ fun ProfileHeaderCard(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_person),
-                                contentDescription = null,
+                                contentDescription = "$profileAvatarDescription, $displayName",
                                 modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -655,16 +684,17 @@ fun ProfileHeaderCard(
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                ),
+                modifier = Modifier.heightIn(min = SettingsSpacing.minTouchTarget)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_edit),
-                    contentDescription = null,
+                    contentDescription = null, // Merged with button text
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Edit Profile",
+                    text = editProfileText,
                     style = SettingsTypography.buttonText
                 )
             }
