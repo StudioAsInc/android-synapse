@@ -12,6 +12,7 @@ import com.synapse.social.studioasinc.util.ScrollPositionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -30,11 +31,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             if (refreshResult.isFailure) {
                 return@PaginationManager Result.failure(refreshResult.exceptionOrNull() ?: Exception("Failed to refresh posts"))
             }
-            var result: Result<List<Post>> = Result.success(emptyList())
-            postRepository.getPosts().collect { flowResult ->
-                result = flowResult
-            }
-            result
+            postRepository.getPosts().first()
         },
         onError = { error ->
             _error.value = error
