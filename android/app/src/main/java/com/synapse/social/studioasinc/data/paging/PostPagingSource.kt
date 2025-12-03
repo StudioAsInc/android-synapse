@@ -1,5 +1,6 @@
 package com.synapse.social.studioasinc.data.paging
 
+import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.synapse.social.studioasinc.model.Post
@@ -17,6 +18,8 @@ class PostPagingSource(
         val position = params.key ?: 0
         val pageSize = params.loadSize
         return try {
+            Log.d("PostPagingSource", "Loading posts at position: $position, pageSize: $pageSize")
+            
             val response = withContext(Dispatchers.IO) {
                 queryBuilder
                     .select(
@@ -25,10 +28,13 @@ class PostPagingSource(
                             users!posts_author_uid_fkey(username, avatar, verify)
                         """.trimIndent())
                     ) {
+                        order("timestamp", ascending = false)
                         range(position.toLong(), (position + pageSize - 1).toLong())
                     }
                     .decodeList<JsonObject>()
             }
+
+            Log.d("PostPagingSource", "Loaded ${response.size} posts")
 
             val posts = response.map { json ->
                 val post = Json.decodeFromJsonElement<Post>(json)
@@ -38,6 +44,17 @@ class PostPagingSource(
                 post.isVerified = userData?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false
                 post
             }
+
+            LoadResult.Page(
+                data = posts,
+                prevKey = if (position == 0) null else position - pageSize,
+                nextKey = if (posts.isEmpty()) null else position + pageSize
+            )
+        } catch (e: Exception) {
+            Log.e("PostPagingSource", "Error loading posts", e)
+            LoadResult.Error(e)
+        }
+    }
 
             LoadResult.Page(
                 data = posts,

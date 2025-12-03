@@ -164,6 +164,15 @@ class HomeFragment : Fragment() {
         postAdapter.addLoadStateListener { loadState ->
             val isListEmpty = loadState.refresh is LoadState.NotLoading && postAdapter.itemCount == 0
             emptyState.visibility = if (isListEmpty) View.VISIBLE else View.GONE
+            
+            // Handle loading state
+            swipeLayout.isRefreshing = loadState.refresh is LoadState.Loading
+            
+            // Handle error state
+            if (loadState.refresh is LoadState.Error) {
+                val error = (loadState.refresh as LoadState.Error).error
+                Toast.makeText(requireContext(), "Error loading posts: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
