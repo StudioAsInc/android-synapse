@@ -136,8 +136,11 @@ android {
     }
     
     testOptions {
-        unitTests.all {
-            useJUnitPlatform()
+        unitTests {
+            all {
+                useJUnitPlatform()
+            }
+            includeAndroidResources = true
         }
     }
 

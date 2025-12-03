@@ -4,7 +4,7 @@ import android.app.Application
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.synapse.social.studioasinc.data.repository.SettingsRepository
+import com.synapse.social.studioasinc.data.repository.SettingsRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +27,7 @@ class AppearanceViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val settingsRepository = SettingsRepository(application)
+    private val settingsRepository = SettingsRepositoryImpl.getInstance(application)
 
     // ========================================================================
     // State
