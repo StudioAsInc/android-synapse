@@ -8,13 +8,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.viewModels
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.ui.settings.SettingsScreen
+import com.synapse.social.studioasinc.ui.settings.SettingsViewModel
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
 
     private val authRepository = AuthRepository()
+    private val viewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -22,6 +25,7 @@ class SettingsActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 SettingsScreen(
+                    viewModel = viewModel,
                     onBackClick = { finish() },
                     onAccountClick = { startActivity(Intent(this, ProfileEditActivity::class.java)) },
                     onPrivacyClick = { startActivity(Intent(this, ChatPrivacySettingsActivity::class.java)) },

@@ -50,7 +50,7 @@ class PostPagingSource(
 
             LoadResult.Page(
                 data = posts,
-                prevKey = if (position == 0) null else position - pageSize,
+                prevKey = if (position == 0) null else (position - pageSize).coerceAtLeast(0),
                 nextKey = if (posts.isEmpty()) null else position + pageSize
             )
         } catch (e: Exception) {
