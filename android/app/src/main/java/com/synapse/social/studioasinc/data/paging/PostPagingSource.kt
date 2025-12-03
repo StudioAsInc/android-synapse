@@ -56,16 +56,6 @@ class PostPagingSource(
         }
     }
 
-            LoadResult.Page(
-                data = posts,
-                prevKey = if (position == 0) null else position - pageSize,
-                nextKey = if (posts.isEmpty()) null else position + pageSize
-            )
-        } catch (e: Exception) {
-            LoadResult.Error(e)
-        }
-    }
-
     override fun getRefreshKey(state: PagingState<Int, Post>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
