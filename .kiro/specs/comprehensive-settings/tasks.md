@@ -302,13 +302,20 @@
     - **Property 6: Cache Clear Size Reduction**
     - **Validates: Requirements 7.2**
 
-- [ ] 14. Implement Language and Region Settings screen
-  - [ ] 14.1 Create LanguageRegionViewModel
+- [x] 14. Implement Language and Region Settings screen
+
+
+
+  - [x] 14.1 Create LanguageRegionViewModel
+
+
     - Expose available languages list with native names
     - Expose current language selection
     - Handle language change (placeholder)
     - _Requirements: 8.1, 8.4_
-  - [ ] 14.2 Create LanguageRegionScreen composable
+  - [x] 14.2 Create LanguageRegionScreen composable
+
+
     - Use MediumTopAppBar with back navigation
     - Display current language with checkmark indicator
     - Display available languages list with native script names (e.g., "日本語", "Español")
@@ -319,13 +326,21 @@
     - **Property 10: Language Native Script Display**
     - **Validates: Requirements 8.4**
 
-- [ ] 15. Implement About and Support Settings screen
-  - [ ] 15.1 Create AboutSupportViewModel
+- [x] 15. Implement About and Support Settings screen
+
+
+
+
+  - [x] 15.1 Create AboutSupportViewModel
+
+
     - Expose app version and build info
     - Handle external link navigation
     - Handle feedback submission
     - _Requirements: 9.1, 9.5_
-  - [ ] 15.2 Create AboutSupportScreen composable
+  - [x] 15.2 Create AboutSupportScreen composable
+
+
     - Use MediumTopAppBar with back navigation
     - Display app logo and version info in centered header card
     - Display Terms of Service as SettingsNavigationItem (opens browser)
@@ -335,14 +350,20 @@
     - Display Check for Updates as SettingsNavigationItem (placeholder)
     - Display Open Source Licenses as SettingsNavigationItem
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
-  - [ ] 15.3 Create FeedbackDialog composable
+  - [x] 15.3 Create FeedbackDialog composable
+
+
     - Display category dropdown (Bug, Feature Request, Other)
     - Display multiline description TextField
     - Display Submit button with loading state
     - Use AlertDialog with 28dp corner radius
     - _Requirements: 9.5_
 
-- [ ] 16. Checkpoint - Make sure all tests are passing
+- [x] 16. Checkpoint - Make sure all tests are passing
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 17. Wire up navigation and integrate screens

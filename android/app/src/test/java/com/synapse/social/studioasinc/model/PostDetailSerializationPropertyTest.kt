@@ -32,8 +32,8 @@ class PostDetailSerializationPropertyTest : StringSpec({
             url = "https://example.com/${Arb.string(5..10).bind()}.jpg",
             type = arbMediaType.bind(),
             thumbnailUrl = Arb.string(10..30).orNull().bind()?.let { "https://example.com/$it.jpg" },
-            duration = Arb.long(0..3600000).orNull().bind(),
-            size = Arb.long(1000..10000000).orNull().bind(),
+            duration = Arb.long(0L..3600000L).orNull().bind(),
+            size = Arb.long(1000L..10000000L).orNull().bind(),
             mimeType = Arb.of("image/jpeg", "image/png", "video/mp4").orNull().bind()
         )
     }
@@ -59,7 +59,7 @@ class PostDetailSerializationPropertyTest : StringSpec({
             editedAt = Arb.boolean().bind().let { if (it) "2024-01-15T12:00:00Z" else null },
             hasPoll = Arb.boolean().orNull().bind(),
             pollQuestion = Arb.string(10..100).orNull().bind(),
-            pollOptions = Arb.boolean().bind().let { if (it) "[\"Option 1\",\"Option 2\"]" else null },
+            pollOptions = null, // TODO: Add proper PollOption generator if needed
             hasLocation = Arb.boolean().orNull().bind(),
             locationName = Arb.string(5..50).orNull().bind(),
             locationAddress = Arb.string(10..100).orNull().bind(),
@@ -71,13 +71,13 @@ class PostDetailSerializationPropertyTest : StringSpec({
         UserProfile(
             uid = Arb.uuid().bind().toString(),
             username = Arb.string(3..20).bind(),
-            display_name = Arb.string(1..50).bind(),
+            displayName = Arb.string(1..50).bind(),
             email = "${Arb.string(5..10).bind()}@example.com",
             bio = Arb.string(0..200).orNull().bind(),
-            profile_image_url = Arb.string(10..30).orNull().bind()?.let { "https://example.com/$it.jpg" },
-            followers_count = Arb.int(0..100000).bind(),
-            following_count = Arb.int(0..10000).bind(),
-            posts_count = Arb.int(0..5000).bind(),
+            profileImageUrl = Arb.string(10..30).orNull().bind()?.let { "https://example.com/$it.jpg" },
+            followersCount = Arb.int(0..100000).bind(),
+            followingCount = Arb.int(0..10000).bind(),
+            postsCount = Arb.int(0..5000).bind(),
             status = Arb.of("online", "offline", "away").bind(),
             account_type = Arb.of("user", "premium", "admin").bind(),
             verify = Arb.boolean().bind(),

@@ -18,7 +18,18 @@ import io.kotest.property.checkAll
  */
 class CommentRepositoryPropertyTest : StringSpec({
 
-    val repository = CommentRepository()
+    // Mock CommentDao for testing - actual DAO operations are tested separately
+    val mockCommentDao = object : com.synapse.social.studioasinc.data.local.CommentDao {
+        override suspend fun insertComment(comment: com.synapse.social.studioasinc.data.local.CommentEntity) {}
+        override suspend fun insertComments(comments: List<com.synapse.social.studioasinc.data.local.CommentEntity>) {}
+        override suspend fun getCommentsByPostId(postId: String): List<com.synapse.social.studioasinc.data.local.CommentEntity> = emptyList()
+        override suspend fun getCommentById(commentId: String): com.synapse.social.studioasinc.data.local.CommentEntity? = null
+        override suspend fun deleteComment(commentId: String) {}
+        override suspend fun deleteCommentsByPostId(postId: String) {}
+        override suspend fun clearAllComments() {}
+    }
+    
+    val repository = CommentRepository(mockCommentDao)
 
     // ==================== ARBITRARY GENERATORS ====================
 
@@ -53,13 +64,13 @@ class CommentRepositoryPropertyTest : StringSpec({
         UserProfile(
             uid = uid,
             username = username,
-            display_name = displayName,
+            displayName = displayName,
             email = email,
             bio = bio,
-            profile_image_url = profileImage,
-            followers_count = followers,
-            following_count = following,
-            posts_count = posts,
+            profileImageUrl = profileImage,
+            followersCount = followers,
+            followingCount = following,
+            postsCount = posts,
             status = status,
             account_type = accountType,
             verify = verify,

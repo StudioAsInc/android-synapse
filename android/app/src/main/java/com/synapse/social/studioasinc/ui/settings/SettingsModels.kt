@@ -242,6 +242,10 @@ data class ChatSettings(
     val mediaAutoDownload: MediaAutoDownload = MediaAutoDownload.WIFI_ONLY
 )
 
+// ============================================================================
+// Navigation
+// ============================================================================
+
 /**
  * Settings category model for the Settings Hub.
  * Requirements: 1.1, 1.4
