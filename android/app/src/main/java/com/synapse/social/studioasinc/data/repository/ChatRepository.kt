@@ -264,7 +264,7 @@ class ChatRepository {
         }
     }
 
-    fun observeMessages(chatId: String): Flow<Result<List<Message>>> = flow {
+    fun observeMessages(chatId: String): Flow<Result<List<Message>>> = kotlinx.coroutines.flow.flow {
         emit(Result.Loading)
         try {
             client.channel("messages:$chatId").postgresChangeFlow<PostgresAction>(schema = "public") {
@@ -277,14 +277,14 @@ class ChatRepository {
                     else -> Result.Loading
                 }
             }.catch { e ->
-                emit(Result.Error(e as Exception, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
+                emit(Result.Error(e as? Exception ?: Exception(e.message), ErrorHandler.getErrorMessage(e as? Exception ?: Exception(e.message), SynapseApplication.applicationContext())))
             }.collect { emit(it) }
         } catch (e: Exception) {
             emit(Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
         }
     }
 
-    fun observeUserChats(userId: String): Flow<Result<List<Chat>>> = flow {
+    fun observeUserChats(userId: String): Flow<Result<List<Chat>>> = kotlinx.coroutines.flow.flow {
         emit(Result.Loading)
         try {
             client.channel("user_chats:$userId").postgresChangeFlow<PostgresAction>(schema = "public") {
@@ -296,7 +296,7 @@ class ChatRepository {
                     else -> Result.Loading
                 }
             }.catch { e ->
-                emit(Result.Error(e as Exception, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))
+                emit(Result.Error(e as? Exception ?: Exception(e.message), ErrorHandler.getErrorMessage(e as? Exception ?: Exception(e.message), SynapseApplication.applicationContext())))
             }.collect { emit(it) }
         } catch (e: Exception) {
             emit(Result.Error(e, ErrorHandler.getErrorMessage(e, SynapseApplication.applicationContext())))

@@ -58,6 +58,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = reactionRepository.togglePostReaction(postId, reactionType)) {
                 is Result.Success -> loadPost(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -68,6 +69,8 @@ class PostDetailViewModel : ViewModel() {
             when (val result = reactionRepository.toggleCommentReaction(commentId, reactionType)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
+            }
             }
         }
     }
@@ -78,6 +81,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = commentRepository.createComment(postId, content, null, parentCommentId)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -88,6 +92,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = commentRepository.deleteComment(commentId)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -98,6 +103,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = commentRepository.editComment(commentId, content)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -108,6 +114,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = pollRepository.submitVote(postId, optionIndex)) {
                 is Result.Success -> loadPost(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -118,6 +125,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = bookmarkRepository.toggleBookmark(postId, null)) {
                 is Result.Success -> loadPost(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -128,6 +136,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = reshareRepository.createReshare(postId, commentary)) {
                 is Result.Success -> loadPost(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -147,6 +156,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = commentRepository.pinComment(commentId, postId)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
@@ -157,6 +167,7 @@ class PostDetailViewModel : ViewModel() {
             when (val result = commentRepository.hideComment(commentId)) {
                 is Result.Success -> loadComments(postId)
                 is Result.Error -> _errorEvent.emit(result.message)
+                is Result.Loading -> {}
             }
         }
     }
