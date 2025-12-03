@@ -17,9 +17,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.catch
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import com.synapse.social.studioasinc.data.paging.PostPagingSource
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 
@@ -27,6 +29,16 @@ class PostRepository(private val postDao: PostDao) {
 
     private val client = SupabaseClient.client
 
+    fun getPostsPaged(): Flow<PagingData<Post>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { PostPagingSource(client.from("posts")) }
+        ).flow
+    }
+    
     private data class CacheEntry<T>(
         val data: T,
         val timestamp: Long = System.currentTimeMillis()

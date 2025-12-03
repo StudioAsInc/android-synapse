@@ -557,6 +557,7 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="loading_messages">Loading messages…</string>
     <string name="loading_profile">Loading profile…</string>
     <string name="loading_posts">Loading posts…</string>
+    <string name="loading_posts_error">Error loading posts</string>
     <string name="loading_comments">Loading comments…</string>
     <string name="sending_message">Sending…</string>
     <string name="message_sent">Sent</string>

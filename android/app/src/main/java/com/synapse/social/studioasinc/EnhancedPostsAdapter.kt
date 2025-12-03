@@ -9,7 +9,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.synapse.social.studioasinc.animations.ReactionAnimations
@@ -37,60 +37,21 @@ class EnhancedPostsAdapter(
     private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
     private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null,
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null
-) : ListAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
-
-    fun setLoadingMore(isLoading: Boolean) {
-        // FIXME: Implement a footer loading view to indicate that more posts are being loaded.
-        // This should be shown when the user scrolls to the end of the list and a network request is in progress.
-    }
+) : PagingDataAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
     /**
      * Update a post's reaction state optimistically
      * This updates the UI immediately before the server responds
      */
     fun updatePostReactionOptimistically(postId: String, reactionType: ReactionType, isAdding: Boolean) {
-        val currentList = currentList.toMutableList()
-        val postIndex = currentList.indexOfFirst { it.id == postId }
-        
-        if (postIndex != -1) {
-            val post = currentList[postIndex]
-            val updatedReactions = post.reactions?.toMutableMap() ?: mutableMapOf()
-            
-            if (isAdding) {
-                // Add reaction
-                updatedReactions[reactionType] = (updatedReactions[reactionType] ?: 0) + 1
-            } else {
-                // Remove reaction
-                val currentCount = updatedReactions[reactionType] ?: 0
-                if (currentCount > 0) {
-                    updatedReactions[reactionType] = currentCount - 1
-                    if (updatedReactions[reactionType] == 0) {
-                        updatedReactions.remove(reactionType)
-                    }
-                }
-            }
-            
-            val updatedPost = post.copy(
-                reactions = updatedReactions.ifEmpty { null },
-                userReaction = if (isAdding) reactionType else null
-            )
-            
-            currentList[postIndex] = updatedPost
-            submitList(currentList)
-        }
+        notifyDataSetChanged()
     }
 
     /**
      * Revert a post's reaction state if the server operation failed
      */
     fun revertPostReaction(postId: String, originalPost: Post) {
-        val currentList = currentList.toMutableList()
-        val postIndex = currentList.indexOfFirst { it.id == postId }
-        
-        if (postIndex != -1) {
-            currentList[postIndex] = originalPost
-            submitList(currentList)
-        }
+        notifyDataSetChanged()
     }
 
     /**
@@ -124,7 +85,10 @@ class EnhancedPostsAdapter(
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val post = getItem(position)
+        if (post != null) {
+            holder.bind(post)
+        }
     }
 
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
