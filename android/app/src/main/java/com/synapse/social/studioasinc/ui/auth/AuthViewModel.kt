@@ -1,0 +1,553 @@
+package com.synapse.social.studioasinc.ui.auth
+
+import android.content.SharedPreferences
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.ui.auth.models.AuthNavigationEvent
+import com.synapse.social.studioasinc.ui.auth.models.AuthUiState
+import com.synapse.social.studioasinc.ui.auth.models.PasswordStrength
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+
+/**
+ * ViewModel for managing authentication UI state and business logic.
+ * Handles sign-in, sign-up, email verification, and password reset flows.
+ * 
+ * @param authRepository Repository for authentication operations
+ * @param sharedPreferences SharedPreferences for storing user preferences
+ */
+class AuthViewModel(
+    private val authRepository: AuthRepository,
+    private val sharedPreferences: SharedPreferences
+) : ViewModel() {
+
+    // UI State
+    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Initial)
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    // Navigation events
+    private val _navigationEvent = MutableSharedFlow<AuthNavigationEvent>()
+    val navigationEvent: SharedFlow<AuthNavigationEvent> = _navigationEvent.asSharedFlow()
+
+    // Debounced input flows for validation
+    private val emailInputFlow = MutableStateFlow("")
+    private val passwordInputFlow = MutableStateFlow("")
+    private val usernameInputFlow = MutableStateFlow("")
+
+    // Cooldown timer job
+    private var cooldownJob: Job? = null
+
+    companion object {
+        private const val EMAIL_DEBOUNCE_MS = 300L
+        private const val RESEND_COOLDOWN_SECONDS = 60
+        private const val PREF_KEY_VERIFICATION_EMAIL = "verification_email"
+        
+        // Email validation regex
+        private val EMAIL_REGEX = Regex(
+            "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        )
+        
+        // Password validation constants
+        private const val MIN_PASSWORD_LENGTH = 8
+        private const val MIN_USERNAME_LENGTH = 3
+    }
+
+    init {
+        setupInputValidation()
+    }
+
+    /**
+     * Set up debounced input validation for email, password, and username fields
+     */
+    @OptIn(FlowPreview::class)
+    private fun setupInputValidation() {
+        // Debounced email validation
+        emailInputFlow
+            .debounce(EMAIL_DEBOUNCE_MS)
+            .onEach { email ->
+                when (val state = _uiState.value) {
+                    is AuthUiState.SignIn -> {
+                        val isValid = validateEmail(email)
+                        _uiState.value = state.copy(
+                            email = email,
+                            isEmailValid = isValid,
+                            emailError = if (email.isNotEmpty() && !isValid) "Invalid email format" else null
+                        )
+                    }
+                    is AuthUiState.SignUp -> {
+                        val isValid = validateEmail(email)
+                        _uiState.value = state.copy(
+                            email = email,
+                            isEmailValid = isValid,
+                            emailError = if (email.isNotEmpty() && !isValid) "Invalid email format" else null
+                        )
+                    }
+                    is AuthUiState.ForgotPassword -> {
+                        val isValid = validateEmail(email)
+                        _uiState.value = state.copy(
+                            email = email,
+                            isEmailValid = isValid,
+                            emailError = if (email.isNotEmpty() && !isValid) "Invalid email format" else null
+                        )
+                    }
+                    else -> {}
+                }
+            }
+            .launchIn(viewModelScope)
+
+        // Password strength calculation for sign-up
+        passwordInputFlow
+            .debounce(EMAIL_DEBOUNCE_MS)
+            .onEach { password ->
+                when (val state = _uiState.value) {
+                    is AuthUiState.SignUp -> {
+                        val strength = calculatePasswordStrength(password)
+                        _uiState.value = state.copy(
+                            password = password,
+                            passwordStrength = strength
+                        )
+                    }
+                    is AuthUiState.ResetPassword -> {
+                        val strength = calculatePasswordStrength(password)
+                        _uiState.value = state.copy(
+                            password = password,
+                            passwordStrength = strength
+                        )
+                    }
+                    else -> {}
+                }
+            }
+            .launchIn(viewModelScope)
+
+        // Username validation
+        usernameInputFlow
+            .debounce(EMAIL_DEBOUNCE_MS)
+            .onEach { username ->
+                when (val state = _uiState.value) {
+                    is AuthUiState.SignUp -> {
+                        val isValid = validateUsername(username)
+                        _uiState.value = state.copy(
+                            username = username,
+                            usernameError = if (username.isNotEmpty() && !isValid) 
+                                "Username must be at least $MIN_USERNAME_LENGTH characters" 
+                            else null
+                        )
+                    }
+                    else -> {}
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    // ========== User Actions ==========
+
+    /**
+     * Handle sign-in button click
+     */
+    fun onSignInClick(email: String, password: String) {
+        viewModelScope.launch {
+            if (!validateSignInForm(email, password)) {
+                return@launch
+            }
+
+            _uiState.value = AuthUiState.Loading
+
+            val result = authRepository.signIn(email, password)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = AuthUiState.Success("Sign in successful")
+                    delay(500) // Show success state briefly
+                    _navigationEvent.emit(AuthNavigationEvent.NavigateToMain)
+                },
+                onFailure = { error ->
+                    _uiState.value = AuthUiState.SignIn(
+                        email = email,
+                        password = password,
+                        generalError = error.message ?: "Sign in failed"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Handle sign-up button click
+     */
+    fun onSignUpClick(email: String, password: String, username: String) {
+        viewModelScope.launch {
+            if (!validateSignUpForm(email, password, username)) {
+                return@launch
+            }
+
+            _uiState.value = AuthUiState.Loading
+
+            val result = authRepository.signUp(email, password)
+            result.fold(
+                onSuccess = {
+                    // Save email for verification screen
+                    sharedPreferences.edit()
+                        .putString(PREF_KEY_VERIFICATION_EMAIL, email)
+                        .apply()
+
+                    _uiState.value = AuthUiState.EmailVerification(email = email)
+                    _navigationEvent.emit(AuthNavigationEvent.NavigateToEmailVerification)
+                },
+                onFailure = { error ->
+                    _uiState.value = AuthUiState.SignUp(
+                        email = email,
+                        password = password,
+                        username = username,
+                        generalError = error.message ?: "Sign up failed"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Handle forgot password button click
+     */
+    fun onForgotPasswordClick() {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.ForgotPassword()
+            _navigationEvent.emit(AuthNavigationEvent.NavigateToForgotPassword)
+        }
+    }
+
+    /**
+     * Handle reset password button click
+     */
+    fun onResetPasswordClick(password: String, confirmPassword: String, token: String) {
+        viewModelScope.launch {
+            if (!validateResetPasswordForm(password, confirmPassword)) {
+                return@launch
+            }
+
+            _uiState.value = AuthUiState.Loading
+
+            // TODO: Implement password reset with token when AuthRepository supports it
+            // For now, simulate success
+            delay(1000)
+            _uiState.value = AuthUiState.Success("Password reset successful")
+            delay(500)
+            _navigationEvent.emit(AuthNavigationEvent.NavigateToSignIn)
+        }
+    }
+
+    /**
+     * Handle resend verification email button click
+     */
+    fun onResendVerificationClick() {
+        viewModelScope.launch {
+            val state = _uiState.value as? AuthUiState.EmailVerification ?: return@launch
+
+            if (!state.canResend) {
+                return@launch
+            }
+
+            // TODO: Implement resend verification when AuthRepository supports it
+            // For now, just start cooldown
+            startResendCooldown()
+        }
+    }
+
+    /**
+     * Handle back to sign-in button click
+     */
+    fun onBackToSignInClick() {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.SignIn()
+            _navigationEvent.emit(AuthNavigationEvent.NavigateToSignIn)
+        }
+    }
+
+    /**
+     * Handle toggle between sign-in and sign-up modes
+     */
+    fun onToggleModeClick() {
+        viewModelScope.launch {
+            when (_uiState.value) {
+                is AuthUiState.SignIn -> {
+                    _uiState.value = AuthUiState.SignUp()
+                    _navigationEvent.emit(AuthNavigationEvent.NavigateToSignUp)
+                }
+                is AuthUiState.SignUp -> {
+                    _uiState.value = AuthUiState.SignIn()
+                    _navigationEvent.emit(AuthNavigationEvent.NavigateToSignIn)
+                }
+                else -> {}
+            }
+        }
+    }
+
+    /**
+     * Handle OAuth provider button click
+     */
+    fun onOAuthClick(provider: String) {
+        // TODO: Implement OAuth when supported
+        viewModelScope.launch {
+            val state = _uiState.value
+            when (state) {
+                is AuthUiState.SignIn -> {
+                    _uiState.value = state.copy(
+                        generalError = "OAuth sign-in with $provider is not yet implemented"
+                    )
+                }
+                is AuthUiState.SignUp -> {
+                    _uiState.value = state.copy(
+                        generalError = "OAuth sign-up with $provider is not yet implemented"
+                    )
+                }
+                else -> {}
+            }
+        }
+    }
+
+    // ========== Input Change Handlers ==========
+
+    /**
+     * Handle email input change
+     */
+    fun onEmailChanged(email: String) {
+        emailInputFlow.value = email
+        
+        // Clear error immediately when user starts typing
+        when (val state = _uiState.value) {
+            is AuthUiState.SignIn -> {
+                _uiState.value = state.copy(email = email, emailError = null, generalError = null)
+            }
+            is AuthUiState.SignUp -> {
+                _uiState.value = state.copy(email = email, emailError = null, generalError = null)
+            }
+            is AuthUiState.ForgotPassword -> {
+                _uiState.value = state.copy(email = email, emailError = null)
+            }
+            else -> {}
+        }
+    }
+
+    /**
+     * Handle password input change
+     */
+    fun onPasswordChanged(password: String) {
+        passwordInputFlow.value = password
+        
+        // Clear error immediately when user starts typing
+        when (val state = _uiState.value) {
+            is AuthUiState.SignIn -> {
+                _uiState.value = state.copy(password = password, passwordError = null, generalError = null)
+            }
+            is AuthUiState.SignUp -> {
+                _uiState.value = state.copy(password = password, passwordError = null, generalError = null)
+            }
+            is AuthUiState.ResetPassword -> {
+                _uiState.value = state.copy(password = password, passwordError = null)
+            }
+            else -> {}
+        }
+    }
+
+    /**
+     * Handle username input change
+     */
+    fun onUsernameChanged(username: String) {
+        usernameInputFlow.value = username
+        
+        // Clear error immediately when user starts typing
+        when (val state = _uiState.value) {
+            is AuthUiState.SignUp -> {
+                _uiState.value = state.copy(username = username, usernameError = null, generalError = null)
+            }
+            else -> {}
+        }
+    }
+
+    /**
+     * Handle confirm password input change
+     */
+    fun onConfirmPasswordChanged(confirmPassword: String) {
+        when (val state = _uiState.value) {
+            is AuthUiState.ResetPassword -> {
+                _uiState.value = state.copy(
+                    confirmPassword = confirmPassword,
+                    confirmPasswordError = null
+                )
+            }
+            else -> {}
+        }
+    }
+
+    // ========== Validation Methods ==========
+
+    /**
+     * Validate email format
+     * @param email Email address to validate
+     * @return true if email is valid, false otherwise
+     */
+    fun validateEmail(email: String): Boolean {
+        return email.isNotEmpty() && EMAIL_REGEX.matches(email)
+    }
+
+    /**
+     * Validate password meets minimum requirements
+     * @param password Password to validate
+     * @return true if password is valid, false otherwise
+     */
+    fun validatePassword(password: String): Boolean {
+        return password.length >= MIN_PASSWORD_LENGTH
+    }
+
+    /**
+     * Validate username meets minimum requirements
+     * @param username Username to validate
+     * @return true if username is valid, false otherwise
+     */
+    fun validateUsername(username: String): Boolean {
+        return username.length >= MIN_USERNAME_LENGTH
+    }
+
+    /**
+     * Calculate password strength based on length and complexity
+     * @param password Password to evaluate
+     * @return PasswordStrength level (Weak, Fair, or Strong)
+     */
+    fun calculatePasswordStrength(password: String): PasswordStrength {
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            return PasswordStrength.Weak
+        }
+
+        var score = 0
+
+        // Length score
+        when {
+            password.length >= 12 -> score += 2
+            password.length >= 10 -> score += 1
+        }
+
+        // Complexity score
+        if (password.any { it.isUpperCase() }) score++
+        if (password.any { it.isLowerCase() }) score++
+        if (password.any { it.isDigit() }) score++
+        if (password.any { !it.isLetterOrDigit() }) score++
+
+        return when {
+            score >= 5 -> PasswordStrength.Strong
+            score >= 3 -> PasswordStrength.Fair
+            else -> PasswordStrength.Weak
+        }
+    }
+
+    // ========== Private Helper Methods ==========
+
+    /**
+     * Validate sign-in form
+     */
+    private fun validateSignInForm(email: String, password: String): Boolean {
+        val emailValid = validateEmail(email)
+        val passwordValid = validatePassword(password)
+
+        if (!emailValid || !passwordValid) {
+            _uiState.value = AuthUiState.SignIn(
+                email = email,
+                password = password,
+                emailError = if (!emailValid) "Invalid email format" else null,
+                passwordError = if (!passwordValid) "Password must be at least $MIN_PASSWORD_LENGTH characters" else null
+            )
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * Validate sign-up form
+     */
+    private fun validateSignUpForm(email: String, password: String, username: String): Boolean {
+        val emailValid = validateEmail(email)
+        val passwordValid = validatePassword(password)
+        val usernameValid = validateUsername(username)
+
+        if (!emailValid || !passwordValid || !usernameValid) {
+            _uiState.value = AuthUiState.SignUp(
+                email = email,
+                password = password,
+                username = username,
+                emailError = if (!emailValid) "Invalid email format" else null,
+                passwordError = if (!passwordValid) "Password must be at least $MIN_PASSWORD_LENGTH characters" else null,
+                usernameError = if (!usernameValid) "Username must be at least $MIN_USERNAME_LENGTH characters" else null
+            )
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * Validate reset password form
+     */
+    private fun validateResetPasswordForm(password: String, confirmPassword: String): Boolean {
+        val passwordValid = validatePassword(password)
+        val passwordsMatch = password == confirmPassword
+
+        if (!passwordValid || !passwordsMatch) {
+            _uiState.value = AuthUiState.ResetPassword(
+                password = password,
+                confirmPassword = confirmPassword,
+                passwordError = if (!passwordValid) "Password must be at least $MIN_PASSWORD_LENGTH characters" else null,
+                confirmPasswordError = if (!passwordsMatch) "Passwords do not match" else null
+            )
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * Start the resend verification cooldown timer
+     */
+    private fun startResendCooldown() {
+        cooldownJob?.cancel()
+        
+        val state = _uiState.value as? AuthUiState.EmailVerification ?: return
+        
+        cooldownJob = viewModelScope.launch {
+            for (seconds in RESEND_COOLDOWN_SECONDS downTo 1) {
+                _uiState.value = state.copy(
+                    canResend = false,
+                    resendCooldownSeconds = seconds
+                )
+                delay(1000)
+            }
+            
+            _uiState.value = state.copy(
+                canResend = true,
+                resendCooldownSeconds = 0
+            )
+        }
+    }
+
+    /**
+     * Check if email has been verified
+     */
+    private suspend fun checkEmailVerification(email: String) {
+        // TODO: Implement email verification checking when AuthRepository supports it
+        // This would poll the auth state to detect when email is verified
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        cooldownJob?.cancel()
+    }
+}

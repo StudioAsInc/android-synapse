@@ -135,6 +135,10 @@ android {
         compose = true
     }
     
+    composeOptions {
+        kotlinCompilerExtensionVersion = '1.5.14'
+    }
+    
     testOptions {
         unitTests {
             all {
@@ -176,7 +180,14 @@ dependencies {
     implementation 'androidx.compose.material3:material3'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.compose.runtime:runtime-livedata'
     debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    
+    // Accompanist for system UI controller
+    implementation 'com.google.accompanist:accompanist-systemuicontroller:0.32.0'
 
     // Supabase BOM and dependencies
     implementation(platform("io.github.jan-tennert.supabase:bom:2.6.0"))
@@ -308,6 +319,10 @@ dependencies {
     androidTestImplementation 'androidx.test:rules:1.5.0'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
     androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
+    
+    // Compose UI testing
+    androidTestImplementation composeBom
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 
     // Memory leak detection
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.12'
