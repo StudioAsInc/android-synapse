@@ -4,6 +4,8 @@
 
 This design document outlines the architecture and implementation approach for transforming the Synapse social media app's minimal settings into a comprehensive, production-ready multi-screen settings hub. The feature follows Material Design 3 guidelines and the existing MVVM architecture with Repository pattern.
 
+**Implementation Approach:** This feature is implemented entirely using Jetpack Compose with Material 3 components. All UI screens are Composable functions, navigation uses Compose Navigation, and state management follows Compose best practices with StateFlow and remember/rememberSaveable.
+
 The settings system will be organized into a hub-and-spoke navigation model where the main Settings Hub provides categorized access to dedicated sub-screens. Each sub-screen handles a specific domain (Account, Privacy, Appearance, etc.) with both functional settings and placeholder UI for future features.
 
 ## Architecture

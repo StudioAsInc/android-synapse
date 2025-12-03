@@ -6,11 +6,14 @@ This document specifies the requirements for a comprehensive, production-ready S
 
 The settings will be organized into logical categories across multiple screens, following Material Design 3 guidelines and providing both functional settings (where backend support exists) and placeholder UI/UX settings (for future implementation) to create a polished, production-ready experience.
 
+**Technology Stack:** This feature will be implemented entirely using Jetpack Compose with Material 3 Expressive design system, following modern Android development best practices.
+
 ## Glossary
 
 - **Settings_Hub**: The main settings screen that displays categorized setting groups and navigates to sub-screens
 - **Settings_Screen**: An individual screen dedicated to a specific category of settings (e.g., Account, Privacy, Theme)
 - **Settings_Item**: A single configurable option within a settings screen (toggle, selector, navigation item)
+- **Composable**: A Jetpack Compose function annotated with @Composable that describes UI elements
 - **Theme_Mode**: The visual appearance mode of the app (Light, Dark, System Default)
 - **Dynamic_Color**: Android 12+ feature that extracts colors from user's wallpaper for app theming
 - **DataStore**: Android Jetpack library for persisting key-value pairs and typed objects
@@ -23,6 +26,8 @@ The settings will be organized into logical categories across multiple screens, 
 - **Muted_Users_List**: Collection of users whose content is hidden without blocking
 - **Session**: An active login instance on a device
 - **Cache**: Temporary data stored locally for performance optimization
+- **Material_3**: Google's latest design system with expressive theming and dynamic color support
+- **NavHost**: Jetpack Compose Navigation component that hosts navigation destinations
 
 ## Requirements
 
