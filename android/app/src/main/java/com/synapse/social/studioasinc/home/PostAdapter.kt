@@ -14,6 +14,7 @@ import com.bumptech.glide.Glide
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.ReactionType
@@ -24,8 +25,8 @@ class PostAdapter(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val authRepository: AuthRepository = AuthRepository(),
-    private val postRepository: PostRepository = PostRepository(),
-    private val userRepository: UserRepository = UserRepository(),
+    private val postRepository: PostRepository = PostRepository(AppDatabase.getDatabase(context).postDao()),
+    private val userRepository: UserRepository = UserRepository(AppDatabase.getDatabase(context).userDao()),
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null,
     private val onCommentClicked: ((Post) -> Unit)? = null,
     private val onShareClicked: ((Post) -> Unit)? = null,

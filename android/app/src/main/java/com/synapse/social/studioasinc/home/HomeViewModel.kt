@@ -1,31 +1,37 @@
 package com.synapse.social.studioasinc.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.util.PaginationManager
 import com.synapse.social.studioasinc.util.ScrollPositionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class HomeViewModel(
-    private val authRepository: AuthRepository = AuthRepository(),
-    private val postRepository: PostRepository = PostRepository()
-) : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+    private val authRepository: AuthRepository = AuthRepository()
+    private val postRepository: PostRepository = PostRepository(AppDatabase.getDatabase(application).postDao())
 
     // Pagination manager instance
     private val paginationManager = PaginationManager<Post>(
         pageSize = 20,
         scrollThreshold = 5,
         onLoadPage = { page, pageSize ->
-            postRepository.getPostsPage(page, pageSize)
+            val refreshResult = postRepository.refreshPosts(page, pageSize)
+            if (refreshResult.isFailure) {
+                return@PaginationManager Result.failure(refreshResult.exceptionOrNull() ?: Exception("Failed to refresh posts"))
+            }
+            postRepository.getPosts().first()
         },
         onError = { error ->
             _error.value = error

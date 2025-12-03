@@ -27,6 +27,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.synapse.social.studioasinc.adapters.SelectedMediaAdapter
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.data.repository.PostRepository
 import com.synapse.social.studioasinc.databinding.ActivityCreatePostBinding
 import com.synapse.social.studioasinc.model.MediaItem
@@ -47,7 +48,7 @@ class CreatePostActivity : BaseActivity() {
 
     private lateinit var binding: ActivityCreatePostBinding
     private val authService = SupabaseAuthenticationService()
-    private val postRepository = PostRepository()
+    private val postRepository by lazy { PostRepository(AppDatabase.getDatabase(this).postDao()) }
     private lateinit var prefs: SharedPreferences
 
     // Media

@@ -1,15 +1,17 @@
 package com.synapse.social.studioasinc
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.data.repository.*
 import com.synapse.social.studioasinc.model.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class PostDetailViewModel : ViewModel() {
+class PostDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val postDetailRepository = PostDetailRepository()
-    private val commentRepository = CommentRepository()
+    private val commentRepository = CommentRepository(AppDatabase.getDatabase(application).commentDao())
     private val reactionRepository = ReactionRepository()
     private val pollRepository = PollRepository()
     private val bookmarkRepository = BookmarkRepository()
@@ -39,10 +41,25 @@ class PostDetailViewModel : ViewModel() {
     fun loadComments(postId: String, limit: Int = 20, offset: Int = 0) {
         viewModelScope.launch {
             _commentsState.value = CommentsState.Loading
-            commentRepository.getComments(postId, limit, offset).fold(
-                onSuccess = { _commentsState.value = CommentsState.Success(it, it.size >= limit) },
-                onFailure = { _commentsState.value = CommentsState.Error(it.message ?: "Failed") }
-            )
+            commentRepository.getComments(postId).collect { result ->
+                result.fold(
+                    onSuccess = { comments ->
+                        val commentsWithUser = comments.map { comment ->
+                            CommentWithUser(
+                                id = comment.key,
+                                postId = comment.postKey,
+                                userId = comment.uid,
+                                parentCommentId = comment.replyCommentKey,
+                                content = comment.comment,
+                                createdAt = comment.push_time,
+                                user = null
+                            )
+                        }
+                        _commentsState.value = CommentsState.Success(commentsWithUser, commentsWithUser.size >= limit)
+                    },
+                    onFailure = { _commentsState.value = CommentsState.Error(it.message ?: "Failed") }
+                )
+            }
         }
     }
 
@@ -122,7 +139,7 @@ class PostDetailViewModel : ViewModel() {
     
     fun reportComment(commentId: String, reason: String, description: String?) {
         viewModelScope.launch {
-            commentRepository.reportComment(commentId, reason, description)
+            commentRepository.reportComment(commentId, reason)
         }
     }
 }

@@ -1,12 +1,14 @@
 package com.synapse.social.studioasinc.presentation.viewmodel
 
+import android.app.Application
 import android.net.Uri
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
 import com.synapse.social.studioasinc.data.repository.ChatRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.domain.usecase.*
 import com.synapse.social.studioasinc.model.Chat
 import com.synapse.social.studioasinc.model.Message
@@ -42,18 +44,19 @@ import java.util.UUID
 /**
  * ViewModel for chat functionality with typing indicators and read receipts
  */
-class ChatViewModel : ViewModel() {
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val authService = SupabaseAuthenticationService()
-    private val chatRepository = ChatRepository()
+    private val chatDao = AppDatabase.getDatabase(application).chatDao()
+    private val chatRepository = ChatRepository(chatDao)
     
     // Use cases
-    private val sendMessageUseCase = SendMessageUseCase(chatRepository)
-    private val getMessagesUseCase = GetMessagesUseCase(chatRepository)
-    private val observeMessagesUseCase = ObserveMessagesUseCase(chatRepository)
-    private val getUserChatsUseCase = GetUserChatsUseCase(chatRepository)
-    private val deleteMessageUseCase = DeleteMessageUseCase(chatRepository)
-    private val editMessageUseCase = EditMessageUseCase(chatRepository)
+    private val sendMessageUseCase = SendMessageUseCase(chatDao)
+    private val getMessagesUseCase = GetMessagesUseCase(chatDao)
+    private val observeMessagesUseCase = ObserveMessagesUseCase(chatDao)
+    private val getUserChatsUseCase = GetUserChatsUseCase(chatDao)
+    private val deleteMessageUseCase = DeleteMessageUseCase(chatDao)
+    private val editMessageUseCase = EditMessageUseCase(chatDao)
 
     // Existing LiveData properties
     private val _messages = MutableLiveData<List<Message>>()
@@ -390,13 +393,15 @@ class ChatViewModel : ViewModel() {
             try {
                 val currentUserId = authService.getCurrentUserId()
                 if (currentUserId != null) {
-                    val result = getUserChatsUseCase(currentUserId)
-                    result.onSuccess { chatList ->
-                        _chats.value = chatList
-                        _error.value = null
-                    }.onFailure { exception ->
-                        _error.value = exception.message
-                    }
+                    getUserChatsUseCase()
+                        .collect { result ->
+                            result.onSuccess { chatList ->
+                                _chats.value = chatList
+                                _error.value = null
+                            }.onFailure { exception ->
+                                _error.value = exception.message
+                            }
+                        }
                 } else {
                     _error.value = "User not authenticated"
                 }

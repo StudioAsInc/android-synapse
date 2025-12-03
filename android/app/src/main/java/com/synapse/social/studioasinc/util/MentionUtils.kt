@@ -13,6 +13,7 @@ import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.backend.SupabaseDatabaseService
 import com.synapse.social.studioasinc.NotificationHelper
 import com.synapse.social.studioasinc.NotificationConfig
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,7 +45,7 @@ object MentionUtils {
                         // Use Supabase to find user by username
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                                 val userResult = userRepository.getUserByUsername(username)
                                 
                                 userResult.fold(
@@ -85,6 +86,7 @@ object MentionUtils {
      * Send notifications to mentioned users
      */
     fun sendMentionNotifications(
+        context: Context,
         text: String, 
         postKey: String, 
         commentKey: String?, 
@@ -109,14 +111,14 @@ object MentionUtils {
         // Send notifications using Supabase
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+                val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
                 
                 for (username in mentionedUsernames) {
                     val userResult = userRepository.getUserByUsername(username)
                     userResult.fold(
                         onSuccess = { user ->
                             if (user != null) {
-                                sendMentionNotification(user.uid, postKey, commentKey, contentType)
+                                sendMentionNotification(context, user.uid, postKey, commentKey, contentType)
                             }
                         },
                         onFailure = { error ->
@@ -134,6 +136,7 @@ object MentionUtils {
      * Send a mention notification to a specific user
      */
     private suspend fun sendMentionNotification(
+        context: Context,
         mentionedUid: String, 
         postKey: String, 
         commentKey: String?, 
@@ -141,7 +144,7 @@ object MentionUtils {
     ) {
         try {
             val authService = com.synapse.social.studioasinc.backend.SupabaseAuthenticationService()
-            val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository()
+            val userRepository = com.synapse.social.studioasinc.data.repository.UserRepository(AppDatabase.getDatabase(context.applicationContext).userDao())
             
             val currentUser = authService.getCurrentUser()
             if (currentUser == null || currentUser.id == mentionedUid) {

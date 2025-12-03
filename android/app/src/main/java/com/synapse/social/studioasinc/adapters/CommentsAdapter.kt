@@ -152,26 +152,21 @@ class CommentsAdapter(
                 true
             }
 
-            repliesAdapter.setUserData(userMap)
-            repliesAdapter.submitList(replies)
-            
             // Manage visibility based on replies state
             if (replies.isEmpty()) {
-                // No replies for this comment
                 repliesRecyclerView.visibility = View.GONE
                 showRepliesButton.visibility = View.GONE
                 hideRepliesButton.visibility = View.GONE
             } else {
-                // Has replies - initially hidden, show button to expand
                 showRepliesButton.visibility = View.VISIBLE
                 hideRepliesButton.visibility = View.GONE
                 showRepliesButton.text = "View ${replies.size} ${if (replies.size == 1) "reply" else "replies"}"
-                
-                // Ensure replies are hidden initially
                 repliesRecyclerView.visibility = View.GONE
             }
 
             showRepliesButton.setOnClickListener {
+                repliesAdapter.setUserData(userMap)
+                repliesAdapter.submitList(replies)
                 repliesRecyclerView.visibility = View.VISIBLE
                 showRepliesButton.visibility = View.GONE
                 hideRepliesButton.visibility = View.VISIBLE

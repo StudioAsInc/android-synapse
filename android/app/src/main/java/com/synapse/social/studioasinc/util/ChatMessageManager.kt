@@ -1,6 +1,8 @@
 package com.synapse.social.studioasinc.util
 
+import android.app.Application
 import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import com.synapse.social.studioasinc.data.repository.ChatRepository
 import com.synapse.social.studioasinc.model.Message
 import kotlinx.coroutines.CoroutineScope
@@ -13,8 +15,9 @@ import java.util.UUID
  * Handles message sending, retrieval, and chat management operations.
  */
 class ChatMessageManager(
+    application: Application,
     private val authRepository: AuthRepository = AuthRepository(),
-    private val chatRepository: ChatRepository = ChatRepository()
+    private val chatRepository: ChatRepository = ChatRepository(AppDatabase.getDatabase(application).chatDao())
 ) {
 
     /**

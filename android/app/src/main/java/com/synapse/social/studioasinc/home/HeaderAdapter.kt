@@ -11,13 +11,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.synapse.social.studioasinc.R
 import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.UserRepository
+import com.synapse.social.studioasinc.data.local.AppDatabase
 import kotlinx.coroutines.launch
 
 class HeaderAdapter(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val authRepository: AuthRepository = AuthRepository(),
-    private val userRepository: UserRepository = UserRepository()
+    private val userRepository: UserRepository = UserRepository(AppDatabase.getDatabase(context).userDao())
 ) : RecyclerView.Adapter<HeaderAdapter.HeaderViewHolder>() {
 
     private var headerData: String = ""

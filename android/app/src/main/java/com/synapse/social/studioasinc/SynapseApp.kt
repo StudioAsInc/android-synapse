@@ -12,21 +12,35 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.work.*
 import com.onesignal.OneSignal
 import com.onesignal.debug.LogLevel
 import com.onesignal.user.subscriptions.IPushSubscriptionObserver
 import com.onesignal.user.subscriptions.PushSubscriptionChangedState
 import com.synapse.social.studioasinc.backend.SupabaseAuthenticationService
+import com.synapse.social.studioasinc.data.local.AppDatabase
+import com.synapse.social.studioasinc.data.local.SyncWorker
+import com.synapse.social.studioasinc.data.repository.ChatRepository
+import com.synapse.social.studioasinc.data.repository.CommentRepository
+import com.synapse.social.studioasinc.data.repository.PostRepository
+import com.synapse.social.studioasinc.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class SynapseApp : Application(), DefaultLifecycleObserver {
     
     private lateinit var exceptionHandler: Thread.UncaughtExceptionHandler
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
+    val postRepository: PostRepository by lazy { PostRepository(database.postDao()) }
+    val commentRepository: CommentRepository by lazy { CommentRepository(database.commentDao()) }
+    val userRepository: UserRepository by lazy { UserRepository(database.userDao()) }
+    val chatRepository: ChatRepository by lazy { ChatRepository(database.chatDao()) }
     
     companion object {
         private lateinit var context: Context
@@ -48,14 +62,10 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
         exceptionHandler = Thread.getDefaultUncaughtExceptionHandler() 
             ?: Thread.UncaughtExceptionHandler { _, _ -> }
         
-        // Initialize Supabase client (already initialized in SupabaseClient singleton)
-        
-        // Create notification channels
         createNotificationChannels()
         
         mAuth = SupabaseAuthenticationService()
         
-        // Set up global exception handler
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             val intent = Intent(context, DebugActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -67,8 +77,25 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
         
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         
-        // Initialize OneSignal
         initializeOneSignal()
+
+        setupBackgroundSync()
+    }
+
+    private fun setupBackgroundSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val repeatingRequest = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "sync_work",
+            ExistingPeriodicWorkPolicy.KEEP,
+            repeatingRequest
+        )
     }
     
     private fun initializeOneSignal() {
@@ -76,7 +103,6 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
         OneSignal.Debug.logLevel = LogLevel.VERBOSE
         OneSignal.initWithContext(this, oneSignalAppId)
         
-        // Prompt for push notifications using Kotlin coroutine
         applicationScope.launch {
             try {
                 val granted = OneSignal.Notifications.requestPermission(true)
@@ -86,7 +112,6 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
             }
         }
         
-        // Add a subscription observer to get the Player ID and save it to Supabase
         OneSignal.User.pushSubscription.addObserver(object : IPushSubscriptionObserver {
             override fun onPushSubscriptionChange(state: PushSubscriptionChangedState) {
                 if (state.current.optedIn) {
@@ -113,11 +138,9 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
     }
     
     private fun createNotificationChannels() {
-        // Create notification channels for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = getSystemService(NotificationManager::class.java)
             
-            // Messages channel
             val messagesChannel = NotificationChannel(
                 "messages",
                 "Messages",
@@ -131,7 +154,6 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             }
             
-            // General notifications channel
             val generalChannel = NotificationChannel(
                 "general",
                 "General",
@@ -142,7 +164,6 @@ class SynapseApp : Application(), DefaultLifecycleObserver {
                 enableVibration(false)
             }
             
-            // Create the channels
             notificationManager?.createNotificationChannel(messagesChannel)
             notificationManager?.createNotificationChannel(generalChannel)
         }

@@ -149,7 +149,29 @@ import { TextParserService } from '../services/text-parser.service';
         }
 
         <!-- Replies -->
-        @if (comment().replies && comment().replies!.length > 0) {
+        @if (comment().replies_count > 0 && !isReply()) {
+          @if (!showReplies()) {
+            <button 
+              (click)="toggleReplies()"
+              [disabled]="loadingReplies()"
+              class="mt-3 flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 active:scale-95 transition-all">
+              @if (loadingReplies()) {
+                <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+                <span>Loading replies...</span>
+              } @else {
+                <span>View {{ comment().replies_count }} {{ comment().replies_count === 1 ? 'reply' : 'replies' }}</span>
+              }
+            </button>
+          } @else {
+            <button 
+              (click)="toggleReplies()"
+              class="mt-3 flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 active:scale-95 transition-all">
+              <span>Hide replies</span>
+            </button>
+          }
+        }
+        
+        @if (showReplies() && comment().replies && comment().replies!.length > 0) {
           <div class="mt-3">
             @for (reply of comment().replies; track reply.id) {
               <app-comment-item 
@@ -181,6 +203,8 @@ export class CommentItemComponent {
   isEditing = signal(false);
   editText = signal('');
   currentReaction = signal<ReactionType | null>(null);
+  showReplies = signal(false);
+  loadingReplies = signal(false);
 
   menuItems = signal<MenuItem[]>([]);
 
@@ -260,11 +284,33 @@ export class CommentItemComponent {
       );
       this.replyText.set('');
       this.showReplyInput.set(false);
+      await this.loadReplies();
       this.commentUpdated.emit();
     } catch (err) {
       console.error('Error posting reply:', err);
     } finally {
       this.isSubmitting.set(false);
+    }
+  }
+
+  async toggleReplies() {
+    this.showReplies.update(v => !v);
+    if (this.showReplies() && (!this.comment().replies || this.comment().replies!.length === 0)) {
+      await this.loadReplies();
+    }
+  }
+
+  async loadReplies() {
+    if (this.loadingReplies()) return;
+    
+    this.loadingReplies.set(true);
+    try {
+      const replies = await this.commentService.fetchReplies(this.comment().id);
+      this.comment().replies = replies;
+    } catch (err) {
+      console.error('Error loading replies:', err);
+    } finally {
+      this.loadingReplies.set(false);
     }
   }
 
