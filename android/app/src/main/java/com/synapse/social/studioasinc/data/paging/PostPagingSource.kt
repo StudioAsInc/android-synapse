@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 
+private val json = Json { ignoreUnknownKeys = true }
+
 class PostPagingSource(
     private val queryBuilder: PostgrestQueryBuilder
 ) : PagingSource<Int, Post>() {
@@ -37,9 +39,9 @@ class PostPagingSource(
 
             Log.d("PostPagingSource", "Loaded ${response.size} posts")
 
-            val posts = response.map { json ->
-                val post = Json.decodeFromJsonElement<Post>(json)
-                val userData = json["users"]?.jsonObject
+            val posts = response.map { jsonElement ->
+                val post = json.decodeFromJsonElement<Post>(jsonElement)
+                val userData = jsonElement["users"]?.jsonObject
                 post.username = userData?.get("username")?.jsonPrimitive?.contentOrNull
                 post.avatarUrl = userData?.get("avatar")?.jsonPrimitive?.contentOrNull
                 post.isVerified = userData?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false
