@@ -846,7 +846,6 @@ class ProfileActivity : BaseActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         Log.d(TAG, "Lifecycle: onDestroy")
 
         // Clear Glide image loading requests to free up memory when the activity is finishing.
@@ -863,5 +862,7 @@ class ProfileActivity : BaseActivity() {
         // The RecyclerView can hold a strong reference to the adapter, which in turn can hold a
         // reference to the activity (e.g., through listeners), causing a memory leak.
         binding.ProfilePageTabUserPostsRecyclerView.adapter = null
+        
+        super.onDestroy()
     }
 }

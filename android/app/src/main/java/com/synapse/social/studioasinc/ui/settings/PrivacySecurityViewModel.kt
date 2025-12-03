@@ -23,9 +23,10 @@ import kotlinx.coroutines.launch
  * Requirements: 3.1, 3.2, 3.8
  */
 class PrivacySecurityViewModel(
-    application: Application,
-    private val settingsRepository: SettingsRepository
+    application: Application
 ) : AndroidViewModel(application) {
+
+    private val settingsRepository = SettingsRepository(application)
 
     // ========================================================================
     // State
