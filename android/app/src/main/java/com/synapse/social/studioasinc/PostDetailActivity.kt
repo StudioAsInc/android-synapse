@@ -350,15 +350,6 @@ class PostDetailActivity : BaseActivity() {
     private fun loadCurrentUserAvatar() {
         lifecycleScope.launch {
             try {
-                val user = SupabaseClient.client.auth.currentUserOrNull()
-                // Load avatar from user metadata or profile
-            } catch (e: Exception) { /* ignore */ }
-        }
-    }
-
-    private fun loadCurrentUserAvatar() {
-        lifecycleScope.launch {
-            try {
                 val currentUser = SupabaseClient.client.auth.currentUserOrNull()
                 if (currentUser != null) {
                     val userProfile = SupabaseClient.client.from("users")
