@@ -78,7 +78,13 @@ fun SettingsScreen(
         ) {
             // AI Configuration Section
             item {
-                SettingsSection(title = "AI Configuration") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "AI Configuration",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                     AIConfigurationCard(
                         aiConfig = aiConfig,
                         onConfigChange = { provider, key, endpoint ->
@@ -90,7 +96,13 @@ fun SettingsScreen(
 
             // Storage & Data Section
             item {
-                SettingsSection(title = "Storage & Data") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Storage & Data",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                     StorageConfigurationCard(
                         storageConfig = storageConfig,
                         onProviderChange = { viewModel.updateStorageProvider(it) },
@@ -103,7 +115,13 @@ fun SettingsScreen(
 
             // General Preferences Section
             item {
-                SettingsSection(title = "General") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "General",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                     Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(24.dp))
@@ -161,21 +179,7 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-fun SettingsSection(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 8.dp)
-        )
-        content()
-    }
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
