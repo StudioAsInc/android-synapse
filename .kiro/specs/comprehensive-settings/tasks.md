@@ -441,7 +441,9 @@
     - Verify touch targets are at least 48dp
     - _Requirements: 1.4_
 
-- [-] 20. Final Checkpoint - Make sure all tests are passing
+- [x] 20. Final Checkpoint - Make sure all tests are passing
+
+
 
 
 
