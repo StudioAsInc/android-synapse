@@ -22,8 +22,11 @@ import com.synapse.social.studioasinc.databinding.ActivityPostDetailBinding
 import com.synapse.social.studioasinc.model.*
 import com.synapse.social.studioasinc.util.TimeUtils
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 class PostDetailActivity : BaseActivity() {
 
@@ -350,6 +353,31 @@ class PostDetailActivity : BaseActivity() {
                 val user = SupabaseClient.client.auth.currentUserOrNull()
                 // Load avatar from user metadata or profile
             } catch (e: Exception) { /* ignore */ }
+        }
+    }
+
+    private fun loadCurrentUserAvatar() {
+        lifecycleScope.launch {
+            try {
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    val userProfile = SupabaseClient.client.from("users")
+                        .select { filter { eq("uid", currentUser.id) } }
+                        .decodeSingleOrNull<kotlinx.serialization.json.JsonObject>()
+                    
+                    val avatarUrl = userProfile?.get("avatar")?.jsonPrimitive?.contentOrNull
+                    if (!avatarUrl.isNullOrEmpty()) {
+                        com.synapse.social.studioasinc.util.ImageLoader.loadImage(
+                            context = this@PostDetailActivity,
+                            url = avatarUrl,
+                            imageView = binding.ivUserAvatar,
+                            placeholder = R.drawable.avatar
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Silently fail, keep default avatar
+            }
         }
     }
 

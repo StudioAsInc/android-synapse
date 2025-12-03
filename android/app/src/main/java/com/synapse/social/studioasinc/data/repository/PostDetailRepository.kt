@@ -123,14 +123,17 @@ class PostDetailRepository {
      */
     suspend fun incrementViewCount(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            client.postgrest.rpc("increment_post_views", buildJsonObject {
-                put("p_post_id", JsonPrimitive(postId))
-            })
+            client.from("posts")
+                .update({
+                    Post::viewsCount setTo raw("views_count + 1")
+                }) {
+                    filter { eq("id", postId) }
+                }
             Log.d(TAG, "Incremented view count for post: $postId")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to increment view count: ${e.message}", e)
-            Result.failure(Exception(mapSupabaseError(e)))
+            Result.success(Unit) // Don't fail the whole operation if view count fails
         }
     }
     

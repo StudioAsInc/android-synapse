@@ -3,9 +3,11 @@ package com.synapse.social.studioasinc.data.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.synapse.social.studioasinc.model.Post
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
 
 class PostPagingSource(
     private val queryBuilder: PostgrestQueryBuilder
@@ -17,16 +19,30 @@ class PostPagingSource(
         return try {
             val response = withContext(Dispatchers.IO) {
                 queryBuilder
-                    .select {
+                    .select(
+                        columns = Columns.raw("""
+                            *,
+                            users!posts_author_uid_fkey(username, avatar, verify)
+                        """.trimIndent())
+                    ) {
                         range(position.toLong(), (position + pageSize - 1).toLong())
                     }
-                    .decodeList<Post>()
+                    .decodeList<JsonObject>()
+            }
+
+            val posts = response.map { json ->
+                val post = Json.decodeFromJsonElement<Post>(json)
+                val userData = json["users"]?.jsonObject
+                post.username = userData?.get("username")?.jsonPrimitive?.contentOrNull
+                post.avatarUrl = userData?.get("avatar")?.jsonPrimitive?.contentOrNull
+                post.isVerified = userData?.get("verify")?.jsonPrimitive?.booleanOrNull ?: false
+                post
             }
 
             LoadResult.Page(
-                data = response,
+                data = posts,
                 prevKey = if (position == 0) null else position - pageSize,
-                nextKey = if (response.isEmpty()) null else position + pageSize
+                nextKey = if (posts.isEmpty()) null else position + pageSize
             )
         } catch (e: Exception) {
             LoadResult.Error(e)
