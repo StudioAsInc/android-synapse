@@ -23,6 +23,10 @@ data class Comment(
     val pinnedBy: String? = null,
     @SerialName("edited_at")
     val editedAt: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null,
     @SerialName("report_count")
     val reportCount: Int = 0,
     @SerialName("photo_url")

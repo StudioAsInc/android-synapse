@@ -18,7 +18,9 @@ data class UserProfile(
     val status: String = "offline",
     @SerialName("account_type") val account_type: String = "user",
     val verify: Boolean = false,
-    val banned: Boolean = false
+    val banned: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 ) {
     val isVerified: Boolean get() = verify
     val isPremium: Boolean get() = account_type == "premium"

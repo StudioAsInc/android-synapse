@@ -11,6 +11,10 @@ data class Reply(
     val key: String = "",
     val like: Long? = null,
     val replyCommentkey: String = "",
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null,
     @SerialName("photo_url")
     val photoUrl: String? = null,
     @SerialName("video_url")
