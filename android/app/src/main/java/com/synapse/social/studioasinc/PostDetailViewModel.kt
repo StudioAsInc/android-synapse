@@ -71,7 +71,6 @@ class PostDetailViewModel : ViewModel() {
                 is Result.Error -> _errorEvent.emit(result.message)
                 is Result.Loading -> {}
             }
-            }
         }
     }
 
