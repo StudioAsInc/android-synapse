@@ -5,6 +5,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.synapse.social.studioasinc.model.Post
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.query.PostgrestQueryBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
