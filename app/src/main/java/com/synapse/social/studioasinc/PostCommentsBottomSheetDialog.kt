@@ -195,8 +195,8 @@ class PostCommentsBottomSheetDialog : BottomSheetDialogFragment() {
         })
 
         viewModel.userAvatar.observe(viewLifecycleOwner, Observer { avatarUrl ->
-            if (avatarUrl != null && avatarUrl != "null") {
-                Glide.with(requireContext()).load(Uri.parse(avatarUrl)).into(profile_image_x)
+            if (!avatarUrl.isNullOrEmpty() && avatarUrl != "null") {
+                Glide.with(requireContext()).load(avatarUrl).into(profile_image_x)
             } else {
                 profile_image_x.setImageResource(R.drawable.avatar)
             }
