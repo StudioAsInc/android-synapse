@@ -3,10 +3,9 @@ package com.synapse.social.studioasinc.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.model.UserProfile
-import com.synapse.social.studioasinc.domain.usecase.profile.FollowUserUseCase
-import com.synapse.social.studioasinc.domain.usecase.profile.GetProfileContentUseCase
-import com.synapse.social.studioasinc.domain.usecase.profile.GetProfileUseCase
-import com.synapse.social.studioasinc.domain.usecase.profile.UnfollowUserUseCase
+import com.synapse.social.studioasinc.domain.usecase.profile.*
+import com.synapse.social.studioasinc.domain.usecase.post.*
+import com.synapse.social.studioasinc.ui.profile.components.ViewAsMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,14 +27,31 @@ data class ProfileScreenState(
     val isOwnProfile: Boolean = false,
     val showMoreMenu: Boolean = false,
     val likedPostIds: Set<String> = emptySet(),
-    val savedPostIds: Set<String> = emptySet()
+    val savedPostIds: Set<String> = emptySet(),
+    val showShareSheet: Boolean = false,
+    val showViewAsSheet: Boolean = false,
+    val showQrCode: Boolean = false,
+    val showReportDialog: Boolean = false,
+    val viewAsMode: ViewAsMode? = null,
+    val viewAsUserName: String? = null
 )
 
 class ProfileViewModel(
     private val getProfileUseCase: GetProfileUseCase,
     private val getProfileContentUseCase: GetProfileContentUseCase,
     private val followUserUseCase: FollowUserUseCase,
-    private val unfollowUserUseCase: UnfollowUserUseCase
+    private val unfollowUserUseCase: UnfollowUserUseCase,
+    private val likePostUseCase: LikePostUseCase,
+    private val unlikePostUseCase: UnlikePostUseCase,
+    private val savePostUseCase: SavePostUseCase,
+    private val unsavePostUseCase: UnsavePostUseCase,
+    private val deletePostUseCase: DeletePostUseCase,
+    private val reportPostUseCase: ReportPostUseCase,
+    private val lockProfileUseCase: LockProfileUseCase,
+    private val archiveProfileUseCase: ArchiveProfileUseCase,
+    private val blockUserUseCase: BlockUserUseCase,
+    private val reportUserUseCase: ReportUserUseCase,
+    private val muteUserUseCase: MuteUserUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileScreenState())
@@ -149,26 +165,194 @@ class ProfileViewModel(
     }
 
     fun toggleLike(postId: String) {
+        val isLiked = postId in _state.value.likedPostIds
+        
+        // Optimistic update
         _state.update { state ->
             val likedPostIds = state.likedPostIds.toMutableSet()
-            if (postId in likedPostIds) {
+            if (isLiked) {
                 likedPostIds.remove(postId)
             } else {
                 likedPostIds.add(postId)
             }
             state.copy(likedPostIds = likedPostIds)
         }
+        
+        // Backend call
+        viewModelScope.launch {
+            val result = if (isLiked) {
+                unlikePostUseCase(postId, _state.value.currentUserId)
+            } else {
+                likePostUseCase(postId, _state.value.currentUserId)
+            }
+            
+            result.collect { res ->
+                res.onFailure {
+                    // Revert on failure
+                    _state.update { state ->
+                        val likedPostIds = state.likedPostIds.toMutableSet()
+                        if (isLiked) {
+                            likedPostIds.add(postId)
+                        } else {
+                            likedPostIds.remove(postId)
+                        }
+                        state.copy(likedPostIds = likedPostIds)
+                    }
+                }
+            }
+        }
     }
 
     fun toggleSave(postId: String) {
+        val isSaved = postId in _state.value.savedPostIds
+        
+        // Optimistic update
         _state.update { state ->
             val savedPostIds = state.savedPostIds.toMutableSet()
-            if (postId in savedPostIds) {
+            if (isSaved) {
                 savedPostIds.remove(postId)
             } else {
                 savedPostIds.add(postId)
             }
             state.copy(savedPostIds = savedPostIds)
+        }
+        
+        // Backend call
+        viewModelScope.launch {
+            val result = if (isSaved) {
+                unsavePostUseCase(postId, _state.value.currentUserId)
+            } else {
+                savePostUseCase(postId, _state.value.currentUserId)
+            }
+            
+            result.collect { res ->
+                res.onFailure {
+                    // Revert on failure
+                    _state.update { state ->
+                        val savedPostIds = state.savedPostIds.toMutableSet()
+                        if (isSaved) {
+                            savedPostIds.add(postId)
+                        } else {
+                            savedPostIds.remove(postId)
+                        }
+                        state.copy(savedPostIds = savedPostIds)
+                    }
+                }
+            }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            deletePostUseCase(postId, _state.value.currentUserId).collect { result ->
+                result.onSuccess {
+                    // Remove from local state
+                    _state.update { state ->
+                        state.copy(posts = state.posts.filterNot { (it as? Any)?.toString()?.contains(postId) == true })
+                    }
+                }
+            }
+        }
+    }
+
+    fun reportPost(postId: String, reason: String) {
+        viewModelScope.launch {
+            reportPostUseCase(postId, _state.value.currentUserId, reason).collect { result ->
+                result.onSuccess {
+                    // Optionally hide post from feed
+                }
+            }
+        }
+    }
+
+    // Phase 4: Advanced Features
+    fun showShareSheet() {
+        _state.update { it.copy(showShareSheet = true) }
+    }
+
+    fun hideShareSheet() {
+        _state.update { it.copy(showShareSheet = false) }
+    }
+
+    fun showViewAsSheet() {
+        _state.update { it.copy(showViewAsSheet = true) }
+    }
+
+    fun hideViewAsSheet() {
+        _state.update { it.copy(showViewAsSheet = false) }
+    }
+
+    fun showQrCode() {
+        _state.update { it.copy(showQrCode = true) }
+    }
+
+    fun hideQrCode() {
+        _state.update { it.copy(showQrCode = false) }
+    }
+
+    fun showReportDialog() {
+        _state.update { it.copy(showReportDialog = true) }
+    }
+
+    fun hideReportDialog() {
+        _state.update { it.copy(showReportDialog = false) }
+    }
+
+    fun setViewAsMode(mode: ViewAsMode, userName: String? = null) {
+        _state.update { it.copy(viewAsMode = mode, viewAsUserName = userName) }
+    }
+
+    fun exitViewAs() {
+        _state.update { it.copy(viewAsMode = null, viewAsUserName = null) }
+    }
+
+    fun lockProfile(isLocked: Boolean) {
+        viewModelScope.launch {
+            lockProfileUseCase(_state.value.currentUserId, isLocked).collect { result ->
+                result.onSuccess {
+                    // Update profile state
+                }
+            }
+        }
+    }
+
+    fun archiveProfile(isArchived: Boolean) {
+        viewModelScope.launch {
+            archiveProfileUseCase(_state.value.currentUserId, isArchived).collect { result ->
+                result.onSuccess {
+                    // Update profile state
+                }
+            }
+        }
+    }
+
+    fun blockUser(blockedUserId: String) {
+        viewModelScope.launch {
+            blockUserUseCase(_state.value.currentUserId, blockedUserId).collect { result ->
+                result.onSuccess {
+                    // Navigate back or update UI
+                }
+            }
+        }
+    }
+
+    fun reportUser(reportedUserId: String, reason: String) {
+        viewModelScope.launch {
+            reportUserUseCase(_state.value.currentUserId, reportedUserId, reason).collect { result ->
+                result.onSuccess {
+                    // Show success message
+                }
+            }
+        }
+    }
+
+    fun muteUser(mutedUserId: String) {
+        viewModelScope.launch {
+            muteUserUseCase(_state.value.currentUserId, mutedUserId).collect { result ->
+                result.onSuccess {
+                    // Update UI
+                }
+            }
         }
     }
 

@@ -7,18 +7,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.synapse.social.studioasinc.model.Post
-import com.synapse.social.studioasinc.ui.components.PostCard
+import com.synapse.social.studioasinc.ui.components.*
 
 @Composable
 fun PostFeed(
     posts: List<Post>,
     likedPostIds: Set<String>,
     savedPostIds: Set<String>,
+    currentUserId: String,
     isLoading: Boolean,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
@@ -28,10 +28,17 @@ fun PostFeed(
     onCommentClick: (String) -> Unit,
     onShareClick: (String) -> Unit,
     onSaveClick: (String) -> Unit,
-    onMenuClick: (String) -> Unit,
+    onDeletePost: (String) -> Unit,
+    onReportPost: (String, String) -> Unit,
+    onEditPost: (String) -> Unit,
     onMediaClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var selectedPostId by remember { mutableStateOf<String?>(null) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var showMenuSheet by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    
     SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = onRefresh,
@@ -52,9 +59,15 @@ fun PostFeed(
                         onUserClick = { onUserClick(post.authorUid) },
                         onLikeClick = { onLikeClick(post.id) },
                         onCommentClick = { onCommentClick(post.id) },
-                        onShareClick = { onShareClick(post.id) },
+                        onShareClick = {
+                            selectedPostId = post.id
+                            showShareSheet = true
+                        },
                         onSaveClick = { onSaveClick(post.id) },
-                        onMenuClick = { onMenuClick(post.id) },
+                        onMenuClick = {
+                            selectedPostId = post.id
+                            showMenuSheet = true
+                        },
                         onMediaClick = { onMediaClick(post.id) },
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
@@ -72,14 +85,45 @@ fun PostFeed(
                         }
                     }
                 }
-                
-                item {
-                    LaunchedEffect(Unit) {
-                        onLoadMore()
-                    }
-                }
             }
         }
+    }
+    
+    // Share bottom sheet
+    if (showShareSheet && selectedPostId != null) {
+        SharePostBottomSheet(
+            onDismiss = { showShareSheet = false },
+            onCopyLink = { onShareClick(selectedPostId!!) },
+            onShareToStory = { /* TODO: Implement */ },
+            onShareViaMessage = { /* TODO: Implement */ },
+            onShareExternal = { /* TODO: Implement */ }
+        )
+    }
+    
+    // Menu bottom sheet
+    if (showMenuSheet && selectedPostId != null) {
+        val post = posts.find { it.id == selectedPostId }
+        val isOwnPost = post?.authorUid == currentUserId
+        
+        PostMenuBottomSheet(
+            isOwnPost = isOwnPost,
+            onDismiss = { showMenuSheet = false },
+            onEdit = { onEditPost(selectedPostId!!) },
+            onDelete = { onDeletePost(selectedPostId!!) },
+            onReport = { showReportDialog = true }
+        )
+    }
+    
+    // Report dialog
+    if (showReportDialog && selectedPostId != null) {
+        ReportPostDialog(
+            onDismiss = { showReportDialog = false },
+            onConfirm = { reason ->
+                onReportPost(selectedPostId!!, reason)
+                showReportDialog = false
+                showMenuSheet = false
+            }
+        )
     }
 }
 
@@ -89,59 +133,10 @@ private fun EmptyPostsState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Text(
-                text = "No posts yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Posts will appear here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun PostFeedPreview() {
-    MaterialTheme {
-        PostFeed(
-            posts = listOf(
-                Post(
-                    id = "1",
-                    authorUid = "user1",
-                    postText = "Sample post 1",
-                    username = "john_doe",
-                    likesCount = 10
-                ),
-                Post(
-                    id = "2",
-                    authorUid = "user2",
-                    postText = "Sample post 2",
-                    username = "jane_smith",
-                    likesCount = 5
-                )
-            ),
-            likedPostIds = setOf("1"),
-            savedPostIds = setOf(),
-            isLoading = false,
-            isRefreshing = false,
-            onRefresh = {},
-            onLoadMore = {},
-            onUserClick = {},
-            onLikeClick = {},
-            onCommentClick = {},
-            onShareClick = {},
-            onSaveClick = {},
-            onMenuClick = {},
-            onMediaClick = {}
+        Text(
+            text = "No posts yet",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
