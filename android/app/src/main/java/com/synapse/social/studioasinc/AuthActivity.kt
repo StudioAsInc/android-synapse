@@ -1975,11 +1975,6 @@ class AuthActivity : BaseActivity() {
         finish()
     }
 
-    private fun navigateToCompleteProfile() {
-        startActivity(Intent(this, CompleteProfileActivity::class.java))
-        finish()
-    }
-
     /**
      * Navigate to EmailVerificationActivity for dedicated verification flow
      */

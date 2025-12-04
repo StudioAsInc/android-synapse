@@ -54,7 +54,8 @@ sealed class AuthUiState {
         val usernameError: String? = null,
         val generalError: String? = null,
         val isEmailValid: Boolean = false,
-        val passwordStrength: PasswordStrength = PasswordStrength.Weak
+        val passwordStrength: PasswordStrength = PasswordStrength.Weak,
+        val isCheckingUsername: Boolean = false
     ) : AuthUiState()
 
     /**

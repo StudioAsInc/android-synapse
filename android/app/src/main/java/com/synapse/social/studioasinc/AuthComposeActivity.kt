@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.UsernameRepository
 import com.synapse.social.studioasinc.ui.auth.AuthScreen
 import com.synapse.social.studioasinc.ui.auth.AuthViewModel
 import com.synapse.social.studioasinc.ui.theme.AuthTheme
@@ -54,7 +55,7 @@ class AuthViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AuthViewModel(repository, sharedPreferences) as T
+            return AuthViewModel(repository, UsernameRepository(), sharedPreferences) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -159,7 +159,8 @@ private fun SignUpForm(
         onValueChange = onUsernameChanged,
         label = "Username",
         error = state.usernameError,
-        isValid = state.username.length >= 3,
+        isValid = state.username.length >= 3 && state.usernameError == null,
+        isLoading = state.isCheckingUsername,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Text,
             imeAction = ImeAction.Next
