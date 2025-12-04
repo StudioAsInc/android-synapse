@@ -75,32 +75,24 @@ class EditProfileRepository {
         }
     }
 
-    suspend fun syncUsernameChange(oldUsername: String, newUsername: String, userId: String) {
-        withContext(Dispatchers.IO) {
+    suspend fun syncUsernameChange(oldUsername: String, newUsername: String, userId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
             try {
-                // Delete old username entry
                 client.from("usernames").delete {
                     filter { eq("username", oldUsername) }
                 }
 
-                // Get current email
                 val email = client.auth.currentUserOrNull()?.email
 
-                // Add new username entry
                 val usernameData = mapOf(
                     "uid" to userId,
                     "email" to email,
                     "username" to newUsername
                 )
                 client.from("usernames").upsert(usernameData)
+                Result.success(Unit)
             } catch (e: Exception) {
-                // Log error but don't fail the whole operation if this sync fails?
-                // Or maybe we should. The original code silently handled failure in callback or showed toast?
-                // Original: databaseService.upsert return fold...
-                // It didn't block the UI 'Success' message of profile update, but it was part of the flow.
-                // If this fails, the username table might be out of sync.
-                // I'll log it.
-                e.printStackTrace()
+                Result.failure(e)
             }
         }
     }
@@ -136,7 +128,7 @@ class EditProfileRepository {
         return storageService.uploadCover(userId, imagePath)
     }
 
-    suspend fun addToProfileHistory(userId: String, imageUrl: String, type: String) {
+    suspend fun addToProfileHistory(userId: String, imageUrl: String) {
         withContext(Dispatchers.IO) {
             try {
                 val historyKey = UUID.randomUUID().toString()
@@ -145,22 +137,15 @@ class EditProfileRepository {
                     "user_id" to userId,
                     "image_url" to imageUrl.trim(),
                     "upload_date" to System.currentTimeMillis().toString(),
-                    "type" to type
+                    "type" to "url"
                 )
-                // ProfileEditActivity used 'profile_history' and 'cover_image_history'
-                val table = if (type == "cover") "cover_image_history" else "profile_history"
-                // Assuming 'type' passed here distinguishes between them or just general history if using same table.
-                // But wait, ProfileEditActivity has addToProfileHistory and addToCoverHistory methods writing to different tables.
-                // I will handle table selection in ViewModel or passed as arg.
-                // For now, I will use a generic insert.
-                 client.from(table).insert(historyData)
+                client.from("profile_history").insert(historyData)
             } catch (e: Exception) {
                 // Silent fail as per original
             }
         }
     }
 
-    // Helper to specifically add to cover history
     suspend fun addToCoverHistory(userId: String, imageUrl: String) {
          withContext(Dispatchers.IO) {
             try {

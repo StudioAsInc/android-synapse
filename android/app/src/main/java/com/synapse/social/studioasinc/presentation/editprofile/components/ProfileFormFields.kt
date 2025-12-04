@@ -139,7 +139,7 @@ fun UsernameField(
                 }
                 is UsernameValidation.Valid -> {
                     Icon(
-                        painter = painterResource(R.drawable.checkbox_checked), // Assuming this exists as used in Activity
+                        painter = painterResource(R.drawable.ic_check_circle),
                         contentDescription = "Valid",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)

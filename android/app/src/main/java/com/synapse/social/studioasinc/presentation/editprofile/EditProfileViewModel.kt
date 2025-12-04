@@ -226,7 +226,7 @@ class EditProfileViewModel(application: Application) : AndroidViewModel(applicat
             result.fold(
                 onSuccess = { url ->
                      _uiState.update { it.copy(avatarUrl = url) }
-                     repository.addToProfileHistory(userId, url, "url")
+                     repository.addToProfileHistory(userId, url)
                 },
                 onFailure = { error ->
                     _uiState.update { it.copy(error = "Avatar upload failed: ${error.message}") }
@@ -280,13 +280,6 @@ class EditProfileViewModel(application: Application) : AndroidViewModel(applicat
 
             val updateData = mutableMapOf<String, Any?>(
                 "username" to state.username,
-                "display_name" to state.nickname.ifEmpty { null }, // Using display_name as per UserProfile model/DB
-                // But wait, ProfileEditActivity used 'nickname'. I should probably support both or verify DB.
-                // ProfileEditActivity: "nickname" to mNicknameInput.text...
-                // UserProfile model: @SerialName("display_name") val displayName
-                // I will send both to be safe or stick to 'nickname' if that's what DB expects.
-                // The DB update in ProfileEditActivity used: "nickname" to ...
-                // So I will use "nickname".
                 "nickname" to state.nickname.ifEmpty { null },
                 "biography" to state.biography.ifEmpty { null },
                 "gender" to state.selectedGender.name.lowercase(),
@@ -302,14 +295,22 @@ class EditProfileViewModel(application: Application) : AndroidViewModel(applicat
 
             result.fold(
                 onSuccess = {
-                     // Check if username changed and sync with usernames table
                      val originalUsername = state.profile?.username
                      if (originalUsername != null && originalUsername != state.username) {
-                         repository.syncUsernameChange(originalUsername, state.username, userId)
+                         val syncResult = repository.syncUsernameChange(originalUsername, state.username, userId)
+                         syncResult.fold(
+                             onSuccess = {
+                                 _uiState.update { it.copy(isSaving = false) }
+                                 _navigationEvents.emit(EditProfileNavigation.NavigateBack)
+                             },
+                             onFailure = { error ->
+                                 _uiState.update { it.copy(isSaving = false, error = "Profile saved but username sync failed: ${error.message}. Please try again.") }
+                             }
+                         )
+                     } else {
+                         _uiState.update { it.copy(isSaving = false) }
+                         _navigationEvents.emit(EditProfileNavigation.NavigateBack)
                      }
-
-                     _uiState.update { it.copy(isSaving = false) }
-                     _navigationEvents.emit(EditProfileNavigation.NavigateBack)
                 },
                 onFailure = { error ->
                     _uiState.update { it.copy(isSaving = false, error = "Failed to save: ${error.message}") }
