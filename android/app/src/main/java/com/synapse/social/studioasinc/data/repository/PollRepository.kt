@@ -103,6 +103,7 @@ class PollRepository {
                     set("option_index", optionIndex)
                 }) {
                     filter { eq("id", existingVote.id!!) }
+                    select(Columns.EMPTY)
                 }
         } else {
             // Insert new vote
@@ -111,7 +112,9 @@ class PollRepository {
                     postId = postId,
                     userId = userId,
                     optionIndex = optionIndex
-                ))
+                )) {
+                    select(Columns.EMPTY)
+                }
         }
         
         Log.d(TAG, "Vote submitted: post=$postId, option=$optionIndex")

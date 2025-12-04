@@ -845,22 +845,18 @@ class ProfileActivity : BaseActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        if (isFinishing) {
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoProfileImage)
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoCoverImage)
+        }
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "Lifecycle: onDestroy")
 
-        // Clear Glide image loading requests to free up memory when the activity is finishing.
-        // This is essential to prevent Glide from holding references to views that are no longer valid.
-        if (isFinishing) {
-            Log.d(TAG, "Clearing Glide resources")
-            // It's safer to use the activity context here, but applicationContext is also acceptable
-            // if you're sure no context-specific UI elements are held.
-            Glide.with(this).clear(binding.ProfilePageTabUserInfoProfileImage)
-            Glide.with(this).clear(binding.ProfilePageTabUserInfoCoverImage)
-        }
-
         // Nullify the RecyclerView adapter to break the reference cycle.
-        // The RecyclerView can hold a strong reference to the adapter, which in turn can hold a
-        // reference to the activity (e.g., through listeners), causing a memory leak.
         binding.ProfilePageTabUserPostsRecyclerView.adapter = null
         
         super.onDestroy()
