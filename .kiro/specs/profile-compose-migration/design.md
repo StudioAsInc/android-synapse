@@ -1,269 +1,167 @@
 # Profile Compose Migration - Design Specification
 
 ## Overview
-Migrate ProfileActivity to Jetpack Compose using Material 3 components, implementing a Facebook-like scrolling experience with unified content flow instead of TabLayout.
+Migrate ProfileActivity to Jetpack Compose using Material 3 components. The design aims for a modern, fluid user experience similar to leading social platforms, featuring unified content flow, rich interactions, and adaptive layouts.
 
 ## Design System
 
 ### Material 3 Components
-- **Surface**: Background containers with elevation
-- **Card**: Post items, info sections
-- **Button**: Primary actions (Edit Profile, Add Story)
-- **IconButton**: Secondary actions (More, Filter)
-- **BottomSheet**: Modal actions (Share, View As, Lock Profile)
-- **TopAppBar**: Navigation with scroll behavior
-- **LazyVerticalGrid**: Photo grid (3 columns)
-- **LazyColumn**: Main scrollable content
-- **Chip**: Filters (Photos, Posts, Reels, Mutual Following)
-- **Divider**: Section separators
-- **Badge**: Notification indicators
+- **Surface**: Background containers with elevation (Surface, SurfaceVariant).
+- **Card**: Post items, info sections (ElevatedCard, OutlinedCard).
+- **Button**: Primary actions (Filled, Tonal, Outlined).
+- **IconButton**: Secondary actions.
+- **ModalBottomSheet**: Menus, Share, Analytics preview.
+- **TopAppBar**: Large/Small collapsing toolbar behavior.
+- **LazyVerticalGrid**: Media grids.
+- **LazyColumn**: Main scroll container.
+- **FilterChip**: Content filtering.
+- **BadgedBox**: Notification indicators.
+- **Scaffold**: Basic screen structure.
 
 ### Color Scheme
-Follow existing theme from SettingsComposeActivity:
-- **Primary**: Brand color for CTAs
-- **Surface**: Card backgrounds
-- **SurfaceVariant**: Secondary containers
-- **OnSurface**: Text and icons
-- **Outline**: Borders and dividers
-- **Error**: Destructive actions
+Inherit from `SettingsComposeActivity` theme (Dynamic Color support where available).
+- **Primary**: Brand/Accent color.
+- **OnPrimary**: Text on primary buttons.
+- **Secondary**: Active states, highlights.
+- **Surface**: Backgrounds.
+- **Error**: Destructive actions (Unfollow, Block).
 
 ### Typography
-- **displaySmall**: Name (24sp, Bold)
-- **titleMedium**: Username (16sp, Medium)
-- **bodySmall**: Nickname (12sp, Regular, 70% opacity)
-- **labelLarge**: Buttons (14sp, Medium)
-- **bodyMedium**: Bio, details (14sp, Regular)
-- **labelMedium**: Metadata (12sp, Medium)
+- **HeadlineMedium**: Profile Name (28sp, Bold).
+- **TitleMedium**: User stats numbers (16sp, Bold).
+- **BodyLarge**: Bio text, Post content (16sp).
+- **LabelLarge**: Button text (14sp, Medium).
+- **LabelSmall**: Metadata, timestamps (11sp).
 
 ## Layout Structure
 
-### 1. Collapsing Header Section
+### 1. Collapsing Header & Navigation
 ```
-┌─────────────────────────────────┐
-│  [←]              [⋮ More]      │ TopAppBar (transparent → solid on scroll)
-├─────────────────────────────────┤
-│                                 │
-│     ┌─────────────────┐         │
-│     │  Profile Image  │         │ 120dp circular
-│     │    + Story      │         │
-│     └─────────────────┘         │
-│                                 │
-│  Name (Nickname)         [✓]    │ Verified badge if applicable
-│  @username                      │
-│                                 │
-│  Bio text here...               │ Max 3 lines, expandable
-│                                 │
-│  [Edit Profile] [Add Story] [⋮] │ Action buttons
-│                                 │
-│  📊 123 Posts  👥 1.2K  👥 890  │ Stats (Posts, Followers, Following)
-│                                 │
-└─────────────────────────────────┘
-```
-
-### 2. Filter Section (Sticky)
-```
-┌─────────────────────────────────┐
-│ [📷 Photos] [📝 Posts] [🎬 Reels]│ Chip group - single select
-└─────────────────────────────────┘
-```
-
-### 3. Content Sections (Scrollable)
-
-#### Photos Grid (when Photos filter active)
-```
-┌─────────────────────────────────┐
-│ ┌─────┐ ┌─────┐ ┌─────┐         │
-│ │     │ │     │ │     │         │ 3-column grid
-│ └─────┘ └─────┘ └─────┘         │ AspectRatio 1:1
-│ ┌─────┐ ┌─────┐ ┌─────┐         │
-│ │     │ │     │ │     │         │
-│ └─────┘ └─────┘ └─────┘         │
-└─────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│ [←]  username_display           [🔔] [⋮]      │ TopAppBar (Pinned)
+│      (Visible on scroll up)                   │ Background: Surface (Opaque on scroll)
+├───────────────────────────────────────────────┤
+│                                               │
+│       [ Story Ring (Gradient/Grey) ]          │
+│       [      Profile Image         ]          │ 120dp Circle
+│       [         (120dp)            ]          │
+│                                               │
+│           Full Name [✓]                       │ HeadlineMedium
+│           @username • pronouns                │ BodyMedium (Secondary color)
+│                                               │
+│    Bio text area...                           │ BodyLarge
+│    #hashtag @mention link.com                 │ (Clickable spans)
+│                                               │
+│ ┌───────────────────────────────────────────┐ │
+│ │  [ Edit Profile ]  [ Share ]  [  +  ]     │ │ Action Row (Scrollable if needed)
+│ └───────────────────────────────────────────┘ │
+│                                               │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│ │ 123      │ │ 1.5M     │ │ 500      │        │ Clickable Stats Area
+│ │ Posts    │ │ Followers│ │ Following│        │
+│ └──────────┘ └──────────┘ └──────────┘        │
+│                                               │
+└───────────────────────────────────────────────┘
 ```
 
-#### User Details Section
+### 2. Story Highlights (New)
+*Horizontal ScrollRow*
 ```
-┌─────────────────────────────────┐
-│ About                           │
-│ ─────────────────────────────── │
-│ 🔗 Linked Accounts              │
-│    Instagram • Twitter • GitHub │
-│                                 │
-│ 📍 Location: City, Country      │
-│ 📅 Joined: January 2024         │
-│ 💑 Relationship: Single         │
-│ 🎂 Birthday: Jan 1              │
-│ 🏢 Works at: Company            │
-│ 🎓 Studied at: University       │
-│ 🏠 Lives in: City               │
-│                                 │
-│ [Customize Details]             │
-└─────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│ ( + )  ( O )  ( O )  ( O )  ( O )             │
+│ New    Trip   Food   Art    Music             │
+└───────────────────────────────────────────────┘
 ```
+- **Item**: 64dp Circle with image, Text label below.
+- **Animation**: Scale on press.
 
-#### Following Section
+### 3. Sticky Content Filter
 ```
-┌─────────────────────────────────┐
-│ Following (890)                 │
-│ [All] [Mutual] [Recent]         │ Filter chips
-│ ─────────────────────────────── │
-│ ┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐  │
-│ │ A │ │ B │ │ C │ │ D │ │ E │  │ Horizontal scroll
-│ └───┘ └───┘ └───┘ └───┘ └───┘  │
-│ Name  Name  Name  Name  Name    │
-│                                 │
-│ [See All Following]             │
-└─────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│ [Grid] [Feed] [Reels] [Tagged]                │ Segmented Control / TabRow
+│ ───────────────────────────────────────────── │ Indicator slides to selection
+└───────────────────────────────────────────────┘
 ```
 
-#### Posts Section
-```
-┌─────────────────────────────────┐
-│ Posts (123)                     │
-│ ─────────────────────────────── │
-│ ┌─────────────────────────────┐ │
-│ │ Post Card Component         │ │ Reusable PostCard
-│ │ (Migrated to Compose)       │ │
-│ └─────────────────────────────┘ │
-│ ┌─────────────────────────────┐ │
-│ │ Post Card Component         │ │
-│ └─────────────────────────────┘ │
-└─────────────────────────────────┘
-```
+### 4. Content Area (LazyColumn/LazyVerticalGrid)
 
-## Interaction Patterns
+#### A. Media Grid (Photos/Reels)
+- **Layout**: 3 columns (mobile), 1dp spacing.
+- **Item**: Square (1:1) or Poster (9:16).
+- **Interaction**: Tap -> Shared Element Expand to Full Screen.
 
-### Scroll Behavior
-- **Parallax Effect**: Profile image scales down on scroll
-- **TopAppBar**: Transparent → Solid with username on scroll
-- **Sticky Filters**: Filter chips stick below TopAppBar
-- **Infinite Scroll**: Load more posts/photos on reach bottom
+#### B. Post Feed
+- **Layout**: Linear vertical list.
+- **Item**: Complex Post Card (Header, Media, Actions, Caption).
 
-### Gestures
-- **Pull to Refresh**: Reload profile data
-- **Swipe on Photos**: Navigate between photos (full-screen viewer)
-- **Long Press on Post**: Quick actions menu
-- **Pinch to Zoom**: On profile image
+#### C. Empty States
+- **Illustration**: Centered vector asset.
+- **Text**: "No posts yet" / "Capture your first moment".
 
-### Animations
-- **Enter**: Fade in + Slide up (300ms)
-- **Exit**: Fade out (200ms)
-- **Shared Element**: Profile image transition from previous screen
-- **Filter Switch**: Crossfade content (250ms)
-- **Expand Bio**: Animated height change
-- **Button Press**: Scale down to 0.95 (100ms)
+## Feature-Specific Designs
 
-## Bottom Sheet Actions
+### Story Viewer (Overlay)
+- **Background**: Black/Blurred backdrop.
+- **Content**: Full screen media.
+- **Top Overlay**: Progress bars (segmented), User info, Close button.
+- **Bottom Overlay**: Reply field (text input), Like button, Send button.
+- **Gestures**: Tap Left/Right (Nav), Long Press (Pause), Swipe Down (Close).
 
-### More Menu (⋮)
-```
-┌─────────────────────────────────┐
-│ Share Profile                   │
-│ View As...                      │
-│ Lock Profile                    │
-│ Archive Profile                 │
-│ QR Code                         │
-│ Copy Profile Link               │
-│ ─────────────────────────────── │
-│ Settings                        │
-│ Activity Log                    │
-└─────────────────────────────────┘
-```
+### Profile Analytics (Bottom Sheet)
+- **Header**: "Professional Dashboard" / "Insights".
+- **Cards**:
+    - "Accounts Reached" (Big number + % change).
+    - "Engagement" (Graph/Sparkline).
+    - "Total Followers" (Bar chart).
+- **Action**: "See all insights" -> Full Activity (Future).
 
-### View As Options
-- Public View
-- Friends View
-- Specific User View (search)
+### QR Code Card (Dialog/Modal)
+- **Style**: Card with gradient background.
+- **Content**: Large QR Code in center, Username below.
+- **Actions**: "Save to Gallery", "Share".
 
-### Share Profile Options
-- Copy Link
-- Share to Story
-- Share via Message
-- Share to External Apps
+## Animations & Transitions
 
-## Responsive Design
+### Scroll Effects
+- **Top Bar**: Fade in background color and title (username) as header scrolls off.
+- **Profile Image**: Scale down slightly (1.0 -> 0.8) and translate upwards.
+- **Filters**: Sticky header behavior.
 
-### Phone (< 600dp)
-- Single column layout
-- 3-column photo grid
-- Compact spacing (8dp)
+### Navigation Transitions
+- **Enter**: Slide in from right (300ms).
+- **Exit**: Slide out to left (300ms).
+- **Shared Element**:
+    - Profile Image -> Story Viewer.
+    - Grid Image -> Media Viewer.
 
-### Tablet (≥ 600dp)
-- Two-column layout for details
-- 4-column photo grid
-- Expanded spacing (16dp)
-- Side-by-side stats
+### Micro-interactions
+- **Follow Button**: Morph from "Follow" (Filled Blue) to "Following" (Outlined Grey).
+- **Like**: Heart animation (Scale/Bounce).
+- **Tab Selection**: Sliding underline indicator.
 
-### Landscape
-- Horizontal header layout
-- Profile image on left, info on right
-- 5-column photo grid
+## Responsive Layouts
+
+### Compact (< 600dp - Phones)
+- Single column vertical stack.
+- 3-column grid.
+
+### Medium (600dp - 840dp - Foldables/Small Tablets)
+- **Header**: Side-by-side (Image Left, Stats/Bio Right).
+- **Grid**: 4 columns.
+
+### Expanded (> 840dp - Tablets/Desktop)
+- **Layout**: Two-pane or Restricted width centered content.
+- **Grid**: 5+ columns.
 
 ## Accessibility
 
-### Content Descriptions
-- Profile image: "Profile picture of [Name]"
-- Action buttons: Clear labels
-- Stats: "123 posts, 1200 followers, 890 following"
-- Filter chips: "Show photos", "Show posts", "Show reels"
+- **TalkBack**: Group Stats into a single focusable element describing all three ("123 posts, 1.5M followers...").
+- **Touch Targets**: Min 48x48dp for all icon buttons.
+- **Scale**: Support system font scaling up to 200%.
+- **Contrast**: Ensure text on images (Stories) has scrim protection.
 
-### Touch Targets
-- Minimum 48dp for all interactive elements
-- Adequate spacing between buttons (8dp)
+## Loading & Error States
 
-### Screen Reader
-- Semantic ordering of content
-- Announce state changes (filter selection)
-- Group related content
-
-### Contrast
-- WCAG AA compliance (4.5:1 for text)
-- High contrast mode support
-
-## State Management
-
-### Loading States
-- Skeleton screens for initial load
-- Shimmer effect on placeholders
-- Progress indicators for actions
-
-### Empty States
-- No posts: Illustration + "No posts yet"
-- No photos: "No photos to show"
-- No following: "Not following anyone"
-
-### Error States
-- Network error: Retry button
-- Load failure: Error message + Refresh
-- Permission denied: Explanation + Settings link
-
-## Performance Considerations
-
-### Image Loading
-- Coil for async image loading
-- Thumbnail → Full resolution
-- Cache strategy: Memory + Disk
-- Placeholder while loading
-
-### Lazy Loading
-- LazyColumn for posts (load 10 at a time)
-- LazyVerticalGrid for photos (load 20 at a time)
-- Pagination with loading indicator
-
-### Memory Management
-- Dispose unused composables
-- Clear image cache on low memory
-- Limit cached posts (50 max)
-
-## Dark Mode Support
-- Follow system theme
-- Adjust elevation for visibility
-- Ensure contrast in both modes
-- Test all components in dark mode
-
-## Consistency with SettingsComposeActivity
-- Same spacing system (4dp grid)
-- Matching color scheme
-- Consistent button styles
-- Similar navigation patterns
-- Unified animation timings
+- **Skeleton**: Shimmer effect on Header (Circle + Lines) and Grid (Grey squares) while loading.
+- **Error**: "Couldn't load profile" with "Retry" button.
+- **Offline**: Show cached data if available, with "Offline" snackbar.
