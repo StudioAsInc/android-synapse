@@ -102,7 +102,6 @@ class ProfileRepositoryImpl : ProfileRepository {
                 }
                 limit(limit)
                 offset(offset)
-                order("created_at", ascending = false)
             }
             .decodeList<Any>()
         Result.success(posts)
@@ -118,7 +117,6 @@ class ProfileRepositoryImpl : ProfileRepository {
                 }
                 limit(limit)
                 offset(offset)
-                order("created_at", ascending = false)
             }
             .decodeList<Any>()
         Result.success(photos)
@@ -134,7 +132,6 @@ class ProfileRepositoryImpl : ProfileRepository {
                 }
                 limit(limit)
                 offset(offset)
-                order("created_at", ascending = false)
             }
             .decodeList<Any>()
         Result.success(reels)
