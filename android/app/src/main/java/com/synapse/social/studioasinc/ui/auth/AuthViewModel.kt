@@ -65,6 +65,7 @@ class AuthViewModel(
     }
 
     init {
+        _uiState.value = AuthUiState.SignIn()
         setupInputValidation()
     }
 
@@ -226,23 +227,102 @@ class AuthViewModel(
         }
     }
 
+    private var recoveryToken: String? = null
+
+    /**
+     * Handle deep link intent
+     */
+    fun handleDeepLink(uri: android.net.Uri?) {
+        if (uri == null) return
+
+        val fragment = uri.fragment ?: return
+        if (fragment.contains("type=recovery")) {
+             val params = fragment.split("&").associate {
+                 val parts = it.split("=")
+                 if (parts.size == 2) parts[0] to parts[1] else "" to ""
+             }
+
+             val token = params["access_token"]
+             if (!token.isNullOrEmpty()) {
+                 recoveryToken = token
+                 viewModelScope.launch {
+                     authRepository.recoverSession(token)
+                     _uiState.value = AuthUiState.ResetPassword()
+                     _navigationEvent.emit(AuthNavigationEvent.NavigateToResetPassword(token))
+                 }
+             }
+        }
+    }
+
     /**
      * Handle reset password button click
      */
     fun onResetPasswordClick(password: String, confirmPassword: String, token: String) {
+        val actualToken = if (token.isNotEmpty()) token else recoveryToken
+
         viewModelScope.launch {
             if (!validateResetPasswordForm(password, confirmPassword)) {
                 return@launch
             }
 
+            if (actualToken.isNullOrEmpty()) {
+                val currentState = _uiState.value
+                if (currentState is AuthUiState.ResetPassword) {
+                    _uiState.value = currentState.copy(passwordError = "Missing recovery token")
+                }
+                return@launch
+            }
+
             _uiState.value = AuthUiState.Loading
 
-            // TODO: Implement password reset with token when AuthRepository supports it
-            // For now, simulate success
-            delay(1000)
-            _uiState.value = AuthUiState.Success("Password reset successful")
-            delay(500)
-            _navigationEvent.emit(AuthNavigationEvent.NavigateToSignIn)
+            val result = authRepository.updateUserPassword(password)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = AuthUiState.Success("Password reset successful")
+                    delay(500)
+                    _navigationEvent.emit(AuthNavigationEvent.NavigateToSignIn)
+                },
+                onFailure = { error ->
+                    _uiState.value = AuthUiState.ResetPassword(
+                        password = password,
+                        confirmPassword = confirmPassword,
+                        passwordError = error.message ?: "Failed to reset password"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Send password reset email
+     */
+    fun sendPasswordResetEmail(email: String) {
+        viewModelScope.launch {
+            if (!validateEmail(email)) {
+                val currentState = _uiState.value
+                if (currentState is AuthUiState.ForgotPassword) {
+                    _uiState.value = currentState.copy(emailError = "Invalid email format")
+                }
+                return@launch
+            }
+
+            _uiState.value = AuthUiState.Loading
+
+            val result = authRepository.sendPasswordResetEmail(email)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = AuthUiState.ForgotPassword(
+                        email = email,
+                        emailSent = true
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = AuthUiState.ForgotPassword(
+                        email = email,
+                        emailError = error.message ?: "Failed to send reset email"
+                    )
+                }
+            )
         }
     }
 

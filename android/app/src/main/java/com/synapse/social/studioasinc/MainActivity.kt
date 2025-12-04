@@ -23,6 +23,7 @@ import com.synapse.social.studioasinc.data.repository.UserRepository
 import com.synapse.social.studioasinc.databinding.ActivityMainBinding
 import com.synapse.social.studioasinc.databinding.DialogErrorBinding
 import com.synapse.social.studioasinc.databinding.DialogUpdateBinding
+import com.synapse.social.studioasinc.ui.auth.util.FeatureFlag
 
 class MainActivity : BaseActivity() {
 
@@ -119,7 +120,12 @@ class MainActivity : BaseActivity() {
                 }
                 is AuthState.Unauthenticated -> {
                     // Navigate to auth screen
-                    val intent = Intent(this, AuthActivity::class.java)
+                    val useNewAuth = FeatureFlag.USE_NEW_AUTH_UI
+                    val intent = if (useNewAuth) {
+                        Intent(this, AuthComposeActivity::class.java)
+                    } else {
+                        Intent(this, AuthActivity::class.java)
+                    }
                     startActivity(intent)
                     finish()
                 }
