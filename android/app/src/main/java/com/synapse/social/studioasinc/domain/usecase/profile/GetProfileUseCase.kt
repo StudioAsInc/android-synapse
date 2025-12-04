@@ -3,7 +3,6 @@ package com.synapse.social.studioasinc.domain.usecase.profile
 import com.synapse.social.studioasinc.data.model.UserProfile
 import com.synapse.social.studioasinc.data.repository.ProfileRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 class GetProfileUseCase(private val repository: ProfileRepository) {
     operator fun invoke(userId: String): Flow<Result<UserProfile>> {
