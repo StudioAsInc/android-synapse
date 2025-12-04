@@ -139,6 +139,10 @@ class EditProfileViewModel(application: Application) : AndroidViewModel(applicat
             _uiState.update { it.copy(usernameValidation = UsernameValidation.Error("Only lowercase letters, numbers, _ and . allowed")) }
             return
         }
+        if (!username.first().isLetter()) {
+            _uiState.update { it.copy(usernameValidation = UsernameValidation.Error("Username must start with a letter")) }
+            return
+        }
         if (username.length < 3) {
             _uiState.update { it.copy(usernameValidation = UsernameValidation.Error("Username must be at least 3 characters")) }
             return

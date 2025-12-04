@@ -91,9 +91,6 @@ fun ProfileFormFields(
                 onValueChange = onBiographyChange,
                 label = { Text("Bio") },
                 placeholder = { Text("Tell us about yourself (optional)") },
-                leadingIcon = {
-                    Icon(painter = painterResource(R.drawable.ic_docs_48px), contentDescription = null)
-                },
                 supportingText = {
                     val currentLength = biography.length
                     Text(
@@ -136,7 +133,7 @@ fun UsernameField(
             when (validation) {
                 is UsernameValidation.Checking -> {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp
                     )
                 }
@@ -144,14 +141,16 @@ fun UsernameField(
                     Icon(
                         painter = painterResource(R.drawable.checkbox_checked), // Assuming this exists as used in Activity
                         contentDescription = "Valid",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 is UsernameValidation.Error -> {
                     Icon(
                         painter = painterResource(R.drawable.ic_error),
                         contentDescription = "Error",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
