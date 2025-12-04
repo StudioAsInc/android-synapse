@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
  * @param onBackClick Callback to exit the settings flow (finish activity)
  * @param onNavigateToProfileEdit Callback to navigate to ProfileEditActivity
  * @param onNavigateToChatPrivacy Callback to navigate to ChatPrivacySettingsActivity
+ * @param onLogout Callback to perform logout
  */
 @Composable
 fun SettingsNavHost(
@@ -31,7 +32,8 @@ fun SettingsNavHost(
     startDestination: String = SettingsDestination.ROUTE_HUB,
     onBackClick: () -> Unit = {},
     onNavigateToProfileEdit: () -> Unit = {},
-    onNavigateToChatPrivacy: () -> Unit = {}
+    onNavigateToChatPrivacy: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -63,7 +65,8 @@ fun SettingsNavHost(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onEditProfile = onNavigateToProfileEdit
+                onEditProfile = onNavigateToProfileEdit,
+                onLogout = onLogout
             )
         }
 
