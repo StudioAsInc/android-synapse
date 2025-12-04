@@ -33,7 +33,8 @@ import com.synapse.social.studioasinc.R
 fun AccountSettingsScreen(
     viewModel: AccountSettingsViewModel,
     onNavigateBack: () -> Unit,
-    onEditProfile: () -> Unit
+    onEditProfile: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val linkedAccounts by viewModel.linkedAccounts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -139,6 +140,18 @@ fun AccountSettingsScreen(
                         isLinked = linkedAccounts.appleLinked,
                         onConnect = { viewModel.connectSocialAccount(SocialProvider.APPLE) },
                         onDisconnect = { viewModel.disconnectSocialAccount(SocialProvider.APPLE) },
+                        enabled = !isLoading
+                    )
+                }
+            }
+
+            // Session Section
+            item {
+                SettingsSection(title = "Session") {
+                    SettingsButtonItem(
+                        title = "Logout",
+                        onClick = onLogout,
+                        isDestructive = true,
                         enabled = !isLoading
                     )
                 }

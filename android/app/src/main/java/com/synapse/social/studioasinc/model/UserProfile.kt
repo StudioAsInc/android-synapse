@@ -17,6 +17,8 @@ data class UserProfile(
     @SerialName("posts_count") val postsCount: Int = 0,
     val status: String = "offline",
     @SerialName("account_type") val account_type: String = "user",
+    val gender: String? = null,
+    val region: String? = null,
     val verify: Boolean = false,
     val banned: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,

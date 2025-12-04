@@ -3,7 +3,7 @@ package com.synapse.social.studioasinc.ui.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.synapse.social.studioasinc.data.repository.SettingsRepository
+import com.synapse.social.studioasinc.data.repository.SettingsRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,9 +21,10 @@ import kotlinx.coroutines.launch
  * Requirements: 5.1, 5.2, 5.3, 5.6
  */
 class NotificationSettingsViewModel(
-    application: Application,
-    private val settingsRepository: SettingsRepository
+    application: Application
 ) : AndroidViewModel(application) {
+
+    private val settingsRepository = SettingsRepositoryImpl.getInstance(application)
 
     // ========================================================================
     // State
