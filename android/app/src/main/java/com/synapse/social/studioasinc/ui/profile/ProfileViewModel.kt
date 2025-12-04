@@ -26,7 +26,9 @@ data class ProfileScreenState(
     val reelsOffset: Int = 0,
     val currentUserId: String = "",
     val isOwnProfile: Boolean = false,
-    val showMoreMenu: Boolean = false
+    val showMoreMenu: Boolean = false,
+    val likedPostIds: Set<String> = emptySet(),
+    val savedPostIds: Set<String> = emptySet()
 )
 
 class ProfileViewModel(
@@ -144,6 +146,30 @@ class ProfileViewModel(
 
     fun toggleMoreMenu() {
         _state.update { it.copy(showMoreMenu = !it.showMoreMenu) }
+    }
+
+    fun toggleLike(postId: String) {
+        _state.update { state ->
+            val likedPostIds = state.likedPostIds.toMutableSet()
+            if (postId in likedPostIds) {
+                likedPostIds.remove(postId)
+            } else {
+                likedPostIds.add(postId)
+            }
+            state.copy(likedPostIds = likedPostIds)
+        }
+    }
+
+    fun toggleSave(postId: String) {
+        _state.update { state ->
+            val savedPostIds = state.savedPostIds.toMutableSet()
+            if (postId in savedPostIds) {
+                savedPostIds.remove(postId)
+            } else {
+                savedPostIds.add(postId)
+            }
+            state.copy(savedPostIds = savedPostIds)
+        }
     }
 
     private fun loadContent(userId: String, filter: ProfileContentFilter) {
