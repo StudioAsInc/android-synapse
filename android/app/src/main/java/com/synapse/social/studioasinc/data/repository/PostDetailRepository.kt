@@ -123,7 +123,20 @@ class PostDetailRepository {
      */
     suspend fun incrementViewCount(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            client.postgrest.rpc("increment_post_views", mapOf("post_id" to postId))
+            // Fetch current view count first since RPC has type mismatch issues (text vs uuid)
+            val response = client.from("posts")
+                .select(columns = Columns.list("views_count")) {
+                    filter { eq("id", postId) }
+                }
+                .decodeSingleOrNull<JsonObject>()
+
+            val currentViews = response?.get("views_count")?.jsonPrimitive?.intOrNull ?: 0
+
+            // Update with incremented value
+            client.from("posts").update(mapOf("views_count" to currentViews + 1)) {
+                filter { eq("id", postId) }
+            }
+
             Log.d(TAG, "Incremented view count for post: $postId")
             Result.success(Unit)
         } catch (e: Exception) {
