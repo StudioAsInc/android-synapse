@@ -1,8 +1,8 @@
 package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.data.model.UserProfile
-import com.synapse.social.studioasinc.util.SupabaseClient
-import io.github.jan_tennert.supabase.postgrest.query.Filters
+import com.synapse.social.studioasinc.SupabaseClient
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -11,7 +11,7 @@ class ProfileRepositoryImpl : ProfileRepository {
 
     override fun getProfile(userId: String): Flow<Result<UserProfile>> = flow {
         try {
-            val profile = client.postgrest["profiles"]
+            val profile = client.from("profiles")
                 .select()
                 .eq("id", userId)
                 .decodeSingle<UserProfile>()
@@ -22,7 +22,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun updateProfile(userId: String, profile: UserProfile): Result<UserProfile> = try {
-        val updated = client.postgrest["profiles"]
+        val updated = client.from("profiles")
             .update(profile) {
                 eq("id", userId)
             }
@@ -33,7 +33,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun followUser(userId: String, targetUserId: String): Result<Unit> = try {
-        client.postgrest["followers"].insert(
+        client.from("followers").insert(
             mapOf(
                 "follower_id" to userId,
                 "following_id" to targetUserId
@@ -45,7 +45,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun unfollowUser(userId: String, targetUserId: String): Result<Unit> = try {
-        client.postgrest["followers"]
+        client.from("followers")
             .delete {
                 eq("follower_id", userId)
                 eq("following_id", targetUserId)
@@ -56,7 +56,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun getFollowers(userId: String, limit: Int, offset: Int): Result<List<UserProfile>> = try {
-        val followers = client.postgrest["followers"]
+        val followers = client.from("followers")
             .select("following_id(*)") {
                 eq("follower_id", userId)
                 limit(limit)
@@ -70,7 +70,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun getFollowing(userId: String, limit: Int, offset: Int): Result<List<UserProfile>> = try {
-        val following = client.postgrest["followers"]
+        val following = client.from("followers")
             .select("follower_id(*)") {
                 eq("following_id", userId)
                 limit(limit)
@@ -84,7 +84,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun getProfilePosts(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
-        val posts = client.postgrest["posts"]
+        val posts = client.from("posts")
             .select() {
                 eq("user_id", userId)
                 limit(limit)
@@ -98,7 +98,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun getProfilePhotos(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
-        val photos = client.postgrest["photos"]
+        val photos = client.from("photos")
             .select() {
                 eq("user_id", userId)
                 limit(limit)
@@ -112,7 +112,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun getProfileReels(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
-        val reels = client.postgrest["reels"]
+        val reels = client.from("reels")
             .select() {
                 eq("user_id", userId)
                 limit(limit)
@@ -126,7 +126,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun isFollowing(userId: String, targetUserId: String): Result<Boolean> = try {
-        val result = client.postgrest["followers"]
+        val result = client.from("followers")
             .select() {
                 eq("follower_id", userId)
                 eq("following_id", targetUserId)
