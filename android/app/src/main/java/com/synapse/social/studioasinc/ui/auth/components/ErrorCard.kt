@@ -72,7 +72,7 @@ fun ErrorCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Error,
+                        imageVector = Icons.Filled.Error,
                         contentDescription = "Error"
                     )
 

@@ -88,7 +88,7 @@ fun AuthTextField(
                         modifier = Modifier.size(48.dp) // Requirement 8.4: Touch target size
                     ) {
                         Icon(
-                            imageVector = if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                             contentDescription = if (passwordVisible) "Hide password" else "Show password"
                         )
                     }
