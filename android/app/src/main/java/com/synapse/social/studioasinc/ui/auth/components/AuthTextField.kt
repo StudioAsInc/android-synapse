@@ -14,8 +14,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -87,9 +85,9 @@ fun AuthTextField(
                         onClick = { passwordVisible = !passwordVisible },
                         modifier = Modifier.size(48.dp) // Requirement 8.4: Touch target size
                     ) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                        Text(
+                            text = if (passwordVisible) "👁" else "👁‍🗨",
+                            style = MaterialTheme.typography.titleLarge
                         )
                     }
                 } else if (isValid) {
