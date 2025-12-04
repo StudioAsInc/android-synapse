@@ -365,13 +365,14 @@ class HomeFragment : Fragment() {
             try {
                 val result = pollRepository.submitVote(post.id, optionIndex)
                 if (result.isSuccess) {
-                    Toast.makeText(requireContext(), "Vote submitted", Toast.LENGTH_SHORT).show()
-                    postAdapter.refresh() // Refresh to show new results
+                    Toast.makeText(requireContext(), getString(R.string.poll_vote_submitted), Toast.LENGTH_SHORT).show()
+                    // postAdapter.refresh() // Disabled to prevent list flashing. UI is updated optimistically.
                 } else {
-                    Toast.makeText(requireContext(), "Failed to vote: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    val errorMessage = getString(R.string.poll_vote_failed, result.exceptionOrNull()?.message)
+                    Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("HomeFragment", "Failed to submit vote", e)
             }
         }
     }

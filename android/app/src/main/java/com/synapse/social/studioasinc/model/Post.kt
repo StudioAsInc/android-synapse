@@ -114,7 +114,9 @@ data class Post(
     @Transient
     var avatarUrl: String? = null,
     @Transient
-    var isVerified: Boolean = false
+    var isVerified: Boolean = false,
+    @Transient
+    var userPollVote: Int? = null
 ) {
     fun determinePostType() {
         postType = when {
