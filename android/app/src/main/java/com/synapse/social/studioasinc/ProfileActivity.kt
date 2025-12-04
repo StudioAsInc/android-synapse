@@ -24,6 +24,9 @@ import com.synapse.social.studioasinc.databinding.ActivityProfileBinding
 import com.synapse.social.studioasinc.databinding.DpPreviewBinding
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.model.PostActionItem
+import com.synapse.social.studioasinc.presentation.profile.ProfileScreen
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -56,6 +59,28 @@ class ProfileActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "Lifecycle: onCreate")
+
+        // Check for Compose flag (optional future toggle)
+        val useCompose = intent.getBooleanExtra("USE_COMPOSE", false)
+
+        // For testing/interoperability verification:
+        // If we want to test Compose, we can replace setContentView.
+        // For Task 1, we just ensure it compiles and is ready.
+        // Uncomment the following block to test Compose UI:
+        /*
+        if (useCompose) {
+            val composeView = ComposeView(this).apply {
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                setContent {
+                    val userId = intent.getStringExtra("uid") ?: return@setContent
+                    ProfileScreen(userId = userId)
+                }
+            }
+            setContentView(composeView)
+            return
+        }
+        */
+
         binding = ActivityProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
