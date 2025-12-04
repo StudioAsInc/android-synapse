@@ -47,6 +47,7 @@ class HomeFragment : Fragment() {
     
     // Reuse single PostRepository instance to avoid creating new ones on each reaction
     private val postRepository by lazy { PostRepository(AppDatabase.getDatabase(requireContext()).postDao()) }
+    private val pollRepository by lazy { com.synapse.social.studioasinc.data.repository.PollRepository() }
 
     private val SHIMMER_ITEM_COUNT = 5
 
@@ -146,6 +147,9 @@ class HomeFragment : Fragment() {
             },
             onReactionPickerRequested = { post, _ ->
                 showReactionPicker(post)
+            },
+            onPollOptionClicked = { post, optionIndex ->
+                submitPollVote(post, optionIndex)
             },
             onMoreOptionsClicked = { post ->
                 showMoreOptionsDialog(post)
@@ -355,6 +359,23 @@ class HomeFragment : Fragment() {
             }
         }
     }
+
+    private fun submitPollVote(post: Post, optionIndex: Int) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val result = pollRepository.submitVote(post.id, optionIndex)
+                if (result.isSuccess) {
+                    Toast.makeText(requireContext(), "Vote submitted", Toast.LENGTH_SHORT).show()
+                    postAdapter.refresh() // Refresh to show new results
+                } else {
+                    Toast.makeText(requireContext(), "Failed to vote: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     private fun toggleReaction(post: Post, reactionType: ReactionType) {
         val currentUser = SupabaseClient.client.auth.currentUserOrNull() ?: return
         

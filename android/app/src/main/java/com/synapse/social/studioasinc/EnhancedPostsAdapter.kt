@@ -8,12 +8,15 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.synapse.social.studioasinc.animations.ReactionAnimations
 import com.synapse.social.studioasinc.components.MediaGridView
+import com.synapse.social.studioasinc.components.PollDisplay
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
@@ -36,6 +39,7 @@ class EnhancedPostsAdapter(
     private val onReactionSummaryClicked: ((Post) -> Unit)? = null,
     private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
     private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null,
+    private val onPollOptionClicked: ((Post, Int) -> Unit)? = null,
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null
 ) : PagingDataAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
@@ -99,6 +103,7 @@ class EnhancedPostsAdapter(
         private val postOptions: View = itemView.findViewById(R.id.postOptions)
         private val postContent: TextView = itemView.findViewById(R.id.postContent)
         private val readMoreButton: View = itemView.findViewById(R.id.readMoreButton)
+        private val pollComposeView: ComposeView = itemView.findViewById(R.id.pollComposeView)
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
         private val mediaGridView: MediaGridView = itemView.findViewById(R.id.mediaGridView)
         private val reactionSummaryContainer: ViewGroup = itemView.findViewById(R.id.reactionSummaryContainer)
@@ -134,6 +139,9 @@ class EnhancedPostsAdapter(
             // Bind post content
             bindContent(post)
 
+            // Bind poll
+            bindPoll(post)
+
             // Bind media using MediaGridView
             bindMedia(post)
 
@@ -160,6 +168,25 @@ class EnhancedPostsAdapter(
             } else {
                 postContent.maxLines = Int.MAX_VALUE
                 readMoreButton.visibility = View.GONE
+            }
+        }
+
+        private fun bindPoll(post: Post) {
+            if (post.hasPoll == true) {
+                pollComposeView.visibility = View.VISIBLE
+                pollComposeView.apply {
+                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                    setContent {
+                        PollDisplay(
+                            post = post,
+                            onOptionSelected = { selectedIndex ->
+                                onPollOptionClicked?.invoke(post, selectedIndex)
+                            }
+                        )
+                    }
+                }
+            } else {
+                pollComposeView.visibility = View.GONE
             }
         }
 
