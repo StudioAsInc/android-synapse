@@ -1,7 +1,6 @@
 package com.synapse.social.studioasinc.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,9 +21,8 @@ import kotlinx.coroutines.launch
  * Requirements: 7.1, 7.2, 7.3
  */
 class StorageDataViewModel(
-    application: Application,
     private val settingsRepository: SettingsRepository
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     // ========================================================================
     // State

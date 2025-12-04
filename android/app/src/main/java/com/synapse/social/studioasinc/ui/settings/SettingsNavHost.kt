@@ -2,11 +2,13 @@ package com.synapse.social.studioasinc.ui.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.synapse.social.studioasinc.data.repository.SettingsRepositoryImpl
 
 /**
  * Navigation host for the Settings feature.
@@ -35,6 +37,9 @@ fun SettingsNavHost(
     onNavigateToChatPrivacy: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val settingsRepository = SettingsRepositoryImpl.getInstance(context)
+    
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -106,7 +111,9 @@ fun SettingsNavHost(
 
         // Notification Settings Screen
         composable(route = SettingsDestination.ROUTE_NOTIFICATIONS) {
-            val viewModel: NotificationSettingsViewModel = viewModel()
+            val viewModel: NotificationSettingsViewModel = viewModel(
+                factory = NotificationSettingsViewModelFactory(settingsRepository)
+            )
             NotificationSettingsScreen(
                 viewModel = viewModel,
                 onBackClick = {
@@ -117,7 +124,9 @@ fun SettingsNavHost(
 
         // Chat Settings Screen
         composable(route = SettingsDestination.ROUTE_CHAT) {
-            val viewModel: ChatSettingsViewModel = viewModel()
+            val viewModel: ChatSettingsViewModel = viewModel(
+                factory = ChatSettingsViewModelFactory(settingsRepository)
+            )
             ChatSettingsScreen(
                 viewModel = viewModel,
                 onBackClick = {
@@ -129,7 +138,9 @@ fun SettingsNavHost(
 
         // Storage & Data Settings Screen
         composable(route = SettingsDestination.ROUTE_STORAGE) {
-            val viewModel: StorageDataViewModel = viewModel()
+            val viewModel: StorageDataViewModel = viewModel(
+                factory = StorageDataViewModelFactory(settingsRepository)
+            )
             StorageDataScreen(
                 viewModel = viewModel,
                 onBackClick = {

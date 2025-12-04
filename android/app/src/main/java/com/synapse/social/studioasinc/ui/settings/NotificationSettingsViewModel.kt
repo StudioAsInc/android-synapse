@@ -1,7 +1,6 @@
 package com.synapse.social.studioasinc.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +20,8 @@ import kotlinx.coroutines.launch
  * Requirements: 5.1, 5.2, 5.3, 5.6
  */
 class NotificationSettingsViewModel(
-    application: Application,
     private val settingsRepository: SettingsRepository
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     // ========================================================================
     // State

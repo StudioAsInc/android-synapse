@@ -1,7 +1,6 @@
 package com.synapse.social.studioasinc.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.social.studioasinc.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,9 +21,8 @@ import kotlinx.coroutines.launch
  * Requirements: 6.1, 6.2, 6.3, 6.4
  */
 class ChatSettingsViewModel(
-    application: Application,
     private val settingsRepository: SettingsRepository
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     // ========================================================================
     // State
