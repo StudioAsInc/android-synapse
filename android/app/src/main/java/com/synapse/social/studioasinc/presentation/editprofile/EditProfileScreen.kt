@@ -1,0 +1,259 @@
+package com.synapse.social.studioasinc.presentation.editprofile
+
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.social.studioasinc.ProfileCoverPhotoHistoryActivity
+import com.synapse.social.studioasinc.ProfilePhotoHistoryActivity
+import com.synapse.social.studioasinc.R
+import com.synapse.social.studioasinc.SelectRegionActivity
+import com.synapse.social.studioasinc.presentation.editprofile.components.GenderSelector
+import com.synapse.social.studioasinc.presentation.editprofile.components.ProfileFormFields
+import com.synapse.social.studioasinc.presentation.editprofile.components.ProfileImageSection
+import com.synapse.social.studioasinc.ui.settings.SettingsCard
+import com.synapse.social.studioasinc.ui.settings.SettingsColors
+import com.synapse.social.studioasinc.ui.settings.SettingsNavigationItem
+import com.synapse.social.studioasinc.ui.settings.SettingsSpacing
+import com.synapse.social.studioasinc.ui.theme.SynapseTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditProfileScreen(
+    viewModel: EditProfileViewModel = viewModel(),
+    onNavigateBack: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    // Image Pickers
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onEvent(EditProfileEvent.AvatarSelected(uri))
+        }
+    }
+
+    val coverPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onEvent(EditProfileEvent.CoverSelected(uri))
+        }
+    }
+
+    // Region Selection Result
+    val regionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val region = result.data?.getStringExtra(SelectRegionActivity.EXTRA_SELECTED_REGION)
+            if (region != null) {
+                viewModel.onEvent(EditProfileEvent.RegionSelected(region))
+            }
+        }
+    }
+
+    // Navigation Events
+    LaunchedEffect(viewModel) {
+        viewModel.navigationEvents.collect { event ->
+            when (event) {
+                EditProfileEvent.NavigateBack -> onNavigateBack()
+                EditProfileEvent.NavigateToRegionSelection -> { // Should use launcher
+                    // Handled in UI click directly using launcher
+                }
+                EditProfileEvent.NavigateToProfileHistory -> {
+                   context.startActivity(Intent(context, ProfilePhotoHistoryActivity::class.java))
+                }
+                EditProfileEvent.NavigateToCoverHistory -> {
+                   context.startActivity(Intent(context, ProfileCoverPhotoHistoryActivity::class.java))
+                }
+            }
+        }
+    }
+
+    // Error Handling
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            // Reset error? ViewModel should probably expose error event or reset it.
+            // Simplified for now.
+        }
+    }
+
+    SynapseTheme {
+        Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                MediumTopAppBar(
+                    title = { Text("Edit Profile") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(EditProfileEvent.BackClicked) }) {
+                            Icon(
+                                painter = painterResource(R.drawable.icon_arrow_back_ios_round),
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        if (uiState.isSaving) {
+                             CircularProgressIndicator(
+                                 modifier = Modifier.padding(end = 16.dp).size(24.dp),
+                                 strokeWidth = 2.dp
+                             )
+                        } else {
+                            IconButton(
+                                onClick = { viewModel.onEvent(EditProfileEvent.SaveClicked) },
+                                enabled = uiState.hasChanges &&
+                                          uiState.usernameValidation !is UsernameValidation.Error &&
+                                          uiState.nicknameError == null &&
+                                          uiState.biographyError == null
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.icon_save_round),
+                                    contentDescription = "Save",
+                                    tint = if (uiState.hasChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                )
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.mediumTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = SettingsSpacing.screenPadding,
+                        end = SettingsSpacing.screenPadding,
+                        top = paddingValues.calculateTopPadding() + 8.dp,
+                        bottom = paddingValues.calculateBottomPadding() + 24.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionSpacing)
+                ) {
+                    // Image Section
+                    item {
+                        ProfileImageSection(
+                            coverUrl = uiState.coverUrl,
+                            avatarUrl = uiState.avatarUrl,
+                            onCoverClick = {
+                                coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            onAvatarClick = {
+                                avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        )
+                    }
+
+                    // Form Fields
+                    item {
+                        ProfileFormFields(
+                            username = uiState.username,
+                            onUsernameChange = { viewModel.onEvent(EditProfileEvent.UsernameChanged(it)) },
+                            usernameValidation = uiState.usernameValidation,
+                            nickname = uiState.nickname,
+                            onNicknameChange = { viewModel.onEvent(EditProfileEvent.NicknameChanged(it)) },
+                            nicknameError = uiState.nicknameError,
+                            biography = uiState.biography,
+                            onBiographyChange = { viewModel.onEvent(EditProfileEvent.BiographyChanged(it)) },
+                            biographyError = uiState.biographyError
+                        )
+                    }
+
+                    // Gender Section
+                    item {
+                        GenderSelector(
+                            selectedGender = uiState.selectedGender,
+                            onGenderSelected = { viewModel.onEvent(EditProfileEvent.GenderSelected(it)) }
+                        )
+                    }
+
+                    // Region Section
+                    item {
+                        SettingsCard {
+                            SettingsNavigationItem(
+                                title = "Region",
+                                subtitle = uiState.selectedRegion ?: "Not set",
+                                icon = R.drawable.ic_location, // Need to verify if this exists or use fallback
+                                onClick = {
+                                    val intent = Intent(context, SelectRegionActivity::class.java)
+                                    intent.putExtra(SelectRegionActivity.EXTRA_CURRENT_REGION, uiState.selectedRegion ?: "Not set")
+                                    regionLauncher.launch(intent)
+                                }
+                            )
+                        }
+                    }
+
+                    // History Section
+                    item {
+                        SettingsCard {
+                            SettingsNavigationItem(
+                                title = "Profile Photo History",
+                                subtitle = "View and restore previous photos",
+                                icon = null,
+                                onClick = { viewModel.onEvent(EditProfileEvent.NavigateToProfileHistory) }
+                            )
+
+                            com.synapse.social.studioasinc.ui.settings.SettingsDivider()
+
+                            SettingsNavigationItem(
+                                title = "Cover Photo History",
+                                subtitle = "View and restore previous covers",
+                                icon = null,
+                                onClick = { viewModel.onEvent(EditProfileEvent.NavigateToCoverHistory) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
