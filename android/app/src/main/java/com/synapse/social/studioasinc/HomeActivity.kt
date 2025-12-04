@@ -13,8 +13,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.synapse.social.studioasinc.adapters.ViewPagerAdapter
-import com.synapse.social.studioasinc.ui.auth.components.ProfileCompletionDialog
-import com.synapse.social.studioasinc.ui.theme.AuthTheme
+import com.synapse.social.studioasinc.ui.auth.components.ProfileCompletionDialogFragment
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -135,30 +134,7 @@ class HomeActivity : BaseActivity() {
         val showDialog = sharedPreferences.getBoolean("show_profile_completion_dialog", false)
 
         if (showDialog) {
-            val composeView = androidx.compose.ui.platform.ComposeView(this).apply {
-                setContent {
-                    AuthTheme {
-                         ProfileCompletionDialog(
-                            onComplete = {
-                                sharedPreferences.edit().putBoolean("show_profile_completion_dialog", false).apply()
-                                (parent as? android.view.ViewGroup)?.removeView(this)
-
-                                val intent = Intent(this@HomeActivity, ProfileEditActivity::class.java)
-                                startActivity(intent)
-                            },
-                            onDismiss = {
-                                sharedPreferences.edit().putBoolean("show_profile_completion_dialog", false).apply()
-                                (parent as? android.view.ViewGroup)?.removeView(this)
-                            }
-                        )
-                    }
-                }
-            }
-
-            addContentView(composeView, android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            ))
+            ProfileCompletionDialogFragment().show(supportFragmentManager, ProfileCompletionDialogFragment.TAG)
         }
     }
 

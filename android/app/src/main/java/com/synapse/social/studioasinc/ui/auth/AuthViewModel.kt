@@ -8,6 +8,7 @@ import com.synapse.social.studioasinc.data.repository.UsernameRepository
 import com.synapse.social.studioasinc.ui.auth.models.AuthNavigationEvent
 import com.synapse.social.studioasinc.ui.auth.models.AuthUiState
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.postgrest.from
 import com.synapse.social.studioasinc.ui.auth.models.PasswordStrength
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -258,7 +259,6 @@ class AuthViewModel(
             val result = authRepository.signUp(email, password)
             result.fold(
                 onSuccess = { userId ->
-                    // Insert into users table
                     try {
                         val client = com.synapse.social.studioasinc.SupabaseClient.client
                         val userMap = mapOf(
@@ -267,26 +267,13 @@ class AuthViewModel(
                             "email" to email,
                             "created_at" to java.time.Instant.now().toString()
                         )
-                        // Actually, I need correct timestamp format.
-                        // And correct column names.
-                        // AuthRepository uses "uid" in getCurrentUserUid.
 
-                        // Let's just use what we have.
-                        // And set the flag for dialog.
+                        client.from("users").insert(userMap)
+
                         sharedPreferences.edit()
                             .putBoolean("show_profile_completion_dialog", true)
                             .apply()
 
-                        // Save email for verification screen if needed, but PRD says "Direct Feed Access".
-                        // "Navigate to HomeActivity immediately after successful signup"
-                        // But usually email verification is required.
-                        // PRD says: "Maintain email and password fields with existing validation".
-                        // "User lands on feed screen after signup".
-
-                        // If email verification is required by Supabase, we can't go to Feed immediately unless Supabase allows it.
-                        // Assuming it allows or we just go to feed.
-
-                        // Check if user is confirmed?
                         val currentUser = com.synapse.social.studioasinc.SupabaseClient.client.auth.currentUserOrNull()
                         if (currentUser?.emailConfirmedAt == null) {
                              // If verification needed, go to verification
