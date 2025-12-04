@@ -65,6 +65,7 @@ class AuthViewModel(
     }
 
     init {
+        _uiState.value = AuthUiState.SignIn()
         setupInputValidation()
     }
 
