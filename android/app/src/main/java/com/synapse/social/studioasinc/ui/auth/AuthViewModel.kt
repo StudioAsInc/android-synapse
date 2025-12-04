@@ -7,6 +7,7 @@ import com.synapse.social.studioasinc.data.repository.AuthRepository
 import com.synapse.social.studioasinc.data.repository.UsernameRepository
 import com.synapse.social.studioasinc.ui.auth.models.AuthNavigationEvent
 import com.synapse.social.studioasinc.ui.auth.models.AuthUiState
+import io.github.jan.supabase.gotrue.auth
 import com.synapse.social.studioasinc.ui.auth.models.PasswordStrength
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
