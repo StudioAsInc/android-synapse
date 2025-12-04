@@ -43,7 +43,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         val followers = client.from("followers").select() { 
             filter { eq("follower_id", userId) }
             limit(limit.toLong())
-            range(offset, offset + limit - 1)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Map<String, UserProfile>>().mapNotNull { it["following_id"] }
         Result.success(followers)
     } catch (e: Exception) {
@@ -54,7 +54,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         val following = client.from("followers").select() { 
             filter { eq("following_id", userId) }
             limit(limit.toLong())
-            range(offset, offset + limit - 1)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Map<String, UserProfile>>().mapNotNull { it["follower_id"] }
         Result.success(following)
     } catch (e: Exception) {
@@ -65,7 +65,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         val posts = client.from("posts").select() { 
             filter { eq("user_id", userId) }
             limit(limit.toLong())
-            range(offset, offset + limit - 1)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Any>()
         Result.success(posts)
     } catch (e: Exception) {
@@ -76,7 +76,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         val photos = client.from("photos").select() { 
             filter { eq("user_id", userId) }
             limit(limit.toLong())
-            range(offset, offset + limit - 1)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Any>()
         Result.success(photos)
     } catch (e: Exception) {
@@ -87,7 +87,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         val reels = client.from("reels").select() { 
             filter { eq("user_id", userId) }
             limit(limit.toLong())
-            range(offset, offset + limit - 1)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Any>()
         Result.success(reels)
     } catch (e: Exception) {
