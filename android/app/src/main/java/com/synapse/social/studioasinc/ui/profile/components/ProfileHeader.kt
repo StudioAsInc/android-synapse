@@ -1,6 +1,7 @@
 package com.synapse.social.studioasinc.ui.profile.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -123,7 +124,7 @@ fun ProfileHeader(
                 maxLines = if (bioExpanded) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .animateContentSize()
+                    .animateContentSize(animationSpec = tween(300))
                     .clickable { bioExpanded = !bioExpanded }
             )
         }
