@@ -113,7 +113,6 @@ class PollRepository {
                     optionIndex = optionIndex
                 ))
         }
-        }
         
         Log.d(TAG, "Vote submitted: post=$postId, option=$optionIndex")
     }
