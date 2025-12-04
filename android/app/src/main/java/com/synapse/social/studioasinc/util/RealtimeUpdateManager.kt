@@ -53,7 +53,7 @@ object RealtimeUpdateManager {
                 }
             }.launchIn(scope)
             
-            channel.subscribe()
+            scope.launch { channel.subscribe() }
         } catch (e: Exception) {
             Log.e(TAG, "Error observing post changes", e)
         }
@@ -96,7 +96,7 @@ object RealtimeUpdateManager {
                 }
             }.launchIn(scope)
             
-            channel.subscribe()
+            scope.launch { channel.subscribe() }
         } catch (e: Exception) {
             Log.e(TAG, "Error observing comment changes", e)
         }
@@ -139,7 +139,7 @@ object RealtimeUpdateManager {
                 }
             }.launchIn(scope)
             
-            channel.subscribe()
+            scope.launch { channel.subscribe() }
         } catch (e: Exception) {
             Log.e(TAG, "Error observing reaction changes", e)
         }
