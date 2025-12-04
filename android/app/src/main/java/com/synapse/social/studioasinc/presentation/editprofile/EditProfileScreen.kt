@@ -1,6 +1,5 @@
 package com.synapse.social.studioasinc.presentation.editprofile
 
-import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -42,7 +41,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.synapse.social.studioasinc.ProfileCoverPhotoHistoryActivity
 import com.synapse.social.studioasinc.ProfilePhotoHistoryActivity
 import com.synapse.social.studioasinc.R
-import com.synapse.social.studioasinc.SelectRegionActivity
 import com.synapse.social.studioasinc.presentation.editprofile.components.GenderSelector
 import com.synapse.social.studioasinc.presentation.editprofile.components.ProfileFormFields
 import com.synapse.social.studioasinc.presentation.editprofile.components.ProfileImageSection
@@ -55,7 +53,8 @@ import com.synapse.social.studioasinc.ui.theme.SynapseTheme
 @Composable
 fun EditProfileScreen(
     viewModel: EditProfileViewModel = viewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToRegionSelection: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -79,25 +78,13 @@ fun EditProfileScreen(
         }
     }
 
-    // Region Selection Result
-    val regionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val region = result.data?.getStringExtra(SelectRegionActivity.EXTRA_SELECTED_REGION)
-            if (region != null) {
-                viewModel.onEvent(EditProfileEvent.RegionSelected(region))
-            }
-        }
-    }
-
     // Navigation Events
     LaunchedEffect(viewModel) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 EditProfileNavigation.NavigateBack -> onNavigateBack()
-                EditProfileNavigation.NavigateToRegionSelection -> { // Should use launcher
-                    // Handled in UI click directly using launcher
+                EditProfileNavigation.NavigateToRegionSelection -> {
+                    onNavigateToRegionSelection(uiState.selectedRegion ?: "")
                 }
                 EditProfileNavigation.NavigateToProfileHistory -> {
                    context.startActivity(Intent(context, ProfilePhotoHistoryActivity::class.java))
@@ -218,9 +205,7 @@ fun EditProfileScreen(
                                 subtitle = uiState.selectedRegion ?: "Not set",
                                 icon = R.drawable.ic_location, // Need to verify if this exists or use fallback
                                 onClick = {
-                                    val intent = Intent(context, SelectRegionActivity::class.java)
-                                    intent.putExtra(SelectRegionActivity.EXTRA_CURRENT_REGION, uiState.selectedRegion ?: "Not set")
-                                    regionLauncher.launch(intent)
+                                    onNavigateToRegionSelection(uiState.selectedRegion ?: "")
                                 }
                             )
                         }
