@@ -198,6 +198,12 @@
 			android:supportsPictureInPicture="true"
 			android:windowSoftInputMode="stateHidden" />
 		<activity
+			android:name=".AuthComposeActivity"
+			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+			android:hardwareAccelerated="true"
+			android:supportsPictureInPicture="true"
+			android:windowSoftInputMode="adjustResize" />
+		<activity
 			android:name=".ForgotPasswordActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
