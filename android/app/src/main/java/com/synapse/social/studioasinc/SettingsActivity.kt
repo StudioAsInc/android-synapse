@@ -74,6 +74,9 @@ class SettingsActivity : ComponentActivity() {
                         onNavigateToChatPrivacy = {
                             // Navigate to existing ChatPrivacySettingsActivity
                             startActivity(Intent(this@SettingsActivity, ChatPrivacySettingsActivity::class.java))
+                        },
+                        onLogout = {
+                            performLogout()
                         }
                     )
                 }
