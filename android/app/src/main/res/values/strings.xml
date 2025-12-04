@@ -911,5 +911,15 @@ Please explain the following message from %3$s in detail, considering the contex
     </plurals>
     <string name="poll_vote_submitted">Vote submitted</string>
     <string name="poll_vote_failed">Failed to vote: %1$s</string>
+    
+    <!-- Profile Screen Strings -->
+    <string name="profile_photos">Photos</string>
+    <string name="profile_posts">Posts</string>
+    <string name="profile_reels">Reels</string>
+    <string name="profile_more">More</string>
+    <string name="profile_loading_error">Failed to load profile</string>
+    <string name="profile_empty_photos">No photos yet</string>
+    <string name="profile_empty_posts">No posts yet</string>
+    <string name="profile_empty_reels">No reels yet</string>
 
 </resources>
