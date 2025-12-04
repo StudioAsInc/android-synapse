@@ -1851,10 +1851,10 @@ class AuthActivity : BaseActivity() {
                     
                     val currentUser = SupabaseClient.client.auth.currentUserOrNull()
                     if (currentUser?.emailConfirmedAt != null) {
-                        // Account created and verified - proceed to complete profile
+                        // Account created and verified - proceed to main
                         Toast.makeText(this@AuthActivity, "✅ Account created successfully!", Toast.LENGTH_SHORT).show()
                         clearSavedEmail()
-                        navigateToCompleteProfile()
+                        navigateToMain()
                     } else {
                         // Email verification required - navigate to EmailVerificationActivity
                         Toast.makeText(this@AuthActivity, "✅ Account created successfully! Please check your email for verification.", Toast.LENGTH_LONG).show()
@@ -1972,11 +1972,6 @@ class AuthActivity : BaseActivity() {
 
     private fun navigateToMain() {
         startActivity(Intent(this, MainActivity::class.java))
-        finish()
-    }
-
-    private fun navigateToCompleteProfile() {
-        startActivity(Intent(this, CompleteProfileActivity::class.java))
         finish()
     }
 

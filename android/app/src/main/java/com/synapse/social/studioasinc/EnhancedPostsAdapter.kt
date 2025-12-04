@@ -8,12 +8,15 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.synapse.social.studioasinc.animations.ReactionAnimations
 import com.synapse.social.studioasinc.components.MediaGridView
+import com.synapse.social.studioasinc.components.PollDisplay
 import com.synapse.social.studioasinc.model.MediaItem
 import com.synapse.social.studioasinc.model.MediaType
 import com.synapse.social.studioasinc.model.Post
@@ -36,6 +39,7 @@ class EnhancedPostsAdapter(
     private val onReactionSummaryClicked: ((Post) -> Unit)? = null,
     private val onReactionPickerRequested: ((Post, View) -> Unit)? = null,
     private val onReactionToggled: ((Post, ReactionType, (Boolean) -> Unit) -> Unit)? = null,
+    private val onPollOptionClicked: ((Post, Int) -> Unit)? = null,
     private val onMoreOptionsClicked: ((Post) -> Unit)? = null
 ) : PagingDataAdapter<Post, EnhancedPostsAdapter.PostViewHolder>(PostDiffCallback()) {
 
@@ -99,8 +103,27 @@ class EnhancedPostsAdapter(
         private val postOptions: View = itemView.findViewById(R.id.postOptions)
         private val postContent: TextView = itemView.findViewById(R.id.postContent)
         private val readMoreButton: View = itemView.findViewById(R.id.readMoreButton)
+        private val pollComposeView: ComposeView = itemView.findViewById(R.id.pollComposeView)
         private val postImage: ImageView = itemView.findViewById(R.id.postImage)
         private val mediaGridView: MediaGridView = itemView.findViewById(R.id.mediaGridView)
+
+        private val pollPostState = androidx.compose.runtime.mutableStateOf<Post?>(null)
+
+        init {
+            pollComposeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            pollComposeView.setContent {
+                val post = pollPostState.value
+                if (post != null) {
+                    PollDisplay(
+                        post = post,
+                        userPollVote = post.userPollVote,
+                        onOptionSelected = { selectedIndex ->
+                            handlePollVote(post, selectedIndex)
+                        }
+                    )
+                }
+            }
+        }
         private val reactionSummaryContainer: ViewGroup = itemView.findViewById(R.id.reactionSummaryContainer)
         private val reactionSummary: View = itemView.findViewById(R.id.reactionSummary)
         private val reactionEmojis: TextView = itemView.findViewById(R.id.reactionEmojis)
@@ -134,6 +157,9 @@ class EnhancedPostsAdapter(
             // Bind post content
             bindContent(post)
 
+            // Bind poll
+            bindPoll(post)
+
             // Bind media using MediaGridView
             bindMedia(post)
 
@@ -161,6 +187,42 @@ class EnhancedPostsAdapter(
                 postContent.maxLines = Int.MAX_VALUE
                 readMoreButton.visibility = View.GONE
             }
+        }
+
+        private fun bindPoll(post: Post) {
+            if (post.hasPoll == true) {
+                pollComposeView.visibility = View.VISIBLE
+                pollPostState.value = post
+            } else {
+                pollComposeView.visibility = View.GONE
+            }
+        }
+
+        private fun handlePollVote(post: Post, optionIndex: Int) {
+            val options = post.pollOptions?.map { it.copy() }?.toMutableList() ?: return
+            val currentVote = post.userPollVote
+
+            if (currentVote == optionIndex) return
+
+            if (currentVote != null && currentVote < options.size) {
+                val oldOption = options[currentVote]
+                options[currentVote] = oldOption.copy(votes = maxOf(0, oldOption.votes - 1))
+            }
+
+            if (optionIndex < options.size) {
+                val newOption = options[optionIndex]
+                options[optionIndex] = newOption.copy(votes = newOption.votes + 1)
+            }
+
+            val updatedPost = post.copy(
+                pollOptions = options,
+                userPollVote = optionIndex
+            )
+
+            currentPost = updatedPost
+            bindPoll(updatedPost)
+
+            onPollOptionClicked?.invoke(post, optionIndex)
         }
 
         private fun bindMedia(post: Post) {

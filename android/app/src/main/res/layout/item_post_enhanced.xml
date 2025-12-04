@@ -108,6 +108,13 @@
             android:visibility="gone"
             app:cornerRadius="18dp" />
 
+        <!-- Poll Display -->
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/pollComposeView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
         <!-- Single Image (Legacy) -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/postImage"

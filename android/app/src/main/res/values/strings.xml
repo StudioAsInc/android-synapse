@@ -904,4 +904,12 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="settings_success_icon_description">Success indicator</string>
     <string name="settings_warning_icon_description">Warning indicator</string>
 
+    <!-- Poll Strings -->
+    <plurals name="poll_votes_count">
+        <item quantity="one">%d vote</item>
+        <item quantity="other">%d votes</item>
+    </plurals>
+    <string name="poll_vote_submitted">Vote submitted</string>
+    <string name="poll_vote_failed">Failed to vote: %1$s</string>
+
 </resources>

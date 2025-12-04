@@ -13,6 +13,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.synapse.social.studioasinc.adapters.ViewPagerAdapter
+import com.synapse.social.studioasinc.ui.auth.components.ProfileCompletionDialogFragment
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -125,6 +126,16 @@ class HomeActivity : BaseActivity() {
         }
 
         loadUserProfileImage()
+        checkProfileCompletionDialog()
+    }
+
+    private fun checkProfileCompletionDialog() {
+        val sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
+        val showDialog = sharedPreferences.getBoolean("show_profile_completion_dialog", false)
+
+        if (showDialog) {
+            ProfileCompletionDialogFragment().show(supportFragmentManager, ProfileCompletionDialogFragment.TAG)
+        }
     }
 
     private fun loadUserProfileImage() {

@@ -136,12 +136,6 @@ class MainActivity : BaseActivity() {
                     }
                     finish()
                 }
-                is AuthState.NeedsProfileCompletion -> {
-                    // Navigate to complete profile screen
-                    val intent = Intent(this, CompleteProfileActivity::class.java)
-                    startActivity(intent)
-                    finish()
-                }
                 is AuthState.Error -> showErrorDialog(state.message)
             }
         }

@@ -101,11 +101,13 @@ class MainViewModel(
                                     _authState.value = AuthState.Banned
                                 }
                             } else {
-                                _authState.value = AuthState.NeedsProfileCompletion
+                                // User authenticated but no profile found - treat as authenticated for new flow
+                                _authState.value = AuthState.Authenticated
                             }
                         }
                         .onFailure {
-                            _authState.value = AuthState.NeedsProfileCompletion
+                            // Error fetching profile - treat as authenticated to allow access (or could be error)
+                            _authState.value = AuthState.Authenticated
                         }
                 } else {
                     _authState.value = AuthState.Unauthenticated
@@ -134,6 +136,5 @@ sealed class AuthState {
     object Authenticated : AuthState()
     object Unauthenticated : AuthState()
     object Banned : AuthState()
-    object NeedsProfileCompletion : AuthState()
     data class Error(val message: String) : AuthState()
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +54,7 @@ fun AuthTextField(
     error: String?,
     isValid: Boolean,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     isPassword: Boolean = false,
     leadingIcon: @Composable (() -> Unit)? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -80,7 +82,12 @@ fun AuthTextField(
             label = { Text(label) },
             leadingIcon = leadingIcon,
             trailingIcon = {
-                if (isPassword) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else if (isPassword) {
                     IconButton(
                         onClick = { passwordVisible = !passwordVisible },
                         modifier = Modifier.size(48.dp) // Requirement 8.4: Touch target size
