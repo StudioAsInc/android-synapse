@@ -6,6 +6,8 @@ import com.synapse.social.studioasinc.data.model.UserProfile
 import com.synapse.social.studioasinc.domain.usecase.profile.*
 import com.synapse.social.studioasinc.domain.usecase.post.*
 import com.synapse.social.studioasinc.ui.profile.components.ViewAsMode
+import com.synapse.social.studioasinc.ui.profile.utils.MemoryManager
+import com.synapse.social.studioasinc.ui.profile.utils.NetworkOptimizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +38,17 @@ data class ProfileScreenState(
     val viewAsUserName: String? = null
 )
 
+/**
+ * ViewModel for Profile screen managing user profile state and actions.
+ * 
+ * Handles profile loading, content filtering, follow/unfollow operations,
+ * and various profile actions like sharing, reporting, and blocking.
+ * 
+ * @property getProfileUseCase Use case for fetching user profiles
+ * @property getProfileContentUseCase Use case for fetching profile content (posts, photos, reels)
+ * @property followUserUseCase Use case for following users
+ * @property unfollowUserUseCase Use case for unfollowing users
+ */
 class ProfileViewModel(
     private val getProfileUseCase: GetProfileUseCase,
     private val getProfileContentUseCase: GetProfileContentUseCase,
@@ -102,8 +115,9 @@ class ProfileViewModel(
                     val offset = _state.value.postsOffset
                     getProfileContentUseCase.getPosts(profile.id, offset = offset).onSuccess { posts ->
                         _state.update {
+                            val allPosts = MemoryManager.limitCacheSize(it.posts + posts)
                             it.copy(
-                                posts = it.posts + posts,
+                                posts = allPosts,
                                 postsOffset = offset + posts.size,
                                 isLoadingMore = false
                             )

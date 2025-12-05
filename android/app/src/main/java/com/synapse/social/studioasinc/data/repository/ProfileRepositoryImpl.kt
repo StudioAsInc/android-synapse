@@ -2,16 +2,36 @@ package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.data.model.UserProfile
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.ui.profile.utils.NetworkOptimizer
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+/**
+ * Implementation of ProfileRepository with Supabase backend integration.
+ * 
+ * Features:
+ * - Request caching with 1-minute TTL
+ * - Automatic retry with exponential backoff
+ * - RLS policy compliance
+ * 
+ * Uses SupabaseClient singleton for all database operations.
+ */
 class ProfileRepositoryImpl : ProfileRepository {
     private val client = SupabaseClient.client
 
     override fun getProfile(userId: String): Flow<Result<UserProfile>> = flow {
+        val cacheKey = "profile_$userId"
+        NetworkOptimizer.getCached<UserProfile>(cacheKey)?.let {
+            emit(Result.success(it))
+            return@flow
+        }
+        
         try {
-            val profile = client.from("profiles").select() { filter { eq("id", userId) } }.decodeSingle<UserProfile>()
+            val profile = NetworkOptimizer.withRetry {
+                client.from("profiles").select() { filter { eq("id", userId) } }.decodeSingle<UserProfile>()
+            }
+            NetworkOptimizer.cache(cacheKey, profile)
             emit(Result.success(profile))
         } catch (e: Exception) {
             emit(Result.failure(e))

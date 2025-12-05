@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.synapse.social.studioasinc.ui.components.EmptyState
@@ -14,6 +15,27 @@ import com.synapse.social.studioasinc.ui.components.ErrorState
 import com.synapse.social.studioasinc.ui.profile.animations.crossfadeContent
 import com.synapse.social.studioasinc.ui.profile.components.*
 
+/**
+ * Main Profile screen composable displaying user profile information and content.
+ * 
+ * Features:
+ * - Profile header with cover and profile images
+ * - User stats (followers, following, posts)
+ * - Content tabs (Posts, Photos, Reels)
+ * - Pull-to-refresh
+ * - Bottom sheet actions (Share, View As, QR Code, etc.)
+ * 
+ * @param userId The ID of the user whose profile to display
+ * @param currentUserId The ID of the currently logged-in user
+ * @param onNavigateBack Callback for back navigation
+ * @param onNavigateToEditProfile Callback to navigate to edit profile
+ * @param onNavigateToFollowers Callback to navigate to followers list
+ * @param onNavigateToFollowing Callback to navigate to following list
+ * @param onNavigateToSettings Callback to navigate to settings
+ * @param onNavigateToActivityLog Callback to navigate to activity log
+ * @param onNavigateToUserProfile Callback to navigate to another user's profile
+ * @param viewModel ProfileViewModel instance for state management
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -54,7 +76,9 @@ fun ProfileScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .semantics { isTraversalGroup = true }
     ) { paddingValues ->
         Box(
             modifier = Modifier
