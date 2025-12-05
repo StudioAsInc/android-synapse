@@ -2,7 +2,6 @@ package com.synapse.social.studioasinc.data.repository
 
 import com.synapse.social.studioasinc.data.model.UserProfile
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.test.runTest
 import org.junit.*
 import org.junit.runner.RunWith
@@ -16,15 +15,11 @@ class ProfileRepositoryTest {
     @Mock
     private lateinit var supabaseClient: SupabaseClient
 
-    @Mock
-    private lateinit var postgrest: Postgrest
-
     private lateinit var repository: ProfileRepository
 
     @Before
     fun setup() {
-        whenever(supabaseClient.postgrest).thenReturn(postgrest)
-        repository = ProfileRepositoryImpl(supabaseClient)
+        repository = ProfileRepositoryImpl()
     }
 
     @Test
@@ -35,8 +30,8 @@ class ProfileRepositoryTest {
         // This is a placeholder test structure
         val result = repository.getProfile(userId)
         
-        // Verify Supabase client was accessed
-        verify(supabaseClient, atLeastOnce()).postgrest
+        // Verify result is not null
+        Assert.assertNotNull(result)
     }
 
     @Test
@@ -51,18 +46,20 @@ class ProfileRepositoryTest {
 
     @Test
     fun `followUser validates userId`() = runTest {
+        val userId = "current-user"
         val targetUserId = "target-user"
         
-        val result = repository.followUser(targetUserId)
+        val result = repository.followUser(userId, targetUserId)
         
         Assert.assertNotNull(result)
     }
 
     @Test
     fun `unfollowUser validates userId`() = runTest {
+        val userId = "current-user"
         val targetUserId = "target-user"
         
-        val result = repository.unfollowUser(targetUserId)
+        val result = repository.unfollowUser(userId, targetUserId)
         
         Assert.assertNotNull(result)
     }

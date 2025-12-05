@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.ui.auth
 
 import android.content.SharedPreferences
 import com.synapse.social.studioasinc.data.repository.AuthRepository
+import com.synapse.social.studioasinc.data.repository.UsernameRepository
 import com.synapse.social.studioasinc.ui.auth.models.AuthUiState
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -73,8 +74,9 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
     "Property 15: Valid emails should be marked as valid with no error" {
         checkAll(100, validEmailArb()) { email ->
             val mockAuthRepository = mock<AuthRepository>()
+            val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()
-            val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+            val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
             // Test email validation method directly
             val isValid = viewModel.validateEmail(email)
@@ -85,8 +87,9 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
     "Property 15: Invalid emails should be marked as invalid with error message" {
         checkAll(100, invalidEmailArb()) { email ->
             val mockAuthRepository = mock<AuthRepository>()
+            val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()
-            val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+            val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
             // Test email validation method directly
             val isValid = viewModel.validateEmail(email)
@@ -96,8 +99,9 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
 
     "Property 15: Empty email should show no error" {
         val mockAuthRepository = mock<AuthRepository>()
+        val mockUsernameRepository = mock<UsernameRepository>()
         val mockSharedPreferences = mock<SharedPreferences>()
-        val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+        val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
         // Empty email should not be valid
         val isValid = viewModel.validateEmail("")
@@ -107,8 +111,9 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
     "Property 15: Email validation should work consistently across different inputs" {
         checkAll(50, validEmailArb()) { email ->
             val mockAuthRepository = mock<AuthRepository>()
+            val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()
-            val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+            val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
             // Validation should be consistent
             val isValid = viewModel.validateEmail(email)
@@ -119,16 +124,18 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
     "Property 15: Email validation regex should correctly identify valid and invalid formats" {
         checkAll(50, validEmailArb()) { validEmail ->
             val mockAuthRepository = mock<AuthRepository>()
+            val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()
-            val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+            val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
             viewModel.validateEmail(validEmail) shouldBe true
         }
 
         checkAll(50, invalidEmailArb()) { invalidEmail ->
             val mockAuthRepository = mock<AuthRepository>()
+            val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()
-            val viewModel = AuthViewModel(mockAuthRepository, mockSharedPreferences)
+            val viewModel = AuthViewModel(mockAuthRepository, mockUsernameRepository, mockSharedPreferences)
 
             viewModel.validateEmail(invalidEmail) shouldBe false
         }

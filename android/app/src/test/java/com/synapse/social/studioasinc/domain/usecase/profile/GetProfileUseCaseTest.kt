@@ -2,6 +2,8 @@ package com.synapse.social.studioasinc.domain.usecase.profile
 
 import com.synapse.social.studioasinc.data.model.UserProfile
 import com.synapse.social.studioasinc.data.repository.ProfileRepository
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.*
 import org.junit.runner.RunWith
@@ -23,7 +25,7 @@ class GetProfileUseCaseTest {
     }
 
     @Test
-    fun `execute returns success when repository succeeds`() = runTest {
+    fun `invoke returns success when repository succeeds`() = runTest {
         val profile = UserProfile(
             id = "1", username = "test", name = "Test",
             nickname = null, bio = null, profileImageUrl = null,
@@ -35,9 +37,9 @@ class GetProfileUseCaseTest {
             gender = null, pronouns = null, linkedAccounts = emptyList(),
             privacySettings = emptyMap()
         )
-        whenever(repository.getProfile("1")).thenReturn(Result.success(profile))
+        whenever(repository.getProfile("1")).thenReturn(flowOf(Result.success(profile)))
 
-        val result = useCase.execute("1")
+        val result = useCase("1").first()
 
         Assert.assertTrue(result.isSuccess)
         Assert.assertEquals(profile, result.getOrNull())
@@ -45,21 +47,24 @@ class GetProfileUseCaseTest {
     }
 
     @Test
-    fun `execute returns failure when repository fails`() = runTest {
+    fun `invoke returns failure when repository fails`() = runTest {
         val exception = Exception("Network error")
-        whenever(repository.getProfile("1")).thenReturn(Result.failure(exception))
+        whenever(repository.getProfile("1")).thenReturn(flowOf(Result.failure(exception)))
 
-        val result = useCase.execute("1")
+        val result = useCase("1").first()
 
         Assert.assertTrue(result.isFailure)
         verify(repository).getProfile("1")
     }
 
     @Test
-    fun `execute validates userId is not empty`() = runTest {
-        val result = useCase.execute("")
-
-        Assert.assertTrue(result.isFailure)
+    fun `invoke validates userId is not empty`() = runTest {
+        try {
+            useCase("")
+            Assert.fail("Should throw IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+            Assert.assertTrue(e.message?.contains("User ID") == true)
+        }
         verify(repository, never()).getProfile(any())
     }
 }

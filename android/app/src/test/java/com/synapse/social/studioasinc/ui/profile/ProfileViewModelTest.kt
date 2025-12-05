@@ -6,6 +6,7 @@ import com.synapse.social.studioasinc.domain.usecase.profile.*
 import com.synapse.social.studioasinc.domain.usecase.post.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.*
 import org.junit.runner.RunWith
@@ -76,7 +77,7 @@ class ProfileViewModelTest {
             gender = null, pronouns = null, linkedAccounts = emptyList(),
             privacySettings = emptyMap()
         )
-        whenever(getProfileUseCase.execute("1")).thenReturn(Result.success(profile))
+        whenever(getProfileUseCase("1")).thenReturn(flowOf(Result.success(profile)))
 
         viewModel.loadProfile("1", "current")
         advanceUntilIdle()

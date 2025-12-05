@@ -22,30 +22,33 @@ class FollowUserUseCaseTest {
     }
 
     @Test
-    fun `execute calls repository followUser`() = runTest {
-        whenever(repository.followUser("user1")).thenReturn(Result.success(Unit))
+    fun `invoke calls repository followUser`() = runTest {
+        whenever(repository.followUser("user1", "user2")).thenReturn(Result.success(Unit))
 
-        val result = useCase.execute("user1")
+        val result = useCase("user1", "user2")
 
         Assert.assertTrue(result.isSuccess)
-        verify(repository).followUser("user1")
+        verify(repository).followUser("user1", "user2")
     }
 
     @Test
-    fun `execute returns failure when repository fails`() = runTest {
+    fun `invoke returns failure when repository fails`() = runTest {
         val exception = Exception("Follow failed")
-        whenever(repository.followUser("user1")).thenReturn(Result.failure(exception))
+        whenever(repository.followUser("user1", "user2")).thenReturn(Result.failure(exception))
 
-        val result = useCase.execute("user1")
+        val result = useCase("user1", "user2")
 
         Assert.assertTrue(result.isFailure)
     }
 
     @Test
-    fun `execute validates userId is not empty`() = runTest {
-        val result = useCase.execute("")
-
-        Assert.assertTrue(result.isFailure)
-        verify(repository, never()).followUser(any())
+    fun `invoke validates userId is not empty`() = runTest {
+        try {
+            useCase("", "user2")
+            Assert.fail("Should throw IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+            Assert.assertTrue(e.message?.contains("User ID") == true)
+        }
+        verify(repository, never()).followUser(any(), any())
     }
 }
