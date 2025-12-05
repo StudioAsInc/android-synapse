@@ -9,10 +9,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import com.synapse.social.studioasinc.backend.SupabaseClient
+import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.ui.profile.ProfileScreen
 import com.synapse.social.studioasinc.ui.profile.ProfileViewModel
 import com.synapse.social.studioasinc.ui.theme.SynapseTheme
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -71,7 +72,8 @@ class ProfileComposeActivity : ComponentActivity() {
     
     private fun navigateToEditProfile() {
         // TODO: Navigate to EditProfileActivity or EditProfileScreen
-        startActivity(Intent(this, EditProfileActivity::class.java))
+        // EditProfileActivity not yet implemented
+        // startActivity(Intent(this, EditProfileActivity::class.java))
     }
     
     private fun navigateToFollowers(userId: String) {
