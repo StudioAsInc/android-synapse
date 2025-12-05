@@ -20,8 +20,8 @@ object AccessibilityHelper {
      * Sets minimum touch target size (48dp)
      */
     fun ensureMinTouchTarget(view: View) {
-        ViewCompat.setMinimumWidth(view, 48.dpToPx(view.context))
-        ViewCompat.setMinimumHeight(view, 48.dpToPx(view.context))
+        view.minimumWidth = 48.dpToPx(view.context)
+        view.minimumHeight = 48.dpToPx(view.context)
     }
     
     /**
