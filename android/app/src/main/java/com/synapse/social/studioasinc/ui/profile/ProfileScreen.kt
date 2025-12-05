@@ -101,12 +101,17 @@ fun ProfileScreen(
                 }
                 is ProfileUiState.Error -> {
                     ErrorState(
+                        title = "Error Loading Profile",
                         message = profileState.message,
                         onRetry = { viewModel.refreshProfile() }
                     )
                 }
                 is ProfileUiState.Empty -> {
-                    EmptyState()
+                    EmptyState(
+                        icon = androidx.compose.material.icons.Icons.Default.Person,
+                        title = "Profile Not Found",
+                        message = "This profile doesn't exist or has been removed."
+                    )
                 }
             }
         }
@@ -126,7 +131,7 @@ fun ProfileScreen(
             onArchiveProfile = { 
                 profile?.let { viewModel.archiveProfile(true) }
             },
-            onQRCode = { viewModel.showQrCode() },
+            onQrCode = { viewModel.showQrCode() },
             onCopyLink = { /* TODO: Copy to clipboard */ },
             onSettings = onNavigateToSettings,
             onActivityLog = onNavigateToActivityLog,
@@ -172,8 +177,8 @@ fun ProfileScreen(
     if (state.showQrCode) {
         val profile = (state.profileState as? ProfileUiState.Success)?.profile
         QRCodeDialog(
+            profileUrl = "https://synapse.app/profile/${profile?.username ?: ""}",
             username = profile?.username ?: "",
-            userId = profile?.id ?: "",
             onDismiss = { viewModel.hideQrCode() }
         )
     }
@@ -208,8 +213,8 @@ private fun ProfileContent(
         if (state.viewAsMode != null) {
             item {
                 ViewAsBanner(
-                    viewAsMode = state.viewAsMode,
-                    userName = state.viewAsUserName,
+                    viewMode = state.viewAsMode,
+                    specificUserName = state.viewAsUserName,
                     onExitViewAs = { viewModel.exitViewAs() }
                 )
             }
@@ -257,10 +262,14 @@ private fun ProfileContent(
                 when (filter) {
                     ProfileContentFilter.PHOTOS -> {
                         if (state.photos.isEmpty()) {
-                            EmptyState()
+                            EmptyState(
+                                icon = androidx.compose.material.icons.Icons.Default.PhotoLibrary,
+                                title = "No Photos",
+                                message = "Photos you share will appear here."
+                            )
                         } else {
                             PhotoGrid(
-                                items = state.photos,
+                                items = state.photos.filterIsInstance<com.synapse.social.studioasinc.ui.profile.components.MediaItem>(),
                                 onItemClick = { /* TODO: Open photo viewer */ },
                                 isLoading = state.isLoadingMore
                             )
@@ -272,17 +281,20 @@ private fun ProfileContent(
                             UserDetailsSection(
                                 details = com.synapse.social.studioasinc.ui.profile.components.UserDetails(
                                     location = profile.location,
-                                    joinedDate = profile.joinedDate,
+                                    joinedDate = profile.joinedDate.toString(),
                                     relationshipStatus = profile.relationshipStatus,
                                     birthday = profile.birthday,
                                     work = profile.work,
                                     education = profile.education,
-                                    currentCity = profile.currentCity,
-                                    hometown = profile.hometown,
                                     website = profile.website,
                                     gender = profile.gender,
                                     pronouns = profile.pronouns,
-                                    linkedAccounts = profile.linkedAccounts
+                                    linkedAccounts = profile.linkedAccounts.map { 
+                                        com.synapse.social.studioasinc.ui.profile.components.LinkedAccount(
+                                            platform = it.platform,
+                                            username = it.username
+                                        )
+                                    }
                                 ),
                                 isOwnProfile = state.isOwnProfile,
                                 onCustomizeClick = { /* TODO: Navigate to edit details */ },
@@ -304,16 +316,20 @@ private fun ProfileContent(
 
                             // Posts Feed
                             if (state.posts.isEmpty()) {
-                                EmptyState()
+                                EmptyState(
+                                    icon = androidx.compose.material.icons.Icons.Default.Article,
+                                    title = "No Posts",
+                                    message = "Posts will appear here when shared."
+                                )
                             } else {
                                 PostFeed(
-                                    posts = state.posts,
+                                    posts = state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>(),
                                     likedPostIds = state.likedPostIds,
                                     savedPostIds = state.savedPostIds,
                                     currentUserId = state.currentUserId,
                                     isLoading = false,
                                     isRefreshing = false,
-                                    onRefresh = { viewModel.refreshProfile(userId) },
+                                    onRefresh = { viewModel.refreshProfile(profile.id) },
                                     onLoadMore = { viewModel.loadMoreContent(ProfileContentFilter.POSTS) },
                                     onUserClick = onNavigateToUserProfile,
                                     onLikeClick = { postId -> viewModel.toggleLike(postId) },
@@ -330,7 +346,11 @@ private fun ProfileContent(
                     }
                     ProfileContentFilter.REELS -> {
                         if (state.reels.isEmpty()) {
-                            EmptyState()
+                            EmptyState(
+                                icon = androidx.compose.material.icons.Icons.Default.VideoLibrary,
+                                title = "No Reels",
+                                message = "Reels you create will appear here."
+                            )
                         } else {
                             // TODO: Implement ReelsGrid component
                             Text("Reels coming soon")
