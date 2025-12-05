@@ -88,6 +88,9 @@ class ProfileActivity : BaseActivity() {
 
         // Setup UI listeners
         setupUIListeners(userId, currentUid)
+        
+        // Setup accessibility
+        setupAccessibility()
     }
 
     /**
@@ -283,6 +286,14 @@ class ProfileActivity : BaseActivity() {
                             .placeholder(R.drawable.user_null_cover_photo)
                             .into(binding.ProfilePageTabUserInfoCoverImage)
                     }
+                    
+                    // Update accessibility
+                    updateAccessibilityWithUserData(
+                        username = user.username ?: "Unknown",
+                        followersCount = user.followersCount,
+                        followingCount = user.followingCount,
+                        postsCount = 0 // Will be updated when posts load
+                    )
                 }
                 is ProfileViewModel.State.Error -> {
                     // Handle error state
@@ -593,6 +604,50 @@ class ProfileActivity : BaseActivity() {
         }
         
         startActivity(Intent.createChooser(shareIntent, "Share post via"))
+    }
+
+    /**
+     * Setup accessibility for profile screen elements
+     */
+    private fun setupAccessibility() {
+        // Back button
+        binding.ProfilePageTopBarBack.apply {
+            contentDescription = getString(R.string.accessibility_back_button)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Menu button
+        binding.ProfilePageTopBarMenu.apply {
+            contentDescription = getString(R.string.accessibility_profile_menu)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // QR code button
+        binding.myqrBtn.apply {
+            contentDescription = getString(R.string.accessibility_qr_code)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    }
+    
+    /**
+     * Update accessibility descriptions with user data
+     */
+    private fun updateAccessibilityWithUserData(username: String, followersCount: Int, followingCount: Int, postsCount: Int) {
+        // Profile image
+        binding.ProfilePageTabUserInfoProfileImage.apply {
+            contentDescription = "Profile picture of $username"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Cover image
+        binding.ProfilePageTabUserInfoCoverImage.apply {
+            contentDescription = "Cover photo of $username"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Stats
+        binding.ProfilePageTabUserInfoFollowsDetails.contentDescription = 
+            "$followersCount followers, following $followingCount users"
     }
 
     /**
