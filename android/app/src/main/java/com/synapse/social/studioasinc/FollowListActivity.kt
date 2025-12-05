@@ -78,7 +78,7 @@ class FollowListActivity : BaseActivity() {
             users = usersList,
             onUserClick = { user ->
                 // Handle user click - navigate to profile
-                val intent = android.content.Intent(this, ProfileActivity::class.java)
+                val intent = android.content.Intent(this, ProfileComposeActivity::class.java)
                 intent.putExtra("uid", user["uid"]?.toString())
                 startActivity(intent)
             },

@@ -120,7 +120,7 @@ class ProfileActivity : BaseActivity() {
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
             onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
-                val intent = Intent(this, ProfileActivity::class.java)
+                val intent = Intent(this, ProfileComposeActivity::class.java)
                 intent.putExtra("uid", uid)
                 startActivity(intent)
             }

@@ -114,7 +114,7 @@ class HomeActivity : BaseActivity() {
         navProfileIc.setOnClickListener {
             val currentUser = SupabaseClient.client.auth.currentUserOrNull()
             if (currentUser != null) {
-                val intent = Intent(applicationContext, ProfileActivity::class.java)
+                val intent = Intent(applicationContext, ProfileComposeActivity::class.java)
                 intent.putExtra("uid", currentUser.id)
                 startActivity(intent)
             }
