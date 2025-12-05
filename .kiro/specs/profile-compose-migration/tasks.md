@@ -1,5 +1,9 @@
 # Profile Compose Migration - Task Breakdown
 
+**Related Documents**:
+- [Requirements Specification](requirements.md) - Functional and non-functional requirements
+- [Design Specification](design.md) - UI/UX design and component structure
+
 ## Phase 1: Foundation & Architecture (Week 1)
 
 ### Task 1.1: Project Setup ✅
