@@ -3,6 +3,11 @@ package com.synapse.social.studioasinc.ui.profile
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
@@ -103,12 +108,12 @@ fun ProfileScreen(
                     ErrorState(
                         title = "Error Loading Profile",
                         message = profileState.message,
-                        onRetry = { viewModel.refreshProfile() }
+                        onRetry = { viewModel.refreshProfile(userId) }
                     )
                 }
                 is ProfileUiState.Empty -> {
                     EmptyState(
-                        icon = androidx.compose.material.icons.Icons.Default.Person,
+                        icon = Icons.Default.Person,
                         title = "Profile Not Found",
                         message = "This profile doesn't exist or has been removed."
                     )
@@ -263,7 +268,7 @@ private fun ProfileContent(
                     ProfileContentFilter.PHOTOS -> {
                         if (state.photos.isEmpty()) {
                             EmptyState(
-                                icon = androidx.compose.material.icons.Icons.Default.PhotoLibrary,
+                                icon = Icons.Default.PhotoLibrary,
                                 title = "No Photos",
                                 message = "Photos you share will appear here."
                             )
@@ -317,7 +322,7 @@ private fun ProfileContent(
                             // Posts Feed
                             if (state.posts.isEmpty()) {
                                 EmptyState(
-                                    icon = androidx.compose.material.icons.Icons.Default.Article,
+                                    icon = Icons.Default.Article,
                                     title = "No Posts",
                                     message = "Posts will appear here when shared."
                                 )
@@ -347,7 +352,7 @@ private fun ProfileContent(
                     ProfileContentFilter.REELS -> {
                         if (state.reels.isEmpty()) {
                             EmptyState(
-                                icon = androidx.compose.material.icons.Icons.Default.VideoLibrary,
+                                icon = Icons.Default.VideoLibrary,
                                 title = "No Reels",
                                 message = "Reels you create will appear here."
                             )
