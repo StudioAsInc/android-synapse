@@ -192,6 +192,7 @@ fun ProfileScreen(
         val profile = (state.profileState as? ProfileUiState.Success)?.profile
         profile?.let {
             ReportUserDialog(
+                username = it.username,
                 onDismiss = { viewModel.hideReportDialog() },
                 onReport = { reason -> viewModel.reportUser(it.id, reason) }
             )
