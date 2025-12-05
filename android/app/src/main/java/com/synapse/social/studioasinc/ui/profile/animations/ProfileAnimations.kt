@@ -59,6 +59,15 @@ fun <T> AnimatedContent(
     }
 }
 
+// Crossfade content animation (alias for AnimatedContent)
+@Composable
+fun <T> crossfadeContent(
+    targetState: T,
+    content: @Composable (T) -> Unit
+) {
+    AnimatedContent(targetState = targetState, content = content)
+}
+
 // Expand/collapse animation
 @Composable
 fun ExpandableContent(

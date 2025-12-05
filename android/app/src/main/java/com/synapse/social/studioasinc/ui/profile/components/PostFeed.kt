@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.ui.components.*
 
@@ -39,8 +38,8 @@ fun PostFeed(
     var showMenuSheet by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(isRefreshing),
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier
     ) {
