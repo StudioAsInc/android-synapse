@@ -54,44 +54,38 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val listState = rememberLazyListState()
-    val pullRefreshState = rememberPullToRefreshState()
+    var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId, currentUserId)
-    }
-
-    if (pullRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.refreshProfile(userId)
-            pullRefreshState.endRefresh()
-        }
     }
 
     Scaffold(
         topBar = {
             ProfileTopAppBar(
                 username = (state.profileState as? ProfileUiState.Success)?.profile?.username ?: "",
-                isScrolled = listState.firstVisibleItemIndex > 0,
+                scrollProgress = if (listState.firstVisibleItemIndex > 0) 1f else 0f,
                 onBackClick = onNavigateBack,
-                onMoreClick = { viewModel.toggleMoreMenu() },
-                scrollBehavior = scrollBehavior
+                onMoreClick = { viewModel.toggleMoreMenu() }
             )
         },
-        modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .semantics { isTraversalGroup = true }
+        modifier = Modifier.semantics { isTraversalGroup = true }
     ) { paddingValues ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                viewModel.refreshProfile(userId)
+                isRefreshing = false
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .nestedScroll(pullRefreshState.nestedScrollConnection)
         ) {
             when (val profileState = state.profileState) {
                 is ProfileUiState.Loading -> {
-                    ProfileSkeleton()
+                    Box(modifier = Modifier.fillMaxSize())
                 }
                 is ProfileUiState.Success -> {
                     ProfileContent(
@@ -112,18 +106,9 @@ fun ProfileScreen(
                     )
                 }
                 is ProfileUiState.Empty -> {
-                    EmptyState(
-                        message = "Profile not found",
-                        onAction = onNavigateBack,
-                        actionLabel = "Go Back"
-                    )
+                    EmptyState()
                 }
             }
-
-            PullToRefreshContainer(
-                state = pullRefreshState,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 
@@ -157,8 +142,11 @@ fun ProfileScreen(
 
     if (state.showShareSheet) {
         ShareProfileBottomSheet(
-            profileUrl = "https://synapse.app/profile/${state.currentUserId}",
-            onDismiss = { viewModel.hideShareSheet() }
+            onDismiss = { viewModel.hideShareSheet() },
+            onCopyLink = { /* TODO */ },
+            onShareToStory = { /* TODO */ },
+            onShareViaMessage = { /* TODO */ },
+            onShareExternal = { /* TODO */ }
         )
     }
 
@@ -182,8 +170,10 @@ fun ProfileScreen(
     }
 
     if (state.showQrCode) {
+        val profile = (state.profileState as? ProfileUiState.Success)?.profile
         QRCodeDialog(
-            profileUrl = "https://synapse.app/profile/${state.currentUserId}",
+            username = profile?.username ?: "",
+            userId = profile?.id ?: "",
             onDismiss = { viewModel.hideQrCode() }
         )
     }
@@ -267,18 +257,12 @@ private fun ProfileContent(
                 when (filter) {
                     ProfileContentFilter.PHOTOS -> {
                         if (state.photos.isEmpty()) {
-                            EmptyState(
-                                message = "No photos yet",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp)
-                            )
+                            EmptyState()
                         } else {
                             PhotoGrid(
-                                photos = state.photos,
-                                onPhotoClick = { /* TODO: Open photo viewer */ },
-                                onLoadMore = { viewModel.loadMoreContent(ProfileContentFilter.PHOTOS) },
-                                isLoadingMore = state.isLoadingMore
+                                items = state.photos,
+                                onItemClick = { /* TODO: Open photo viewer */ },
+                                isLoading = state.isLoadingMore
                             )
                         }
                     }
@@ -286,28 +270,33 @@ private fun ProfileContent(
                         Column {
                             // User Details Section
                             UserDetailsSection(
-                                location = profile.location,
-                                joinedDate = profile.joinedDate,
-                                relationshipStatus = profile.relationshipStatus,
-                                birthday = profile.birthday,
-                                work = profile.work,
-                                education = profile.education,
-                                currentCity = profile.currentCity,
-                                hometown = profile.hometown,
-                                website = profile.website,
-                                gender = profile.gender,
-                                pronouns = profile.pronouns,
-                                linkedAccounts = profile.linkedAccounts,
+                                details = com.synapse.social.studioasinc.ui.profile.components.UserDetails(
+                                    location = profile.location,
+                                    joinedDate = profile.joinedDate,
+                                    relationshipStatus = profile.relationshipStatus,
+                                    birthday = profile.birthday,
+                                    work = profile.work,
+                                    education = profile.education,
+                                    currentCity = profile.currentCity,
+                                    hometown = profile.hometown,
+                                    website = profile.website,
+                                    gender = profile.gender,
+                                    pronouns = profile.pronouns,
+                                    linkedAccounts = profile.linkedAccounts
+                                ),
                                 isOwnProfile = state.isOwnProfile,
-                                onCustomizeClick = { /* TODO: Navigate to edit details */ }
+                                onCustomizeClick = { /* TODO: Navigate to edit details */ },
+                                onWebsiteClick = { /* TODO: Open website */ }
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Following Section
                             FollowingSection(
-                                following = emptyList(), // TODO: Load following
-                                onUserClick = onNavigateToUserProfile,
+                                users = emptyList(),
+                                selectedFilter = com.synapse.social.studioasinc.ui.profile.components.FollowingFilter.ALL,
+                                onFilterSelected = { },
+                                onUserClick = { user -> onNavigateToUserProfile(user.id) },
                                 onSeeAllClick = onNavigateToFollowing
                             )
 
@@ -315,38 +304,33 @@ private fun ProfileContent(
 
                             // Posts Feed
                             if (state.posts.isEmpty()) {
-                                EmptyState(
-                                    message = if (state.isOwnProfile) "Share your first post" else "No posts yet",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp)
-                                )
+                                EmptyState()
                             } else {
                                 PostFeed(
                                     posts = state.posts,
                                     likedPostIds = state.likedPostIds,
                                     savedPostIds = state.savedPostIds,
                                     currentUserId = state.currentUserId,
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    onRefresh = { viewModel.refreshProfile(userId) },
+                                    onLoadMore = { viewModel.loadMoreContent(ProfileContentFilter.POSTS) },
+                                    onUserClick = onNavigateToUserProfile,
                                     onLikeClick = { postId -> viewModel.toggleLike(postId) },
                                     onCommentClick = { /* TODO: Navigate to comments */ },
                                     onShareClick = { /* TODO: Share post */ },
                                     onSaveClick = { postId -> viewModel.toggleSave(postId) },
-                                    onDeleteClick = { postId -> viewModel.deletePost(postId) },
-                                    onReportClick = { postId -> viewModel.reportPost(postId, "Inappropriate content") },
-                                    onLoadMore = { viewModel.loadMoreContent(ProfileContentFilter.POSTS) },
-                                    isLoadingMore = state.isLoadingMore
+                                    onDeletePost = { postId -> viewModel.deletePost(postId) },
+                                    onReportPost = { postId, reason -> viewModel.reportPost(postId, reason) },
+                                    onEditPost = { /* TODO: Edit post */ },
+                                    onMediaClick = { /* TODO: Open media */ }
                                 )
                             }
                         }
                     }
                     ProfileContentFilter.REELS -> {
                         if (state.reels.isEmpty()) {
-                            EmptyState(
-                                message = "No reels yet",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp)
-                            )
+                            EmptyState()
                         } else {
                             // TODO: Implement ReelsGrid component
                             Text("Reels coming soon")

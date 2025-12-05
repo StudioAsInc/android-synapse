@@ -921,5 +921,6 @@ Please explain the following message from %3$s in detail, considering the contex
     <string name="profile_empty_photos">No photos yet</string>
     <string name="profile_empty_posts">No posts yet</string>
     <string name="profile_empty_reels">No reels yet</string>
+    <string name="profile_image">Profile image</string>
 
 </resources>

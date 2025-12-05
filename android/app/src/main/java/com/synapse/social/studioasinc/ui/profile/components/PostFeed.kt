@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.synapse.social.studioasinc.model.Post
 import com.synapse.social.studioasinc.ui.components.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostFeed(
     posts: List<Post>,
