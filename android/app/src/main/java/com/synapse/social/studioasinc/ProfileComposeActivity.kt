@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.synapse.social.studioasinc.SupabaseClient
 import com.synapse.social.studioasinc.ui.profile.ProfileScreen
 import com.synapse.social.studioasinc.ui.profile.ProfileViewModel
+import com.synapse.social.studioasinc.ui.profile.ProfileViewModelFactory
 import com.synapse.social.studioasinc.ui.theme.SynapseTheme
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.runBlocking
@@ -29,7 +30,7 @@ import kotlinx.coroutines.runBlocking
  */
 class ProfileComposeActivity : ComponentActivity() {
     
-    private val viewModel: ProfileViewModel by viewModels()
+    private val viewModel: ProfileViewModel by viewModels { ProfileViewModelFactory(this) }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
