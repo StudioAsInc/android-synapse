@@ -15,19 +15,71 @@ import kotlinx.serialization.json.*
 
 /**
  * Implementation of ProfileRepository with Supabase backend integration.
+ * 
+ * Features:
+ * - Request caching with 1-minute TTL
+ * - Automatic retry with exponential backoff
+ * - RLS policy compliance
+ * 
+ * Uses SupabaseClient singleton for all database operations.
  */
 class ProfileRepositoryImpl : ProfileRepository {
     private val client = SupabaseClient.client
 
-    private fun constructMediaUrl(storagePath: String): String {
-        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
-        return "${SupabaseClient.getUrl()}/storage/v1/object/public/post-media/$storagePath"
+    private companion object {
+        // JSON field keys
+        const val KEY_UID = "uid"
+        const val KEY_USERNAME = "username"
+        const val KEY_DISPLAY_NAME = "display_name"
+        const val KEY_BIO = "bio"
+        const val KEY_AVATAR = "avatar"
+        const val KEY_COVER_IMAGE = "cover_image"
+        const val KEY_VERIFY = "verify"
+        const val KEY_IS_PRIVATE = "is_private"
+        const val KEY_POSTS_COUNT = "posts_count"
+        const val KEY_FOLLOWERS_COUNT = "followers_count"
+        const val KEY_FOLLOWING_COUNT = "following_count"
+        const val KEY_LOCATION = "location"
+        const val KEY_WEBSITE = "website"
+        const val KEY_GENDER = "gender"
+        const val KEY_PRONOUNS = "pronouns"
+        const val KEY_ID = "id"
+        const val KEY_AUTHOR_UID = "author_uid"
+        const val KEY_POST_TEXT = "post_text"
+        const val KEY_POST_IMAGE = "post_image"
+        const val KEY_POST_TYPE = "post_type"
+        const val KEY_TIMESTAMP = "timestamp"
+        const val KEY_LIKES_COUNT = "likes_count"
+        const val KEY_COMMENTS_COUNT = "comments_count"
+        const val KEY_VIEWS_COUNT = "views_count"
+        const val KEY_HAS_POLL = "has_poll"
+        const val KEY_POLL_QUESTION = "poll_question"
+        const val KEY_POLL_OPTIONS = "poll_options"
+        const val KEY_MEDIA_ITEMS = "media_items"
+        const val KEY_USERS = "users"
+        const val KEY_URL = "url"
+        const val KEY_TYPE = "type"
+        const val KEY_THUMBNAIL_URL = "thumbnailUrl"
+        const val KEY_TEXT = "text"
+        const val KEY_VOTES = "votes"
+        
+        // Storage buckets
+        const val BUCKET_POST_MEDIA = "post-media"
+        const val BUCKET_USER_AVATARS = "user-avatars"
+        
+        // Media types
+        const val MEDIA_TYPE_VIDEO = "VIDEO"
+        const val MEDIA_TYPE_IMAGE = "IMAGE"
     }
 
-    private fun constructAvatarUrl(storagePath: String): String {
+    private fun constructStorageUrl(storagePath: String, bucket: String): String {
         if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
-        return "${SupabaseClient.getUrl()}/storage/v1/object/public/user-avatars/$storagePath"
+        return "${SupabaseClient.getUrl()}/storage/v1/object/public/$bucket/$storagePath"
     }
+
+    private fun constructMediaUrl(storagePath: String): String = constructStorageUrl(storagePath, BUCKET_POST_MEDIA)
+    
+    private fun constructAvatarUrl(storagePath: String): String = constructStorageUrl(storagePath, BUCKET_USER_AVATARS)
 
     override fun getProfile(userId: String): Flow<Result<UserProfile>> = flow {
         val cacheKey = "profile_$userId"
@@ -37,9 +89,11 @@ class ProfileRepositoryImpl : ProfileRepository {
         }
         
         try {
-            val response = client.from("users").select() { 
-                filter { eq("uid", userId) } 
-            }.decodeSingleOrNull<JsonObject>()
+            val response = NetworkOptimizer.withRetry {
+                client.from("users").select() { 
+                    filter { eq(KEY_UID, userId) } 
+                }.decodeSingleOrNull<JsonObject>()
+            }
             
             if (response == null) {
                 emit(Result.failure(Exception("Profile not found")))
@@ -47,21 +101,21 @@ class ProfileRepositoryImpl : ProfileRepository {
             }
             
             val profile = UserProfile(
-                id = response["uid"]?.jsonPrimitive?.contentOrNull ?: userId,
-                username = response["username"]?.jsonPrimitive?.contentOrNull ?: "",
-                name = response["display_name"]?.jsonPrimitive?.contentOrNull,
-                bio = response["bio"]?.jsonPrimitive?.contentOrNull,
-                profileImageUrl = response["avatar"]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
-                coverImageUrl = response["cover_image"]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
-                isVerified = response["verify"]?.jsonPrimitive?.booleanOrNull ?: false,
-                isPrivate = response["is_private"]?.jsonPrimitive?.booleanOrNull ?: false,
-                postCount = response["posts_count"]?.jsonPrimitive?.intOrNull ?: 0,
-                followerCount = response["followers_count"]?.jsonPrimitive?.intOrNull ?: 0,
-                followingCount = response["following_count"]?.jsonPrimitive?.intOrNull ?: 0,
-                location = response["location"]?.jsonPrimitive?.contentOrNull,
-                website = response["website"]?.jsonPrimitive?.contentOrNull,
-                gender = response["gender"]?.jsonPrimitive?.contentOrNull,
-                pronouns = response["pronouns"]?.jsonPrimitive?.contentOrNull
+                id = response[KEY_UID]?.jsonPrimitive?.contentOrNull ?: userId,
+                username = response[KEY_USERNAME]?.jsonPrimitive?.contentOrNull ?: "",
+                name = response[KEY_DISPLAY_NAME]?.jsonPrimitive?.contentOrNull,
+                bio = response[KEY_BIO]?.jsonPrimitive?.contentOrNull,
+                profileImageUrl = response[KEY_AVATAR]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
+                coverImageUrl = response[KEY_COVER_IMAGE]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
+                isVerified = response[KEY_VERIFY]?.jsonPrimitive?.booleanOrNull ?: false,
+                isPrivate = response[KEY_IS_PRIVATE]?.jsonPrimitive?.booleanOrNull ?: false,
+                postCount = response[KEY_POSTS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+                followerCount = response[KEY_FOLLOWERS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+                followingCount = response[KEY_FOLLOWING_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+                location = response[KEY_LOCATION]?.jsonPrimitive?.contentOrNull,
+                website = response[KEY_WEBSITE]?.jsonPrimitive?.contentOrNull,
+                gender = response[KEY_GENDER]?.jsonPrimitive?.contentOrNull,
+                pronouns = response[KEY_PRONOUNS]?.jsonPrimitive?.contentOrNull
             )
             NetworkOptimizer.cache(cacheKey, profile)
             emit(Result.success(profile))
@@ -115,9 +169,9 @@ class ProfileRepositoryImpl : ProfileRepository {
 
     override suspend fun getProfilePosts(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
         val response = client.from("posts").select(
-            columns = Columns.raw("*, users!posts_author_uid_fkey(uid, username, avatar, verify)")
+            columns = Columns.raw("*, users!posts_author_uid_fkey($KEY_UID, $KEY_USERNAME, $KEY_AVATAR, $KEY_VERIFY)")
         ) { 
-            filter { eq("author_uid", userId) }
+            filter { eq(KEY_AUTHOR_UID, userId) }
             limit(limit.toLong())
             range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<JsonObject>()
@@ -128,61 +182,40 @@ class ProfileRepositoryImpl : ProfileRepository {
         Result.failure(e)
     }
 
-    override suspend fun getProfilePhotos(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
+    private suspend fun getMediaItemsByType(userId: String, limit: Int, offset: Int, isVideo: Boolean): Result<List<com.synapse.social.studioasinc.ui.profile.components.MediaItem>> = try {
         val response = client.from("posts").select(
-            columns = Columns.raw("id, media_items")
+            columns = Columns.raw("$KEY_ID, $KEY_MEDIA_ITEMS")
         ) { 
-            filter { eq("author_uid", userId) }
+            filter { eq(KEY_AUTHOR_UID, userId) }
             limit(limit.toLong())
             range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<JsonObject>()
         
-        val photos = response.flatMap { data ->
-            val postId = data["id"]?.jsonPrimitive?.contentOrNull ?: return@flatMap emptyList()
-            data["media_items"]?.takeIf { it !is JsonNull }?.jsonArray?.mapNotNull { item ->
+        val mediaItems = response.flatMap { data ->
+            val postId = data[KEY_ID]?.jsonPrimitive?.contentOrNull ?: return@flatMap emptyList()
+            data[KEY_MEDIA_ITEMS]?.takeIf { it !is JsonNull }?.jsonArray?.mapNotNull { item ->
                 val mediaMap = item.jsonObject
-                val url = mediaMap["url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-                val typeStr = mediaMap["type"]?.jsonPrimitive?.contentOrNull ?: "IMAGE"
-                if (typeStr.equals("VIDEO", ignoreCase = true)) return@mapNotNull null
+                val url = mediaMap[KEY_URL]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val typeStr = mediaMap[KEY_TYPE]?.jsonPrimitive?.contentOrNull ?: MEDIA_TYPE_IMAGE
+                val isVideoType = typeStr.equals(MEDIA_TYPE_VIDEO, ignoreCase = true)
+                if (isVideoType != isVideo) return@mapNotNull null
                 com.synapse.social.studioasinc.ui.profile.components.MediaItem(
-                    id = mediaMap["id"]?.jsonPrimitive?.contentOrNull ?: postId,
+                    id = mediaMap[KEY_ID]?.jsonPrimitive?.contentOrNull ?: postId,
                     url = constructMediaUrl(url),
-                    isVideo = false
+                    isVideo = isVideo
                 )
             } ?: emptyList()
         }
-        Result.success(photos)
+        Result.success(mediaItems)
     } catch (e: Exception) {
         Result.failure(e)
     }
 
-    override suspend fun getProfileReels(userId: String, limit: Int, offset: Int): Result<List<Any>> = try {
-        val response = client.from("posts").select(
-            columns = Columns.raw("id, media_items")
-        ) { 
-            filter { eq("author_uid", userId) }
-            limit(limit.toLong())
-            range(offset.toLong(), (offset + limit - 1).toLong())
-        }.decodeList<JsonObject>()
-        
-        val reels = response.flatMap { data ->
-            val postId = data["id"]?.jsonPrimitive?.contentOrNull ?: return@flatMap emptyList()
-            data["media_items"]?.takeIf { it !is JsonNull }?.jsonArray?.mapNotNull { item ->
-                val mediaMap = item.jsonObject
-                val url = mediaMap["url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-                val typeStr = mediaMap["type"]?.jsonPrimitive?.contentOrNull ?: "IMAGE"
-                if (!typeStr.equals("VIDEO", ignoreCase = true)) return@mapNotNull null
-                com.synapse.social.studioasinc.ui.profile.components.MediaItem(
-                    id = mediaMap["id"]?.jsonPrimitive?.contentOrNull ?: postId,
-                    url = constructMediaUrl(url),
-                    isVideo = true
-                )
-            } ?: emptyList()
-        }
-        Result.success(reels)
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
+    override suspend fun getProfilePhotos(userId: String, limit: Int, offset: Int): Result<List<Any>> = 
+        getMediaItemsByType(userId, limit, offset, isVideo = false)
+
+    override suspend fun getProfileReels(userId: String, limit: Int, offset: Int): Result<List<Any>> = 
+        getMediaItemsByType(userId, limit, offset, isVideo = true)
 
     override suspend fun isFollowing(userId: String, targetUserId: String): Result<Boolean> = try {
         val result = client.from("followers").select() { 
@@ -195,39 +228,39 @@ class ProfileRepositoryImpl : ProfileRepository {
 
     private fun parsePost(data: JsonObject): Post? {
         val post = Post(
-            id = data["id"]?.jsonPrimitive?.contentOrNull ?: return null,
-            authorUid = data["author_uid"]?.jsonPrimitive?.contentOrNull ?: "",
-            postText = data["post_text"]?.jsonPrimitive?.contentOrNull,
-            postImage = data["post_image"]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
-            postType = data["post_type"]?.jsonPrimitive?.contentOrNull,
-            timestamp = data["timestamp"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
-            likesCount = data["likes_count"]?.jsonPrimitive?.intOrNull ?: 0,
-            commentsCount = data["comments_count"]?.jsonPrimitive?.intOrNull ?: 0,
-            viewsCount = data["views_count"]?.jsonPrimitive?.intOrNull ?: 0,
-            hasPoll = data["has_poll"]?.jsonPrimitive?.booleanOrNull,
-            pollQuestion = data["poll_question"]?.jsonPrimitive?.contentOrNull,
-            pollOptions = data["poll_options"]?.jsonArray?.mapNotNull {
+            id = data[KEY_ID]?.jsonPrimitive?.contentOrNull ?: return null,
+            authorUid = data[KEY_AUTHOR_UID]?.jsonPrimitive?.contentOrNull ?: "",
+            postText = data[KEY_POST_TEXT]?.jsonPrimitive?.contentOrNull,
+            postImage = data[KEY_POST_IMAGE]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
+            postType = data[KEY_POST_TYPE]?.jsonPrimitive?.contentOrNull,
+            timestamp = data[KEY_TIMESTAMP]?.jsonPrimitive?.longOrNull ?: 0L,
+            likesCount = data[KEY_LIKES_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+            commentsCount = data[KEY_COMMENTS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+            viewsCount = data[KEY_VIEWS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
+            hasPoll = data[KEY_HAS_POLL]?.jsonPrimitive?.booleanOrNull,
+            pollQuestion = data[KEY_POLL_QUESTION]?.jsonPrimitive?.contentOrNull,
+            pollOptions = data[KEY_POLL_OPTIONS]?.jsonArray?.mapNotNull {
                 val obj = it.jsonObject
-                val text = obj["text"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-                PollOption(text, obj["votes"]?.jsonPrimitive?.intOrNull ?: 0)
+                val text = obj[KEY_TEXT]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                PollOption(text, obj[KEY_VOTES]?.jsonPrimitive?.intOrNull ?: 0)
             }
         )
         
-        data["users"]?.jsonObject?.let { userData ->
-            post.username = userData["username"]?.jsonPrimitive?.contentOrNull
-            post.avatarUrl = userData["avatar"]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
-            post.isVerified = userData["verify"]?.jsonPrimitive?.booleanOrNull ?: false
+        data[KEY_USERS]?.jsonObject?.let { userData ->
+            post.username = userData[KEY_USERNAME]?.jsonPrimitive?.contentOrNull
+            post.avatarUrl = userData[KEY_AVATAR]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
+            post.isVerified = userData[KEY_VERIFY]?.jsonPrimitive?.booleanOrNull ?: false
         }
         
-        data["media_items"]?.takeIf { it !is JsonNull }?.jsonArray?.let { mediaData ->
+        data[KEY_MEDIA_ITEMS]?.takeIf { it !is JsonNull }?.jsonArray?.let { mediaData ->
             post.mediaItems = mediaData.mapNotNull { item ->
                 val mediaMap = item.jsonObject
-                val url = mediaMap["url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val url = mediaMap[KEY_URL]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
                 MediaItem(
-                    id = mediaMap["id"]?.jsonPrimitive?.contentOrNull ?: "",
+                    id = mediaMap[KEY_ID]?.jsonPrimitive?.contentOrNull ?: "",
                     url = constructMediaUrl(url),
-                    type = if (mediaMap["type"]?.jsonPrimitive?.contentOrNull.equals("VIDEO", true)) MediaType.VIDEO else MediaType.IMAGE,
-                    thumbnailUrl = mediaMap["thumbnailUrl"]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) }
+                    type = if (mediaMap[KEY_TYPE]?.jsonPrimitive?.contentOrNull.equals(MEDIA_TYPE_VIDEO, true)) MediaType.VIDEO else MediaType.IMAGE,
+                    thumbnailUrl = mediaMap[KEY_THUMBNAIL_URL]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) }
                 )
             }.toMutableList()
         }
