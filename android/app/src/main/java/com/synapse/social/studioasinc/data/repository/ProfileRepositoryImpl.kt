@@ -119,7 +119,7 @@ class ProfileRepositoryImpl : ProfileRepository {
             val postCount = try {
                 client.from("posts").select(columns = Columns.raw("count")) {
                     filter { eq(KEY_AUTHOR_UID, userId) }
-                    count()
+                    count(io.github.jan.supabase.postgrest.query.Count.EXACT)
                 }.countOrNull() ?: 0
             } catch (e: Exception) {
                 0

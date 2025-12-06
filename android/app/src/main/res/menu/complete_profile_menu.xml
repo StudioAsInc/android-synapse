@@ -1,8 +1,0 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/cancel"
-        android:title="@string/cancel"
-        android:icon="@drawable/ic_delete_48px"
-        app:showAsAction="ifRoom" />
-</menu>

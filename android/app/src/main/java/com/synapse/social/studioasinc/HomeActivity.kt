@@ -38,9 +38,26 @@ class HomeActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Apply theme from settings
+        applyThemeFromSettings()
+        
         setContentView(R.layout.activity_home)
         initialize()
         initializeLogic()
+    }
+    
+    private fun applyThemeFromSettings() {
+        val settingsRepository = com.synapse.social.studioasinc.data.repository.SettingsRepositoryImpl.getInstance(this)
+        lifecycleScope.launch {
+            try {
+                settingsRepository.appearanceSettings.collect { settings ->
+                    com.synapse.social.studioasinc.ui.theme.ThemeManager.applyThemeMode(settings.themeMode)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeActivity", "Failed to apply theme from settings", e)
+            }
+        }
     }
 
     override fun onStart() {

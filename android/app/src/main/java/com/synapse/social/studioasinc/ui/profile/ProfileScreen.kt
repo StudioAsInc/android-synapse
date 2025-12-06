@@ -353,9 +353,7 @@ private fun ProfileContent(
 
         // Posts items - added directly to parent LazyColumn
         if (state.contentFilter == ProfileContentFilter.POSTS && state.posts.isNotEmpty()) {
-            val posts = remember(state.posts) { 
-                state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>()
-            }
+            val posts = state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>()
             items(posts, key = { it.id }) { post ->
                 PostCard(
                     post = post,

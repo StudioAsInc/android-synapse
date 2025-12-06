@@ -616,6 +616,25 @@ class CreatePostActivity : BaseActivity() {
 
     private fun clearDraft() {
         prefs.edit().remove(DRAFT_KEY).apply()
+        binding.postContentInput.setText("")
+        selectedMedia.clear()
+        mediaAdapter.notifyDataSetChanged()
+        pollData = null
+        youtubeUrl = null
+        locationData = null
+        mentions.clear()
+        hashtags.clear()
+        postVisibility = "public"
+        hideViewsCount = false
+        hideLikeCount = false
+        hideCommentsCount = false
+        disableComments = false
+        updateMediaPreview()
+        updatePostButtonState()
+        updatePrivacyChip()
+        binding.pollPreviewCard.isVisible = false
+        binding.youtubePreviewCard.isVisible = false
+        binding.locationPreviewCard.isVisible = false
     }
 
     private fun confirmExit() {
