@@ -277,20 +277,18 @@ class ProfileActivity : BaseActivity() {
                     binding.ProfilePageTabUserInfoFollowingCount.text = "${user.followingCount} following"
                     
                     // Load profile image if available
-                    user.profileImageUrl?.let { imageUrl ->
-                        Glide.with(this)
-                            .load(imageUrl)
-                            .placeholder(R.drawable.ph_imgbluredsqure)
-                            .into(binding.ProfilePageTabUserInfoProfileImage)
-                    }
+                    Glide.with(this)
+                        .load(user.profileImageUrl)
+                        .placeholder(R.drawable.ph_imgbluredsqure)
+                        .error(R.drawable.ph_imgbluredsqure)
+                        .into(binding.ProfilePageTabUserInfoProfileImage)
 
                     // Load cover image if available
-                    user.profileCoverImage?.let { coverUrl ->
-                        Glide.with(this)
-                            .load(coverUrl)
-                            .placeholder(R.drawable.user_null_cover_photo)
-                            .into(binding.ProfilePageTabUserInfoCoverImage)
-                    }
+                    Glide.with(this)
+                        .load(user.profileCoverImage)
+                        .placeholder(R.drawable.user_null_cover_photo)
+                        .error(R.drawable.user_null_cover_photo)
+                        .into(binding.ProfilePageTabUserInfoCoverImage)
                     
                     // Update accessibility
                     updateAccessibilityWithUserData(
