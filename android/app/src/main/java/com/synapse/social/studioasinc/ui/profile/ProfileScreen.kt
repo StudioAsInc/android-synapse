@@ -276,8 +276,11 @@ private fun ProfileContent(
                                 message = "Photos you share will appear here."
                             )
                         } else {
+                            val photos = remember(state.photos) { 
+                                state.photos.filterIsInstance<com.synapse.social.studioasinc.ui.profile.components.MediaItem>()
+                            }
                             PhotoGrid(
-                                items = state.photos.filterIsInstance<com.synapse.social.studioasinc.ui.profile.components.MediaItem>(),
+                                items = photos,
                                 onItemClick = { /* TODO: Open photo viewer */ },
                                 isLoading = state.isLoadingMore
                             )
@@ -350,7 +353,9 @@ private fun ProfileContent(
 
         // Posts items - added directly to parent LazyColumn
         if (state.contentFilter == ProfileContentFilter.POSTS && state.posts.isNotEmpty()) {
-            val posts = state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>()
+            val posts = remember(state.posts) { 
+                state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>()
+            }
             items(posts, key = { it.id }) { post ->
                 PostCard(
                     post = post,

@@ -59,7 +59,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         const val KEY_USERS = "users"
         const val KEY_URL = "url"
         const val KEY_TYPE = "type"
-        const val KEY_THUMBNAIL_URL = "thumbnailUrl"
+        const val KEY_THUMBNAIL_URL = "thumbnailUrl" // Backend uses camelCase for this field
         const val KEY_TEXT = "text"
         const val KEY_VOTES = "votes"
         
@@ -81,6 +81,21 @@ class ProfileRepositoryImpl : ProfileRepository {
     
     private fun constructAvatarUrl(storagePath: String): String = constructStorageUrl(storagePath, BUCKET_USER_AVATARS)
 
+    private fun JsonObject.getString(key: String, default: String = ""): String = 
+        this[key]?.jsonPrimitive?.contentOrNull ?: default
+
+    private fun JsonObject.getNullableString(key: String): String? = 
+        this[key]?.jsonPrimitive?.contentOrNull
+
+    private fun JsonObject.getBoolean(key: String, default: Boolean = false): Boolean = 
+        this[key]?.jsonPrimitive?.booleanOrNull ?: default
+
+    private fun JsonObject.getInt(key: String, default: Int = 0): Int = 
+        this[key]?.jsonPrimitive?.intOrNull ?: default
+
+    private fun JsonObject.getLong(key: String, default: Long = 0L): Long = 
+        this[key]?.jsonPrimitive?.longOrNull ?: default
+
     override fun getProfile(userId: String): Flow<Result<UserProfile>> = flow {
         val cacheKey = "profile_$userId"
         NetworkOptimizer.getCached<UserProfile>(cacheKey)?.let {
@@ -100,22 +115,32 @@ class ProfileRepositoryImpl : ProfileRepository {
                 return@flow
             }
             
+            // Query actual post count from posts table
+            val postCount = try {
+                client.from("posts").select(columns = Columns.raw("count")) {
+                    filter { eq(KEY_AUTHOR_UID, userId) }
+                    count()
+                }.countOrNull() ?: 0
+            } catch (e: Exception) {
+                0
+            }
+            
             val profile = UserProfile(
-                id = response[KEY_UID]?.jsonPrimitive?.contentOrNull ?: userId,
-                username = response[KEY_USERNAME]?.jsonPrimitive?.contentOrNull ?: "",
-                name = response[KEY_DISPLAY_NAME]?.jsonPrimitive?.contentOrNull,
-                bio = response[KEY_BIO]?.jsonPrimitive?.contentOrNull,
-                profileImageUrl = response[KEY_AVATAR]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) },
-                coverImageUrl = response[KEY_COVER_IMAGE]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
-                isVerified = response[KEY_VERIFY]?.jsonPrimitive?.booleanOrNull ?: false,
-                isPrivate = response[KEY_IS_PRIVATE]?.jsonPrimitive?.booleanOrNull ?: false,
-                postCount = response[KEY_POSTS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-                followerCount = response[KEY_FOLLOWERS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-                followingCount = response[KEY_FOLLOWING_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-                location = response[KEY_LOCATION]?.jsonPrimitive?.contentOrNull,
-                website = response[KEY_WEBSITE]?.jsonPrimitive?.contentOrNull,
-                gender = response[KEY_GENDER]?.jsonPrimitive?.contentOrNull,
-                pronouns = response[KEY_PRONOUNS]?.jsonPrimitive?.contentOrNull
+                id = response.getString(KEY_UID, userId),
+                username = response.getString(KEY_USERNAME),
+                name = response.getNullableString(KEY_DISPLAY_NAME),
+                bio = response.getNullableString(KEY_BIO),
+                profileImageUrl = response.getNullableString(KEY_AVATAR)?.let { constructAvatarUrl(it) },
+                coverImageUrl = response.getNullableString(KEY_COVER_IMAGE)?.let { constructMediaUrl(it) },
+                isVerified = response.getBoolean(KEY_VERIFY),
+                isPrivate = response.getBoolean(KEY_IS_PRIVATE),
+                postCount = postCount.toInt(),
+                followerCount = response.getInt(KEY_FOLLOWERS_COUNT),
+                followingCount = response.getInt(KEY_FOLLOWING_COUNT),
+                location = response.getNullableString(KEY_LOCATION),
+                website = response.getNullableString(KEY_WEBSITE),
+                gender = response.getNullableString(KEY_GENDER),
+                pronouns = response.getNullableString(KEY_PRONOUNS)
             )
             NetworkOptimizer.cache(cacheKey, profile)
             emit(Result.success(profile))
@@ -228,39 +253,39 @@ class ProfileRepositoryImpl : ProfileRepository {
 
     private fun parsePost(data: JsonObject): Post? {
         val post = Post(
-            id = data[KEY_ID]?.jsonPrimitive?.contentOrNull ?: return null,
-            authorUid = data[KEY_AUTHOR_UID]?.jsonPrimitive?.contentOrNull ?: "",
-            postText = data[KEY_POST_TEXT]?.jsonPrimitive?.contentOrNull,
-            postImage = data[KEY_POST_IMAGE]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) },
-            postType = data[KEY_POST_TYPE]?.jsonPrimitive?.contentOrNull,
-            timestamp = data[KEY_TIMESTAMP]?.jsonPrimitive?.longOrNull ?: 0L,
-            likesCount = data[KEY_LIKES_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-            commentsCount = data[KEY_COMMENTS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-            viewsCount = data[KEY_VIEWS_COUNT]?.jsonPrimitive?.intOrNull ?: 0,
-            hasPoll = data[KEY_HAS_POLL]?.jsonPrimitive?.booleanOrNull,
-            pollQuestion = data[KEY_POLL_QUESTION]?.jsonPrimitive?.contentOrNull,
+            id = data.getNullableString(KEY_ID) ?: return null,
+            authorUid = data.getString(KEY_AUTHOR_UID),
+            postText = data.getNullableString(KEY_POST_TEXT),
+            postImage = data.getNullableString(KEY_POST_IMAGE)?.let { constructMediaUrl(it) },
+            postType = data.getNullableString(KEY_POST_TYPE),
+            timestamp = data.getLong(KEY_TIMESTAMP),
+            likesCount = data.getInt(KEY_LIKES_COUNT),
+            commentsCount = data.getInt(KEY_COMMENTS_COUNT),
+            viewsCount = data.getInt(KEY_VIEWS_COUNT),
+            hasPoll = data.getBoolean(KEY_HAS_POLL),
+            pollQuestion = data.getNullableString(KEY_POLL_QUESTION),
             pollOptions = data[KEY_POLL_OPTIONS]?.jsonArray?.mapNotNull {
                 val obj = it.jsonObject
-                val text = obj[KEY_TEXT]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-                PollOption(text, obj[KEY_VOTES]?.jsonPrimitive?.intOrNull ?: 0)
+                val text = obj.getNullableString(KEY_TEXT) ?: return@mapNotNull null
+                PollOption(text, obj.getInt(KEY_VOTES))
             }
         )
         
         data[KEY_USERS]?.jsonObject?.let { userData ->
-            post.username = userData[KEY_USERNAME]?.jsonPrimitive?.contentOrNull
-            post.avatarUrl = userData[KEY_AVATAR]?.jsonPrimitive?.contentOrNull?.let { constructAvatarUrl(it) }
-            post.isVerified = userData[KEY_VERIFY]?.jsonPrimitive?.booleanOrNull ?: false
+            post.username = userData.getNullableString(KEY_USERNAME)
+            post.avatarUrl = userData.getNullableString(KEY_AVATAR)?.let { constructAvatarUrl(it) }
+            post.isVerified = userData.getBoolean(KEY_VERIFY)
         }
         
         data[KEY_MEDIA_ITEMS]?.takeIf { it !is JsonNull }?.jsonArray?.let { mediaData ->
             post.mediaItems = mediaData.mapNotNull { item ->
                 val mediaMap = item.jsonObject
-                val url = mediaMap[KEY_URL]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val url = mediaMap.getNullableString(KEY_URL) ?: return@mapNotNull null
                 MediaItem(
-                    id = mediaMap[KEY_ID]?.jsonPrimitive?.contentOrNull ?: "",
+                    id = mediaMap.getString(KEY_ID),
                     url = constructMediaUrl(url),
-                    type = if (mediaMap[KEY_TYPE]?.jsonPrimitive?.contentOrNull.equals(MEDIA_TYPE_VIDEO, true)) MediaType.VIDEO else MediaType.IMAGE,
-                    thumbnailUrl = mediaMap[KEY_THUMBNAIL_URL]?.jsonPrimitive?.contentOrNull?.let { constructMediaUrl(it) }
+                    type = if (mediaMap.getNullableString(KEY_TYPE).equals(MEDIA_TYPE_VIDEO, true)) MediaType.VIDEO else MediaType.IMAGE,
+                    thumbnailUrl = mediaMap.getNullableString(KEY_THUMBNAIL_URL)?.let { constructMediaUrl(it) }
                 )
             }.toMutableList()
         }
