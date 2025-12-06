@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.data.repository
 
 import android.util.Log
 import com.synapse.social.studioasinc.SupabaseClient
+import com.synapse.social.studioasinc.model.PollOption
 import com.synapse.social.studioasinc.model.PollOptionResult
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
@@ -31,7 +32,7 @@ class PollRepository {
     @Serializable
     private data class PostPollData(
         val id: String,
-        @SerialName("poll_options") val pollOptions: List<String>,
+        @SerialName("poll_options") val pollOptions: List<PollOption>,
         @SerialName("poll_end_time") val pollEndTime: String?
     )
     
@@ -140,7 +141,7 @@ class PollRepository {
         // Count votes per option
         val voteCounts = votes.groupingBy { it.optionIndex }.eachCount()
         
-        PollOptionResult.calculateResults(post.pollOptions, voteCounts)
+        PollOptionResult.calculateResults(post.pollOptions.map { it.text }, voteCounts)
     }
     
     companion object {

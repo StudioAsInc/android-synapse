@@ -85,7 +85,7 @@ class AppearanceViewModel(
 
     /**
      * Sets the theme mode (Light, Dark, or System).
-     * Theme changes are applied immediately with preview.
+     * Theme changes are applied immediately app-wide.
      * 
      * @param mode The theme mode to apply
      * Requirements: 4.1, 4.2
@@ -96,6 +96,8 @@ class AppearanceViewModel(
             _error.value = null
             try {
                 settingsRepository.setThemeMode(mode)
+                // Apply theme app-wide
+                com.synapse.social.studioasinc.ui.theme.ThemeManager.applyThemeMode(mode)
                 android.util.Log.d("AppearanceViewModel", "Theme mode set to: $mode")
             } catch (e: Exception) {
                 android.util.Log.e("AppearanceViewModel", "Failed to set theme mode", e)

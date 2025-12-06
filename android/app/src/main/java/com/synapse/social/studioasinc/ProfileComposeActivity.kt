@@ -72,9 +72,7 @@ class ProfileComposeActivity : ComponentActivity() {
     }
     
     private fun navigateToEditProfile() {
-        // TODO: Navigate to EditProfileActivity or EditProfileScreen
-        // EditProfileActivity not yet implemented
-        // startActivity(Intent(this, EditProfileActivity::class.java))
+        startActivity(Intent(this, ProfileEditActivity::class.java))
     }
     
     private fun navigateToFollowers(userId: String) {
