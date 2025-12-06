@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.synapse.social.studioasinc.ui.components.EmptyState
 import com.synapse.social.studioasinc.ui.components.ErrorState
+import com.synapse.social.studioasinc.ui.components.PostCard
 import com.synapse.social.studioasinc.ui.profile.animations.crossfadeContent
 import com.synapse.social.studioasinc.ui.profile.components.*
 
