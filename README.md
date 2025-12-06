@@ -10,4 +10,4 @@
 ---
 
 ## 🚀 Introduction  
-**Synapse** is an open-source social media platform built with Kotlin for Android, using Supabase as the backend. Designed with privacy, real-time communication, and a lightweight user experience at its core, Synapse provides a secure, ad-free environment where users can connect and express themselves freely.
+**Synapse** is an open-source social media platform, designed with privacy, real-time communication, and a lightweight user experience at its core, Synapse provides a secure, ad-free environment and transparency where users can connect and express themselves freely.
