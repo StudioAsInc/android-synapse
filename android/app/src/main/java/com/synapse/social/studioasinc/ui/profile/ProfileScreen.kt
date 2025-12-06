@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.ui.profile
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Article
@@ -320,32 +321,12 @@ private fun ProfileContent(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Posts Feed
+                            // Posts Feed - Empty state shown in Column
                             if (state.posts.isEmpty()) {
                                 EmptyState(
                                     icon = Icons.Default.Article,
                                     title = "No Posts",
                                     message = "Posts will appear here when shared."
-                                )
-                            } else {
-                                PostFeed(
-                                    posts = state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>(),
-                                    likedPostIds = state.likedPostIds,
-                                    savedPostIds = state.savedPostIds,
-                                    currentUserId = state.currentUserId,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    onRefresh = { viewModel.refreshProfile(profile.id) },
-                                    onLoadMore = { viewModel.loadMoreContent(ProfileContentFilter.POSTS) },
-                                    onUserClick = onNavigateToUserProfile,
-                                    onLikeClick = { postId -> viewModel.toggleLike(postId) },
-                                    onCommentClick = { /* TODO: Navigate to comments */ },
-                                    onShareClick = { /* TODO: Share post */ },
-                                    onSaveClick = { postId -> viewModel.toggleSave(postId) },
-                                    onDeletePost = { postId -> viewModel.deletePost(postId) },
-                                    onReportPost = { postId, reason -> viewModel.reportPost(postId, reason) },
-                                    onEditPost = { /* TODO: Edit post */ },
-                                    onMediaClick = { /* TODO: Open media */ }
                                 )
                             }
                         }
@@ -363,6 +344,28 @@ private fun ProfileContent(
                         }
                     }
                 }
+            }
+        }
+
+        // Posts items - added directly to parent LazyColumn
+        if (state.contentFilter == ProfileContentFilter.POSTS && state.posts.isNotEmpty()) {
+            items(
+                count = state.posts.size,
+                key = { index -> state.posts[index].id }
+            ) { index ->
+                val post = state.posts[index]
+                PostCard(
+                    post = post,
+                    isLiked = state.likedPostIds.contains(post.id),
+                    isSaved = state.savedPostIds.contains(post.id),
+                    onUserClick = { onNavigateToUserProfile(post.userId) },
+                    onLikeClick = { viewModel.toggleLike(post.id) },
+                    onCommentClick = { /* TODO: Navigate to comments */ },
+                    onShareClick = { /* TODO: Share post */ },
+                    onSaveClick = { viewModel.toggleSave(post.id) },
+                    onMenuClick = { /* TODO: Show menu */ },
+                    onMediaClick = { /* TODO: Open media */ }
+                )
             }
         }
     }
