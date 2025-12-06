@@ -138,23 +138,26 @@ class ProfileActivity : BaseActivity() {
         }
 
         viewModel.userPosts.observe(this) { state ->
+            Log.d(TAG, "Posts state changed: $state")
             when (state) {
                 is ProfileViewModel.State.Loading -> {
+                    Log.d(TAG, "Loading posts...")
                     binding.ProfilePageLoadingBody.visibility = View.VISIBLE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
                 }
                 is ProfileViewModel.State.Success -> {
+                    Log.d(TAG, "Posts loaded successfully: ${state.data.size} posts")
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
                     postAdapter.submitList(state.data)
                 }
                 is ProfileViewModel.State.Error -> {
+                    Log.e(TAG, "Posts load error: ${state.message}")
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
-                    Log.e(TAG, "Posts load error: ${state.message}")
                     Toast.makeText(this, "Posts error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
