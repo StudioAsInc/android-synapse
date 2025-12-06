@@ -349,7 +349,8 @@ private fun ProfileContent(
 
         // Posts items - added directly to parent LazyColumn
         if (state.contentFilter == ProfileContentFilter.POSTS && state.posts.isNotEmpty()) {
-            items(state.posts, key = { it.id }) { post ->
+            val posts = state.posts.filterIsInstance<com.synapse.social.studioasinc.model.Post>()
+            items(posts, key = { it.id }) { post ->
                 PostCard(
                     post = post,
                     isLiked = state.likedPostIds.contains(post.id),
