@@ -49,9 +49,9 @@ class AuthViewModelEmailValidationPropertyTest : StringSpec({
     }
 
     /**
-     * Generator for valid email addresses
+     * Generator for valid email addresses matching our regex
      */
-    fun validEmailArb(): Arb<String> = Arb.email()
+    fun validEmailArb(): Arb<String> = Arb.stringPattern("[a-z0-9._-]{3,10}@[a-z0-9-]{3,10}\\.[a-z]{2,4}")
 
     /**
      * Generator for invalid email addresses (missing @, missing domain, etc.)

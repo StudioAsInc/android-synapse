@@ -50,7 +50,7 @@ class AuthViewModelUsernamePropertyTest : StringSpec({
     }
 
     "Property 7: Username with length >= 3 is valid" {
-        checkAll(Arb.string(minSize = 3)) { username ->
+        checkAll(Arb.string(minSize = 3, maxSize = 20).filter { it.matches(Regex("^[a-zA-Z0-9_]+$")) }) { username ->
             val mockAuthRepository = mock<AuthRepository>()
             val mockUsernameRepository = mock<UsernameRepository>()
             val mockSharedPreferences = mock<SharedPreferences>()

@@ -29,7 +29,7 @@ class ProfileRepositoryImpl : ProfileRepository {
         
         try {
             val profile = NetworkOptimizer.withRetry {
-                client.from("profiles").select() { filter { eq("id", userId) } }.decodeSingle<UserProfile>()
+                client.from("users").select() { filter { eq("uid", userId) } }.decodeSingle<UserProfile>()
             }
             NetworkOptimizer.cache(cacheKey, profile)
             emit(Result.success(profile))
@@ -39,7 +39,7 @@ class ProfileRepositoryImpl : ProfileRepository {
     }
 
     override suspend fun updateProfile(userId: String, profile: UserProfile): Result<UserProfile> = try {
-        val updated = client.from("profiles").update(profile) { filter { eq("id", userId) } }.decodeSingle<UserProfile>()
+        val updated = client.from("users").update(profile) { filter { eq("uid", userId) } }.decodeSingle<UserProfile>()
         Result.success(updated)
     } catch (e: Exception) {
         Result.failure(e)

@@ -91,6 +91,11 @@ class ProfileActivity : BaseActivity() {
         
         // Setup accessibility
         setupAccessibility()
+        
+        // Select first tab by default
+        binding.ProfilePageTabLayout.selectTab(binding.ProfilePageTabLayout.getTabAt(0))
+        binding.ProfilePageTabUserInfo.visibility = View.VISIBLE
+        binding.ProfilePageTabUserPosts.visibility = View.GONE
     }
 
     /**

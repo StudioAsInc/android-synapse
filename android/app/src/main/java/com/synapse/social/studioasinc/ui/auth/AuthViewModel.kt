@@ -58,7 +58,7 @@ class AuthViewModel(
         private const val RESEND_COOLDOWN_SECONDS = 60
         private const val PREF_KEY_VERIFICATION_EMAIL = "verification_email"
         
-        // Email validation regex
+        // Email validation regex - matches standard email format
         private val EMAIL_REGEX = Regex(
             "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         )
