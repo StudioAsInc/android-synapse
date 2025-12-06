@@ -90,14 +90,26 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     .decodeSingleOrNull<JsonObject>()
                 
                 if (result != null) {
+                    val rawAvatar = result["avatar"]?.toString()?.removeSurrounding("\"")
+                        ?: result["profile_image_url"]?.toString()?.removeSurrounding("\"")
+
+                    // Helper to construct full URL if it's a relative storage path
+                    val avatarUrl = if (rawAvatar != null && !rawAvatar.startsWith("http")) {
+                        // Assuming ImageLoader.constructStorageUrl or similar logic
+                        // Replicating logic from PostRepository/ImageLoader here
+                        val supabaseUrl = SupabaseClient.getUrl()
+                        "$supabaseUrl/storage/v1/object/public/user-avatars/$rawAvatar"
+                    } else {
+                        rawAvatar
+                    }
+
                     val user = User(
                         uid = result["uid"]?.toString()?.removeSurrounding("\"") ?: uid,
                         username = result["username"]?.toString()?.removeSurrounding("\""),
                         email = result["email"]?.toString()?.removeSurrounding("\""),
                         displayName = result["display_name"]?.toString()?.removeSurrounding("\"") 
                             ?: result["nickname"]?.toString()?.removeSurrounding("\""),
-                        profileImageUrl = result["avatar"]?.toString()?.removeSurrounding("\"") 
-                            ?: result["profile_image_url"]?.toString()?.removeSurrounding("\""),
+                        profileImageUrl = avatarUrl,
                         profileCoverImage = result["profile_cover_image"]?.toString()?.removeSurrounding("\""),
                         bio = result["bio"]?.toString()?.removeSurrounding("\"") 
                             ?: result["biography"]?.toString()?.removeSurrounding("\""),

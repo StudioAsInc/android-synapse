@@ -2,6 +2,7 @@ package com.synapse.social.studioasinc.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * User model for Supabase - matches the actual database schema

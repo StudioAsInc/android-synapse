@@ -152,6 +152,13 @@ class ProfileActivity : BaseActivity() {
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
                     postAdapter.submitList(state.data)
+
+                    // Toggle visibility of "No Posts" message
+                    if (state.data.isEmpty()) {
+                        binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.VISIBLE
+                    } else {
+                        binding.ProfilePageTabUserPostsNoPostsSubtitle.visibility = View.GONE
+                    }
                 }
                 is ProfileViewModel.State.Error -> {
                     Log.e(TAG, "Posts load error: ${state.message}")

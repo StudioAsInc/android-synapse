@@ -106,6 +106,24 @@ class PostsAdapter(
                 )
             }
 
+            // Load post image if available
+            val postImage = itemView.findViewById<ImageView>(R.id.postImage)
+            val imageContainer = itemView.findViewById<View>(R.id.imageContainer)
+
+            if (postImage != null && imageContainer != null) {
+                if (!post.postImage.isNullOrEmpty()) {
+                    imageContainer.visibility = View.VISIBLE
+                    com.synapse.social.studioasinc.util.ImageLoader.loadImage(
+                        context = context,
+                        url = post.postImage,
+                        imageView = postImage,
+                        placeholder = R.drawable.default_image
+                    )
+                } else {
+                    imageContainer.visibility = View.GONE
+                }
+            }
+
             // Set accessibility content description for card
             cardContainer.contentDescription = context.getString(R.string.post_by_user, authorUsername)
             
