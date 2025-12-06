@@ -349,16 +349,12 @@ private fun ProfileContent(
 
         // Posts items - added directly to parent LazyColumn
         if (state.contentFilter == ProfileContentFilter.POSTS && state.posts.isNotEmpty()) {
-            items(
-                count = state.posts.size,
-                key = { index -> state.posts[index].id }
-            ) { index ->
-                val post = state.posts[index]
+            items(state.posts, key = { it.id }) { post ->
                 PostCard(
                     post = post,
                     isLiked = state.likedPostIds.contains(post.id),
                     isSaved = state.savedPostIds.contains(post.id),
-                    onUserClick = { onNavigateToUserProfile(post.userId) },
+                    onUserClick = { onNavigateToUserProfile(post.authorUid) },
                     onLikeClick = { viewModel.toggleLike(post.id) },
                     onCommentClick = { /* TODO: Navigate to comments */ },
                     onShareClick = { /* TODO: Share post */ },
