@@ -26,7 +26,7 @@ import com.synapse.social.studioasinc.R
 @Composable
 fun ProfileHeader(
     profileImageUrl: String?,
-    name: String,
+    name: String?,
     username: String,
     nickname: String?,
     bio: String?,
@@ -88,7 +88,7 @@ fun ProfileHeader(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = name,
+                text = name ?: username,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

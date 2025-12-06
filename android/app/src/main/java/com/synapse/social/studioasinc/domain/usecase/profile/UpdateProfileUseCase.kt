@@ -7,7 +7,6 @@ class UpdateProfileUseCase(private val repository: ProfileRepository) {
     suspend operator fun invoke(userId: String, profile: UserProfile): Result<UserProfile> {
         require(userId.isNotBlank()) { "User ID cannot be blank" }
         require(profile.username.isNotBlank()) { "Username cannot be blank" }
-        require(profile.name.isNotBlank()) { "Name cannot be blank" }
         return repository.updateProfile(userId, profile)
     }
 }
