@@ -52,7 +52,7 @@ jobs:
           SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_SYNAPSE_S3_ACCESS_KEY_ID }}
           SUPABASE_SYNAPSE_S3_ACCESS_KEY: ${{ secrets.SUPABASE_SYNAPSE_S3_ACCESS_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: cd android && gradle assembleRelease
+        run: cd android && ./gradlew assembleRelease
 
       - name: Set short SHA
         id: set_sha

@@ -37,12 +37,12 @@ class ChatCreationIntegrationTest {
      */
     @Test
     fun testEndToEndChatCreation() {
-        // Given: ProfileActivity is launched with a target user ID
-        val intent = Intent(ApplicationProvider.getApplicationContext(), ProfileActivity::class.java).apply {
+        // Given: ProfileComposeActivity is launched with a target user ID
+        val intent = Intent(ApplicationProvider.getApplicationContext(), ProfileComposeActivity::class.java).apply {
             putExtra("uid", "test_user_123")
         }
         
-        val scenario = ActivityScenario.launch<ProfileActivity>(intent)
+        val scenario = ActivityScenario.launch<ProfileComposeActivity>(intent)
         
         // When: User clicks the message button
         // Note: This assumes the message button has the ID btnMessage

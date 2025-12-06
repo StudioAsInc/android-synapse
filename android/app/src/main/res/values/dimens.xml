@@ -69,4 +69,11 @@
     <!-- Message Grouping Spacing -->
     <dimen name="message_spacing_grouped">2dp</dimen>
     <dimen name="message_spacing_ungrouped">12dp</dimen>
+    
+    <!-- Profile Screen Dimensions -->
+    <dimen name="profile_image_size">96dp</dimen>
+    <dimen name="profile_story_ring_width">3dp</dimen>
+    <dimen name="profile_icon_size">24dp</dimen>
+    <dimen name="profile_chip_height">32dp</dimen>
+    <dimen name="profile_photo_grid_spacing">2dp</dimen>
 </resources>

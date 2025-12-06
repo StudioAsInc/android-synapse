@@ -69,6 +69,9 @@ class AppearanceViewModel(
                 settingsRepository.appearanceSettings.collect { settings ->
                     _appearanceSettings.value = settings
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Ignore cancellation - this is expected when scope is cancelled
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("AppearanceViewModel", "Failed to load appearance settings", e)
                 _error.value = "Failed to load appearance settings"

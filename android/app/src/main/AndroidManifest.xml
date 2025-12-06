@@ -80,7 +80,7 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name=".ProfileActivity"
+			android:name=".ProfileComposeActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
 			android:supportsPictureInPicture="true"
@@ -97,6 +97,15 @@
 					  android:host="profile" />
 			</intent-filter>
 		</activity>
+		<activity
+			android:name=".ProfileActivity"
+			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+			android:hardwareAccelerated="true"
+			android:supportsPictureInPicture="true"
+			android:screenOrientation="portrait"
+			android:windowSoftInputMode="stateHidden"
+			android:launchMode="singleTop"
+			android:exported="false" />
 		<activity
 			android:name=".ProfileEditActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"

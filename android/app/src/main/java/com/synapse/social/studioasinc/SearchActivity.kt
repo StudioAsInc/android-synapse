@@ -134,7 +134,7 @@ class SearchActivity : BaseActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    val intent = Intent(this, ProfileActivity::class.java)
+                    val intent = Intent(this, ProfileComposeActivity::class.java)
                     intent.putExtra("uid", user.uid)
                     intent.putExtra("origin", "SearchActivity")
                     startActivity(intent)

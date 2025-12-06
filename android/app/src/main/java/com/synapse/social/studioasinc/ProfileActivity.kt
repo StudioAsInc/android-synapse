@@ -88,6 +88,14 @@ class ProfileActivity : BaseActivity() {
 
         // Setup UI listeners
         setupUIListeners(userId, currentUid)
+        
+        // Setup accessibility
+        setupAccessibility()
+        
+        // Select first tab by default
+        binding.ProfilePageTabLayout.selectTab(binding.ProfilePageTabLayout.getTabAt(0))
+        binding.ProfilePageTabUserInfo.visibility = View.VISIBLE
+        binding.ProfilePageTabUserPosts.visibility = View.GONE
     }
 
     /**
@@ -117,7 +125,7 @@ class ProfileActivity : BaseActivity() {
             onMoreOptionsClicked = { post -> showMoreOptionsDialog(post) },
             onFavoriteClicked = { post -> viewModel.toggleFavorite(post.id) },
             onUserClicked = { uid ->
-                val intent = Intent(this, ProfileActivity::class.java)
+                val intent = Intent(this, ProfileComposeActivity::class.java)
                 intent.putExtra("uid", uid)
                 startActivity(intent)
             }
@@ -130,23 +138,26 @@ class ProfileActivity : BaseActivity() {
         }
 
         viewModel.userPosts.observe(this) { state ->
+            Log.d(TAG, "Posts state changed: $state")
             when (state) {
                 is ProfileViewModel.State.Loading -> {
+                    Log.d(TAG, "Loading posts...")
                     binding.ProfilePageLoadingBody.visibility = View.VISIBLE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
                 }
                 is ProfileViewModel.State.Success -> {
+                    Log.d(TAG, "Posts loaded successfully: ${state.data.size} posts")
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.VISIBLE
                     binding.ProfilePageNoInternetBody.visibility = View.GONE
                     postAdapter.submitList(state.data)
                 }
                 is ProfileViewModel.State.Error -> {
+                    Log.e(TAG, "Posts load error: ${state.message}")
                     binding.ProfilePageLoadingBody.visibility = View.GONE
                     binding.ProfilePageSwipeLayout.visibility = View.GONE
                     binding.ProfilePageNoInternetBody.visibility = View.VISIBLE
-                    Log.e(TAG, "Posts load error: ${state.message}")
                     Toast.makeText(this, "Posts error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -269,20 +280,26 @@ class ProfileActivity : BaseActivity() {
                     binding.ProfilePageTabUserInfoFollowingCount.text = "${user.followingCount} following"
                     
                     // Load profile image if available
-                    user.profileImageUrl?.let { imageUrl ->
-                        Glide.with(this)
-                            .load(imageUrl)
-                            .placeholder(R.drawable.ph_imgbluredsqure)
-                            .into(binding.ProfilePageTabUserInfoProfileImage)
-                    }
+                    Glide.with(this)
+                        .load(user.profileImageUrl)
+                        .placeholder(R.drawable.ph_imgbluredsqure)
+                        .error(R.drawable.ph_imgbluredsqure)
+                        .into(binding.ProfilePageTabUserInfoProfileImage)
 
                     // Load cover image if available
-                    user.profileCoverImage?.let { coverUrl ->
-                        Glide.with(this)
-                            .load(coverUrl)
-                            .placeholder(R.drawable.user_null_cover_photo)
-                            .into(binding.ProfilePageTabUserInfoCoverImage)
-                    }
+                    Glide.with(this)
+                        .load(user.profileCoverImage)
+                        .placeholder(R.drawable.user_null_cover_photo)
+                        .error(R.drawable.user_null_cover_photo)
+                        .into(binding.ProfilePageTabUserInfoCoverImage)
+                    
+                    // Update accessibility
+                    updateAccessibilityWithUserData(
+                        username = user.username ?: "Unknown",
+                        followersCount = user.followersCount,
+                        followingCount = user.followingCount,
+                        postsCount = 0 // Will be updated when posts load
+                    )
                 }
                 is ProfileViewModel.State.Error -> {
                     // Handle error state
@@ -596,6 +613,50 @@ class ProfileActivity : BaseActivity() {
     }
 
     /**
+     * Setup accessibility for profile screen elements
+     */
+    private fun setupAccessibility() {
+        // Back button
+        binding.ProfilePageTopBarBack.apply {
+            contentDescription = getString(R.string.accessibility_back_button)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Menu button
+        binding.ProfilePageTopBarMenu.apply {
+            contentDescription = getString(R.string.accessibility_profile_menu)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // QR code button
+        binding.myqrBtn.apply {
+            contentDescription = getString(R.string.accessibility_qr_code)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    }
+    
+    /**
+     * Update accessibility descriptions with user data
+     */
+    private fun updateAccessibilityWithUserData(username: String, followersCount: Int, followingCount: Int, postsCount: Int) {
+        // Profile image
+        binding.ProfilePageTabUserInfoProfileImage.apply {
+            contentDescription = "Profile picture of $username"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Cover image
+        binding.ProfilePageTabUserInfoCoverImage.apply {
+            contentDescription = "Cover photo of $username"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        
+        // Stats
+        binding.ProfilePageTabUserInfoFollowsDetails.contentDescription = 
+            "$followersCount followers, following $followingCount users"
+    }
+
+    /**
      * Show profile menu options
      */
     private fun showProfileMenu(userId: String, currentUid: String) {
@@ -845,22 +906,18 @@ class ProfileActivity : BaseActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        if (isFinishing) {
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoProfileImage)
+            Glide.with(applicationContext).clear(binding.ProfilePageTabUserInfoCoverImage)
+        }
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "Lifecycle: onDestroy")
 
-        // Clear Glide image loading requests to free up memory when the activity is finishing.
-        // This is essential to prevent Glide from holding references to views that are no longer valid.
-        if (isFinishing) {
-            Log.d(TAG, "Clearing Glide resources")
-            // It's safer to use the activity context here, but applicationContext is also acceptable
-            // if you're sure no context-specific UI elements are held.
-            Glide.with(this).clear(binding.ProfilePageTabUserInfoProfileImage)
-            Glide.with(this).clear(binding.ProfilePageTabUserInfoCoverImage)
-        }
-
         // Nullify the RecyclerView adapter to break the reference cycle.
-        // The RecyclerView can hold a strong reference to the adapter, which in turn can hold a
-        // reference to the activity (e.g., through listeners), causing a memory leak.
         binding.ProfilePageTabUserPostsRecyclerView.adapter = null
         
         super.onDestroy()

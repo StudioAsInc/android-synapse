@@ -2129,7 +2129,7 @@ class ChatActivity : BaseActivity(), DefaultLifecycleObserver {
      * Open user profile
      */
     private fun openUserProfile(userId: String) {
-        val intent = Intent(this, ProfileActivity::class.java)
+        val intent = Intent(this, ProfileComposeActivity::class.java)
         intent.putExtra("uid", userId)
         startActivity(intent)
     }
